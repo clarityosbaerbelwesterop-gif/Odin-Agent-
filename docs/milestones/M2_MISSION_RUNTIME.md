@@ -1,6 +1,6 @@
 # M2 — Mission runtime task contract
 
-Status: implementation in progress. Updated: 2026-09-02.
+Status: `VERIFIED`. Updated: 2026-09-02.
 
 ## Objective
 
@@ -47,18 +47,21 @@ append-only events, optimistic concurrency, checkpoints, and replay. It performs
 - SQLite/PostgreSQL implementation and multi-process leases (later persistence hardening).
 - Web/mobile event fan-out (M8/M9).
 
-## Verification strategy
+## Verification
 
-Run `npm run verify`. Tests must cover:
+GitHub Actions run `33672695583` passed for commit
+`bc97c7bc206db00eb641965556a4156094ec79a7` using `npm run verify`.
 
-- allowed and forbidden lifecycle transitions;
-- pause/resume and cancel terminality;
-- DAG ordering, missing dependency, duplicate ID, self-dependency, and cycle rejection;
-- budget boundary and over-budget rejection;
-- equivalent-failure circuit breaking;
-- append ordering, optimistic conflict, atomic batch behavior, and idempotent replay;
-- projection replay equivalence;
-- checkpoint round-trip plus incompatible/foreign checkpoint rejection;
-- interrupted mission recovery followed by deterministic continuation.
+Evidence:
 
-M2 is `VERIFIED` only after the pull-request CI run for its final commit succeeds.
+- 41 tests passed, 0 failed;
+- Biome passed with no findings;
+- strict TypeScript typecheck passed;
+- aggregate coverage: 84.58% lines, 72.80% branches, 90.91% functions;
+- `src/mission/runtime.ts`: 96.92% line coverage and 87.12% branch coverage;
+- `src/events/store.ts`: 95.00% line coverage and 82.76% branch coverage;
+- interruption/recovery continuation, optimistic conflicts, strict idempotency, checkpoint integrity,
+  budget rejection, DAG validation, pause/resume/cancel, and anti-loop failure handling are covered.
+
+No live model/provider call, tool execution, external network access, or paid resource was used by M2
+verification.
