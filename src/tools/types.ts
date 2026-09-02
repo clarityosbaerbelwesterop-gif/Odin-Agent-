@@ -138,7 +138,7 @@ export interface ToolAuditRecord {
   readonly tool: string;
   readonly version: string;
   readonly operation: ToolOperation;
-  readonly resource: string;
+  readonly resourceHash: string;
   readonly inputHash: string;
   readonly policyDecision: PolicyDecision | "REPLAY";
   readonly resultClass: ToolAuditResultClass;
