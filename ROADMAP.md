@@ -26,9 +26,9 @@ the repository; no product capability is overstated.
 
 ## M2 — Mission runtime
 
-- [ ] Mission aggregate, typed state machine, task DAG, focus classification, and definitions of done.
-- [ ] Deterministic scheduler, budgets, retries, pause/resume/cancel, and anti-loop circuit breaker.
-- [ ] Append-only events, projections, checkpoints, optimistic versions, and recovery tests.
+- [x] Mission aggregate, typed state machine, task DAG, focus classification, and definitions of done.
+- [x] Deterministic scheduler, budgets, retries, pause/resume/cancel, and anti-loop circuit breaker.
+- [x] Append-only events, projections, checkpoints, optimistic versions, and recovery tests.
 
 ## M3 — Tool runtime
 
