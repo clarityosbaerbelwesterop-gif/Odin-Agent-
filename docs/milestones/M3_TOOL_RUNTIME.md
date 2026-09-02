@@ -1,6 +1,6 @@
 # M3 — Tool runtime task contract
 
-Status: implementation verified; final repository checkpoint pending. Updated: 2026-09-02.
+Status: VERIFIED. Updated: 2026-09-02.
 
 ## Objective
 
@@ -66,5 +66,6 @@ Implementation evidence: GitHub Actions run `33675783522` passed on commit
 85.93% lines, 73.46% branches, and 91.32% functions. That run also verifies the regression fix that
 replaced raw audited resource paths with resource hashes.
 
-M3 becomes `VERIFIED` only after the pull-request CI run for the final documentation/export checkpoint
-succeeds.
+Final documentation/export checkpoint: GitHub Actions run `33676117584` passed on commit
+`402b0834d83183c4c307bc6d20adb481e5065a68` with the same repository-wide verification gate. M3 is
+therefore `VERIFIED`.
