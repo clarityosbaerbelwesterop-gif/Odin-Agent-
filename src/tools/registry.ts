@@ -69,10 +69,7 @@ function validateManifest(manifest: ToolManifest): void {
   ) {
     throw new TypeError("Tool retry maxAttempts must be a positive safe integer.");
   }
-  if (
-    !Number.isSafeInteger(manifest.retryPolicy.timeoutMs) ||
-    manifest.retryPolicy.timeoutMs < 1
-  ) {
+  if (!Number.isSafeInteger(manifest.retryPolicy.timeoutMs) || manifest.retryPolicy.timeoutMs < 1) {
     throw new TypeError("Tool timeoutMs must be a positive safe integer.");
   }
   if (

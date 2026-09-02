@@ -20,7 +20,11 @@ export class InMemoryCapabilityPolicy implements CapabilityPolicy {
   register(grant: CapabilityGrant): void {
     validateGrant(grant);
     if (this.#grants.has(grant.grantId)) {
-      throw new ToolRuntimeError("conflict", `Capability grant ${grant.grantId} already exists.`, false);
+      throw new ToolRuntimeError(
+        "conflict",
+        `Capability grant ${grant.grantId} already exists.`,
+        false,
+      );
     }
     this.#grants.set(grant.grantId, Object.freeze(structuredClone(grant)));
     this.#usedCalls.set(grant.grantId, 0);
@@ -60,7 +64,11 @@ export class InMemoryCapabilityPolicy implements CapabilityPolicy {
     }
 
     this.#usedCalls.set(grant.grantId, (this.#usedCalls.get(grant.grantId) ?? 0) + 1);
-    return { decision: "ALLOW", grantId: grant.grantId, reason: "Scoped capability grant accepted." };
+    return {
+      decision: "ALLOW",
+      grantId: grant.grantId,
+      reason: "Scoped capability grant accepted.",
+    };
   }
 
   callsUsed(grantId: string): number {
@@ -71,7 +79,8 @@ export class InMemoryCapabilityPolicy implements CapabilityPolicy {
 function approvalMatches(request: ToolPolicyRequest): boolean {
   const approval = request.approval;
   if (approval === undefined) return false;
-  if (approval.approvalId.trim() === "" || Number.isNaN(Date.parse(approval.expiresAt))) return false;
+  if (approval.approvalId.trim() === "" || Number.isNaN(Date.parse(approval.expiresAt)))
+    return false;
   return (
     approval.missionId === request.missionId &&
     approval.taskId === request.taskId &&

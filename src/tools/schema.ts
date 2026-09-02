@@ -75,13 +75,17 @@ function validateSchema(schema: JsonObject, path: string, root = false): void {
       invalid(`${path}: required must not contain duplicates.`);
     }
     for (const property of required) {
-      if (!(property in properties)) invalid(`${path}: required property ${property} is undefined.`);
+      if (!(property in properties))
+        invalid(`${path}: required property ${property} is undefined.`);
     }
     if (root && Object.keys(properties).some((property) => !required.includes(property))) {
       invalid(`${path}: strict root schemas must require every property.`);
     }
     for (const [property, child] of Object.entries(properties)) {
-      validateSchema(asJsonObject(child, `${path}.${property}: property schema must be an object.`), `${path}.${property}`);
+      validateSchema(
+        asJsonObject(child, `${path}.${property}: property schema must be an object.`),
+        `${path}.${property}`,
+      );
     }
   } else if (type === "string") {
     assertNonNegativeInteger(schema.minLength, `${path}: minLength`);
@@ -107,7 +111,10 @@ function validateSchema(schema: JsonObject, path: string, root = false): void {
     if (minItems !== undefined && maxItems !== undefined && minItems > maxItems) {
       invalid(`${path}: minItems must not exceed maxItems.`);
     }
-    validateSchema(asJsonObject(schema.items, `${path}: array items schema is required.`), `${path}[]`);
+    validateSchema(
+      asJsonObject(schema.items, `${path}: array items schema is required.`),
+      `${path}[]`,
+    );
   }
 }
 
@@ -138,14 +145,17 @@ function validateValue(schema: JsonObject, value: JsonValue, path: string): void
     if (typeof value !== "string") invalid(`${path}: expected string.`);
     const minLength = optionalNumber(schema.minLength);
     const maxLength = optionalNumber(schema.maxLength);
-    if (minLength !== undefined && value.length < minLength) invalid(`${path}: string is too short.`);
-    if (maxLength !== undefined && value.length > maxLength) invalid(`${path}: string is too long.`);
+    if (minLength !== undefined && value.length < minLength)
+      invalid(`${path}: string is too short.`);
+    if (maxLength !== undefined && value.length > maxLength)
+      invalid(`${path}: string is too long.`);
     return;
   }
 
   if (schema.type === "number" || schema.type === "integer") {
     if (typeof value !== "number" || !Number.isFinite(value)) invalid(`${path}: expected number.`);
-    if (schema.type === "integer" && !Number.isInteger(value)) invalid(`${path}: expected integer.`);
+    if (schema.type === "integer" && !Number.isInteger(value))
+      invalid(`${path}: expected integer.`);
     const minimum = optionalNumber(schema.minimum);
     const maximum = optionalNumber(schema.maximum);
     if (minimum !== undefined && value < minimum) invalid(`${path}: number is below minimum.`);
@@ -165,7 +175,9 @@ function validateValue(schema: JsonObject, value: JsonValue, path: string): void
     if (minItems !== undefined && value.length < minItems) invalid(`${path}: array is too short.`);
     if (maxItems !== undefined && value.length > maxItems) invalid(`${path}: array is too long.`);
     const itemSchema = asJsonObject(schema.items, `${path}: array item schema missing.`);
-    value.forEach((item, index) => validateValue(itemSchema, item, `${path}[${index}]`));
+    value.forEach((item, index) => {
+      validateValue(itemSchema, item, `${path}[${index}]`);
+    });
     return;
   }
 

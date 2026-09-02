@@ -288,7 +288,9 @@ async function runHandlerWithTimeout(
     };
     const onAbort = () => {
       controller.abort();
-      finish(() => reject(new ToolRuntimeError("cancelled", "Tool execution was cancelled.", false)));
+      finish(() =>
+        reject(new ToolRuntimeError("cancelled", "Tool execution was cancelled.", false)),
+      );
     };
     const timeout = setTimeout(() => {
       controller.abort();
@@ -345,7 +347,9 @@ function resultClassFor(category: ToolFailureCategory): ToolAuditResultClass {
 }
 
 function stableHash(value: JsonValue): string {
-  return createHash("sha256").update(JSON.stringify(canonicalize(value))).digest("hex");
+  return createHash("sha256")
+    .update(JSON.stringify(canonicalize(value)))
+    .digest("hex");
 }
 
 function canonicalize(value: JsonValue): JsonValue {
@@ -365,6 +369,7 @@ function validateExecutionRequest(request: ToolExecutionRequest): void {
     ["tool", request.tool],
     ["version", request.version],
   ] as const) {
-    if (value.trim() === "") throw new ToolRuntimeError("invalid_input", `${name} is required.`, false);
+    if (value.trim() === "")
+      throw new ToolRuntimeError("invalid_input", `${name} is required.`, false);
   }
 }

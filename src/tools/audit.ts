@@ -1,4 +1,4 @@
-import { type ToolAuditRecord, type ToolAuditSink } from "./types.js";
+import type { ToolAuditRecord, ToolAuditSink } from "./types.js";
 
 export class InMemoryToolAuditSink implements ToolAuditSink {
   readonly #records: ToolAuditRecord[] = [];

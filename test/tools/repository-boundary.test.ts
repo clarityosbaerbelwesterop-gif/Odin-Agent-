@@ -10,18 +10,21 @@ import {
   type RepositoryWorkspace,
 } from "../../src/tools/repository.js";
 import { ToolRuntime } from "../../src/tools/runtime.js";
-import { ToolRuntimeError, type CapabilityGrant } from "../../src/tools/types.js";
+import { type CapabilityGrant, ToolRuntimeError } from "../../src/tools/types.js";
 import { NOW } from "./helpers.js";
 
 test("workspace path guards reject traversal and absolute path forms", () => {
   assert.equal(normalizeWorkspacePath("src/./index.ts"), "src/index.ts");
   assert.equal(normalizeWorkspacePath(".", true), ".");
   for (const value of ["../secret", "src/../secret", "/etc/passwd", "C:/secret", "src\\secret"]) {
-    assert.throws(() => normalizeWorkspacePath(value), (error: unknown) => {
-      assert.ok(error instanceof ToolRuntimeError);
-      assert.equal(error.category, "invalid_input");
-      return true;
-    });
+    assert.throws(
+      () => normalizeWorkspacePath(value),
+      (error: unknown) => {
+        assert.ok(error instanceof ToolRuntimeError);
+        assert.equal(error.category, "invalid_input");
+        return true;
+      },
+    );
   }
 });
 

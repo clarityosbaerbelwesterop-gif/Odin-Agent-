@@ -15,42 +15,57 @@ test("registry exposes compact summaries and resolves full manifests explicitly"
 
 test("registry rejects duplicate tools and unsafe retry semantics", () => {
   const registry = new ToolRegistry([registration()]);
-  assert.throws(() => registry.register(registration()), (error: unknown) => {
-    assert.ok(error instanceof ToolRuntimeError);
-    assert.equal(error.category, "conflict");
-    return true;
-  });
+  assert.throws(
+    () => registry.register(registration()),
+    (error: unknown) => {
+      assert.ok(error instanceof ToolRuntimeError);
+      assert.equal(error.category, "conflict");
+      return true;
+    },
+  );
 
   assert.throws(
     () =>
       new ToolRegistry([
-        registration({}, { sideEffecting: true, retryPolicy: {
-          maxAttempts: 2,
-          retryableCategories: ["timeout"],
-          timeoutMs: 100,
-        } }),
+        registration(
+          {},
+          {
+            sideEffecting: true,
+            retryPolicy: {
+              maxAttempts: 2,
+              retryableCategories: ["timeout"],
+              timeoutMs: 100,
+            },
+          },
+        ),
       ]),
     /single-attempt/,
   );
 });
 
 test("unsupported schema keywords fail closed during registration", () => {
-  const unsafe = registration({}, {
-    inputSchema: {
-      additionalProperties: false,
-      properties: {
-        path: { minLength: 1, pattern: "^src/", type: "string" },
+  const unsafe = registration(
+    {},
+    {
+      inputSchema: {
+        additionalProperties: false,
+        properties: {
+          path: { minLength: 1, pattern: "^src/", type: "string" },
+        },
+        required: ["path"],
+        type: "object",
       },
-      required: ["path"],
-      type: "object",
     },
-  });
-  assert.throws(() => new ToolRegistry([unsafe]), (error: unknown) => {
-    assert.ok(error instanceof ToolRuntimeError);
-    assert.equal(error.category, "invalid_input");
-    assert.match(error.message, /unsupported schema keyword/);
-    return true;
-  });
+  );
+  assert.throws(
+    () => new ToolRegistry([unsafe]),
+    (error: unknown) => {
+      assert.ok(error instanceof ToolRuntimeError);
+      assert.equal(error.category, "invalid_input");
+      assert.match(error.message, /unsupported schema keyword/);
+      return true;
+    },
+  );
 });
 
 test("strict input validation rejects missing, unknown, type, and bound violations", () => {

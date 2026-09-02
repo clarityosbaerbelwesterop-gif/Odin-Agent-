@@ -1,5 +1,5 @@
 import type { JsonObject, JsonValue } from "../providers/types.js";
-import { ToolRuntimeError, type ToolManifest, type ToolRegistration } from "./types.js";
+import { type ToolManifest, type ToolRegistration, ToolRuntimeError } from "./types.js";
 
 export interface RepositorySearchMatch {
   readonly path: string;
@@ -221,7 +221,10 @@ function repositoryQualityRegistration(quality: QualityCommandRunner): ToolRegis
       qualityResource(knownCommands, commandId);
       const result = await quality.run(commandId, context.signal);
       if (!Number.isSafeInteger(result.exitCode)) {
-        throw new ToolRuntimeError("handler_error", "Quality command returned an invalid exit code.");
+        throw new ToolRuntimeError(
+          "handler_error",
+          "Quality command returned an invalid exit code.",
+        );
       }
       return { exitCode: result.exitCode, output: result.output };
     },

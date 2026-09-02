@@ -1,9 +1,5 @@
 import type { JsonObject } from "../../src/providers/types.js";
-import type {
-  CapabilityGrant,
-  ToolManifest,
-  ToolRegistration,
-} from "../../src/tools/types.js";
+import type { CapabilityGrant, ToolManifest, ToolRegistration } from "../../src/tools/types.js";
 
 export const NOW = "2026-09-02T12:00:00.000Z";
 
