@@ -25,8 +25,7 @@ import {
   TARGET_PATH,
 } from "./coding-fixtures.js";
 
-const WRONG_CONTENT =
-  "export function add(a: number, b: number): number {\n  return a - b;\n}\n";
+const WRONG_CONTENT = "export function add(a: number, b: number): number {\n  return a - b;\n}\n";
 const REPAIRED_CONTENT =
   "export function add(a: number, b: number): number {\n  return a + b;\n}\n";
 const SECOND_WRONG_CONTENT =
@@ -43,11 +42,7 @@ const BUDGETS = {
 function plan(expectedSha: string, qualityCommandId = "verify") {
   return modelResponse(
     {
-      change: {
-        content: WRONG_CONTENT,
-        expectedSha,
-        path: TARGET_PATH,
-      },
+      change: { content: WRONG_CONTENT, expectedSha, path: TARGET_PATH },
       qualityCommandId,
       task: {
         definitionOfDone: ["add returns the sum of both arguments"],
@@ -63,15 +58,7 @@ function plan(expectedSha: string, qualityCommandId = "verify") {
 }
 
 function repair(expectedSha: string, content = REPAIRED_CONTENT) {
-  return modelResponse(
-    {
-      content,
-      expectedSha,
-      path: TARGET_PATH,
-    },
-    30,
-    10,
-  );
+  return modelResponse({ content, expectedSha, path: TARGET_PATH }, 30, 10);
 }
 
 function buildTools(
@@ -80,9 +67,7 @@ function buildTools(
   audit: InMemoryToolAuditSink,
   policy = new InMemoryCapabilityPolicy(),
 ) {
-  const registry = new ToolRegistry(
-    createRepositoryToolRegistrations({ quality, workspace }),
-  );
+  const registry = new ToolRegistry(createRepositoryToolRegistrations({ quality, workspace }));
   return {
     grants: policy,
     tools: new ToolRuntime(registry, policy, audit, () => FIXED_NOW),
@@ -97,12 +82,7 @@ function orchestrator(input: {
   audit: InMemoryToolAuditSink;
   grants?: InMemoryCapabilityPolicy;
 }) {
-  const toolStack = buildTools(
-    input.workspace,
-    input.quality,
-    input.audit,
-    input.grants,
-  );
+  const toolStack = buildTools(input.workspace, input.quality, input.audit, input.grants);
   return new CodingOrchestrator({
     audit: input.audit,
     clock: () => FIXED_NOW,
@@ -129,13 +109,7 @@ test("M4 connects discovery, strict planning, scoped patch, failed gate, repair,
     repair(textHash(WRONG_CONTENT)),
   ]);
   const runtime = new MissionRuntime(store, () => FIXED_NOW);
-  const coding = orchestrator({
-    audit,
-    mission: runtime,
-    provider,
-    quality,
-    workspace,
-  });
+  const coding = orchestrator({ audit, mission: runtime, provider, quality, workspace });
 
   const result = await coding.start({
     budgetLimits: BUDGETS,
@@ -155,10 +129,7 @@ test("M4 connects discovery, strict planning, scoped patch, failed gate, repair,
     result.report.quality.firstFailureSignature ?? "",
     /^quality:verify:exit:1:sha256:/u,
   );
-  assert.deepEqual(result.report.modelUsage, {
-    inputTokens: 70,
-    outputTokens: 30,
-  });
+  assert.deepEqual(result.report.modelUsage, { inputTokens: 70, outputTokens: 30 });
   assert.ok(result.report.toolCalls >= 8);
   assert.ok(result.report.attempts >= result.report.toolCalls + 2);
   assert.ok(result.report.auditReferences.length >= result.report.toolCalls);
@@ -191,9 +162,7 @@ test("M4 restart replays mission state and resumes from DIAGNOSING with fresh ru
   const quality = new FixtureQualityRunner(workspace);
   const audit = new InMemoryToolAuditSink();
   const store = new InMemoryEventStore<MissionEventData>();
-  const firstProvider = new ScriptedProvider([
-    plan(workspace.sha(TARGET_PATH)),
-  ]);
+  const firstProvider = new ScriptedProvider([plan(workspace.sha(TARGET_PATH))]);
   const firstRuntime = new MissionRuntime(store, () => FIXED_NOW);
   const firstCoding = orchestrator({
     audit,
@@ -204,25 +173,16 @@ test("M4 restart replays mission state and resumes from DIAGNOSING with fresh ru
   });
 
   const interrupted = await firstCoding.start(
-    {
-      budgetLimits: BUDGETS,
-      missionId: "m4-resume",
-      objective: "Fix add function",
-    },
+    { budgetLimits: BUDGETS, missionId: "m4-resume", objective: "Fix add function" },
     { interruptAfterFirstFailure: true },
   );
   assert.equal(interrupted.status, "interrupted");
   if (interrupted.status !== "interrupted") return;
   assert.equal(interrupted.mission.state, "DIAGNOSING");
-  assert.equal(
-    restoreMissionCheckpoint(interrupted.checkpoint, "m4-resume").state,
-    "DIAGNOSING",
-  );
+  assert.equal(restoreMissionCheckpoint(interrupted.checkpoint, "m4-resume").state, "DIAGNOSING");
   assert.equal(workspace.patches.length, 1);
 
-  const resumedProvider = new ScriptedProvider([
-    repair(textHash(WRONG_CONTENT)),
-  ]);
+  const resumedProvider = new ScriptedProvider([repair(textHash(WRONG_CONTENT))]);
   const freshRuntime = new MissionRuntime(store, () => FIXED_NOW);
   const freshCoding = orchestrator({
     audit,
@@ -234,10 +194,7 @@ test("M4 restart replays mission state and resumes from DIAGNOSING with fresh ru
   const report = await freshCoding.resume("m4-resume");
 
   assert.equal(report.state, "COMPLETED");
-  assert.deepEqual(report.modelUsage, {
-    inputTokens: 70,
-    outputTokens: 30,
-  });
+  assert.deepEqual(report.modelUsage, { inputTokens: 70, outputTokens: 30 });
   assert.deepEqual(report.changedFiles, [TARGET_PATH]);
   assert.equal(report.quality.firstFailureSignature, interrupted.failureSignature);
   assert.equal(workspace.content(TARGET_PATH), REPAIRED_CONTENT);
@@ -261,9 +218,7 @@ test("malformed provider plan is rejected before any repository write", async ()
           path: TARGET_PATH,
         },
         task: {
-          definitionOfDone: [
-            "valid looking task but incomplete root plan",
-          ],
+          definitionOfDone: ["valid looking task but incomplete root plan"],
           dependsOn: [],
           id: "change-math",
           priority: 10,
@@ -283,11 +238,7 @@ test("malformed provider plan is rejected before any repository write", async ()
   });
 
   await assert.rejects(
-    coding.start({
-      budgetLimits: BUDGETS,
-      missionId: "m4-invalid",
-      objective: "Fix add function",
-    }),
+    coding.start({ budgetLimits: BUDGETS, missionId: "m4-invalid", objective: "Fix add function" }),
   );
   assert.equal(workspace.patches.length, 0);
   assert.deepEqual(quality.seenCommandIds, []);
@@ -298,15 +249,10 @@ test("model-provided arbitrary command text cannot become a quality execution", 
   const workspace = new FixtureWorkspace(fixtureFiles());
   const quality = new FixtureQualityRunner(workspace);
   const audit = new InMemoryToolAuditSink();
-  const provider = new ScriptedProvider([
-    plan(workspace.sha(TARGET_PATH), "verify && rm -rf /"),
-  ]);
+  const provider = new ScriptedProvider([plan(workspace.sha(TARGET_PATH), "verify && rm -rf /")]);
   const coding = orchestrator({
     audit,
-    mission: new MissionRuntime(
-      new InMemoryEventStore<MissionEventData>(),
-      () => FIXED_NOW,
-    ),
+    mission: new MissionRuntime(new InMemoryEventStore<MissionEventData>(), () => FIXED_NOW),
     provider,
     quality,
     workspace,
@@ -334,13 +280,7 @@ test("a still-failing required quality gate transitions the mission to FAILED, n
     repair(textHash(WRONG_CONTENT), SECOND_WRONG_CONTENT),
   ]);
   const runtime = new MissionRuntime(store, () => FIXED_NOW);
-  const coding = orchestrator({
-    audit,
-    mission: runtime,
-    provider,
-    quality,
-    workspace,
-  });
+  const coding = orchestrator({ audit, mission: runtime, provider, quality, workspace });
 
   await assert.rejects(
     coding.start({
@@ -364,21 +304,14 @@ test("missing capability registration denies bootstrap discovery before adapters
   const quality = new FixtureQualityRunner(workspace);
   const audit = new InMemoryToolAuditSink();
   const policy = new InMemoryCapabilityPolicy();
-  const registry = new ToolRegistry(
-    createRepositoryToolRegistrations({ quality, workspace }),
-  );
+  const registry = new ToolRegistry(createRepositoryToolRegistrations({ quality, workspace }));
   const tools = new ToolRuntime(registry, policy, audit, () => FIXED_NOW);
-  const noOpGrantSink = {
-    register(_grant: CapabilityGrant): void {},
-  };
+  const noOpGrantSink = { register(_grant: CapabilityGrant): void {} };
   const coding = new CodingOrchestrator({
     audit,
     clock: () => FIXED_NOW,
     grants: noOpGrantSink,
-    mission: new MissionRuntime(
-      new InMemoryEventStore<MissionEventData>(),
-      () => FIXED_NOW,
-    ),
+    mission: new MissionRuntime(new InMemoryEventStore<MissionEventData>(), () => FIXED_NOW),
     model: "fixture-model",
     provider: new ScriptedProvider([]),
     quality,
