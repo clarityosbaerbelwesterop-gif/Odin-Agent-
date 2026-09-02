@@ -151,19 +151,19 @@ export interface CodingCompletedResult {
 
 export type CodingRunResult = CodingCompletedResult | CodingInterruptedResult;
 
-export interface CodingPlan {
-  readonly task: MissionTaskInput;
-  readonly change: CodingChange;
-  readonly qualityCommandId: string;
-}
-
 export interface CodingChange {
   readonly path: string;
   readonly expectedSha: string;
   readonly content: string;
 }
 
-export interface CodingRepair extends CodingChange {}
+export type CodingRepair = CodingChange;
+
+export interface CodingPlan {
+  readonly task: MissionTaskInput;
+  readonly change: CodingChange;
+  readonly qualityCommandId: string;
+}
 
 export interface QualityRunResult {
   readonly snapshot: MissionSnapshot;
@@ -175,9 +175,7 @@ export interface QualityRunResult {
 export function parsePlan(response: ModelResponse): CodingPlan {
   const output = response.structuredOutput;
   if (!isJsonObject(output)) {
-    throw new MissionDomainError(
-      "Planning provider did not return a structured JSON object.",
-    );
+    throw new MissionDomainError("Planning provider did not return a structured JSON object.");
   }
   validateToolInput(CODING_PLAN_SCHEMA, output);
   const task = objectField(output, "task");
@@ -202,9 +200,7 @@ export function parsePlan(response: ModelResponse): CodingPlan {
 export function parseRepair(response: ModelResponse): CodingRepair {
   const output = response.structuredOutput;
   if (!isJsonObject(output)) {
-    throw new MissionDomainError(
-      "Repair provider did not return a structured JSON object.",
-    );
+    throw new MissionDomainError("Repair provider did not return a structured JSON object.");
   }
   validateToolInput(CODING_REPAIR_SCHEMA, output);
   return {
@@ -217,9 +213,7 @@ export function parseRepair(response: ModelResponse): CodingRepair {
 export function planTasks(plan: CodingPlan): readonly MissionTaskInput[] {
   rejectReservedDefinitionMarkers(plan.task.definitionOfDone);
   if (plan.task.id === QUALITY_TASK_ID || plan.task.id === BOOTSTRAP_TASK_ID) {
-    throw new MissionDomainError(
-      "Model task id collides with an Odin-reserved task id.",
-    );
+    throw new MissionDomainError("Model task id collides with an Odin-reserved task id.");
   }
   return [
     {
@@ -239,17 +233,10 @@ export function planTasks(plan: CodingPlan): readonly MissionTaskInput[] {
   ];
 }
 
-export function validatePlanAgainstDiscovery(
-  plan: CodingPlan,
-  discovery: RepositoryDiscovery,
-): void {
-  const target = discovery.relevantFiles.find(
-    (file) => file.path === plan.change.path,
-  );
+export function validatePlanAgainstDiscovery(plan: CodingPlan, discovery: RepositoryDiscovery): void {
+  const target = discovery.relevantFiles.find((file) => file.path === plan.change.path);
   if (target === undefined) {
-    throw new MissionDomainError(
-      "Model plan targets a file outside bounded repository discovery.",
-    );
+    throw new MissionDomainError("Model plan targets a file outside bounded repository discovery.");
   }
   if (target.sha !== plan.change.expectedSha) {
     throw new MissionDomainError(
@@ -260,14 +247,10 @@ export function validatePlanAgainstDiscovery(
     throw new MissionDomainError("Model plan does not change the target file.");
   }
   if (!discovery.qualityCommandIds.includes(plan.qualityCommandId)) {
-    throw new MissionDomainError(
-      "Model plan selected an unregistered quality command.",
-    );
+    throw new MissionDomainError("Model plan selected an unregistered quality command.");
   }
   if (plan.task.dependsOn?.length !== 0) {
-    throw new MissionDomainError(
-      "The M4 model change task must be dependency-free.",
-    );
+    throw new MissionDomainError("The M4 model change task must be dependency-free.");
   }
 }
 
@@ -277,9 +260,7 @@ export function validateRepair(
   current: RepositoryFileEvidence,
 ): void {
   if (repair.path !== targetPath) {
-    throw new MissionDomainError(
-      "Repair proposal may not change the persisted target path.",
-    );
+    throw new MissionDomainError("Repair proposal may not change the persisted target path.");
   }
   if (repair.expectedSha !== current.sha) {
     throw new MissionDomainError("Repair expectedSha is stale or mismatched.");
@@ -297,10 +278,7 @@ export function parseSearchPaths(output: JsonObject): string[] {
   return [...new Set(paths)].sort();
 }
 
-export function parseReadFile(
-  path: string,
-  output: JsonObject,
-): RepositoryFileEvidence {
+export function parseReadFile(path: string, output: JsonObject): RepositoryFileEvidence {
   return {
     content: stringField(output, "content"),
     path,
@@ -319,62 +297,40 @@ export function latestFailureSignature(snapshot: MissionSnapshot): string {
     .map(([signature]) => signature)
     .sort();
   const latest = signatures.at(-1);
-  if (latest === undefined) {
-    throw new MissionDomainError("Resume state has no recorded failure.");
-  }
+  if (latest === undefined) throw new MissionDomainError("Resume state has no recorded failure.");
   return latest;
 }
 
 export function changedFileFromMission(snapshot: MissionSnapshot): string {
   const task = changeTaskFromMission(snapshot);
-  const marker = task.definitionOfDone.find((item) =>
-    item.startsWith(CHANGED_FILE_PREFIX),
-  );
+  const marker = task.definitionOfDone.find((item) => item.startsWith(CHANGED_FILE_PREFIX));
   if (marker === undefined) {
     throw new MissionDomainError("Mission is missing its changed-file marker.");
   }
   const path = marker.slice(CHANGED_FILE_PREFIX.length);
-  if (path.trim() === "") {
-    throw new MissionDomainError("Mission changed-file marker is empty.");
-  }
+  if (path.trim() === "") throw new MissionDomainError("Mission changed-file marker is empty.");
   return path;
 }
 
 export function qualityCommandFromMission(snapshot: MissionSnapshot): string {
-  const task = snapshot.tasks.find(
-    (candidate) => candidate.id === QUALITY_TASK_ID,
-  );
-  if (task === undefined) {
-    throw new MissionDomainError("Mission is missing the M4 quality task.");
-  }
-  const marker = task.definitionOfDone.find((item) =>
-    item.startsWith(QUALITY_PREFIX),
-  );
+  const task = snapshot.tasks.find((candidate) => candidate.id === QUALITY_TASK_ID);
+  if (task === undefined) throw new MissionDomainError("Mission is missing the M4 quality task.");
+  const marker = task.definitionOfDone.find((item) => item.startsWith(QUALITY_PREFIX));
   if (marker === undefined) {
-    throw new MissionDomainError(
-      "Mission is missing its quality command marker.",
-    );
+    throw new MissionDomainError("Mission is missing its quality command marker.");
   }
   const commandId = marker.slice(QUALITY_PREFIX.length);
-  if (commandId.trim() === "") {
-    throw new MissionDomainError("Mission quality marker is empty.");
-  }
+  if (commandId.trim() === "") throw new MissionDomainError("Mission quality marker is empty.");
   return commandId;
 }
 
-export function changeTaskFromMission(
-  snapshot: MissionSnapshot,
-): MissionSnapshot["tasks"][number] {
+export function changeTaskFromMission(snapshot: MissionSnapshot): MissionSnapshot["tasks"][number] {
   const task = snapshot.tasks.find(
     (candidate) =>
       candidate.id !== QUALITY_TASK_ID &&
-      candidate.definitionOfDone.some((item) =>
-        item.startsWith(CHANGED_FILE_PREFIX),
-      ),
+      candidate.definitionOfDone.some((item) => item.startsWith(CHANGED_FILE_PREFIX)),
   );
-  if (task === undefined) {
-    throw new MissionDomainError("Mission is missing the M4 change task.");
-  }
+  if (task === undefined) throw new MissionDomainError("Mission is missing the M4 change task.");
   return task;
 }
 
@@ -384,9 +340,7 @@ export function validateStartInput(input: CodingStartInput): void {
   }
   for (const value of Object.values(input.budgetLimits)) {
     if (!Number.isSafeInteger(value) || value < 0) {
-      throw new TypeError(
-        "M4 budget limits must be non-negative safe integers.",
-      );
+      throw new TypeError("M4 budget limits must be non-negative safe integers.");
     }
   }
   if (input.budgetLimits.toolCalls < 4 || input.budgetLimits.attempts < 6) {
@@ -397,15 +351,9 @@ export function validateStartInput(input: CodingStartInput): void {
 }
 
 export function validateUsage(usage: TokenUsage): void {
-  for (const value of [
-    usage.inputTokens,
-    usage.outputTokens,
-    usage.totalTokens,
-  ]) {
+  for (const value of [usage.inputTokens, usage.outputTokens, usage.totalTokens]) {
     if (!Number.isSafeInteger(value) || value < 0) {
-      throw new MissionDomainError(
-        "Provider token usage must use non-negative safe integers.",
-      );
+      throw new MissionDomainError("Provider token usage must use non-negative safe integers.");
     }
   }
   if (usage.totalTokens < usage.inputTokens + usage.outputTokens) {
@@ -435,11 +383,7 @@ export function searchQuery(objective: string): string {
     "with",
   ]);
   const tokens = objective.toLowerCase().match(/[a-z0-9_]{3,}/gu) ?? [];
-  return (
-    tokens.find((token) => !ignored.has(token)) ??
-    tokens[0] ??
-    objective.trim().slice(0, 64)
-  );
+  return tokens.find((token) => !ignored.has(token)) ?? tokens[0] ?? objective.trim().slice(0, 64);
 }
 
 export function isRelevantRepositoryPath(path: string): boolean {
@@ -456,10 +400,7 @@ export function isRelevantRepositoryPath(path: string): boolean {
   );
 }
 
-export function planPrompt(
-  objective: string,
-  discovery: RepositoryDiscovery,
-): string {
+export function planPrompt(objective: string, discovery: RepositoryDiscovery): string {
   const files = discovery.relevantFiles.map((file) => ({
     content: boundedText(file.content, 6_000),
     path: file.path,
@@ -495,10 +436,7 @@ export function repairPrompt(
   });
 }
 
-export function auditReference(
-  record: ToolAuditRecord,
-  index: number,
-): string {
+export function auditReference(record: ToolAuditRecord, index: number): string {
   return `${index + 1}:${record.tool}@${record.version}:${record.resultClass}:${record.inputHash.slice(0, 12)}:${record.resourceHash.slice(0, 12)}`;
 }
 
@@ -508,9 +446,7 @@ export function eventKey(snapshot: MissionSnapshot, label: string): string {
 
 export function grantExpiry(now: string): string {
   const parsed = Date.parse(now);
-  if (Number.isNaN(parsed)) {
-    throw new TypeError("M4 clock must return a parseable timestamp.");
-  }
+  if (Number.isNaN(parsed)) throw new TypeError("M4 clock must return a parseable timestamp.");
   return new Date(parsed + 10 * 60_000).toISOString();
 }
 
@@ -524,9 +460,7 @@ export function shortHash(value: string, length = 16): string {
 
 export function stringField(object: JsonObject, name: string): string {
   const value = object[name];
-  if (typeof value !== "string") {
-    throw new MissionDomainError(`${name} must be a string.`);
-  }
+  if (typeof value !== "string") throw new MissionDomainError(`${name} must be a string.`);
   return value;
 }
 
@@ -545,9 +479,7 @@ export function isJsonObject(value: JsonValue | undefined): value is JsonObject 
 function rejectReservedDefinitionMarkers(values: readonly string[]): void {
   if (
     values.some(
-      (value) =>
-        value.startsWith(QUALITY_PREFIX) ||
-        value.startsWith(CHANGED_FILE_PREFIX),
+      (value) => value.startsWith(QUALITY_PREFIX) || value.startsWith(CHANGED_FILE_PREFIX),
     )
   ) {
     throw new MissionDomainError(
@@ -562,16 +494,11 @@ function objectField(object: JsonObject, name: string): JsonObject {
 
 function booleanField(object: JsonObject, name: string): boolean {
   const value = object[name];
-  if (typeof value !== "boolean") {
-    throw new MissionDomainError(`${name} must be a boolean.`);
-  }
+  if (typeof value !== "boolean") throw new MissionDomainError(`${name} must be a boolean.`);
   return value;
 }
 
-function stringArrayField(
-  object: JsonObject,
-  name: string,
-): readonly string[] {
+function stringArrayField(object: JsonObject, name: string): readonly string[] {
   const value = object[name];
   if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {
     throw new MissionDomainError(`${name} must be a string array.`);
@@ -581,9 +508,7 @@ function stringArrayField(
 
 function arrayField(object: JsonObject, name: string): JsonArray {
   const value = object[name];
-  if (!Array.isArray(value)) {
-    throw new MissionDomainError(`${name} must be an array.`);
-  }
+  if (!Array.isArray(value)) throw new MissionDomainError(`${name} must be an array.`);
   return value;
 }
 
