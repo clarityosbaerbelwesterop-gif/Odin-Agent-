@@ -250,7 +250,7 @@ export class ToolRuntime {
 
   async #withLock<T>(key: string, action: () => Promise<T>): Promise<T> {
     const previous = this.#locks.get(key) ?? Promise.resolve();
-    let release = () => undefined;
+    let release: () => void = () => undefined;
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
@@ -355,10 +355,11 @@ function stableHash(value: JsonValue): string {
 function canonicalize(value: JsonValue): JsonValue {
   if (Array.isArray(value)) return value.map((item) => canonicalize(item));
   if (typeof value !== "object" || value === null) return value;
+  const object = value as JsonObject;
   return Object.fromEntries(
-    Object.keys(value)
+    Object.keys(object)
       .sort()
-      .map((key) => [key, canonicalize(value[key] as JsonValue)]),
+      .map((key) => [key, canonicalize(object[key] as JsonValue)]),
   ) as JsonObject;
 }
 
