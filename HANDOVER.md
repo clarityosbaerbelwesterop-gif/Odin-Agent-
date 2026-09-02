@@ -5,8 +5,9 @@ Updated: 2026-09-02.
 ## Current state
 
 - Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).
-- Default branch baseline: `main` at `fbc79820b6de36f94289d46df967a173d50e8f37`.
-- Work branch: `agent/odin-foundation`; Draft PR #1 is open against `main`.
+- `main` contains the verified M0–M2 squash merge at
+  `933f21f73665d50addf781f89b1a8a32861e2ef7`.
+- Work branch: `agent/m3-tool-runtime`; Draft PR #3 is open against `main`.
 - The original repository contained only `README.md` with `# Odin-Agent-`.
 - The supplied Hermes/OpenClaw project report was read in full before design work. Its derived
   decisions are recorded under `docs/research/HERMES_OPENCLAW_DECISIONS.md` so research observations
@@ -14,9 +15,11 @@ Updated: 2026-09-02.
 
 ## Active milestone
 
-M0 repository foundation, M1 provider core, and M2 deterministic mission runtime are implemented and
-verified in pull-request CI. M3 tool runtime is next. Odin still does not claim a production coding
-agent, sandboxed tool execution, durable database persistence, mobile client, or hosted service.
+M0 repository foundation, M1 provider core, M2 deterministic mission runtime, and M3 fail-closed tool
+runtime are implemented and verified in pull-request CI. M4 coding vertical slice is next.
+
+Odin still does not claim a production coding agent, OS-level sandbox, arbitrary shell execution,
+external network tools, durable database persistence, mobile client, or hosted service.
 
 ## Verified evidence
 
@@ -35,11 +38,23 @@ M1 GitHub Actions run `33667957350` passed for commit
 transports and synthetic fixtures only; no live provider request or inference cost is part of CI.
 
 M2 GitHub Actions run `33672695583` passed for commit
-`bc97c7bc206db00eb641965556a4156094ec79a7`. The full suite contains 41 passing tests and 0 failures.
-Aggregate coverage is 84.58% lines, 72.80% branches, and 90.91% functions. M2 specifically covers the
-closed mission state machine, pause/resume/cancel, task DAG ordering, budget rejection, equivalent-
-failure circuit breaking, optimistic event append, idempotent replay, checkpoint integrity, and
-interruption/recovery continuation.
+`bc97c7bc206db00eb641965556a4156094ec79a7`. The full suite at that checkpoint contained 41 passing
+tests and 0 failures with 84.58% line, 72.80% branch, and 90.91% function coverage.
+
+M3 implementation run `33675783522` passed on commit
+`832e28fcde62ca803cd58cad6cb3ea91c5ff6a89`: 55 tests passed, 0 failed; Biome and strict TypeScript
+passed; aggregate coverage was 85.93% lines, 73.46% branches, and 91.32% functions. M3 specifically
+covers progressive tool discovery, strict schema rejection, capability scope/expiry/call ceilings,
+high-risk approval, sequential and concurrent idempotency, bounded retry/timeout/cancellation,
+secret-safe audit hashing, traversal rejection, repository adapter forwarding, and quality-command
+ID enforcement.
+
+The final M3 documentation/export checkpoint passed GitHub Actions run `33676117584` on commit
+`402b0834d83183c4c307bc6d20adb481e5065a68`. M3 is therefore `VERIFIED`.
+
+During M3 verification, CI found and forced fixes for formatter/type errors and one audit-privacy bug
+where a resolved repository path was stored in clear text. The regression test remains and the audit
+contract now persists a resource hash instead of the raw resource value.
 
 ## Decisions
 
@@ -48,11 +63,18 @@ interruption/recovery continuation.
 - Use append-only mission events plus projections/checkpoints; chat is not canonical state.
 - Keep provider-specific behavior behind adapters and use injected transports for zero-cost tests.
 - Unknown model capabilities fail closed; capability, routing, and price records require provenance.
-- Provider adapters expose typed retry hints but do not retry or select fallback models themselves.
 - Runtime transitions, budgets, cancellation, and anti-loop decisions remain deterministic and outside
   model control.
 - The M2 event-store contract is verified with an in-memory adapter. Durable SQLite/PostgreSQL remains
   deliberately unclaimed until its later persistence milestone.
+- Tool metadata is progressively discoverable independently from executable handlers.
+- M3 capability grants bind mission, task, tool, operation, resource scope, call ceiling, and expiry;
+  high-risk execution additionally requires matching approval evidence.
+- Side-effecting tools are single-attempt in M3 and require idempotency keys. Concurrent equal-key
+  calls serialize before the handler; cross-timeout worker idempotency remains later work.
+- M3 repository tools accept scoped operations through injected adapters. Path guards are defense in
+  depth, not a sandbox claim, and quality commands are referenced by registered IDs rather than model-
+  supplied shell strings.
 - Make sandboxing, network denial, capability checks, and secret isolation defaults.
 - Deliver the coding workflow as the first vertical product slice before mobile breadth or a large
   skill marketplace.
@@ -61,16 +83,17 @@ interruption/recovery continuation.
 
 - Provider adapters have not yet been exercised against live APIs; protocol compatibility is based
   on primary documentation and synthetic contract fixtures.
-- Tool execution, sandboxing, capability grants, repository mutation, and tool audit are not yet
-  implemented; these belong to M3.
-- Mission events are not yet backed by durable SQLite/PostgreSQL storage.
-- The initial branch has no protection; merge policy and required checks remain repository settings.
-- Managed sandbox selection and the web stack remain deliberately undecided until their milestones
-  supply concrete requirements.
+- Repository workspace and quality-command adapters are injected test seams; production OS sandbox,
+  canonical-root/symlink enforcement, and host process isolation are not implemented yet.
+- External network/browser/email/payment/deployment tools remain denied and unimplemented.
+- Mission events and tool audit records are not yet backed by durable SQLite/PostgreSQL storage.
+- Full skill package installation/promotion remains M10 work; M3 implements tool discovery only.
+- Branch protection/required-check repository settings remain outside the code checkpoint.
 
 ## Exact next action
 
-Create the M3 task contract, then implement a progressively discoverable tool registry, strict schema
-validation, risk classes, scoped capability policy, idempotency, timeout/retry ownership, append-only
-tool audit records, and repository read/search/patch/quality-command boundaries without exposing host
-execution or unrestricted network access by default.
+Create the M4 coding-vertical-slice task contract, then connect the verified M1 provider boundary, M2
+mission runtime, and M3 tool gateway in a disposable fixture repository. Prove repository discovery,
+plan/task-graph validation, one scoped edit, one deliberately failing quality gate, targeted repair,
+rerun to green, and interruption/resume with evidence mapping. Do not claim production sandboxing,
+durable database persistence, or live-provider compatibility as part of that fixture slice.

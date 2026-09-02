@@ -1,7 +1,7 @@
 # Security model
 
-Status: design baseline plus M1 provider-boundary controls. Controls not explicitly identified as
-implemented remain future work.
+Status: design baseline plus implemented M1 provider-boundary and M3 tool-control safeguards.
+Controls not explicitly identified as implemented remain future work.
 
 ## Protected assets
 
@@ -36,6 +36,11 @@ Capabilities bind subject, tenant, mission, task, tool, resource, allowed operat
 secret handle, call limit, and expiry. Policy decisions are `ALLOW`, `DENY`, `REQUIRE_APPROVAL`, or
 `ALLOW_WITH_RESTRICTIONS`. Denial is the fallback for malformed or missing policy data.
 
+The implemented M3 policy currently binds mission, task, tool, operation, resource prefix, call
+ceiling, and expiry. High-risk tool calls require matching unexpired approval evidence. Tenant,
+network-scope, and secret-handle capability fields remain later control-plane work and are not claimed
+by the in-memory M3 policy adapter.
+
 ## Credential handling
 
 Long-lived credentials reside only in a protected credential store. Models and normal worker
@@ -51,15 +56,39 @@ delimiters, bound response/event sizes, and normalize transport errors without c
 messages. DNS rebinding protection and destination re-resolution still belong to the later network
 policy boundary and are not claimed here.
 
+## Implemented M3 tool controls
+
+Model-proposed tool calls are untrusted data. `src/tools` validates stable tool/version selection and
+strict input schemas before policy or handler execution. Unsupported schema keywords, unknown input
+properties, missing required values, invalid types, and configured bound violations fail closed.
+
+Side-effecting tools require non-empty idempotency keys. Calls sharing the same mission/task/tool/
+version/key are serialized before execution; a matching replay returns the prior result and a key
+reused with different input fails. Side-effecting handlers are single-attempt in M3 until a later
+worker layer can prove idempotent execution across timeout/crash boundaries.
+
+Every handler attempt is bounded by runtime-owned timeout/cancellation and capability-call ceilings.
+Audit records contain mission/task/tool metadata, policy/result classification, attempt/timestamps,
+and SHA-256 hashes of input and resolved resource. Raw tool inputs and raw resource paths are not
+persisted by the M3 audit record contract.
+
+The built-in repository registrations accept workspace-relative paths only, reject absolute paths,
+backslashes, NULs, and `..` traversal, and expose quality commands only through pre-discovered stable
+command IDs. They do not accept arbitrary shell strings or network destinations.
+
 ## Execution and network
 
-Generated commands run in ephemeral, resource-limited workspaces with explicit filesystem roots,
-CPU/memory/time/output limits, and destination-based network policy. Paths are canonicalized and
-checked against allowed roots to resist traversal and symlink races. HTTP tools resolve and validate
-destinations before and after redirects to prevent SSRF and private-network access.
+Production sandbox/container execution is not implemented in M3. The current repository tools call
+injected workspace and quality-runner interfaces so the control boundary can be tested without host
+execution. Path normalization is defense in depth, not proof of canonical-root or symlink isolation.
 
-Plugins capable of code execution run out of process over authenticated, versioned RPC. Packages are
-pinned, provenance is recorded, and community extensions begin with no authority.
+A later execution boundary must run generated commands in ephemeral, resource-limited workspaces with
+explicit filesystem roots, CPU/memory/time/output limits, canonical path checks, and destination-based
+network policy. HTTP tools must resolve and validate destinations before and after redirects to resist
+SSRF, DNS rebinding, and private-network access.
+
+Plugins capable of code execution must run out of process over authenticated, versioned RPC. Packages
+must be pinned, provenance recorded, and community extensions begin with no authority.
 
 ## Prompt injection and durable learning
 

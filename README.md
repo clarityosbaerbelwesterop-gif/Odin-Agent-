@@ -4,9 +4,10 @@ Odin is a provider-independent runtime for complex, long-running AI missions. It
 to turn a model call into a controlled system with planning, task state, tools, verification,
 repair, checkpoints, budgets, and auditable evidence.
 
-Odin is at the **early core stage**. Repository foundation and the provider-neutral inference
-boundary are implemented and contract-tested. The repository does not yet provide a mission
-runtime, production agent, mobile client, or hosted service, and no live-provider smoke test has
+Odin is at the **early core stage**. Repository foundation, the provider-neutral inference boundary,
+the deterministic mission runtime, and the fail-closed tool-control boundary are implemented and
+contract-tested. The repository does not yet provide a production coding agent, OS-level sandbox,
+durable database persistence, mobile client, or hosted service, and no live-provider smoke test has
 been claimed. Current status and verified capabilities are tracked in [ROADMAP.md](ROADMAP.md) and
 [HANDOVER.md](HANDOVER.md).
 
@@ -40,6 +41,11 @@ Core boundaries:
 - execution plane: isolated workers, tools, sandboxes, browsers, repository workspaces;
 - knowledge plane: artifacts, project memory, user memory, skills, evaluations;
 - clients: web first, followed by native mobile/desktop clients over one versioned protocol.
+
+The current M3 tool runtime is a control boundary, not a sandbox claim. It validates tool schemas,
+scoped capability grants, approval evidence, idempotency, retry/timeout behavior, and secret-safe
+audit records before calling injected repository adapters. Arbitrary shell commands and external
+network tools remain unavailable.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the current architecture map and
 [SECURITY.md](SECURITY.md) for the trust boundaries.

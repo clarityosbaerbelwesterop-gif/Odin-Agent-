@@ -1,6 +1,6 @@
 # Odin architecture
 
-Status: M1 provider-core checkpoint, 2026-09-02.
+Status: M3 tool-runtime checkpoint candidate, 2026-09-02.
 
 ## Repository finding
 
@@ -52,6 +52,11 @@ and final audit. It cannot bypass policy or mark itself complete without verifie
 Runs filesystem, terminal, browser, repository, and programmatic-workflow tools. Workers receive
 short-lived capabilities scoped to task, resource, operation count, network destinations, and expiry.
 Host execution and unrestricted network access are never defaults.
+
+M3 implements the control boundary in front of execution, not the production worker sandbox. Tool
+calls are schema-validated, policy-checked, bounded, idempotent where side effects are possible, and
+audited before injected repository adapters are reached. Arbitrary shell and network execution remain
+unimplemented.
 
 ### Knowledge plane
 
@@ -118,6 +123,39 @@ profiles. Unknown profiles and unsupported features fail before credentials are 
 HTTP uses fixed validated base URLs, rejects redirects, bounds bodies/events, denies obvious private
 network targets by default, and exposes retry hints without owning retry policy. This boundary is
 contract-tested with injected transports only; live API compatibility is not yet verified.
+
+## Implemented mission runtime
+
+`src/mission` and `src/events` implement the deterministic M2 control core: a closed mission state
+machine, validated task DAG, deterministic dependency/priority scheduling, integer budgets, bounded
+equivalent-failure circuit breaking, append-only event projection, optimistic aggregate versions,
+idempotent event batches, integrity-checked checkpoints, and interruption/recovery replay.
+
+The current event store is an in-memory contract adapter. Durable SQLite/PostgreSQL persistence and
+multi-process leases are not claimed yet.
+
+## Implemented tool-control boundary
+
+`src/tools` implements the M3 fail-closed tool gateway contracts. A registry exposes compact tool
+summaries independently from executable handlers and resolves full manifests only when needed. Tool
+manifests carry stable versions, risk classes, operations, strict schemas, retry policy, provenance,
+and trust class.
+
+Inputs fail closed before policy or handler execution. Capability grants bind mission, task, tool,
+operation, resource scope, call ceiling, and expiry. High-risk calls additionally require matching,
+unexpired approval evidence. Side-effecting calls require idempotency keys and concurrent calls with
+the same key serialize before the handler. Replays return the prior result while mismatched input for
+the same key fails.
+
+Retries and timeouts are runtime-owned. In M3, side-effecting handlers are deliberately single-attempt
+until worker-level idempotency exists; retryable read/search handlers may retry only within configured
+attempt and capability-call ceilings. Audit records persist hashes and result/policy metadata instead
+of raw tool input or resource values.
+
+Built-in repository registrations expose `repo.search`, `repo.read`, `repo.patch`, and `repo.quality`
+through injected adapters. Paths are restricted to workspace-relative forms and model-provided shell
+strings are never accepted. These helpers are defense in depth and do not constitute an OS sandbox or
+symlink-safe filesystem implementation by themselves.
 
 ## First vertical slice
 
