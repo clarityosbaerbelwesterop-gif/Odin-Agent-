@@ -147,7 +147,7 @@ test("side-effecting tools replay safely and reject conflicting idempotency inpu
 
 test("concurrent identical writes serialize behind the idempotency key", async () => {
   let calls = 0;
-  let release = () => undefined;
+  let release: () => void = () => undefined;
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
