@@ -1,4 +1,4 @@
-import type { JsonObject, JsonValue } from "../providers/types.js";
+import type { JsonObject } from "../providers/types.js";
 import { type ToolManifest, type ToolRegistration, ToolRuntimeError } from "./types.js";
 
 export interface RepositorySearchMatch {
@@ -293,11 +293,4 @@ function integerField(input: JsonObject, name: string): number {
 
 function invalidPath(message: string): never {
   throw new ToolRuntimeError("invalid_input", message, false);
-}
-
-export function jsonObject(value: JsonValue): JsonObject {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw new ToolRuntimeError("invalid_input", "Expected JSON object.", false);
-  }
-  return value;
 }
