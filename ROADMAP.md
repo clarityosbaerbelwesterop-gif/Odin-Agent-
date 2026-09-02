@@ -32,9 +32,9 @@ the repository; no product capability is overstated.
 
 ## M3 — Tool runtime
 
-- [ ] Tool registry and progressive discovery foundation; full skill package lifecycle remains M10.
-- [ ] Schema validation, risk classes, capability policy, idempotency, timeout, retry, and audit trail.
-- [ ] Scoped repository search/read/patch and quality-command tools.
+- [x] Tool registry and progressive discovery foundation; full skill package lifecycle remains M10.
+- [x] Schema validation, risk classes, capability policy, idempotency, timeout, retry, and audit trail.
+- [x] Scoped repository search/read/patch and quality-command tools.
 
 ## M4 — Coding vertical slice
 
