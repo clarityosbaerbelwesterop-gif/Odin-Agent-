@@ -38,11 +38,15 @@ the repository; no product capability is overstated.
 
 ## M4 — Coding vertical slice
 
-- [ ] Repository understanding and quality-gate discovery.
-- [ ] Plan and task graph generated through normalized provider boundary.
-- [ ] Minimal scoped edit in a disposable workspace.
-- [ ] Test failure diagnosed, repaired, rerun, and mapped to evidence.
-- [ ] Durable interruption/resume demonstrated end to end.
+- [x] Repository understanding and quality-gate discovery through scoped M3 tools.
+- [x] Strict plan and task graph generated through the normalized M1 provider boundary.
+- [x] Minimal scoped edit in an injected disposable fixture workspace.
+- [x] Deliberate quality failure diagnosed, repaired, rerun, and mapped to evidence.
+- [x] Interruption/resume demonstrated end to end over replayed M2 event-store state.
+
+M4 proves orchestration across the M1/M2/M3 contracts with scripted provider responses and injected
+in-memory fixtures. It does not claim a production OS sandbox, live-provider compatibility, or durable
+SQLite/PostgreSQL recovery.
 
 ## M5–M12
 

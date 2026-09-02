@@ -1,20 +1,20 @@
 # Odin architecture
 
-Status: M3 tool-runtime checkpoint candidate, 2026-09-02.
+Status: M4 coding-vertical-slice checkpoint, 2026-09-02.
 
 ## Repository finding
 
 The repository began with one README line and no implementation, tests, CI, security policy, or
-prior architecture. Odin is therefore a greenfield system. The design below is intentionally a
-modular monolith for the first vertical slice: boundaries are explicit, but deployment is not split
-into speculative microservices.
+prior architecture. Odin therefore started as a greenfield system. The first product slice remains a
+strict TypeScript modular monolith: boundaries are explicit, but deployment is not split into
+speculative microservices.
 
 ## System invariants
 
 1. Durable mission state, not conversation history, is canonical.
 2. The model proposes; deterministic runtime and policy decide what executes.
 3. Important work cannot become complete without mapped verification evidence.
-4. Execution is isolated, scoped, interruptible, budgeted, and deny-by-default.
+4. Execution is scoped, interruptible, budgeted, and deny-by-default.
 5. Provider, tool, skill, memory, persistence, and client protocols are versioned boundaries.
 6. External content, repository content under analysis, tool output, and model output are untrusted.
 7. Credentials remain in the trusted control plane and are never placed in model context.
@@ -45,13 +45,12 @@ in-process.
 
 Owns task classification, planning effort, dependency-aware task graphs, context compilation,
 provider-independent model requests, verification strategy, evidence collection, targeted repair,
-and final audit. It cannot bypass policy or mark itself complete without verifier evidence.
+and final audit. It cannot bypass policy or mark itself complete without required evidence.
 
 ### Execution plane
 
-Runs filesystem, terminal, browser, repository, and programmatic-workflow tools. Workers receive
-short-lived capabilities scoped to task, resource, operation count, network destinations, and expiry.
-Host execution and unrestricted network access are never defaults.
+Runs filesystem, terminal, browser, repository, and programmatic-workflow tools behind policy and
+isolation boundaries. Host execution and unrestricted network access are never defaults.
 
 M3 implements the control boundary in front of execution, not the production worker sandbox. Tool
 calls are schema-validated, policy-checked, bounded, idempotent where side effects are possible, and
@@ -67,62 +66,7 @@ current primary evidence override remembered facts.
 ### Experience layer
 
 Begins with a responsive web client against the same protocol later used by iOS/iPadOS/macOS and
-Android clients. Clients are observers/controllers, not the source of mission truth. Realtime streams
-support multiple viewers and reconnect from durable event offsets.
-
-## Mission state machine
-
-The core state set is:
-
-```text
-CREATED -> UNDERSTANDING -> RETRIEVING -> PLANNING -> RISK_CHECK
-        -> EXECUTING -> OBSERVING -> VERIFYING
-        -> CHECKPOINTING -> FINAL_AUDIT -> COMPLETED
-
-VERIFYING -> DIAGNOSING -> REPAIRING -> VERIFYING
-Any active state -> PAUSING -> PAUSED -> RESUMING -> prior safe state
-Any active state -> CANCELLING -> CANCELLED
-Any active state -> BLOCKED or FAILED when a typed terminal condition applies
-```
-
-Transitions are a closed table with preconditions. Events are appended only after optimistic version
-checks. A transition request and its idempotency key produce at most one accepted transition.
-
-## Initial module map
-
-The first vertical slice stays within one TypeScript workspace:
-
-```text
-src/
-  mission/       mission aggregate, task DAG, state machine, focus
-  events/        event contracts and durable append interface
-  persistence/   local SQLite adapter later; in-memory contract test adapter first
-  providers/     normalized model API, capabilities, adapters, errors
-  routing/       effort and model selection
-  tools/         contracts, discovery, policy, audit, execution boundary
-  verification/ gates, evidence, failure classification, repair decisions
-  context/       priority budgets and context packages
-  artifacts/     content-addressed artifact metadata
-  runtime/       orchestration and cancellation
-  cli/           first user-facing entry point
-```
-
-An interface exists only when it protects a real substitution, trust boundary, or test seam. Local
-single-user mode and server mode use the same domain contracts but may use different persistence and
-worker adapters.
-
-## Implemented provider boundary
-
-`src/providers` currently implements normalized request, response, usage, tool-call, structured
-output, streaming, and typed-error contracts. OpenAI uses the Responses API; Anthropic uses the
-Messages API; OpenRouter and NVIDIA use separately named adapters over a shared configurable
-chat-completions protocol adapter.
-
-Capabilities, routing characteristics, and price metadata come from provenance-bearing external
-profiles. Unknown profiles and unsupported features fail before credentials are resolved. Provider
-HTTP uses fixed validated base URLs, rejects redirects, bounds bodies/events, denies obvious private
-network targets by default, and exposes retry hints without owning retry policy. This boundary is
-contract-tested with injected transports only; live API compatibility is not yet verified.
+Android clients. Clients are observers/controllers, not the source of mission truth.
 
 ## Implemented mission runtime
 
@@ -134,12 +78,25 @@ idempotent event batches, integrity-checked checkpoints, and interruption/recove
 The current event store is an in-memory contract adapter. Durable SQLite/PostgreSQL persistence and
 multi-process leases are not claimed yet.
 
+## Implemented provider boundary
+
+`src/providers` implements normalized request, response, usage, tool-call, structured-output,
+streaming, and typed-error contracts. OpenAI uses the Responses API; Anthropic uses the Messages API;
+OpenRouter and NVIDIA use separately named adapters over a shared configurable chat-completions
+protocol adapter.
+
+Capabilities, routing characteristics, and price metadata come from provenance-bearing profiles.
+Unknown profiles and unsupported features fail before credentials are resolved. Provider HTTP uses
+fixed validated base URLs, rejects redirects, bounds bodies/events, denies obvious private-network
+targets by default, and exposes retry hints without owning retry policy. This boundary is
+contract-tested with injected transports; live end-to-end provider compatibility is not yet claimed.
+
 ## Implemented tool-control boundary
 
-`src/tools` implements the M3 fail-closed tool gateway contracts. A registry exposes compact tool
-summaries independently from executable handlers and resolves full manifests only when needed. Tool
-manifests carry stable versions, risk classes, operations, strict schemas, retry policy, provenance,
-and trust class.
+`src/tools` implements the M3 fail-closed tool gateway. A registry exposes compact tool summaries
+independently from executable handlers and resolves full manifests only when needed. Tool manifests
+carry stable versions, risk classes, operations, strict schemas, retry policy, provenance, and trust
+class.
 
 Inputs fail closed before policy or handler execution. Capability grants bind mission, task, tool,
 operation, resource scope, call ceiling, and expiry. High-risk calls additionally require matching,
@@ -147,35 +104,79 @@ unexpired approval evidence. Side-effecting calls require idempotency keys and c
 the same key serialize before the handler. Replays return the prior result while mismatched input for
 the same key fails.
 
-Retries and timeouts are runtime-owned. In M3, side-effecting handlers are deliberately single-attempt
-until worker-level idempotency exists; retryable read/search handlers may retry only within configured
-attempt and capability-call ceilings. Audit records persist hashes and result/policy metadata instead
-of raw tool input or resource values.
-
 Built-in repository registrations expose `repo.search`, `repo.read`, `repo.patch`, and `repo.quality`
 through injected adapters. Paths are restricted to workspace-relative forms and model-provided shell
 strings are never accepted. These helpers are defense in depth and do not constitute an OS sandbox or
 symlink-safe filesystem implementation by themselves.
 
-## First vertical slice
+## Implemented M4 coding vertical slice
 
-Input: a local disposable workspace plus a narrowly specified coding task.
+`src/runtime/coding.ts` and `src/runtime/coding-contract.ts` connect the M1, M2, and M3 boundaries in a
+verified end-to-end fixture workflow.
 
-Required outcome:
+The bootstrap sequence is deliberately narrow:
 
-1. create and persist a mission and task graph;
-2. discover repository metadata and applicable quality commands;
-3. compile a bounded context package;
-4. obtain a schema-validated plan through the provider boundary;
-5. request scoped read/search/patch/test tools through policy;
-6. apply a minimal change in an isolated workspace;
-7. run required quality gates and capture artifacts;
-8. diagnose and repair a failing gate within retry and budget limits;
-9. checkpoint and resume from durable state;
-10. emit an evidence-mapped final report with usage.
+1. a runtime-owned bootstrap scope discovers relevant files and registered quality-command IDs only
+   through M3 repository tools;
+2. generated/vendor paths are filtered and retrieved content is bounded;
+3. an injected `ModelProvider` produces a strict-schema plan;
+4. the plan is rejected unless its target file, optimistic SHA, task shape, and quality-command ID
+   match the bounded discovery result;
+5. only then is the canonical M2 mission/task graph created.
 
-It is not complete until an end-to-end fixture test proves this behavior, including one repair and
-one interrupted/resumed run. Live-provider success is a separate, opt-in smoke test.
+The canonical mission contains one model-proposed change task plus an Odin-owned quality task.
+Runtime-owned definition-of-done markers record the selected changed file and quality-command ID in
+replayable mission state. Model output is forbidden from supplying those reserved markers.
+
+During execution:
+
+- repository reads, patches, and quality runs pass through M3 grants, schemas, idempotency, timeouts,
+  call ceilings, and audit records;
+- provider token usage, tool calls, and attempts are debited into M2 mission budgets;
+- the first required quality failure becomes bounded failure evidence and transitions to diagnosis;
+- a strict-schema repair proposal may modify only the persisted target path and must use the current
+  optimistic SHA;
+- the same registered quality gate is rerun after the bounded repair;
+- a repeated required failure reaches `FAILED`; a green gate is required before
+  `CHECKPOINTING -> FINAL_AUDIT -> COMPLETED`.
+
+M4 also proves restart-equivalent orchestration: after the first gate failure a checkpoint can be
+created, fresh runtime/orchestrator objects can replay the same event-store contract, reconstruct the
+target file and quality command from canonical mission state, and continue without reapplying the
+initial patch.
+
+This is contract-level evidence, not a production-runtime claim. CI uses a scripted provider plus
+in-memory/injected workspace, quality-runner, event-store, and audit fixtures. It proves orchestration
+semantics but not live-provider reliability, OS isolation, or durable process recovery.
+
+## Current module map
+
+```text
+src/
+  mission/       mission aggregate, task DAG, state machine, budgets, checkpoints
+  events/        append-only event contracts and in-memory contract adapter
+  providers/     normalized model API, capabilities, adapters, errors
+  tools/         contracts, discovery, policy, audit, repository execution boundary
+  runtime/       M4 coding orchestrator and strict plan/repair contracts
+  persistence/   local SQLite adapter later; server PostgreSQL adapter later
+  routing/       empirical model/effort selection later
+  verification/ M5 independent verifier and adversarial review next
+  context/       M6 priority budgets and context packages
+  artifacts/     content-addressed artifact metadata later
+  cli/           first user-facing entry point later
+```
+
+An interface exists only when it protects a real substitution, trust boundary, or test seam. Local
+single-user mode and server mode use the same domain contracts but may use different persistence and
+worker adapters.
+
+## Next architecture milestone
+
+M5 adds an independent verification layer above the M4 workflow. The verifier must consume declared
+definitions of done and collected evidence without trusting planner/runtime self-assessment, produce a
+typed verdict, and allow adversarial review to block completion or request bounded targeted repair.
+False-positive completion, stale evidence, verifier disagreement, and review-triggered repair become
+first-class regression cases.
 
 ## Storage direction
 
@@ -186,6 +187,6 @@ rebuilt. Large logs and outputs are artifacts referenced by hash rather than emb
 
 ## Deployment direction
 
-The MVP is a modular service plus isolated worker process, not a fleet of microservices. Split a
+The MVP remains a modular service plus isolated worker process, not a fleet of microservices. Split a
 component only when isolation, independent scaling, or failure containment is demonstrated. Mobile
 clients never host the canonical long-running runtime.
