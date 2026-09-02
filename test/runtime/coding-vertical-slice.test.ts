@@ -1,9 +1,13 @@
-import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import { InMemoryEventStore } from "../../src/events/store.js";
 import { restoreMissionCheckpoint } from "../../src/mission/checkpoint.js";
-import { type MissionEventData, MissionDomainError, MissionRuntime } from "../../src/mission/runtime.js";
+import {
+  MissionDomainError,
+  type MissionEventData,
+  MissionRuntime,
+} from "../../src/mission/runtime.js";
 import { CodingOrchestrator } from "../../src/runtime/coding.js";
 import { InMemoryToolAuditSink } from "../../src/tools/audit.js";
 import { InMemoryCapabilityPolicy } from "../../src/tools/policy.js";
@@ -15,10 +19,10 @@ import {
   FIXED_NOW,
   FixtureQualityRunner,
   FixtureWorkspace,
-  ScriptedProvider,
-  TARGET_PATH,
   fixtureFiles,
   modelResponse,
+  ScriptedProvider,
+  TARGET_PATH,
 } from "./coding-fixtures.js";
 
 const WRONG_CONTENT =
@@ -76,7 +80,9 @@ function buildTools(
   audit: InMemoryToolAuditSink,
   policy = new InMemoryCapabilityPolicy(),
 ) {
-  const registry = new ToolRegistry(createRepositoryToolRegistrations({ quality, workspace }));
+  const registry = new ToolRegistry(
+    createRepositoryToolRegistrations({ quality, workspace }),
+  );
   return {
     grants: policy,
     tools: new ToolRuntime(registry, policy, audit, () => FIXED_NOW),
@@ -91,7 +97,12 @@ function orchestrator(input: {
   audit: InMemoryToolAuditSink;
   grants?: InMemoryCapabilityPolicy;
 }) {
-  const toolStack = buildTools(input.workspace, input.quality, input.audit, input.grants);
+  const toolStack = buildTools(
+    input.workspace,
+    input.quality,
+    input.audit,
+    input.grants,
+  );
   return new CodingOrchestrator({
     audit: input.audit,
     clock: () => FIXED_NOW,
@@ -118,7 +129,13 @@ test("M4 connects discovery, strict planning, scoped patch, failed gate, repair,
     repair(textHash(WRONG_CONTENT)),
   ]);
   const runtime = new MissionRuntime(store, () => FIXED_NOW);
-  const coding = orchestrator({ audit, mission: runtime, provider, quality, workspace });
+  const coding = orchestrator({
+    audit,
+    mission: runtime,
+    provider,
+    quality,
+    workspace,
+  });
 
   const result = await coding.start({
     budgetLimits: BUDGETS,
@@ -134,8 +151,14 @@ test("M4 connects discovery, strict planning, scoped patch, failed gate, repair,
   assert.deepEqual(result.report.changedFiles, [TARGET_PATH]);
   assert.equal(result.report.quality.commandId, "verify");
   assert.equal(result.report.quality.finalExitCode, 0);
-  assert.match(result.report.quality.firstFailureSignature ?? "", /^quality:verify:exit:1:sha256:/u);
-  assert.deepEqual(result.report.modelUsage, { inputTokens: 70, outputTokens: 30 });
+  assert.match(
+    result.report.quality.firstFailureSignature ?? "",
+    /^quality:verify:exit:1:sha256:/u,
+  );
+  assert.deepEqual(result.report.modelUsage, {
+    inputTokens: 70,
+    outputTokens: 30,
+  });
   assert.ok(result.report.toolCalls >= 8);
   assert.ok(result.report.attempts >= result.report.toolCalls + 2);
   assert.ok(result.report.auditReferences.length >= result.report.toolCalls);
@@ -146,12 +169,14 @@ test("M4 connects discovery, strict planning, scoped patch, failed gate, repair,
   assert.equal(provider.requests.length, 2);
   for (const request of provider.requests) {
     assert.equal(request.responseFormat?.type, "json_schema");
-    if (request.responseFormat?.type === "json_schema") assert.equal(request.responseFormat.strict, true);
+    if (request.responseFormat?.type === "json_schema") {
+      assert.equal(request.responseFormat.strict, true);
+    }
   }
-  const planPrompt = provider.requests[0]?.messages[1];
-  assert.equal(planPrompt?.role, "user");
-  if (planPrompt?.role === "user") {
-    const text = planPrompt.content[0];
+  const planRequest = provider.requests[0]?.messages[1];
+  assert.equal(planRequest?.role, "user");
+  if (planRequest?.role === "user") {
+    const text = planRequest.content[0];
     assert.equal(text?.type, "text");
     if (text?.type === "text") {
       assert.equal(text.text.includes("dist/generated.js"), false);
@@ -166,7 +191,9 @@ test("M4 restart replays mission state and resumes from DIAGNOSING with fresh ru
   const quality = new FixtureQualityRunner(workspace);
   const audit = new InMemoryToolAuditSink();
   const store = new InMemoryEventStore<MissionEventData>();
-  const firstProvider = new ScriptedProvider([plan(workspace.sha(TARGET_PATH))]);
+  const firstProvider = new ScriptedProvider([
+    plan(workspace.sha(TARGET_PATH)),
+  ]);
   const firstRuntime = new MissionRuntime(store, () => FIXED_NOW);
   const firstCoding = orchestrator({
     audit,
@@ -187,10 +214,15 @@ test("M4 restart replays mission state and resumes from DIAGNOSING with fresh ru
   assert.equal(interrupted.status, "interrupted");
   if (interrupted.status !== "interrupted") return;
   assert.equal(interrupted.mission.state, "DIAGNOSING");
-  assert.equal(restoreMissionCheckpoint(interrupted.checkpoint, "m4-resume").state, "DIAGNOSING");
+  assert.equal(
+    restoreMissionCheckpoint(interrupted.checkpoint, "m4-resume").state,
+    "DIAGNOSING",
+  );
   assert.equal(workspace.patches.length, 1);
 
-  const resumedProvider = new ScriptedProvider([repair(textHash(WRONG_CONTENT))]);
+  const resumedProvider = new ScriptedProvider([
+    repair(textHash(WRONG_CONTENT)),
+  ]);
   const freshRuntime = new MissionRuntime(store, () => FIXED_NOW);
   const freshCoding = orchestrator({
     audit,
@@ -202,7 +234,10 @@ test("M4 restart replays mission state and resumes from DIAGNOSING with fresh ru
   const report = await freshCoding.resume("m4-resume");
 
   assert.equal(report.state, "COMPLETED");
-  assert.deepEqual(report.modelUsage, { inputTokens: 70, outputTokens: 30 });
+  assert.deepEqual(report.modelUsage, {
+    inputTokens: 70,
+    outputTokens: 30,
+  });
   assert.deepEqual(report.changedFiles, [TARGET_PATH]);
   assert.equal(report.quality.firstFailureSignature, interrupted.failureSignature);
   assert.equal(workspace.content(TARGET_PATH), REPAIRED_CONTENT);
@@ -226,7 +261,9 @@ test("malformed provider plan is rejected before any repository write", async ()
           path: TARGET_PATH,
         },
         task: {
-          definitionOfDone: ["valid looking task but incomplete root plan"],
+          definitionOfDone: [
+            "valid looking task but incomplete root plan",
+          ],
           dependsOn: [],
           id: "change-math",
           priority: 10,
@@ -246,7 +283,11 @@ test("malformed provider plan is rejected before any repository write", async ()
   });
 
   await assert.rejects(
-    coding.start({ budgetLimits: BUDGETS, missionId: "m4-invalid", objective: "Fix add function" }),
+    coding.start({
+      budgetLimits: BUDGETS,
+      missionId: "m4-invalid",
+      objective: "Fix add function",
+    }),
   );
   assert.equal(workspace.patches.length, 0);
   assert.deepEqual(quality.seenCommandIds, []);
@@ -258,18 +299,25 @@ test("model-provided arbitrary command text cannot become a quality execution", 
   const quality = new FixtureQualityRunner(workspace);
   const audit = new InMemoryToolAuditSink();
   const provider = new ScriptedProvider([
-    plan(workspace.sha(TARGET_PATH), "verify && rm -rf /")
+    plan(workspace.sha(TARGET_PATH), "verify && rm -rf /"),
   ]);
   const coding = orchestrator({
     audit,
-    mission: new MissionRuntime(new InMemoryEventStore<MissionEventData>(), () => FIXED_NOW),
+    mission: new MissionRuntime(
+      new InMemoryEventStore<MissionEventData>(),
+      () => FIXED_NOW,
+    ),
     provider,
     quality,
     workspace,
   });
 
   await assert.rejects(
-    coding.start({ budgetLimits: BUDGETS, missionId: "m4-command-deny", objective: "Fix add function" }),
+    coding.start({
+      budgetLimits: BUDGETS,
+      missionId: "m4-command-deny",
+      objective: "Fix add function",
+    }),
     /unregistered quality command/u,
   );
   assert.equal(workspace.patches.length, 0);
@@ -286,10 +334,20 @@ test("a still-failing required quality gate transitions the mission to FAILED, n
     repair(textHash(WRONG_CONTENT), SECOND_WRONG_CONTENT),
   ]);
   const runtime = new MissionRuntime(store, () => FIXED_NOW);
-  const coding = orchestrator({ audit, mission: runtime, provider, quality, workspace });
+  const coding = orchestrator({
+    audit,
+    mission: runtime,
+    provider,
+    quality,
+    workspace,
+  });
 
   await assert.rejects(
-    coding.start({ budgetLimits: BUDGETS, missionId: "m4-fail-closed", objective: "Fix add function" }),
+    coding.start({
+      budgetLimits: BUDGETS,
+      missionId: "m4-fail-closed",
+      objective: "Fix add function",
+    }),
     (error: unknown) => {
       assert.ok(error instanceof MissionDomainError);
       assert.match(error.message, /quality gate is still failing/u);
@@ -306,14 +364,21 @@ test("missing capability registration denies bootstrap discovery before adapters
   const quality = new FixtureQualityRunner(workspace);
   const audit = new InMemoryToolAuditSink();
   const policy = new InMemoryCapabilityPolicy();
-  const registry = new ToolRegistry(createRepositoryToolRegistrations({ quality, workspace }));
+  const registry = new ToolRegistry(
+    createRepositoryToolRegistrations({ quality, workspace }),
+  );
   const tools = new ToolRuntime(registry, policy, audit, () => FIXED_NOW);
-  const noOpGrantSink = { register(_grant: CapabilityGrant): void {} };
+  const noOpGrantSink = {
+    register(_grant: CapabilityGrant): void {},
+  };
   const coding = new CodingOrchestrator({
     audit,
     clock: () => FIXED_NOW,
     grants: noOpGrantSink,
-    mission: new MissionRuntime(new InMemoryEventStore<MissionEventData>(), () => FIXED_NOW),
+    mission: new MissionRuntime(
+      new InMemoryEventStore<MissionEventData>(),
+      () => FIXED_NOW,
+    ),
     model: "fixture-model",
     provider: new ScriptedProvider([]),
     quality,
@@ -321,7 +386,11 @@ test("missing capability registration denies bootstrap discovery before adapters
   });
 
   await assert.rejects(
-    coding.start({ budgetLimits: BUDGETS, missionId: "m4-policy-deny", objective: "Fix add function" }),
+    coding.start({
+      budgetLimits: BUDGETS,
+      missionId: "m4-policy-deny",
+      objective: "Fix add function",
+    }),
     /No scoped capability grant/u,
   );
   assert.equal(workspace.patches.length, 0);
