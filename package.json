@@ -1,0 +1,27 @@
+{
+  "name": "odin-agent",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A provider-independent, verifiable runtime for long-running AI missions.",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "npm run clean && tsc -p tsconfig.json",
+    "check:foundation": "node scripts/check-foundation.mjs",
+    "clean": "node scripts/clean.mjs",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "lint": "biome lint .",
+    "quality": "biome check .",
+    "test": "node scripts/run-tests.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "verify": "npm run check:foundation && npm run quality && npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.11",
+    "@types/node": "26.4.1",
+    "typescript": "7.0.2"
+  }
+}
