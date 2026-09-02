@@ -15,9 +15,8 @@ Updated: 2026-09-02.
 
 ## Active milestone
 
-M0 repository foundation, M1 provider core, and M2 deterministic mission runtime are merged and
-verified. M3 fail-closed tool runtime is implemented and its code checkpoint has passed pull-request
-CI; repository-status documentation is being aligned before M3 is marked fully `VERIFIED`.
+M0 repository foundation, M1 provider core, M2 deterministic mission runtime, and M3 fail-closed tool
+runtime are implemented and verified in pull-request CI. M4 coding vertical slice is next.
 
 Odin still does not claim a production coding agent, OS-level sandbox, arbitrary shell execution,
 external network tools, durable database persistence, mobile client, or hosted service.
@@ -49,6 +48,9 @@ covers progressive tool discovery, strict schema rejection, capability scope/exp
 high-risk approval, sequential and concurrent idempotency, bounded retry/timeout/cancellation,
 secret-safe audit hashing, traversal rejection, repository adapter forwarding, and quality-command
 ID enforcement.
+
+The final M3 documentation/export checkpoint passed GitHub Actions run `33676117584` on commit
+`402b0834d83183c4c307bc6d20adb481e5065a68`. M3 is therefore `VERIFIED`.
 
 During M3 verification, CI found and forced fixes for formatter/type errors and one audit-privacy bug
 where a resolved repository path was stored in clear text. The regression test remains and the audit
@@ -90,7 +92,8 @@ contract now persists a resource hash instead of the raw resource value.
 
 ## Exact next action
 
-Run the complete pull-request gate on the M3 documentation/export checkpoint. If green, mark M3
-`VERIFIED` in its task contract and roadmap, update this handover to the final CI evidence, rerun the
-same gate, and then create the M4 coding-vertical-slice task contract without claiming production
-sandboxing or live-provider compatibility.
+Create the M4 coding-vertical-slice task contract, then connect the verified M1 provider boundary, M2
+mission runtime, and M3 tool gateway in a disposable fixture repository. Prove repository discovery,
+plan/task-graph validation, one scoped edit, one deliberately failing quality gate, targeted repair,
+rerun to green, and interruption/resume with evidence mapping. Do not claim production sandboxing,
+durable database persistence, or live-provider compatibility as part of that fixture slice.
