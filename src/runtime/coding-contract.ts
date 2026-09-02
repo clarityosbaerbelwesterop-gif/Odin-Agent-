@@ -233,7 +233,10 @@ export function planTasks(plan: CodingPlan): readonly MissionTaskInput[] {
   ];
 }
 
-export function validatePlanAgainstDiscovery(plan: CodingPlan, discovery: RepositoryDiscovery): void {
+export function validatePlanAgainstDiscovery(
+  plan: CodingPlan,
+  discovery: RepositoryDiscovery,
+): void {
   const target = discovery.relevantFiles.find((file) => file.path === plan.change.path);
   if (target === undefined) {
     throw new MissionDomainError("Model plan targets a file outside bounded repository discovery.");
