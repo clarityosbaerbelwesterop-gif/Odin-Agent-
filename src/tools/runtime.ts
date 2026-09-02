@@ -233,7 +233,7 @@ export class ToolRuntime {
       missionId: input.request.missionId,
       operation: input.registration.manifest.operation,
       policyDecision: input.policyDecision,
-      resource: input.resource,
+      resourceHash: stableHash(input.resource),
       resultClass: input.resultClass,
       sideEffecting: input.registration.manifest.sideEffecting,
       startedAt: input.startedAt,
