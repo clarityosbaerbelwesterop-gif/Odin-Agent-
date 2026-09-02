@@ -1,30 +1,25 @@
 import { createMissionCheckpoint } from "../mission/checkpoint.js";
 import {
   MissionDomainError,
-  type MissionSnapshot,
   type MissionRuntime,
+  type MissionSnapshot,
 } from "../mission/runtime.js";
-import type { ModelProvider, ModelResponse } from "../providers/types.js";
+import type { JsonObject, ModelProvider, ModelResponse } from "../providers/types.js";
 import type { QualityCommandRunner } from "../tools/repository.js";
 import type { ToolRuntime } from "../tools/runtime.js";
-import type {
-  CapabilityGrant,
-  ToolExecutionRequest,
-} from "../tools/types.js";
+import type { CapabilityGrant, ToolExecutionRequest } from "../tools/types.js";
 import {
   auditReference,
   BOOTSTRAP_TASK_ID,
   boundedText,
+  CODING_PLAN_SCHEMA,
+  CODING_REPAIR_SCHEMA,
   type CodingChange,
   type CodingFinalReport,
-  type CodingPlan,
-  CODING_PLAN_SCHEMA,
   type CodingRepair,
-  CODING_REPAIR_SCHEMA,
   type CodingRunOptions,
   type CodingRunResult,
   type CodingStartInput,
-  changeTaskFromMission,
   changedFileFromMission,
   eventKey,
   grantExpiry,
@@ -40,24 +35,24 @@ import {
   parseSearchPaths,
   planPrompt,
   planTasks,
+  QUALITY_TASK_ID,
+  type QualityRunResult,
   qualityCommandFromMission,
   qualityFailureSignature,
-  type QualityRunResult,
-  repairPrompt,
   type RepositoryDiscovery,
   type RepositoryFileEvidence,
+  repairPrompt,
   searchQuery,
   shortHash,
   stringField,
-  type ToolAuditReader,
   TOOL_VERSION,
+  type ToolAuditReader,
   usageDelta,
   validatePlanAgainstDiscovery,
   validateRepair,
   validateStartInput,
   validateUsage,
   ZERO_COUNTERS,
-  QUALITY_TASK_ID,
 } from "./coding-contract.js";
 
 export type {
@@ -88,11 +83,6 @@ export interface CodingRuntimeDependencies {
   readonly clock?: () => string;
 }
 
-interface ToolJsonResult {
-  readonly result: Record<string, never> | { readonly [key: string]: unknown };
-  readonly attempts: number;
-}
-
 export class CodingOrchestrator {
   readonly #provider: ModelProvider;
   readonly #model: string;
@@ -115,19 +105,10 @@ export class CodingOrchestrator {
     this.#clock = dependencies.clock ?? (() => new Date().toISOString());
   }
 
-  async start(
-    input: CodingStartInput,
-    options: CodingRunOptions = {},
-  ): Promise<CodingRunResult> {
+  async start(input: CodingStartInput, options: CodingRunOptions = {}): Promise<CodingRunResult> {
     validateStartInput(input);
-    const bootstrap = await this.#discoverBootstrap(
-      input.missionId,
-      input.objective,
-    );
-    const planResponse = await this.#requestPlan(
-      input.objective,
-      bootstrap.discovery,
-    );
+    const bootstrap = await this.#discoverBootstrap(input.missionId, input.objective);
+    const planResponse = await this.#requestPlan(input.objective, bootstrap.discovery);
     const plan = parsePlan(planResponse);
     validatePlanAgainstDiscovery(plan, bootstrap.discovery);
 
@@ -168,12 +149,7 @@ export class CodingOrchestrator {
       eventKey(snapshot, "change-running"),
     );
 
-    const initialPatch = await this.#patch(
-      snapshot,
-      plan.task.id,
-      plan.change,
-      "initial-patch",
-    );
+    const initialPatch = await this.#patch(snapshot, plan.task.id, plan.change, "initial-patch");
     snapshot = initialPatch.snapshot;
     snapshot = await this.#mission.setTaskStatus(
       snapshot.id,
@@ -191,20 +167,11 @@ export class CodingOrchestrator {
     );
     snapshot = await this.#advance(snapshot, ["OBSERVING", "VERIFYING"]);
 
-    const firstQuality = await this.#runQuality(
-      snapshot,
-      plan.qualityCommandId,
-      "quality-first",
-    );
+    const firstQuality = await this.#runQuality(snapshot, plan.qualityCommandId, "quality-first");
     snapshot = firstQuality.snapshot;
     if (firstQuality.exitCode === 0) {
       return {
-        report: await this.#complete(
-          snapshot,
-          plan.qualityCommandId,
-          null,
-          [plan.change.path],
-        ),
+        report: await this.#complete(snapshot, plan.qualityCommandId, null, [plan.change.path]),
         status: "completed",
       };
     }
@@ -226,33 +193,20 @@ export class CodingOrchestrator {
 
     const checkpoint = createMissionCheckpoint(snapshot, snapshot.version);
     if (options.interruptAfterFirstFailure === true) {
-      return {
-        checkpoint,
-        failureSignature,
-        mission: snapshot,
-        status: "interrupted",
-      };
+      return { checkpoint, failureSignature, mission: snapshot, status: "interrupted" };
     }
 
     return {
-      report: await this.#repairAndComplete(
-        snapshot,
-        failureSignature,
-        firstQuality.output,
-      ),
+      report: await this.#repairAndComplete(snapshot, failureSignature, firstQuality.output),
       status: "completed",
     };
   }
 
   async resume(missionId: string): Promise<CodingFinalReport> {
-    if (missionId.trim() === "") {
-      throw new TypeError("missionId must be non-empty.");
-    }
+    if (missionId.trim() === "") throw new TypeError("missionId must be non-empty.");
     const snapshot = await this.#mission.load(missionId);
     if (snapshot.state !== "DIAGNOSING") {
-      throw new MissionDomainError(
-        "M4 resume requires a mission checkpointed in DIAGNOSING.",
-      );
+      throw new MissionDomainError("M4 resume requires a mission checkpointed in DIAGNOSING.");
     }
     const failureSignature = latestFailureSignature(snapshot);
     return this.#repairAndComplete(
@@ -276,10 +230,7 @@ export class CodingOrchestrator {
       "repair-read",
     );
     let snapshot = currentRead.snapshot;
-    snapshot = await this.#reserveModelAttempt(
-      snapshot,
-      "repair-model-attempt",
-    );
+    snapshot = await this.#reserveModelAttempt(snapshot, "repair-model-attempt");
 
     const repairResponse = await this.#provider.generate(
       {
@@ -322,11 +273,7 @@ export class CodingOrchestrator {
       {},
     );
     validateUsage(repairResponse.usage);
-    snapshot = await this.#debit(
-      snapshot,
-      usageDelta(repairResponse.usage),
-      "repair-model-usage",
-    );
+    snapshot = await this.#debit(snapshot, usageDelta(repairResponse.usage), "repair-model-usage");
 
     const repair = parseRepair(repairResponse);
     validateRepair(repair, targetPath, currentRead.file);
@@ -351,11 +298,7 @@ export class CodingOrchestrator {
       eventKey(snapshot, "verify-repair"),
     );
 
-    const finalQuality = await this.#runQuality(
-      snapshot,
-      qualityCommandId,
-      "quality-repair",
-    );
+    const finalQuality = await this.#runQuality(snapshot, qualityCommandId, "quality-repair");
     snapshot = finalQuality.snapshot;
     if (finalQuality.exitCode !== 0) {
       const finalSignature = qualityFailureSignature(finalQuality);
@@ -371,12 +314,7 @@ export class CodingOrchestrator {
       );
     }
 
-    return this.#complete(
-      snapshot,
-      qualityCommandId,
-      failureSignature,
-      [targetPath],
-    );
+    return this.#complete(snapshot, qualityCommandId, failureSignature, [targetPath]);
   }
 
   async #complete(
@@ -386,9 +324,7 @@ export class CodingOrchestrator {
     changedFiles: readonly string[],
   ): Promise<CodingFinalReport> {
     if (initial.state !== "VERIFYING") {
-      throw new MissionDomainError(
-        "Completion requires the mission to be in VERIFYING.",
-      );
+      throw new MissionDomainError("Completion requires the mission to be in VERIFYING.");
     }
     let snapshot = await this.#mission.setTaskStatus(
       initial.id,
@@ -459,14 +395,7 @@ export class CodingOrchestrator {
     const query = searchQuery(objective);
     let attempts = 0;
     let calls = 0;
-    this.#grant(
-      missionId,
-      BOOTSTRAP_TASK_ID,
-      "repo.search",
-      "search",
-      ".",
-      1,
-    );
+    this.#grant(missionId, BOOTSTRAP_TASK_ID, "repo.search", "search", ".", 1);
     const search = await this.#executeJson({
       input: { maxResults: 20, path: ".", query },
       missionId,
@@ -481,21 +410,12 @@ export class CodingOrchestrator {
       .filter(isRelevantRepositoryPath)
       .slice(0, MAX_RELEVANT_FILES);
     if (relevantPaths.length === 0) {
-      throw new MissionDomainError(
-        "Repository discovery found no bounded relevant source files.",
-      );
+      throw new MissionDomainError("Repository discovery found no bounded relevant source files.");
     }
 
     const files: RepositoryFileEvidence[] = [];
     for (const path of relevantPaths) {
-      this.#grant(
-        missionId,
-        BOOTSTRAP_TASK_ID,
-        "repo.read",
-        "read",
-        path,
-        1,
-      );
+      this.#grant(missionId, BOOTSTRAP_TASK_ID, "repo.read", "read", path, 1);
       const read = await this.#executeJson({
         input: { maxBytes: MAX_FILE_BYTES, path },
         missionId,
@@ -508,14 +428,7 @@ export class CodingOrchestrator {
       files.push(parseReadFile(path, read.result));
     }
 
-    this.#grant(
-      missionId,
-      BOOTSTRAP_TASK_ID,
-      "repo.read",
-      "read",
-      "package.json",
-      1,
-    );
+    this.#grant(missionId, BOOTSTRAP_TASK_ID, "repo.read", "read", "package.json", 1);
     const packageRead = await this.#executeJson({
       input: { maxBytes: MAX_FILE_BYTES, path: "package.json" },
       missionId,
@@ -531,9 +444,7 @@ export class CodingOrchestrator {
       .map((command) => command.id)
       .sort();
     if (qualityCommandIds.length === 0) {
-      throw new MissionDomainError(
-        "M4 requires at least one registered quality command.",
-      );
+      throw new MissionDomainError("M4 requires at least one registered quality command.");
     }
 
     return {
@@ -554,9 +465,7 @@ export class CodingOrchestrator {
   ): Promise<ModelResponse> {
     const profile = this.#provider.capabilities(this.#model);
     if (!profile.capabilities.strictStructuredOutput) {
-      throw new MissionDomainError(
-        "M4 planning requires strict structured-output support.",
-      );
+      throw new MissionDomainError("M4 planning requires strict structured-output support.");
     }
     const response = await this.#provider.generate(
       {
@@ -597,10 +506,7 @@ export class CodingOrchestrator {
     label: string,
   ): Promise<{ readonly snapshot: MissionSnapshot; readonly sha: string }> {
     this.#grant(initial.id, taskId, "repo.patch", "write", change.path, 1);
-    let snapshot = await this.#reserveToolAttempt(
-      initial,
-      `${label}-reserve`,
-    );
+    let snapshot = await this.#reserveToolAttempt(initial, `${label}-reserve`);
     const result = await this.#executeJson({
       idempotencyKey: `m4:${snapshot.id}:${label}:${shortHash(change.path)}`,
       input: {
@@ -618,10 +524,7 @@ export class CodingOrchestrator {
       result.attempts,
       `${label}-attempts`,
     );
-    return {
-      sha: stringField(result.result, "sha"),
-      snapshot,
-    };
+    return { sha: stringField(result.result, "sha"), snapshot };
   }
 
   async #runQuality(
@@ -630,9 +533,7 @@ export class CodingOrchestrator {
     label: string,
   ): Promise<QualityRunResult> {
     if (!this.#quality.commands().some((command) => command.id === commandId)) {
-      throw new MissionDomainError(
-        "The required quality command is no longer registered.",
-      );
+      throw new MissionDomainError("The required quality command is no longer registered.");
     }
     this.#grant(
       initial.id,
@@ -642,10 +543,7 @@ export class CodingOrchestrator {
       `quality/${commandId}`,
       1,
     );
-    let snapshot = await this.#reserveToolAttempt(
-      initial,
-      `${label}-reserve`,
-    );
+    let snapshot = await this.#reserveToolAttempt(initial, `${label}-reserve`);
     const result = await this.#executeJson({
       idempotencyKey: `m4:${snapshot.id}:${label}:${shortHash(commandId)}`,
       input: { commandId },
@@ -677,10 +575,7 @@ export class CodingOrchestrator {
     readonly file: RepositoryFileEvidence;
   }> {
     this.#grant(initial.id, taskId, "repo.read", "read", path, 1);
-    let snapshot = await this.#reserveToolAttempt(
-      initial,
-      `${label}-reserve`,
-    );
+    let snapshot = await this.#reserveToolAttempt(initial, `${label}-reserve`);
     const result = await this.#executeJson({
       input: { maxBytes: MAX_FILE_BYTES, path },
       missionId: snapshot.id,
@@ -693,24 +588,17 @@ export class CodingOrchestrator {
       result.attempts,
       `${label}-attempts`,
     );
-    return {
-      file: parseReadFile(path, result.result),
-      snapshot,
-    };
+    return { file: parseReadFile(path, result.result), snapshot };
   }
 
-  async #executeJson(request: ToolExecutionRequest): Promise<{
-    readonly result: Record<string, never> | { readonly [key: string]: unknown };
-    readonly attempts: number;
-  }> {
+  async #executeJson(
+    request: ToolExecutionRequest,
+  ): Promise<{ readonly result: JsonObject; readonly attempts: number }> {
     const response = await this.#tools.execute(request);
     if (!isJsonObject(response.output)) {
       throw new MissionDomainError("M4 tool output must be a JSON object.");
     }
-    return {
-      attempts: response.attempts,
-      result: response.output,
-    };
+    return { attempts: response.attempts, result: response.output };
   }
 
   #grant(
@@ -738,11 +626,7 @@ export class CodingOrchestrator {
     snapshot: MissionSnapshot,
     label: string,
   ): Promise<MissionSnapshot> {
-    return this.#debit(
-      snapshot,
-      { ...ZERO_COUNTERS, attempts: 1, toolCalls: 1 },
-      label,
-    );
+    return this.#debit(snapshot, { ...ZERO_COUNTERS, attempts: 1, toolCalls: 1 }, label);
   }
 
   async #debitAdditionalToolAttempts(
@@ -754,11 +638,7 @@ export class CodingOrchestrator {
       throw new MissionDomainError("Tool attempt count is invalid.");
     }
     if (attempts === 1) return snapshot;
-    return this.#debit(
-      snapshot,
-      { ...ZERO_COUNTERS, attempts: attempts - 1 },
-      label,
-    );
+    return this.#debit(snapshot, { ...ZERO_COUNTERS, attempts: attempts - 1 }, label);
   }
 
   async #reserveModelAttempt(
