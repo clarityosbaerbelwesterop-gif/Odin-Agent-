@@ -459,10 +459,7 @@ export class CodingOrchestrator {
     };
   }
 
-  async #requestPlan(
-    objective: string,
-    discovery: RepositoryDiscovery,
-  ): Promise<ModelResponse> {
+  async #requestPlan(objective: string, discovery: RepositoryDiscovery): Promise<ModelResponse> {
     const profile = this.#provider.capabilities(this.#model);
     if (!profile.capabilities.strictStructuredOutput) {
       throw new MissionDomainError("M4 planning requires strict structured-output support.");
@@ -535,14 +532,7 @@ export class CodingOrchestrator {
     if (!this.#quality.commands().some((command) => command.id === commandId)) {
       throw new MissionDomainError("The required quality command is no longer registered.");
     }
-    this.#grant(
-      initial.id,
-      QUALITY_TASK_ID,
-      "repo.quality",
-      "execute",
-      `quality/${commandId}`,
-      1,
-    );
+    this.#grant(initial.id, QUALITY_TASK_ID, "repo.quality", "execute", `quality/${commandId}`, 1);
     let snapshot = await this.#reserveToolAttempt(initial, `${label}-reserve`);
     const result = await this.#executeJson({
       idempotencyKey: `m4:${snapshot.id}:${label}:${shortHash(commandId)}`,
@@ -622,10 +612,7 @@ export class CodingOrchestrator {
     });
   }
 
-  async #reserveToolAttempt(
-    snapshot: MissionSnapshot,
-    label: string,
-  ): Promise<MissionSnapshot> {
+  async #reserveToolAttempt(snapshot: MissionSnapshot, label: string): Promise<MissionSnapshot> {
     return this.#debit(snapshot, { ...ZERO_COUNTERS, attempts: 1, toolCalls: 1 }, label);
   }
 
@@ -641,10 +628,7 @@ export class CodingOrchestrator {
     return this.#debit(snapshot, { ...ZERO_COUNTERS, attempts: attempts - 1 }, label);
   }
 
-  async #reserveModelAttempt(
-    snapshot: MissionSnapshot,
-    label: string,
-  ): Promise<MissionSnapshot> {
+  async #reserveModelAttempt(snapshot: MissionSnapshot, label: string): Promise<MissionSnapshot> {
     return this.#debit(snapshot, { ...ZERO_COUNTERS, attempts: 1 }, label);
   }
 
