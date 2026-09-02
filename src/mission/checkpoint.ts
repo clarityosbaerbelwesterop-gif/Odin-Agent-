@@ -39,7 +39,9 @@ export function restoreMissionCheckpoint(
     throw new MissionDomainError("Unsupported mission checkpoint schema version.");
   }
   if (checkpoint.missionId !== expectedMissionId || checkpoint.snapshot.id !== expectedMissionId) {
-    throw new MissionDomainError("Mission checkpoint identity does not match the requested mission.");
+    throw new MissionDomainError(
+      "Mission checkpoint identity does not match the requested mission.",
+    );
   }
   if (
     checkpoint.aggregateVersion !== checkpoint.eventSequence ||
@@ -54,7 +56,9 @@ export function restoreMissionCheckpoint(
 }
 
 function hashSnapshot(snapshot: MissionSnapshot): string {
-  return createHash("sha256").update(JSON.stringify(canonicalize(snapshot))).digest("hex");
+  return createHash("sha256")
+    .update(JSON.stringify(canonicalize(snapshot)))
+    .digest("hex");
 }
 
 function canonicalize(value: unknown): unknown {

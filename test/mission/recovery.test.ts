@@ -1,17 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  type EventAppendItem,
   EventStoreConflictError,
   InMemoryEventStore,
-  type EventAppendItem,
 } from "../../src/events/index.js";
 import {
   createMissionCheckpoint,
   MissionDomainError,
+  type MissionEventData,
   MissionRuntime,
   projectMission,
   restoreMissionCheckpoint,
-  type MissionEventData,
 } from "../../src/mission/index.js";
 import { fixedClock, missionInput } from "./helpers.js";
 
@@ -24,7 +24,10 @@ test("event store provides optimistic concurrency, atomic batches, and strict id
   const firstItem = batch[0];
   if (firstItem === undefined) throw new Error("Test fixture is missing its first event.");
   const first = await store.append("m", 0, "batch-1", batch);
-  assert.deepEqual(first.map((event) => event.sequence), [1, 2]);
+  assert.deepEqual(
+    first.map((event) => event.sequence),
+    [1, 2],
+  );
 
   const replay = await store.append("m", 0, "batch-1", batch);
   assert.deepEqual(replay, first);
@@ -32,10 +35,7 @@ test("event store provides optimistic concurrency, atomic batches, and strict id
     store.append("m", 0, "batch-1", [{ ...firstItem, data: { value: 9 } }]),
     /different event batch/,
   );
-  await assert.rejects(
-    store.append("m", 0, "stale-writer", [firstItem]),
-    EventStoreConflictError,
-  );
+  await assert.rejects(store.append("m", 0, "stale-writer", [firstItem]), EventStoreConflictError);
   assert.equal((await store.load("m")).length, 2);
 });
 

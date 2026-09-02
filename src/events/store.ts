@@ -59,7 +59,9 @@ export class InMemoryEventStore<T> implements EventStore<T> {
     const replay = this.#idempotency.get(idempotencyScope);
     if (replay !== undefined) {
       if (replay.fingerprint !== fingerprint) {
-        throw new EventStoreConflictError("Idempotency key was reused for a different event batch.");
+        throw new EventStoreConflictError(
+          "Idempotency key was reused for a different event batch.",
+        );
       }
       return cloneEvents(replay.events);
     }

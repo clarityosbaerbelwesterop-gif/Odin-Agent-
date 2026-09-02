@@ -73,7 +73,11 @@ export interface MissionSnapshot {
 
 export type MissionEventData =
   | { readonly type: "mission.created"; readonly input: MissionCreateInput }
-  | { readonly type: "mission.transitioned"; readonly from: MissionState; readonly to: MissionState }
+  | {
+      readonly type: "mission.transitioned";
+      readonly from: MissionState;
+      readonly to: MissionState;
+    }
   | { readonly type: "task.status_changed"; readonly taskId: string; readonly status: TaskStatus }
   | { readonly type: "budget.debited"; readonly delta: BudgetCounters }
   | { readonly type: "failure.recorded"; readonly signature: string };
@@ -213,7 +217,10 @@ export function taskStatusEvent(
   return { status, taskId, type: "task.status_changed" };
 }
 
-export function budgetDebitEvent(snapshot: MissionSnapshot, delta: BudgetCounters): MissionEventData {
+export function budgetDebitEvent(
+  snapshot: MissionSnapshot,
+  delta: BudgetCounters,
+): MissionEventData {
   assertMutableMission(snapshot);
   assertCounters(delta, "budget debit");
   for (const dimension of counterKeys()) {
@@ -225,14 +232,21 @@ export function budgetDebitEvent(snapshot: MissionSnapshot, delta: BudgetCounter
   return { delta: { ...delta }, type: "budget.debited" };
 }
 
-export function canRetry(snapshot: MissionSnapshot, signature: string, maxEquivalentFailures: number): boolean {
+export function canRetry(
+  snapshot: MissionSnapshot,
+  signature: string,
+  maxEquivalentFailures: number,
+): boolean {
   assertFailurePolicy(signature, maxEquivalentFailures);
-  return !TERMINAL_STATES.has(snapshot.state) &&
-    (snapshot.failureCounts[signature] ?? 0) < maxEquivalentFailures;
+  return (
+    !TERMINAL_STATES.has(snapshot.state) &&
+    (snapshot.failureCounts[signature] ?? 0) < maxEquivalentFailures
+  );
 }
 
 export function projectMission(events: readonly StoredEvent<MissionEventData>[]): MissionSnapshot {
-  if (events.length === 0) throw new MissionDomainError("Cannot project an empty mission event stream.");
+  if (events.length === 0)
+    throw new MissionDomainError("Cannot project an empty mission event stream.");
   let snapshot: MissionSnapshot | undefined;
   let missionId: string | undefined;
   let expectedSequence = 1;
@@ -242,7 +256,8 @@ export function projectMission(events: readonly StoredEvent<MissionEventData>[])
       throw new MissionDomainError("Mission event stream is not contiguous.");
     }
     missionId ??= event.missionId;
-    if (event.missionId !== missionId) throw new MissionDomainError("Mission event stream mixes identities.");
+    if (event.missionId !== missionId)
+      throw new MissionDomainError("Mission event stream mixes identities.");
 
     if (snapshot === undefined) {
       if (event.data.type !== "mission.created") {
@@ -265,7 +280,10 @@ export class MissionRuntime {
   readonly #store: EventStore<MissionEventData>;
   readonly #clock: () => string;
 
-  constructor(store: EventStore<MissionEventData>, clock: () => string = () => new Date().toISOString()) {
+  constructor(
+    store: EventStore<MissionEventData>,
+    clock: () => string = () => new Date().toISOString(),
+  ) {
     this.#store = store;
     this.#clock = clock;
   }
@@ -273,7 +291,10 @@ export class MissionRuntime {
   async create(input: MissionCreateInput, idempotencyKey: string): Promise<MissionSnapshot> {
     initialSnapshot(input, 0);
     await this.#store.append(input.id, 0, idempotencyKey, [
-      { data: { input: structuredClone(input), type: "mission.created" }, occurredAt: this.#clock() },
+      {
+        data: { input: structuredClone(input), type: "mission.created" },
+        occurredAt: this.#clock(),
+      },
     ]);
     return this.load(input.id);
   }
@@ -339,7 +360,9 @@ export class MissionRuntime {
     assertExpectedVersion(snapshot, expectedVersion);
     assertFailurePolicy(signature, maxEquivalentFailures);
     if (!INTERRUPTIBLE_STATES.has(snapshot.state)) {
-      throw new MissionDomainError("Failures may only be recorded while a mission is actively executing.");
+      throw new MissionDomainError(
+        "Failures may only be recorded while a mission is actively executing.",
+      );
     }
 
     const nextCount = (snapshot.failureCounts[signature] ?? 0) + 1;
@@ -381,9 +404,11 @@ function applyEvent(
   data: MissionEventData,
   aggregateVersion: number,
 ): MissionSnapshot {
-  if (data.type === "mission.created") throw new MissionDomainError("mission.created may only occur once.");
+  if (data.type === "mission.created")
+    throw new MissionDomainError("mission.created may only occur once.");
   if (data.type === "mission.transitioned") {
-    if (data.from !== snapshot.state) throw new MissionDomainError("Transition event source state is stale.");
+    if (data.from !== snapshot.state)
+      throw new MissionDomainError("Transition event source state is stale.");
     assertTransition(snapshot, data.to);
     return {
       ...snapshot,
@@ -429,7 +454,10 @@ function assertTransition(snapshot: MissionSnapshot, to: MissionState): void {
     }
     return;
   }
-  if (INTERRUPTIBLE_STATES.has(from) && ["PAUSING", "CANCELLING", "BLOCKED", "FAILED"].includes(to)) {
+  if (
+    INTERRUPTIBLE_STATES.has(from) &&
+    ["PAUSING", "CANCELLING", "BLOCKED", "FAILED"].includes(to)
+  ) {
     return;
   }
   if ((from === "PAUSING" || from === "PAUSED") && to === "CANCELLING") return;
@@ -448,7 +476,10 @@ function nextResumeState(snapshot: MissionSnapshot, to: MissionState): MissionSt
 function normalizeTask(input: MissionTaskInput): MissionTask {
   assertNonEmpty(input.id, "task id");
   assertNonEmpty(input.title, `task ${input.id} title`);
-  if (input.definitionOfDone.length === 0 || input.definitionOfDone.some((item) => item.trim() === "")) {
+  if (
+    input.definitionOfDone.length === 0 ||
+    input.definitionOfDone.some((item) => item.trim() === "")
+  ) {
     throw new MissionDomainError(`Task ${input.id} requires non-empty definitions of done.`);
   }
   const dependencies = [...(input.dependsOn ?? [])];
@@ -456,7 +487,8 @@ function normalizeTask(input: MissionTaskInput): MissionTask {
     throw new MissionDomainError(`Task ${input.id} contains duplicate dependencies.`);
   }
   const priority = input.priority ?? 0;
-  if (!Number.isSafeInteger(priority)) throw new MissionDomainError(`Task ${input.id} priority must be a safe integer.`);
+  if (!Number.isSafeInteger(priority))
+    throw new MissionDomainError(`Task ${input.id} priority must be a safe integer.`);
   return {
     definitionOfDone: [...input.definitionOfDone],
     dependsOn: dependencies,

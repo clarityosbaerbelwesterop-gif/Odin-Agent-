@@ -5,9 +5,9 @@ import {
   BudgetExceededError,
   canRetry,
   MissionDomainError,
+  type MissionEventData,
   MissionRuntime,
   runnableTasks,
-  type MissionEventData,
   validateTaskGraph,
 } from "../../src/mission/index.js";
 import { fixedClock, missionInput, ZERO } from "./helpers.js";
@@ -18,7 +18,11 @@ test("task DAG validation rejects malformed dependency graphs", () => {
     title: "Task",
   };
   assert.throws(
-    () => validateTaskGraph([{ ...base, id: "a" }, { ...base, id: "a" }]),
+    () =>
+      validateTaskGraph([
+        { ...base, id: "a" },
+        { ...base, id: "a" },
+      ]),
     /Duplicate task id/,
   );
   assert.throws(
@@ -38,7 +42,11 @@ test("task DAG validation rejects malformed dependency graphs", () => {
     /cycle/,
   );
   assert.throws(
-    () => validateTaskGraph([{ ...base, dependsOn: ["b", "b"], id: "a" }, { ...base, id: "b" }]),
+    () =>
+      validateTaskGraph([
+        { ...base, dependsOn: ["b", "b"], id: "a" },
+        { ...base, id: "b" },
+      ]),
     /duplicate dependencies/,
   );
 });
@@ -46,11 +54,29 @@ test("task DAG validation rejects malformed dependency graphs", () => {
 test("scheduler selects only dependency-ready work with stable priority ordering", async () => {
   const runtime = new MissionRuntime(new InMemoryEventStore<MissionEventData>(), fixedClock());
   let snapshot = await runtime.create(missionInput("scheduler"), "create");
-  assert.deepEqual(runnableTasks(snapshot).map((task) => task.id), ["inspect"]);
+  assert.deepEqual(
+    runnableTasks(snapshot).map((task) => task.id),
+    ["inspect"],
+  );
 
-  snapshot = await runtime.setTaskStatus(snapshot.id, snapshot.version, "inspect", "RUNNING", "inspect-run");
-  snapshot = await runtime.setTaskStatus(snapshot.id, snapshot.version, "inspect", "VERIFIED", "inspect-ok");
-  assert.deepEqual(runnableTasks(snapshot).map((task) => task.id), ["verify", "implement"]);
+  snapshot = await runtime.setTaskStatus(
+    snapshot.id,
+    snapshot.version,
+    "inspect",
+    "RUNNING",
+    "inspect-run",
+  );
+  snapshot = await runtime.setTaskStatus(
+    snapshot.id,
+    snapshot.version,
+    "inspect",
+    "VERIFIED",
+    "inspect-ok",
+  );
+  assert.deepEqual(
+    runnableTasks(snapshot).map((task) => task.id),
+    ["verify", "implement"],
+  );
 });
 
 test("budget accounting accepts the boundary and rejects any overrun without appending", async () => {
@@ -93,11 +119,23 @@ test("equivalent failure circuit breaker fails the mission at its configured bou
   snapshot = await runtime.transition(snapshot.id, snapshot.version, "UNDERSTANDING", "understand");
   assert.equal(canRetry(snapshot, "lint:same", 2), true);
 
-  snapshot = await runtime.recordFailure(snapshot.id, snapshot.version, "lint:same", 2, "failure-1");
+  snapshot = await runtime.recordFailure(
+    snapshot.id,
+    snapshot.version,
+    "lint:same",
+    2,
+    "failure-1",
+  );
   assert.equal(snapshot.failureCounts["lint:same"], 1);
   assert.equal(snapshot.state, "UNDERSTANDING");
 
-  snapshot = await runtime.recordFailure(snapshot.id, snapshot.version, "lint:same", 2, "failure-2");
+  snapshot = await runtime.recordFailure(
+    snapshot.id,
+    snapshot.version,
+    "lint:same",
+    2,
+    "failure-2",
+  );
   assert.equal(snapshot.failureCounts["lint:same"], 2);
   assert.equal(snapshot.state, "FAILED");
   assert.equal(canRetry(snapshot, "lint:same", 2), false);

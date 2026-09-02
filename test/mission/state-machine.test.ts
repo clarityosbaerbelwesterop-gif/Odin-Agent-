@@ -3,8 +3,8 @@ import test from "node:test";
 import { InMemoryEventStore } from "../../src/events/index.js";
 import {
   MissionDomainError,
-  MissionRuntime,
   type MissionEventData,
+  MissionRuntime,
 } from "../../src/mission/index.js";
 import { fixedClock, missionInput } from "./helpers.js";
 
@@ -35,7 +35,12 @@ test("pause and resume return to the exact captured safe state", async () => {
   snapshot = await runtime.transition(snapshot.id, snapshot.version, "PAUSING", "pause-requested");
   assert.equal(snapshot.resumeState, "UNDERSTANDING");
   snapshot = await runtime.transition(snapshot.id, snapshot.version, "PAUSED", "paused");
-  snapshot = await runtime.transition(snapshot.id, snapshot.version, "RESUMING", "resume-requested");
+  snapshot = await runtime.transition(
+    snapshot.id,
+    snapshot.version,
+    "RESUMING",
+    "resume-requested",
+  );
 
   await assert.rejects(
     runtime.transition(snapshot.id, snapshot.version, "RETRIEVING", "wrong-resume"),
@@ -50,7 +55,12 @@ test("cancellation is deterministic and terminal", async () => {
   const runtime = new MissionRuntime(new InMemoryEventStore<MissionEventData>(), fixedClock());
   let snapshot = await runtime.create(missionInput("cancel-mission"), "create");
   snapshot = await runtime.transition(snapshot.id, snapshot.version, "UNDERSTANDING", "understand");
-  snapshot = await runtime.transition(snapshot.id, snapshot.version, "CANCELLING", "cancel-requested");
+  snapshot = await runtime.transition(
+    snapshot.id,
+    snapshot.version,
+    "CANCELLING",
+    "cancel-requested",
+  );
   snapshot = await runtime.transition(snapshot.id, snapshot.version, "CANCELLED", "cancelled");
   assert.equal(snapshot.state, "CANCELLED");
 
