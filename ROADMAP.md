@@ -11,18 +11,18 @@ later design work may occur early, but later product capability is not declared 
 - [x] ADR process and initial architecture decisions recorded.
 - [x] Locked Node/TypeScript toolchain and secret-safe environment example created.
 - [x] Pull-request CI and deterministic foundation validation established.
-- [ ] CI result observed on the pull request.
+- [x] CI result observed on the pull request.
 
 Exit gate: clean install plus `npm run verify` passes locally and in CI; documentation agrees with
 the repository; no product capability is overstated.
 
 ## M1 — Provider core
 
-- [ ] Normalized request, response, streaming, usage, tool-call, and error contracts.
-- [ ] Capability registry with config overrides and provenance.
-- [ ] OpenAI, Anthropic, OpenRouter, NVIDIA, and generic compatible adapters.
-- [ ] Abort, timeout, retry hints, rate limit, malformed output, and context overflow handling.
-- [ ] Injected-transport contract tests with no live cost.
+- [x] Normalized request, response, streaming, usage, tool-call, and error contracts.
+- [x] Capability registry with config overrides and provenance.
+- [x] OpenAI, Anthropic, OpenRouter, NVIDIA, and generic compatible adapters.
+- [x] Abort, timeout, retry hints, rate limit, malformed output, and context overflow handling.
+- [x] Injected-transport contract tests with no live cost.
 
 ## M2 — Mission runtime
 

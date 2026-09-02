@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   verify:
-    name: Foundation verification
+    name: Build, test, and verify
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -31,5 +31,5 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Verify foundation
+      - name: Verify repository
         run: npm run verify

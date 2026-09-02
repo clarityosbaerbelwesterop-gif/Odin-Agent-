@@ -1,6 +1,6 @@
 # Odin architecture
 
-Status: foundation baseline, 2026-09-02.
+Status: M1 provider-core checkpoint, 2026-09-02.
 
 ## Repository finding
 
@@ -105,6 +105,19 @@ src/
 An interface exists only when it protects a real substitution, trust boundary, or test seam. Local
 single-user mode and server mode use the same domain contracts but may use different persistence and
 worker adapters.
+
+## Implemented provider boundary
+
+`src/providers` currently implements normalized request, response, usage, tool-call, structured
+output, streaming, and typed-error contracts. OpenAI uses the Responses API; Anthropic uses the
+Messages API; OpenRouter and NVIDIA use separately named adapters over a shared configurable
+chat-completions protocol adapter.
+
+Capabilities, routing characteristics, and price metadata come from provenance-bearing external
+profiles. Unknown profiles and unsupported features fail before credentials are resolved. Provider
+HTTP uses fixed validated base URLs, rejects redirects, bounds bodies/events, denies obvious private
+network targets by default, and exposes retry hints without owning retry policy. This boundary is
+contract-tested with injected transports only; live API compatibility is not yet verified.
 
 ## First vertical slice
 

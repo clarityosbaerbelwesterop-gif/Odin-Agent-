@@ -1,6 +1,7 @@
 # Security model
 
-Status: design baseline. Controls described as future work are not yet implemented.
+Status: design baseline plus M1 provider-boundary controls. Controls not explicitly identified as
+implemented remain future work.
 
 ## Protected assets
 
@@ -43,6 +44,12 @@ plane proxies requests or issues the narrowest possible short-lived handle. Reda
 logs, events, artifacts, errors, memory, or crash reports are persisted.
 
 The committed `.env.example` contains names and blank values only. Real `.env` files are ignored.
+
+The M1 adapters resolve a credential only after request shape and capability checks pass. They deny
+redirects and obvious private-network base URLs by default, reject credentials containing header
+delimiters, bound response/event sizes, and normalize transport errors without copying thrown
+messages. DNS rebinding protection and destination re-resolution still belong to the later network
+policy boundary and are not claimed here.
 
 ## Execution and network
 

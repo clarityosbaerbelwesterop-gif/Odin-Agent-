@@ -4,9 +4,11 @@ Odin is a provider-independent runtime for complex, long-running AI missions. It
 to turn a model call into a controlled system with planning, task state, tools, verification,
 repair, checkpoints, budgets, and auditable evidence.
 
-Odin is at the **foundation stage**. The repository does not yet provide a production agent,
-mobile client, hosted service, or finished provider integration. Current status and verified
-capabilities are tracked in [ROADMAP.md](ROADMAP.md) and [HANDOVER.md](HANDOVER.md).
+Odin is at the **early core stage**. Repository foundation and the provider-neutral inference
+boundary are implemented and contract-tested. The repository does not yet provide a mission
+runtime, production agent, mobile client, or hosted service, and no live-provider smoke test has
+been claimed. Current status and verified capabilities are tracked in [ROADMAP.md](ROADMAP.md) and
+[HANDOVER.md](HANDOVER.md).
 
 ## Product contract
 
@@ -54,8 +56,9 @@ npm ci
 npm run verify
 ```
 
-No provider key is required for foundation checks. Never put credentials in source, fixtures,
-logs, prompts, or committed environment files.
+No provider key is required for verification; provider protocol tests use injected transports and
+synthetic responses. Never put credentials in source, fixtures, logs, prompts, or committed
+environment files.
 
 ## Engineering priorities
 

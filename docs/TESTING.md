@@ -26,3 +26,7 @@ retry, permission denial, concurrency conflict, persistence recovery, cancellati
 
 `npm run verify` is the canonical local and CI gate. A missing external environment may justify a
 documented waived integration check, but never a false `VERIFIED` status.
+
+The current test runner enforces aggregate minimums of 80% line coverage, 80% function coverage,
+and 60% branch coverage. Coverage is a regression signal, not evidence that behavior is correct;
+the scenario and contract assertions above remain authoritative.
