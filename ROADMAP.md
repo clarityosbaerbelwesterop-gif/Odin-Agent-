@@ -1,0 +1,63 @@
+# Odin delivery roadmap
+
+Checkboxes mean verified repository evidence, not intent. Milestones are completed sequentially;
+later design work may occur early, but later product capability is not declared complete early.
+
+## M0 — Repository foundation
+
+- [x] Research source read and architecture observations extracted.
+- [x] Empty-repository baseline and branch state established.
+- [x] Product contract, architecture, security, contributor rules, and handover created.
+- [x] ADR process and initial architecture decisions recorded.
+- [x] Locked Node/TypeScript toolchain and secret-safe environment example created.
+- [x] Pull-request CI and deterministic foundation validation established.
+- [ ] CI result observed on the pull request.
+
+Exit gate: clean install plus `npm run verify` passes locally and in CI; documentation agrees with
+the repository; no product capability is overstated.
+
+## M1 — Provider core
+
+- [ ] Normalized request, response, streaming, usage, tool-call, and error contracts.
+- [ ] Capability registry with config overrides and provenance.
+- [ ] OpenAI, Anthropic, OpenRouter, NVIDIA, and generic compatible adapters.
+- [ ] Abort, timeout, retry hints, rate limit, malformed output, and context overflow handling.
+- [ ] Injected-transport contract tests with no live cost.
+
+## M2 — Mission runtime
+
+- [ ] Mission aggregate, typed state machine, task DAG, focus classification, and definitions of done.
+- [ ] Deterministic scheduler, budgets, retries, pause/resume/cancel, and anti-loop circuit breaker.
+- [ ] Append-only events, projections, checkpoints, optimistic versions, and recovery tests.
+
+## M3 — Tool runtime
+
+- [ ] Tool/skill registry and progressive discovery.
+- [ ] Schema validation, risk classes, capability policy, idempotency, timeout, retry, and audit trail.
+- [ ] Scoped repository search/read/patch and quality-command tools.
+
+## M4 — Coding vertical slice
+
+- [ ] Repository understanding and quality-gate discovery.
+- [ ] Plan and task graph generated through normalized provider boundary.
+- [ ] Minimal scoped edit in a disposable workspace.
+- [ ] Test failure diagnosed, repaired, rerun, and mapped to evidence.
+- [ ] Durable interruption/resume demonstrated end to end.
+
+## M5–M12
+
+- [ ] M5 verification engine and adversarial review.
+- [ ] M6 memory, context compiler, token budgets, and cache.
+- [ ] M7 isolated specialists, ownership, and reconciliation.
+- [ ] M8 persistent workers, event fan-out, reconnect, and long-running recovery.
+- [ ] M9 responsive web client and native-client protocol strategy.
+- [ ] M10 progressively loaded, permissioned, independently tested skills.
+- [ ] M11 empirical model routing, caching, concurrency, and cost optimization.
+- [ ] M12 security/load/recovery hardening, backups, observability, and eval release gates.
+
+## MVP definition of done
+
+MVP requires a user-supplied provider key, workspace, complex coding request, automatic plan and task
+graph, targeted repository retrieval, scoped edits, tests, diagnosis and repair, durable mission
+resume, token/cost display, and an evidence-backed final report. A mock-only demonstration does not
+satisfy MVP.
