@@ -10,8 +10,8 @@ import {
   createReleaseManifest,
   createRestoreVerification,
   evaluateReleaseGate,
-  verifyBackupRestore,
   type RecoveryScenarioKind,
+  verifyBackupRestore,
 } from "../../src/release/index.js";
 
 function hash(value: string): string {
