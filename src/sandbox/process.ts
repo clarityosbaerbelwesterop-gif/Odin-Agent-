@@ -72,10 +72,11 @@ export class SandboxProcessRunner {
       throw new SandboxError("CONCURRENCY_EXCEEDED", "Sandbox process concurrency limit reached.");
     }
 
-    const cwd = await this.#workspace.resolveDirectory(command.cwd);
-    const env = buildEnvironment(command, this.#hostEnv);
+    // Reserve synchronously before the first await so concurrent callers cannot both pass the ceiling.
     this.#active += 1;
     try {
+      const cwd = await this.#workspace.resolveDirectory(command.cwd);
+      const env = buildEnvironment(command, this.#hostEnv);
       const result = await this.#adapter.run({
         args: command.args,
         cwd: cwd.canonicalPath,
