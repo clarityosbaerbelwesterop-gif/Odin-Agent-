@@ -5,10 +5,11 @@ to turn a model call into a controlled system with planning, task state, tools, 
 repair, checkpoints, budgets, and auditable evidence.
 
 Odin is at the **early core stage**. Repository foundation, the provider-neutral inference boundary,
-the deterministic mission runtime, and the fail-closed tool-control boundary are implemented and
-contract-tested. The repository does not yet provide a production coding agent, OS-level sandbox,
-durable database persistence, mobile client, or hosted service, and no live-provider smoke test has
-been claimed. Current status and verified capabilities are tracked in [ROADMAP.md](ROADMAP.md) and
+the deterministic mission runtime, the fail-closed tool-control boundary, a fixture-backed coding
+vertical slice, and independent evidence verification are implemented and contract-tested. The
+repository does not yet provide a production coding agent, OS-level sandbox, durable database
+persistence, mobile client, or hosted service, and no live-provider smoke test has been claimed.
+Current status and verified capabilities are tracked in [ROADMAP.md](ROADMAP.md) and
 [HANDOVER.md](HANDOVER.md).
 
 ## Product contract
@@ -46,6 +47,11 @@ The current M3 tool runtime is a control boundary, not a sandbox claim. It valid
 scoped capability grants, approval evidence, idempotency, retry/timeout behavior, and secret-safe
 audit records before calling injected repository adapters. Arbitrary shell commands and external
 network tools remain unavailable.
+
+The M5 verification authority maps every persisted definition of done to typed, scoped, fresh
+evidence and runs a separate adversarial review before M4 may report completion. Missing, stale,
+foreign, malformed, failed, contradictory, weak, or self-authored evidence blocks completion or
+returns a bounded repair request. Verifier output carries deterministic hashes, not private reasoning.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the current architecture map and
 [SECURITY.md](SECURITY.md) for the trust boundaries.

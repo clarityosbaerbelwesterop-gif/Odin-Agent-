@@ -8,13 +8,19 @@ import {
   type MissionEventData,
   MissionRuntime,
 } from "../../src/mission/runtime.js";
-import { CodingOrchestrator } from "../../src/runtime/coding.js";
+import { CodingOrchestrator, CodingVerificationGateError } from "../../src/runtime/coding.js";
 import { InMemoryToolAuditSink } from "../../src/tools/audit.js";
 import { InMemoryCapabilityPolicy } from "../../src/tools/policy.js";
 import { ToolRegistry } from "../../src/tools/registry.js";
 import { createRepositoryToolRegistrations } from "../../src/tools/repository.js";
 import { ToolRuntime } from "../../src/tools/runtime.js";
 import type { CapabilityGrant } from "../../src/tools/types.js";
+import { IndependentVerificationEngine } from "../../src/verification/engine.js";
+import type {
+  VerificationAuthority,
+  VerificationGateResult,
+  VerificationRequest,
+} from "../../src/verification/types.js";
 import {
   FIXED_NOW,
   FixtureQualityRunner,
@@ -39,10 +45,10 @@ const BUDGETS = {
   toolCalls: 30,
 } as const;
 
-function plan(expectedSha: string, qualityCommandId = "verify") {
+function plan(expectedSha: string, qualityCommandId = "verify", content = WRONG_CONTENT) {
   return modelResponse(
     {
-      change: { content: WRONG_CONTENT, expectedSha, path: TARGET_PATH },
+      change: { content, expectedSha, path: TARGET_PATH },
       qualityCommandId,
       task: {
         definitionOfDone: ["add returns the sum of both arguments"],
@@ -55,6 +61,24 @@ function plan(expectedSha: string, qualityCommandId = "verify") {
     40,
     20,
   );
+}
+
+class CapturingVerificationAuthority implements VerificationAuthority {
+  readonly requests: VerificationRequest[] = [];
+  readonly #engine = new IndependentVerificationEngine({ maxEvidenceAgeMs: 60_000 });
+  readonly #transform: (request: VerificationRequest) => VerificationRequest;
+
+  constructor(
+    transform: (request: VerificationRequest) => VerificationRequest = (request) => request,
+  ) {
+    this.#transform = transform;
+  }
+
+  verify(request: VerificationRequest): VerificationGateResult {
+    const captured = structuredClone(request);
+    this.requests.push(captured);
+    return this.#engine.verify(this.#transform(structuredClone(captured)));
+  }
 }
 
 function repair(expectedSha: string, content = REPAIRED_CONTENT) {
@@ -81,6 +105,7 @@ function orchestrator(input: {
   quality: FixtureQualityRunner;
   audit: InMemoryToolAuditSink;
   grants?: InMemoryCapabilityPolicy;
+  verification?: VerificationAuthority;
 }) {
   const toolStack = buildTools(input.workspace, input.quality, input.audit, input.grants);
   return new CodingOrchestrator({
@@ -92,6 +117,8 @@ function orchestrator(input: {
     provider: input.provider,
     quality: input.quality,
     tools: toolStack.tools,
+    verification:
+      input.verification ?? new IndependentVerificationEngine({ maxEvidenceAgeMs: 60_000 }),
   });
 }
 
@@ -109,7 +136,15 @@ test("M4 connects discovery, strict planning, scoped patch, failed gate, repair,
     repair(textHash(WRONG_CONTENT)),
   ]);
   const runtime = new MissionRuntime(store, () => FIXED_NOW);
-  const coding = orchestrator({ audit, mission: runtime, provider, quality, workspace });
+  const verification = new CapturingVerificationAuthority();
+  const coding = orchestrator({
+    audit,
+    mission: runtime,
+    provider,
+    quality,
+    verification,
+    workspace,
+  });
 
   const result = await coding.start({
     budgetLimits: BUDGETS,
@@ -125,6 +160,8 @@ test("M4 connects discovery, strict planning, scoped patch, failed gate, repair,
   assert.deepEqual(result.report.changedFiles, [TARGET_PATH]);
   assert.equal(result.report.quality.commandId, "verify");
   assert.equal(result.report.quality.finalExitCode, 0);
+  assert.equal(result.report.verification.outcome, "PASS");
+  assert.match(result.report.verification.resultHash, /^[a-f0-9]{64}$/u);
   assert.match(
     result.report.quality.firstFailureSignature ?? "",
     /^quality:verify:exit:1:sha256:/u,
@@ -136,6 +173,16 @@ test("M4 connects discovery, strict planning, scoped patch, failed gate, repair,
   assert.equal(workspace.content(TARGET_PATH), REPAIRED_CONTENT);
   assert.equal(workspace.patches.length, 2);
   assert.deepEqual(quality.seenCommandIds, ["verify", "verify"]);
+  assert.equal(verification.requests.length, 1);
+  const verificationRequest = verification.requests[0];
+  assert.ok(verificationRequest !== undefined);
+  assert.equal(verificationRequest.claims.length, 3);
+  assert.equal(verificationRequest.bindings.length, verificationRequest.claims.length);
+  assert.ok(
+    verificationRequest.evidence.every(
+      (evidence) => evidence.producer.class === "independent_tool",
+    ),
+  );
 
   assert.equal(provider.requests.length, 2);
   for (const request of provider.requests) {
@@ -299,6 +346,171 @@ test("a still-failing required quality gate transitions the mission to FAILED, n
   assert.deepEqual(quality.seenCommandIds, ["verify", "verify"]);
 });
 
+test("M5 stale evidence blocks M4 completion even after the quality command passes", async () => {
+  const workspace = new FixtureWorkspace(fixtureFiles());
+  const quality = new FixtureQualityRunner(workspace);
+  const audit = new InMemoryToolAuditSink();
+  const runtime = new MissionRuntime(new InMemoryEventStore<MissionEventData>(), () => FIXED_NOW);
+  const verification = new CapturingVerificationAuthority((request) => ({
+    ...request,
+    claims: request.claims.map((claim) => ({
+      ...claim,
+      requiredAfter: "2026-09-02T19:55:00.000Z",
+    })),
+    evidence: request.evidence.map((evidence) => ({
+      ...evidence,
+      observedAt: "2026-09-02T19:55:00.000Z",
+    })),
+  }));
+  const coding = orchestrator({
+    audit,
+    mission: runtime,
+    provider: new ScriptedProvider([plan(workspace.sha(TARGET_PATH), "verify", REPAIRED_CONTENT)]),
+    quality,
+    verification,
+    workspace,
+  });
+
+  await assert.rejects(
+    coding.start({
+      budgetLimits: BUDGETS,
+      missionId: "m5-stale-block",
+      objective: "Fix add function",
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof CodingVerificationGateError);
+      assert.equal(error.gate?.outcome, "BLOCK");
+      assert.ok(
+        error.gate?.verification.findings.some((finding) => finding.code === "evidence_stale"),
+      );
+      return true;
+    },
+  );
+  assert.equal((await runtime.load("m5-stale-block")).state, "BLOCKED");
+  assert.deepEqual(quality.seenCommandIds, ["verify"]);
+});
+
+test("M5 contradictory evidence blocks M4 completion", async () => {
+  const workspace = new FixtureWorkspace(fixtureFiles());
+  const quality = new FixtureQualityRunner(workspace);
+  const audit = new InMemoryToolAuditSink();
+  const runtime = new MissionRuntime(new InMemoryEventStore<MissionEventData>(), () => FIXED_NOW);
+  const verification = new CapturingVerificationAuthority((request) => {
+    const existing = request.evidence[0];
+    if (existing === undefined) throw new Error("M4 verification fixture evidence is missing.");
+    return {
+      ...request,
+      evidence: [
+        ...request.evidence,
+        {
+          ...existing,
+          contentHash: "c".repeat(64),
+          id: "evidence-contradiction",
+          status: "FAIL",
+        },
+      ],
+    };
+  });
+  const coding = orchestrator({
+    audit,
+    mission: runtime,
+    provider: new ScriptedProvider([plan(workspace.sha(TARGET_PATH), "verify", REPAIRED_CONTENT)]),
+    quality,
+    verification,
+    workspace,
+  });
+
+  await assert.rejects(
+    coding.start({
+      budgetLimits: BUDGETS,
+      missionId: "m5-conflict-block",
+      objective: "Fix add function",
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof CodingVerificationGateError);
+      assert.equal(error.gate?.outcome, "BLOCK");
+      assert.ok(
+        error.gate?.review.findings.some((finding) => finding.code === "evidence_conflict"),
+      );
+      return true;
+    },
+  );
+  assert.equal((await runtime.load("m5-conflict-block")).state, "BLOCKED");
+});
+
+test("M5 repair-required review returns a bounded request and still prevents completion", async () => {
+  const workspace = new FixtureWorkspace(fixtureFiles());
+  const quality = new FixtureQualityRunner(workspace);
+  const audit = new InMemoryToolAuditSink();
+  const runtime = new MissionRuntime(new InMemoryEventStore<MissionEventData>(), () => FIXED_NOW);
+  const verification = new CapturingVerificationAuthority((request) => ({
+    ...request,
+    evidence: request.evidence.map((evidence) => ({
+      ...evidence,
+      producer: { class: "runtime", id: "coding-runtime" },
+    })),
+  }));
+  const coding = orchestrator({
+    audit,
+    mission: runtime,
+    provider: new ScriptedProvider([plan(workspace.sha(TARGET_PATH), "verify", REPAIRED_CONTENT)]),
+    quality,
+    verification,
+    workspace,
+  });
+
+  await assert.rejects(
+    coding.start({
+      budgetLimits: BUDGETS,
+      missionId: "m5-repair-block",
+      objective: "Fix add function",
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof CodingVerificationGateError);
+      assert.equal(error.gate?.outcome, "REPAIR_REQUIRED");
+      assert.ok((error.gate?.review.repairRequest?.claimIds.length ?? 0) > 0);
+      assert.ok((error.gate?.review.repairRequest?.claimIds.length ?? 0) <= 32);
+      return true;
+    },
+  );
+  assert.equal((await runtime.load("m5-repair-block")).state, "BLOCKED");
+});
+
+test("a failed verification authority fails closed and leaves a blocked mission", async () => {
+  const workspace = new FixtureWorkspace(fixtureFiles());
+  const quality = new FixtureQualityRunner(workspace);
+  const audit = new InMemoryToolAuditSink();
+  const runtime = new MissionRuntime(new InMemoryEventStore<MissionEventData>(), () => FIXED_NOW);
+  const verification: VerificationAuthority = {
+    verify() {
+      throw new Error("fixture verifier unavailable");
+    },
+  };
+  const coding = orchestrator({
+    audit,
+    mission: runtime,
+    provider: new ScriptedProvider([plan(workspace.sha(TARGET_PATH), "verify", REPAIRED_CONTENT)]),
+    quality,
+    verification,
+    workspace,
+  });
+
+  await assert.rejects(
+    coding.start({
+      budgetLimits: BUDGETS,
+      missionId: "m5-authority-failure",
+      objective: "Fix add function",
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof CodingVerificationGateError);
+      assert.equal(error.gate, null);
+      assert.match(error.message, /failed closed/u);
+      return true;
+    },
+  );
+  assert.equal((await runtime.load("m5-authority-failure")).state, "BLOCKED");
+});
+
 test("missing capability registration denies bootstrap discovery before adapters are mutated", async () => {
   const workspace = new FixtureWorkspace(fixtureFiles());
   const quality = new FixtureQualityRunner(workspace);
@@ -316,6 +528,7 @@ test("missing capability registration denies bootstrap discovery before adapters
     provider: new ScriptedProvider([]),
     quality,
     tools,
+    verification: new IndependentVerificationEngine({ maxEvidenceAgeMs: 60_000 }),
   });
 
   await assert.rejects(
