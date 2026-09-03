@@ -1,7 +1,7 @@
 # Security model
 
-Status: design baseline plus implemented M1 provider, M3 tool-control, M5 verification, M6
-memory/context, M7 specialist coordination, M8 durable mission/worker, and M9 client-protocol
+Status: design baseline plus implemented M1 provider, M3 tool-control, M5 verification, M6 memory/context,
+M7 specialist coordination, M8 durable mission/worker, M9 client-protocol, and M10 skill-lifecycle
 safeguards. Controls not explicitly identified as implemented remain future work.
 
 ## Protected assets
@@ -165,10 +165,19 @@ Every context item carries origin/trust metadata. Tool results and external cont
 instructions. Model output is schema-validated before requesting a transition or tool. Untrusted
 observations cannot modify policy, protected skills, credentials, or durable user preferences.
 
-M10 skill packages must preserve this rule: compact discovery metadata may be broadly visible, but
-instructions load progressively and executable authority remains entirely in M3/tool policy. Learned
-or community skills must have provenance, versioning, tests, independent verification, staged
-promotion, and reversible rollback; they cannot self-promote or self-grant capabilities.
+Implemented M10 preserves this rule in `src/skills`: compact discovery omits instructions; normal
+resolution accepts only verified/active packages; learned/community packages start as candidates;
+package content is hash-addressed; independent passing evidence must bind the exact package hash; and
+activation/rollback require trusted runtime or user-approved actors. Model, worker, and runtime-authored
+verification claims cannot promote learned/community skills.
+
+Skill synthesis additionally requires an injected solved-task attestation and can create only a learned
+candidate with exact mission/task provenance. Exact replay is idempotent and conflicting replay fails
+closed. Lifecycle events record concise actor/producer/evidence references for registration,
+verification, activation, supersession, rollback, and revocation. Required-tool names are declarations
+only: M10 never registers an M3 handler, creates a capability grant, exposes credentials, or grants
+arbitrary host execution. Public skill downloads, package signing/marketplace trust, and executable
+skill sandboxes remain future work.
 
 ## Audit and privacy
 
