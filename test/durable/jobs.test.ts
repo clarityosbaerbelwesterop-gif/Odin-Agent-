@@ -137,10 +137,7 @@ test("lease tokens are returned only to the claimant while SQLite stores only th
     assert.ok(row);
     assert.equal(typeof row.lease_token_hash, "string");
     assert.notEqual(row.lease_token_hash, lease.token);
-    assert.equal(
-      row.lease_token_hash,
-      createHash("sha256").update(lease.token).digest("hex"),
-    );
+    assert.equal(row.lease_token_hash, createHash("sha256").update(lease.token).digest("hex"));
     store.close();
   } finally {
     await temporary.cleanup();
