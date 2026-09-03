@@ -1,9 +1,4 @@
-import {
-  assertSha256,
-  canonicalTimestamp,
-  identifier,
-  safeInteger,
-} from "./internal.js";
+import { assertSha256, canonicalTimestamp, identifier, safeInteger } from "./internal.js";
 import type { CachedRoutingResult, RoutingDecision } from "./types.js";
 import { RoutingError } from "./types.js";
 
@@ -71,7 +66,8 @@ export class BoundedRoutingResultCache {
     while (this.#entries.size > this.#maxEntries) {
       const oldest = [...this.#entries.values()].sort(
         (left, right) =>
-          Date.parse(left.createdAt) - Date.parse(right.createdAt) || left.key.localeCompare(right.key),
+          Date.parse(left.createdAt) - Date.parse(right.createdAt) ||
+          left.key.localeCompare(right.key),
       )[0];
       if (oldest === undefined) return;
       this.#entries.delete(oldest.key);

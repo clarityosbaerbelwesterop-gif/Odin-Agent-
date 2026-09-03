@@ -1,5 +1,5 @@
 import { identifier, safeInteger, sha256Json } from "./internal.js";
-import { EmpiricalModelRouter } from "./router.js";
+import type { EmpiricalModelRouter } from "./router.js";
 import type { RouteRequest, RoutingDecision, RoutingInputs } from "./types.js";
 import { RoutingError } from "./types.js";
 

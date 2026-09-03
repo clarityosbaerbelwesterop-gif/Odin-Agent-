@@ -110,7 +110,10 @@ export function normalizeEvaluation(value: unknown): ModelEvaluation {
   const contentHash = nonEmptyText(object.contentHash, "evaluation contentHash", 64);
   const expected = evaluationContentHash(input);
   if (contentHash !== expected) {
-    throw new RoutingError("EVALUATION_INVALID", "Evaluation content hash does not match its data.");
+    throw new RoutingError(
+      "EVALUATION_INVALID",
+      "Evaluation content hash does not match its data.",
+    );
   }
   return freezeEvaluation({ ...input, contentHash });
 }
@@ -181,12 +184,7 @@ function normalizeEvaluationInput(value: unknown): ModelEvaluationInput {
     }),
     profileVersion: identifier(object.profileVersion, "evaluation profileVersion"),
     provider: identifier(object.provider, "evaluation provider"),
-    qualityScoreBps: safeInteger(
-      object.qualityScoreBps,
-      "evaluation qualityScoreBps",
-      0,
-      10_000,
-    ),
+    qualityScoreBps: safeInteger(object.qualityScoreBps, "evaluation qualityScoreBps", 0, 10_000),
     reasoningEffort,
     samples: safeInteger(object.samples, "evaluation samples", 1, 1_000_000),
     taskClass,

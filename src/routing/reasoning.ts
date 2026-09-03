@@ -19,10 +19,10 @@ const BRANCH_KINDS: readonly ReasoningBranchKind[] = [
 ];
 
 export function createReasoningPlan(request: RouteRequest): ReasoningPlan {
-  const desiredBranches = desiredByRisk(request.risk, 1, 2, 3, 4) +
-    (request.uncertaintyBps >= 5_000 ? 1 : 0);
-  const desiredCritiques = desiredByRisk(request.risk, 0, 1, 1, 2) +
-    (request.uncertaintyBps >= 7_500 ? 1 : 0);
+  const desiredBranches =
+    desiredByRisk(request.risk, 1, 2, 3, 4) + (request.uncertaintyBps >= 5_000 ? 1 : 0);
+  const desiredCritiques =
+    desiredByRisk(request.risk, 0, 1, 1, 2) + (request.uncertaintyBps >= 7_500 ? 1 : 0);
   const desiredRepairs = desiredByRisk(request.risk, 1, 1, 2, 2);
 
   const branchCount = Math.min(
@@ -31,7 +31,10 @@ export function createReasoningPlan(request: RouteRequest): ReasoningPlan {
     request.budget.maxModelCalls,
   );
   if (branchCount < 1) {
-    throw new RoutingError("BUDGET_EXCEEDED", "Reasoning requires at least one bounded model call.");
+    throw new RoutingError(
+      "BUDGET_EXCEEDED",
+      "Reasoning requires at least one bounded model call.",
+    );
   }
 
   let remainingCalls = request.budget.maxModelCalls - branchCount;
@@ -48,11 +51,13 @@ export function createReasoningPlan(request: RouteRequest): ReasoningPlan {
     request.budget.maxModelCalls,
   );
   const branches = Object.freeze(
-    Array.from({ length: branchCount }, (_, index): ReasoningBranch =>
-      Object.freeze({
-        id: `branch-${index + 1}`,
-        kind: BRANCH_KINDS[index % BRANCH_KINDS.length] ?? "direct",
-      }),
+    Array.from(
+      { length: branchCount },
+      (_, index): ReasoningBranch =>
+        Object.freeze({
+          id: `branch-${index + 1}`,
+          kind: BRANCH_KINDS[index % BRANCH_KINDS.length] ?? "direct",
+        }),
     ),
   );
   const planBody = {
@@ -76,7 +81,13 @@ export class AdaptiveReasoningController {
     const signal = normalizeSignal(signalValue);
 
     if (signal.independent && signal.verdict === "PASS" && !signal.contradictory) {
-      return decision("ACCEPT", "Independent evidence accepted the current result.", route, state, signal);
+      return decision(
+        "ACCEPT",
+        "Independent evidence accepted the current result.",
+        route,
+        state,
+        signal,
+      );
     }
 
     if (signal.contradictory) {
@@ -144,14 +155,7 @@ export class AdaptiveReasoningController {
       state.escalationIndex < route.escalations.length &&
       state.modelCallsUsed < route.reasoning.maxModelCalls
     ) {
-      return decision(
-        "ESCALATE",
-        reason,
-        route,
-        state,
-        signal,
-        state.escalationIndex,
-      );
+      return decision("ESCALATE", reason, route, state, signal, state.escalationIndex);
     }
     return decision("BLOCK", `${reason} No safe escalation remains.`, route, state, signal);
   }
@@ -171,7 +175,10 @@ function normalizeState(value: ReasoningAttemptState, plan: ReasoningPlan): Reas
     critiquePassesUsed > plan.critiquePasses ||
     repairsUsed > plan.repairAttempts
   ) {
-    throw new RoutingError("BUDGET_EXCEEDED", "Reasoning attempt state exceeds its route ceilings.");
+    throw new RoutingError(
+      "BUDGET_EXCEEDED",
+      "Reasoning attempt state exceeds its route ceilings.",
+    );
   }
   return Object.freeze({ critiquePassesUsed, escalationIndex, modelCallsUsed, repairsUsed });
 }

@@ -41,7 +41,10 @@ test("sensitive and read-disabled routes never return cached results", () => {
     inputs,
   );
   const cache = new BoundedRoutingResultCache();
-  assert.equal(cache.put(sensitive, "artifact:sensitive", "2".repeat(64), "2026-09-03T12:00:00.000Z"), null);
+  assert.equal(
+    cache.put(sensitive, "artifact:sensitive", "2".repeat(64), "2026-09-03T12:00:00.000Z"),
+    null,
+  );
 
   const writeOnly = router.route(
     routeRequest({ cache: { ...routeRequest().cache, allowRead: false } }),

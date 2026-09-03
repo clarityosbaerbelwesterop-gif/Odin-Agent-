@@ -1,16 +1,16 @@
 export { BoundedRoutingResultCache } from "./cache.js";
 export {
-  createEvaluationRecord,
-  evaluationContentHash,
-  ModelEvaluationRegistry,
-  normalizeEvaluation,
-} from "./evaluations.js";
-export {
   evaluateRoutingFixture,
   type RoutingEvaluationCase,
   type RoutingEvaluationOutcome,
   type RoutingEvaluationSummary,
 } from "./eval-harness.js";
+export {
+  createEvaluationRecord,
+  evaluationContentHash,
+  ModelEvaluationRegistry,
+  normalizeEvaluation,
+} from "./evaluations.js";
 export { AdaptiveReasoningController, createReasoningPlan } from "./reasoning.js";
 export { EmpiricalModelRouter, normalizeRouteRequest } from "./router.js";
 export type {

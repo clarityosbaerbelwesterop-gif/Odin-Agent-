@@ -32,8 +32,10 @@ test("cheapest model wins only after satisfying the empirical quality floor", ()
   const route = new EmpiricalModelRouter().route(routeRequest(), standardInputs());
   assert.equal(route.primary.model, "cheap");
   assert.equal(route.effectiveQualityFloorBps, 7_000);
-  assert.equal(route.escalations[0]?.model, "strong");
-  assert.ok(route.primary.estimatedCostMicros < route.escalations[0]!.estimatedCostMicros);
+  const escalation = route.escalations[0];
+  assert.ok(escalation !== undefined);
+  assert.equal(escalation.model, "strong");
+  assert.ok(route.primary.estimatedCostMicros < escalation.estimatedCostMicros);
 });
 
 test("stronger model wins when cheap evidence is below floor and quality is never downgraded", () => {
@@ -44,7 +46,10 @@ test("stronger model wins when cheap evidence is below floor and quality is neve
 
   assert.throws(
     () =>
-      new EmpiricalModelRouter().route(routeRequest({ baseQualityFloorBps: 9_500 }), standardInputs()),
+      new EmpiricalModelRouter().route(
+        routeRequest({ baseQualityFloorBps: 9_500 }),
+        standardInputs(),
+      ),
     (error: unknown) => error instanceof RoutingError && error.code === "NO_ELIGIBLE_MODEL",
   );
 });

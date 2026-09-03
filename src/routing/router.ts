@@ -1,5 +1,5 @@
 import { CapabilityRegistry } from "../providers/index.js";
-import type { CapabilityProfile, ReasoningEffort } from "../providers/types.js";
+import type { CapabilityProfile } from "../providers/types.js";
 import { ModelEvaluationRegistry } from "./evaluations.js";
 import {
   assertSha256,
@@ -57,11 +57,7 @@ export class EmpiricalModelRouter {
     const profiles = normalizeProfiles(inputs.profiles, request.evaluatedAt);
     const evaluations = normalizeEvaluations(inputs.evaluations, profiles, request.evaluatedAt);
     const effectiveQualityFloorBps = effectiveQualityFloor(request, this.#config);
-    const fresh = freshestEvaluations(
-      evaluations,
-      request,
-      this.#config.maxEvaluationAgeMs,
-    );
+    const fresh = freshestEvaluations(evaluations, request, this.#config.maxEvaluationAgeMs);
     const reasons: string[] = [];
     const candidates: RoutingCandidate[] = [];
 
@@ -186,11 +182,7 @@ export function normalizeRouteRequest(value: unknown): RouteRequest {
     budget,
     cache,
     currency: nonEmptyText(object.currency, "route currency", 16),
-    estimatedInputTokens: safeInteger(
-      object.estimatedInputTokens,
-      "route estimatedInputTokens",
-      0,
-    ),
+    estimatedInputTokens: safeInteger(object.estimatedInputTokens, "route estimatedInputTokens", 0),
     estimatedOutputTokens: safeInteger(
       object.estimatedOutputTokens,
       "route estimatedOutputTokens",
@@ -239,11 +231,7 @@ function normalizeRequirements(value: unknown): RoutingRequirements {
     ...(object.minOutputTokens === undefined
       ? {}
       : {
-          minOutputTokens: safeInteger(
-            object.minOutputTokens,
-            "requirements minOutputTokens",
-            1,
-          ),
+          minOutputTokens: safeInteger(object.minOutputTokens, "requirements minOutputTokens", 1),
         }),
     strictStructuredOutput,
     structuredOutput,
@@ -274,16 +262,14 @@ function normalizeBudget(value: unknown): RouteRequest["budget"] {
     1_000,
   );
   if (maxParallelCalls > maxModelCalls) {
-    throw new RoutingError("INVALID_INPUT", "Parallel model calls cannot exceed total model calls.");
+    throw new RoutingError(
+      "INVALID_INPUT",
+      "Parallel model calls cannot exceed total model calls.",
+    );
   }
   return Object.freeze({
     maxBranches: safeInteger(object.maxBranches, "budget maxBranches", 1, 64),
-    maxCritiquePasses: safeInteger(
-      object.maxCritiquePasses,
-      "budget maxCritiquePasses",
-      0,
-      64,
-    ),
+    maxCritiquePasses: safeInteger(object.maxCritiquePasses, "budget maxCritiquePasses", 0, 64),
     maxEstimatedCostMicros: safeInteger(
       object.maxEstimatedCostMicros,
       "budget maxEstimatedCostMicros",
@@ -349,7 +335,10 @@ function normalizeProfiles(
     const profile = registry.resolve(value.provider, value.model);
     const key = profileKey(profile.provider, profile.model);
     if (profiles.has(key)) {
-      throw new RoutingError("INVALID_INPUT", `Duplicate routing profile ${profile.provider}/${profile.model}.`);
+      throw new RoutingError(
+        "INVALID_INPUT",
+        `Duplicate routing profile ${profile.provider}/${profile.model}.`,
+      );
     }
     if (Date.parse(profile.provenance.observedAt) > Date.parse(evaluatedAt)) {
       throw new RoutingError("INVALID_INPUT", "A model profile cannot originate in the future.");
@@ -424,7 +413,11 @@ function freshestEvaluations(
     const ageMs = Date.parse(request.evaluatedAt) - Date.parse(first.observedAt);
     if (ageMs <= maxAgeMs) selected.push(first);
   }
-  return Object.freeze(selected.sort((left, right) => evaluationRouteKey(left).localeCompare(evaluationRouteKey(right))));
+  return Object.freeze(
+    selected.sort((left, right) =>
+      evaluationRouteKey(left).localeCompare(evaluationRouteKey(right)),
+    ),
+  );
 }
 
 function effectiveQualityFloor(request: RouteRequest, config: EmpiricalRouterConfig): number {
@@ -494,7 +487,11 @@ function cacheDecision(
 ): RoutingCacheDecision {
   const enabled = !request.cache.sensitive && request.cache.maxAgeMs > 0;
   if (!enabled || (!request.cache.allowRead && !request.cache.allowWrite)) {
-    return Object.freeze({ maxAgeMs: request.cache.maxAgeMs, readAllowed: false, writeAllowed: false });
+    return Object.freeze({
+      maxAgeMs: request.cache.maxAgeMs,
+      readAllowed: false,
+      writeAllowed: false,
+    });
   }
   const key = sha256Json({
     contextHash: request.cache.contextHash,
@@ -565,10 +562,7 @@ function profileKey(provider: string, model: string): string {
 }
 
 function evaluationRouteKey(value: ModelEvaluation): string {
-  return [
-    value.provider,
-    value.model,
-    value.profileVersion,
-    value.reasoningEffort ?? "none",
-  ].join("\u0000");
+  return [value.provider, value.model, value.profileVersion, value.reasoningEffort ?? "none"].join(
+    "\u0000",
+  );
 }

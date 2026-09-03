@@ -45,9 +45,7 @@ test("reasoning plan obeys branch critique repair call and parallel ceilings", (
   assert.ok(route.reasoning.repairAttempts <= 2);
   assert.ok(route.reasoning.parallelism <= 3);
   assert.ok(
-    route.reasoning.branchCount +
-      route.reasoning.critiquePasses +
-      route.reasoning.repairAttempts <=
+    route.reasoning.branchCount + route.reasoning.critiquePasses + route.reasoning.repairAttempts <=
       route.reasoning.maxModelCalls,
   );
   assert.equal(

@@ -92,9 +92,7 @@ export function routingEvaluation(
   });
 }
 
-export function routeRequest(
-  overrides: Partial<RouteRequest> = {},
-): RouteRequest {
+export function routeRequest(overrides: Partial<RouteRequest> = {}): RouteRequest {
   const base: RouteRequest = {
     baseQualityFloorBps: 7_000,
     budget: {
