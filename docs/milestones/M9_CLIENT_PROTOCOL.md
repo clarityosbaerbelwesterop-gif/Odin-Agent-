@@ -1,6 +1,6 @@
 # M9 — Client protocol and responsive web contract
 
-Status: implementation in progress. Updated: 2026-09-03.
+Status: VERIFIED. Updated: 2026-09-03.
 
 ## Objective
 
@@ -20,12 +20,12 @@ app binaries, remote worker RPC, live provider execution, or production deployme
    commands; explicit pause/resume/cancel only; no direct event append, worker settlement, tool call,
    verifier bypass, or arbitrary state mutation.
 3. Reconnect/session projection: bootstrap snapshot plus cursor, bounded incremental events, duplicate
-   suppression, gap detection, stale snapshot/event rejection, and deterministic reducer state.
+   suppression, continuity checks, stale snapshot/event rejection, and deterministic reducer state.
 4. Responsive web shell: framework-free static HTML/CSS/JS served only as an M9 fixture/client asset;
    desktop/tablet/mobile layouts for mission status, task progress, budgets, durable worker activity,
    evidence status, reconnect state, and safe controls.
-5. Native strategy: document that native clients consume the same protocol and never host canonical
-   long-running state; no native executable is claimed in M9.
+5. Native strategy: native clients consume the same protocol and never host canonical long-running
+   state; no native executable is claimed in M9.
 
 ## Acceptance criteria
 
@@ -55,9 +55,12 @@ app binaries, remote worker RPC, live provider execution, or production deployme
 
 - Bootstrap returns one validated projection plus the latest durable lifecycle cursor known for that
   mission and a bounded event page.
-- Incremental reconnect uses strict `afterCursor` semantics. Duplicate events are idempotently ignored;
-  decreasing cursors, cursor gaps, foreign missions, changed hashes, or incompatible protocol versions
-  block the reducer and require a fresh bootstrap.
+- Incremental reconnect uses strict `afterCursor` chaining. Duplicate pages are idempotently ignored;
+  moving the requested cursor ahead of the accepted client cursor, foreign missions/sessions, changed
+  hashes, or incompatible protocol versions require a fresh bootstrap.
+- M8 lifecycle cursors are global while reads are mission-scoped, so numeric cursor values for one
+  mission do not have to be consecutive. Integrity is established by strict request/response chaining,
+  monotonic delivered events, exact scope, and event hashes rather than `cursor + 1` arithmetic.
 - A fresh client reducer receiving the same bootstrap/events reaches the same state independent of
   transport chunking. Client cache/state never becomes canonical mission truth.
 - Offline mutation is out of scope: a disconnected client may queue UI intent locally only in later
@@ -66,7 +69,7 @@ app binaries, remote worker RPC, live provider execution, or production deployme
 ### Responsive web shell
 
 - Use semantic accessible HTML and responsive CSS with no runtime framework dependency added solely
-  for M9. The shell must remain usable at phone, tablet, and desktop widths.
+  for M9. The shell remains usable at phone, tablet, and desktop widths.
 - Visible surfaces: mission header/state, task list, budget usage, durable worker counts/activity,
   verification/evidence summary, reconnect status/cursor, and explicit pause/resume/cancel controls.
 - Dangerous controls are visually distinct, require a deliberate confirmation interaction in the
@@ -82,27 +85,27 @@ app binaries, remote worker RPC, live provider execution, or production deployme
   logs, or persisted browser storage.
 - Reconnect events are integrity checked before projection. A client never skips malformed/tampered
   canonical data and continues silently.
-- UI rendering uses text content, not unsanitized HTML from mission/tool/model data.
+- UI rendering uses text content and DOM construction, not unsanitized HTML from mission/tool/model
+  data.
 - M3 permission checks and M5 completion evidence remain authoritative; M9 cannot weaken or replace
   them.
 
-## Verification strategy
+## Verification evidence
 
-Use deterministic in-memory/injected gateway fixtures plus temporary M8 SQLite stores. Required tests:
+Deterministic verification uses in-memory/injected gateway fixtures plus temporary M8 SQLite stores.
+The required suite covers protocol codec/version/unknown-field/size/timestamp rejection, exact-scope
+capabilities, stale expected versions, idempotency conflicts, pause/resume/cancel state-machine
+integration, reopen/reconnect, deterministic reducer paging, duplicate/tamper/scope failures, privacy,
+and static web accessibility/safe-rendering assertions.
 
-- protocol codec/version/unknown-field/size/timestamp rejection;
-- exact-scope command allow/deny and stale expected-version rejection;
-- command idempotency/conflicting replay;
-- pause/resume/cancel state-machine integration without arbitrary mutation;
-- bootstrap + reconnect after process/store reopen;
-- duplicate suppression and gap/foreign/hash-tamper fail-closed reducer behavior;
-- deterministic reducer replay from different page chunking;
-- privacy assertions for secrets/raw worker error/lease token/chain-of-thought fields;
-- static web asset checks for required landmarks, accessible controls, no inline unsafe dynamic HTML,
-  and responsive viewport metadata.
+An initial implementation checkpoint exposed two real failures: the compiled web-asset tests resolved
+assets below `dist/web`, but the static fixture was not staged there. The gate was not weakened. A
+small deterministic asset-copy step was added to the test build path and the same tests were rerun.
 
-M9 is `VERIFIED` only after implementation, adversarial repair, synchronized repository docs, and
-pull-request CI all pass with exact evidence recorded.
+GitHub Actions run `33773644733` passed on implementation head
+`bd25f831e6e1ef8f06829802af648469d9d6eb62` with **161 tests, 161 passes, 0 failures**. Aggregate
+coverage was **89.31% lines, 76.56% branches, and 95.41% functions**. Foundation verification, Biome,
+and strict TypeScript also passed.
 
 ## Out of scope
 
