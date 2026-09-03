@@ -1300,12 +1300,7 @@ function scalarCount(
 }
 
 function dbRun(database: DatabaseSync, sql: string, parameters: readonly SqlValue[]): void {
-  const statement = database.prepare(sql);
-  try {
-    statement.run(...parameters);
-  } finally {
-    statement.close();
-  }
+  database.prepare(sql).run(...parameters);
 }
 
 function dbGet(
@@ -1313,19 +1308,9 @@ function dbGet(
   sql: string,
   parameters: readonly SqlValue[],
 ): unknown | undefined {
-  const statement = database.prepare(sql);
-  try {
-    return statement.get(...parameters);
-  } finally {
-    statement.close();
-  }
+  return database.prepare(sql).get(...parameters);
 }
 
 function dbAll(database: DatabaseSync, sql: string, parameters: readonly SqlValue[]): unknown[] {
-  const statement = database.prepare(sql);
-  try {
-    return statement.all(...parameters) as unknown[];
-  } finally {
-    statement.close();
-  }
+  return database.prepare(sql).all(...parameters) as unknown[];
 }
