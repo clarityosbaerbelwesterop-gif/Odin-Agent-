@@ -5,73 +5,66 @@ Updated: 2026-09-03.
 ## Current state
 
 - Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).
-- `main` contains verified M0–M10 at M10 squash merge
-  `bfc76b57a3531f5b6824fa3a3c285c5a55fd13d0`.
-- Active branch: `agent/m11-adaptive-reasoning`; Draft PR #14 targets `main`.
-- M11 core plus the explicit token-budget acceptance fix is verified. Helper verification run
-  `33784031658` passed with 199/199 tests, normal PR run `33784322602` passed after the implementation
-  evidence checkpoint, and synchronized Roadmap/Architecture/Security/Handover run `33784732544`
-  passed.
-- M11 is repository/CI `VERIFIED`. The current evidence-only documentation checkpoint must preserve the
-  same green PR gate before exact-head squash merge.
-- The user has explicitly authorized merge after the verified gate and immediate continuation into M12.
+- `main` currently contains verified M0–M11 at M11 squash merge
+  `bd9c42a2c07918aed140aebcd0d0d59082a71678`.
+- Active branch: `agent/m12-production-hardening`; Draft PR #15 targets `main`.
+- M12-A/B local hardening and the provider-neutral sandbox lifecycle are repository/CI verified.
+- Normal PR run `33794095989` passed on human-authored head
+  `661510592ffa7e9c2370d8d0097f8355ea9f34fc` with **237/237 tests**, 0 failures, and aggregate coverage
+  **89.43% lines / 76.28% branches / 95.37% functions**.
+- M12 remains **PARTIALLY_VERIFIED**. No hosted sandbox provider, live model provider, deployment,
+  production migration, public traffic, billing, or paid resource was exercised.
+- The user has explicitly authorized merging verified work and immediate continuation into remaining
+  milestones/tranches.
 
-## M11 verified capability
+## M12-A/B partially verified capability
 
-M11 adds `src/routing` as a deterministic capability-amplification policy boundary:
+M12 currently adds a fail-closed local execution and sandbox-selection boundary:
 
-- hash-addressed independent/project model-evaluation records bound to exact provider, model, profile
-  version, task class, and supported reasoning effort;
-- model/runtime/worker self-evaluation, stale/future evidence, tampered hashes, conflicting records,
-  unsupported capabilities, and mismatched pricing fail closed;
-- capability filtering and a risk/uncertainty-adjusted quality floor execute before cost/latency
-  optimization, so a cheaper model cannot win by lowering required quality;
-- deterministic primary selection plus stronger eligible escalation routes;
+- canonical workspace root plus `realpath`/symlink escape enforcement for read, write, and cwd;
+- rejection of lexical traversal, absolute-path ambiguity, NUL/backslash ambiguity, and root-prefix
+  confusion;
+- stable trusted command IDs only, `shell: false`, runtime-owned executable/arguments, explicit
+  environment inheritance, concurrency ceilings, timeout/cancellation, and independent bounded
+  stdout/stderr;
+- process concurrency is reserved before asynchronous cwd resolution and released through `finally`,
+  preventing the race discovered during M12 testing;
+- outbound HTTPS/host/port/address policy with injected DNS evidence, private/reserved address denial,
+  and destination/redirect re-authorization;
+- exact `provider + model + profileVersion` binding to a sandbox backend;
+- provider credentials resolve with exact provider/model context; sandbox credentials remain behind
+  runtime-owned `credentialRef`s and are not exposed to model, worker, client, or public metadata;
+- M11 routing decisions deterministically select the corresponding sandbox backend for primary or
+  escalation routes;
+- remote sandbox allocation uses deterministic idempotency keys, collapses concurrent identical
+  creates, rejects conflicting replay, requires `destroy`, and provides replay-safe cleanup;
+- released sandbox allocations cannot silently become usable again;
+- optional provider expiry metadata is validated when present and structurally omitted when absent.
+
+This is a provider-neutral contract and bounded host-process boundary. It is **not** proof of a
+specific hosted sandbox API, kernel/container isolation, transport-level DNS pinning, or production
+readiness.
+
+## M11 verified capability retained beneath M12
+
+M11 remains the adaptive model/reasoning policy boundary:
+
+- hash-addressed independent/project evaluation records bind exact provider, model, profile version,
+  task class, and supported reasoning effort;
+- stale/future/self-authored/tampered evidence fails closed;
+- capability filtering and risk/uncertainty-adjusted quality floors run before cost/latency
+  optimization;
+- deterministic primary selection and bounded stronger escalation routes;
 - bounded branch, critique, repair, model-call, parallel-call, estimated-cost, and estimated-token
   ceilings;
-- `maxEstimatedTokens` derives a stricter effective model-call ceiling and blocks if even one estimated
-  call cannot fit;
-- bounded high-risk plans reserve targeted repair capacity before using every remaining call for
-  additional critique, preserving repair-before-escalation semantics;
-- `AdaptiveReasoningController` can only ACCEPT/CRITIQUE/REPAIR/ESCALATE/BLOCK and requires independent,
-  non-contradictory PASS evidence for ACCEPT;
-- bounded response-cache metadata is identity/freshness scoped and disabled for sensitive work;
-- an offline deterministic eval harness compares small/fast and stronger profiles without provider
-  calls or spend.
+- `AdaptiveReasoningController` accepts only with independent non-contradictory PASS evidence;
+- response-cache metadata is identity/freshness scoped and sensitive work disables caching;
+- offline evaluation compares small/fast and stronger profiles without live provider spend.
 
-M11 changes strategy selection only. It cannot mint M3 tool capabilities, manufacture M5 evidence,
-claim M7 ownership, promote M10 skills, obtain credentials, increase mission budgets, or deploy anything.
+M12 consumes M11 route identity but does not let routing mint M3 tool capabilities, manufacture M5
+evidence, claim M7 ownership, promote M10 skills, expand budgets, or expose credentials.
 
-## M11 evidence
-
-Canonical command remains:
-
-```bash
-npm ci
-npm run verify
-```
-
-The first normal M11 implementation run `33782424402` passed with **198/198 tests** and aggregate
-coverage **89.98% lines / 76.90% branches / 95.63% functions**. Acceptance review then found that the
-ROADMAP promised an explicit token ceiling while implementation had only call/branch/cost ceilings, so
-M11 was deliberately not merged.
-
-The token-ceiling tranche introduced `maxEstimatedTokens`. Its first test attempt exposed a fixture
-shape issue; the next exposed a real reasoning-plan defect in which four branches plus two critiques
-used all six calls and left no targeted repair slot. The implementation was corrected rather than
-weakening the test or gate.
-
-GitHub Actions helper verification run `33784031658` then passed the corrected implementation with
-**199 tests, 199 passes, 0 failures** and aggregate coverage **90.01% lines / 76.94% branches / 95.63%
-functions**. `src/routing/reasoning.ts` reached 94.24% line / 86.67% branch / 100% function coverage.
-Foundation validation, Biome, strict TypeScript, and the full repository suite passed.
-
-Normal pull-request CI run `33784322602` subsequently passed on human-authored evidence head
-`b002136c43d9ebbe7978e81606bc4f8d9c30eb35`. Fully synchronized M11 Roadmap, Architecture, Security,
-and Handover then passed normal PR CI run `33784732544`. Temporary helper workflows are absent from the
-clean branch.
-
-## Earlier verified evidence
+## Verified evidence history
 
 - M0 run `33664864552`.
 - M1 run `33667957350`.
@@ -90,32 +83,39 @@ clean branch.
   `0d47e31fec79b6341be2ced4b0d67df126eeabe4`.
 - M10 implementation run `33777800516` with 172 tests; clean docs run `33780349974`; final evidence
   run `33780616385`; squash merge `bfc76b57a3531f5b6824fa3a3c285c5a55fd13d0`.
+- M11 final squash merge `bd9c42a2c07918aed140aebcd0d0d59082a71678`; merge message records exact-head CI
+  `33784885858`.
+- M12-A/B implementation/lifecycle normal PR run `33794095989`: 237/237 tests, 0 failures,
+  89.43% line / 76.28% branch / 95.37% function coverage.
 
-CI uses injected provider/tool/worker/skill/routing boundaries and temporary local SQLite stores. M11
-used no live provider call, production traffic, public network write, deployment, production migration,
-or paid external resource.
+CI uses injected provider/tool/worker/skill/routing/sandbox boundaries and temporary local SQLite
+stores. M12-A/B used no live provider call, hosted sandbox call, deployment, production migration,
+public traffic, billing change, or paid external resource.
 
 ## Security and architecture boundaries
 
 - M3 remains the only tool execution/capability authority.
-- M5 remains completion authority; routing self-confidence cannot become independent evidence.
+- M5 remains completion authority; routing or sandbox success cannot become independent evidence.
 - M6 memory remains an in-memory contract; no production vector DB/FTS hybrid is claimed.
 - M7 ownership remains logical single-process coordination.
 - M8 durability remains local SQLite; no distributed cross-host fencing or exactly-once external effect
   is claimed.
 - M9 remains a local client protocol/reference UI proof, not hosted auth/realtime service.
-- M10 skill instructions remain procedure only; routing cannot promote or grant a skill.
-- M11 evaluations are offline deterministic evidence fixtures, not live-provider benchmark claims.
-- No production OS/process/container/worktree sandbox, hardened outbound network broker, live
-  MCP/Agent-Skills server, public service/auth/realtime transport, daemon/scheduler, omnichannel
-  integration, or live-provider E2E is implemented yet.
+- M10 skills remain procedure only; learned/community packages cannot self-promote.
+- M11 evaluations remain offline deterministic evidence fixtures, not live-provider benchmarks.
+- M12 host-process execution is not a kernel/container sandbox; outbound policy is not transport-level
+  DNS pinning; the remote sandbox interface is provider-neutral and injected, not live-provider proof.
+- No production public service/auth/realtime transport, distributed worker fleet, live MCP gateway,
+  production backup service, or live-provider E2E is verified yet.
 
 ## Exact next action
 
-Observe normal PR-specific `npm run verify` on this evidence-only M11 checkpoint. If green and PR #14
-remains mergeable, mark it ready and squash-merge with exact-head protection under the user's existing
-authorization. Then create a fresh M12 branch from the resulting `main` and begin deterministic local
-production-hardening work: canonical-root/symlink isolation, bounded process/workspace contracts,
-secret-safe environment/output limits, and outbound destination policy tests. Do not perform live
-provider calls, deployment, production migration, or paid-resource creation without separate explicit
-approval.
+1. Finish synchronizing M12-A/B documentation and obtain a final normal PR-specific `npm run verify`
+   on the exact clean head.
+2. If PR #15 remains mergeable, mark it ready and squash-merge with exact-head protection under the
+   user's authorization.
+3. Create a fresh branch from the resulting `main` for **M12-C**.
+4. Implement no-cost M12-C work: structured secret-safe observability, deterministic load/recovery
+   fixtures, backup/recovery contracts, release-evidence manifests, and fail-closed release gates.
+5. Do not perform live provider/sandbox calls, deployment, production migration, public traffic,
+   billing changes, or paid-resource creation without separate explicit approval.

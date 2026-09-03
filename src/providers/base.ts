@@ -111,7 +111,7 @@ export abstract class BaseProvider implements ModelProvider {
       });
     }
 
-    const credential = await this.resolveCredential();
+    const credential = await this.resolveCredential(request.model);
     const timeoutMs = options.timeoutMs ?? this.#defaultTimeoutMs;
     if (!Number.isInteger(timeoutMs) || timeoutMs <= 0) {
       throw new ProviderError({
@@ -132,10 +132,10 @@ export abstract class BaseProvider implements ModelProvider {
     });
   }
 
-  private async resolveCredential(): Promise<string> {
+  private async resolveCredential(model: string): Promise<string> {
     let credential: string;
     try {
-      credential = await this.#credentialResolver();
+      credential = await this.#credentialResolver(Object.freeze({ model, provider: this.id }));
     } catch (error) {
       throw new ProviderError({
         category: "authentication",

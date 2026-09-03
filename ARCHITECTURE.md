@@ -1,6 +1,6 @@
 # Odin architecture
 
-Status: M11 adaptive reasoning, empirical routing, and bounded efficiency verified, 2026-09-03.
+Status: M12-A/B local execution and provider-neutral sandbox lifecycle partially verified, 2026-09-03.
 
 ## Repository finding
 
@@ -14,24 +14,19 @@ system has been prematurely split into microservices.
 2. The model proposes; deterministic runtime and policy decide what executes.
 3. Important work cannot become complete without mapped verification evidence.
 4. Execution is scoped, interruptible, budgeted, and deny-by-default.
-5. Provider, tool, skill, memory, persistence, worker, client, and routing protocols are versioned boundaries.
+5. Provider, tool, skill, memory, persistence, worker, client, routing, and sandbox protocols are versioned boundaries.
 6. External content, repository content under analysis, tool output, model output, worker output, and
    client input are untrusted.
 7. Credentials remain in the trusted control plane and are never placed in model or client payloads.
 8. Consequential state changes and side effects are auditable without storing hidden reasoning.
 9. Context is compiled progressively from state and artifacts; raw history remains recoverable.
 10. Quality-per-cost may be optimized only after the required quality floor is preserved.
-11. Specialists propose bounded work; the runtime retains scheduling, ownership, acceptance, and
-    settlement.
-12. Local durability is not distributed correctness: SQLite recovery never implies exactly-once
-    external effects.
-13. Clients are observers/controllers. They cannot append arbitrary events, settle jobs, call tools or
-    models directly, or bypass M5 completion evidence.
-14. Skill instructions are reusable procedure, never authority. Learned/community skills require exact
-    provenance, independent verification, and trusted promotion before normal runtime loading.
-15. Adaptive reasoning is runtime policy, not model authority: route, branch, critique, repair,
-    escalation, cost, call, concurrency, and token ceilings remain runtime-owned and independently
-    verifiable.
+11. Specialists propose bounded work; the runtime retains scheduling, ownership, acceptance, and settlement.
+12. Local durability is not distributed correctness: SQLite recovery never implies exactly-once external effects.
+13. Clients are observers/controllers. They cannot append arbitrary events, settle jobs, call tools or models directly, or bypass M5 completion evidence.
+14. Skill instructions are reusable procedure, never authority. Learned/community skills require exact provenance, independent verification, and trusted promotion before normal runtime loading.
+15. Adaptive reasoning is runtime policy, not model authority: route, branch, critique, repair, escalation, cost, call, concurrency, and token ceilings remain runtime-owned and independently verifiable.
+16. Sandbox/provider selection is runtime policy: a routed model identity may select a configured sandbox backend, but models cannot choose a stronger sandbox scope or receive its raw credentials.
 
 ## Logical architecture
 
@@ -42,7 +37,8 @@ Web / future native clients
         -> deterministic mission runtime and scheduler
            -> planner / empirical model router / context compiler
               -> bounded branch / critique / repair / escalation policy
-           -> tool gateway -> isolated workers (future production sandbox)
+              -> exact model/profile sandbox binding
+           -> M3 tool gateway -> M12 execution/sandbox boundary -> workers
            -> verifier and repair loop
         -> canonical events / checkpoints / durable jobs / artifacts / memory / skills / eval metadata
 ```
@@ -50,8 +46,9 @@ Web / future native clients
 ### Trusted control plane
 
 Owns identity, sessions, missions, permissions, budgets, provider configuration, secret brokering,
-worker leases, canonical events, approvals, persistence, routing policy, and future client fan-out. It
-does not load arbitrary plugins in-process and does not trust client-supplied capability objects.
+worker leases, canonical events, approvals, persistence, routing policy, sandbox backend configuration,
+and future client fan-out. It does not load arbitrary plugins in-process and does not trust
+client/model-supplied capability or credential objects.
 
 ### Cognitive runtime
 
@@ -63,9 +60,11 @@ raise its own budget/quality evidence, or mark itself complete without required 
 ### Execution plane
 
 Runs filesystem, terminal, browser, repository, and programmatic-workflow tools behind policy and
-isolation boundaries. Host execution and unrestricted network access are never defaults. M3 implements
-the control boundary in front of execution; production process/container/worktree isolation remains
-future work.
+isolation boundaries. Host execution and unrestricted network access are never defaults. M3 remains
+the tool/capability authority. M12 adds canonical workspace enforcement, a bounded trusted-command
+host-process runner, fail-closed outbound destination policy, and a provider-neutral remote-sandbox
+lifecycle/binding boundary. The host-process runner is **not** kernel/container isolation, and no
+specific hosted sandbox provider is claimed until a real adapter is authorized and exercised.
 
 ### Knowledge and persistence plane
 
@@ -95,8 +94,8 @@ chaining, monotonic delivered events, scope, and event hashes rather than requir
 
 `src/providers` normalizes requests, responses, streaming, usage, tool calls, structured output, and
 typed errors across OpenAI, Anthropic, OpenRouter, NVIDIA, and explicit compatible endpoints. Unknown
-capabilities fail before credentials resolve. Tests use injected transports; live-provider end-to-end
-compatibility is not yet claimed.
+capabilities fail before credentials resolve. M12 extends the credential resolver with exact
+provider/model context. Tests use injected transports; live-provider end-to-end compatibility is not yet claimed.
 
 ### M2 — Mission runtime
 
@@ -153,10 +152,8 @@ paged reconnect, and a deterministic reducer. Foreign scope, changed hashes, uns
 stale projections, and continuity violations fail closed or require bootstrap resync.
 
 `web/` is a framework-free reference fixture showing mission state, tasks, budgets, durable worker
-activity, evidence, reconnect state, pause/resume, and deliberate cancel confirmation. It renders
-fixture data through text/DOM APIs, uses no live transport, and stores no mission state in browser
-persistent storage. M9 does not claim hosting, public auth, SSE/WebSocket transport, push, offline
-writes, or native binaries.
+activity, evidence, reconnect state, pause/resume, and deliberate cancel confirmation. It uses no live
+transport and stores no mission state in browser persistent storage.
 
 ### M10 — Progressive skill lifecycle and synthesis
 
@@ -166,11 +163,9 @@ independent verification, trusted promotion, deterministic supersession/rollback
 lifecycle audit events. Learned/community content never becomes normal runtime instruction merely
 because a model or worker claims success.
 
-`SkillSynthesisService` can convert an attested solved task into a learned `CANDIDATE` with exact source
-mission/task provenance and idempotency. It does not execute generated code, install public packages,
-register M3 tools, mint capabilities, expose credentials, or bypass M5/M7 authorities. This is
-capability amplification through verified reusable procedure, not evidence that a weaker base model
-has become AGI or universally equivalent to a stronger model.
+`SkillSynthesisService` can convert an attested solved task into a learned `CANDIDATE` with exact
+source mission/task provenance and idempotency. It does not execute generated code, install public
+packages, register M3 tools, mint capabilities, expose credentials, or bypass M5/M7 authorities.
 
 ### M11 — Adaptive reasoning, routing, and efficiency
 
@@ -181,14 +176,24 @@ offline small/fast-versus-stronger evaluation harness.
 
 `AdaptiveReasoningController` limits continuation to `ACCEPT`, `CRITIQUE`, `REPAIR`, `ESCALATE`, or
 `BLOCK`. Only independent non-contradictory PASS evidence can accept. Branch, critique, repair,
-model-call, parallel-call, cost, and estimated-token ceilings are runtime-owned. The explicit token
-ceiling derives a stricter effective call ceiling and blocks if even one estimated call cannot fit.
-When budget permits, the planner reserves targeted repair capacity before spending every remaining call
-on extra critique.
+model-call, parallel-call, cost, and estimated-token ceilings are runtime-owned.
 
-M11 is an offline deterministic policy/evaluation proof. It does not claim current live-provider
-benchmark superiority, production distributed caching, public traffic experimentation, or authority to
-expand M3/M5/M7/M10 permissions.
+### M12-A/B — Local execution hardening and sandbox backend boundary
+
+`src/sandbox` canonicalizes the trusted workspace root, denies lexical/canonical escape, bounds trusted
+subprocess execution, and evaluates outbound destinations before a future transport is allowed to use
+them. Sandbox backends are selected by exact provider/model/profile identity. Runtime-owned credential
+references are resolved only after binding checks, and M11 route decisions feed the selected exact
+model identity into sandbox allocation.
+
+Remote sandbox creation is idempotent per mission/task/backend/model/profile allocation identity.
+Identical sequential or concurrent replay shares one create operation; conflicting replay fails closed.
+Remote backends must implement cleanup, release is idempotent, and released sessions cannot be reused.
+Provider expiry metadata is validated when present and omitted when absent. These contracts are
+provider-neutral and have no live sandbox-provider proof yet.
+
+Normal PR run `33794095989` verified this tranche with 237/237 tests and aggregate coverage 89.43%
+lines / 76.28% branches / 95.37% functions.
 
 ## Current module map
 
@@ -197,7 +202,7 @@ src/
   mission/       mission aggregate, task DAG, state machine, budgets, checkpoints
   events/        append-only event contracts and in-memory contract adapter
   providers/     normalized model API, capability profiles, adapters, transport errors
-  tools/         tool discovery, policy, schemas, audit, repository execution boundary
+  tools/         tool discovery, policy, schemas, audit, repository execution authority
   runtime/       coding orchestrator, strict plan/repair, verification integration
   verification/  typed evidence verifier and adversarial review authority
   memory/        asynchronous scoped memory contracts and in-memory adapter
@@ -207,6 +212,7 @@ src/
   client/        M9 protocol codecs, controller gateway, reconnect reducer
   skills/        M10 progressive skill registry, synthesis, verification/promotion history
   routing/       M11 empirical model/effort selection, cache, eval harness, bounded reasoning
+  sandbox/       M12 canonical workspace, bounded process/network policy, backend lifecycle/routing
   artifacts/     content-addressed artifact byte/storage layer later
   cli/           user-facing entry point later
 web/             M9 responsive static reference client
@@ -214,15 +220,13 @@ web/             M9 responsive static reference client
 
 ## Next architecture milestone
 
-M12 hardens the local execution and release boundaries without weakening M3/M5/M11 policy. The first
-allowed tranche should implement deterministic local process/workspace isolation contracts,
-canonical-root and symlink escape prevention, bounded command/environment/output/timeout behavior,
-and outbound-destination policy tests behind injected adapters.
+M12-C completes the no-cost production-hardening work around the verified M12-A/B execution boundary:
+structured secret-safe observability, deterministic load/recovery evidence, backup/recovery contracts,
+release manifests, and fail-closed release gates.
 
-Live-provider smoke/evaluation matrices, production deployment, public service/auth transport,
-external sandboxes, and any paid infrastructure require separate explicit authorization and remain
-unproven until actually exercised. M12 must distinguish local hardening evidence from production or
-live-provider claims.
+Live-provider/sandbox smoke matrices, production deployment, public service/auth transport, and any
+paid infrastructure require separate explicit authorization and remain unproven until actually
+exercised.
 
 ## Storage and deployment direction
 
@@ -230,6 +234,6 @@ Local mode uses verified SQLite durability for mission events, checkpoints, jobs
 cursors. Server/team mode may later add PostgreSQL or a hosted job transport behind the same domain
 contracts. Large outputs should become content-addressed artifacts rather than embedded event/job data.
 
-The MVP remains a modular service plus isolated worker process, not a fleet of speculative
+The MVP remains a modular service plus isolated worker boundary, not a fleet of speculative
 microservices. Split a component only when isolation, independent scaling, or failure containment is
 demonstrated. Mobile clients never host the canonical long-running runtime.
