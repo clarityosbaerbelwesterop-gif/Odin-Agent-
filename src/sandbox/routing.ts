@@ -1,5 +1,5 @@
 import type { RoutingCandidate, RoutingDecision } from "../routing/types.js";
-import { type SandboxSession, SandboxBackendRegistry } from "./backend.js";
+import type { SandboxBackendRegistry, SandboxSession } from "./backend.js";
 import { SandboxError } from "./types.js";
 
 export type SandboxRouteChoice =
@@ -29,7 +29,10 @@ export class RoutedSandboxAllocator {
 
   async allocate(request: RoutedSandboxAllocationRequest): Promise<RoutedSandboxSession> {
     if (typeof request.decision !== "object" || request.decision === null) {
-      throw new SandboxError("BACKEND_INVALID", "Routing decision is required for sandbox allocation.");
+      throw new SandboxError(
+        "BACKEND_INVALID",
+        "Routing decision is required for sandbox allocation.",
+      );
     }
     const candidate = selectedCandidate(request.decision, request.choice);
     const session = await this.#registry.allocate({
