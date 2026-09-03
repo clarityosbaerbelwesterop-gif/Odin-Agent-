@@ -84,7 +84,7 @@ GitHub Actions run `33724426019` passed on M5 implementation head
 
 ## M8–M12
 
-- [ ] M8 persistent workers, event fan-out, reconnect, and long-running recovery.
+- [ ] M8 contract defined; persistent events/jobs, durable leases, reconnect, and recovery pending.
 - [ ] M9 responsive web client and native-client protocol strategy.
 - [ ] M10 progressively loaded, permissioned, independently tested skills.
 - [ ] M11 empirical model routing, caching, concurrency, and cost optimization.
