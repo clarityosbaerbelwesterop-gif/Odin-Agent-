@@ -84,7 +84,7 @@ GitHub Actions run `33724426019` passed on M5 implementation head
 
 ## M8–M12
 
-- [ ] M8 contract defined; persistent events/jobs, durable leases, reconnect, and recovery pending.
+- [ ] M8 implementation present: SQLite mission events/checkpoints, fenced durable jobs, lifecycle cursors, runner recovery, and 32-job fixture; final CI/evidence synchronization pending.
 - [ ] M9 responsive web client and native-client protocol strategy.
 - [ ] M10 progressively loaded, permissioned, independently tested skills.
 - [ ] M11 empirical model routing, caching, concurrency, and cost optimization.
