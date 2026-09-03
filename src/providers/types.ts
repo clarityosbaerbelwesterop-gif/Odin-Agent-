@@ -179,4 +179,9 @@ export interface ModelProvider {
   stream(request: ModelRequest, options?: ProviderCallOptions): AsyncIterable<ModelStreamEvent>;
 }
 
-export type CredentialResolver = () => Promise<string> | string;
+export interface ProviderCredentialContext {
+  readonly provider: string;
+  readonly model: string;
+}
+
+export type CredentialResolver = (context: ProviderCredentialContext) => Promise<string> | string;

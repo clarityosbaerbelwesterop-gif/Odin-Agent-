@@ -193,3 +193,32 @@ test("OpenAI streaming emits deltas, usage, and one normalized completion", asyn
   );
   assert.equal(JSON.parse(transport.requests[0]?.body ?? "{}").stream, true);
 });
+
+test("credential resolver receives exact provider and model context", async () => {
+  const transport = new MockTransport((request) => {
+    const body = JSON.parse(request.body) as { model: string };
+    return jsonResponse({ ...openAIResponse(), model: body.model });
+  });
+  const contexts: Array<Readonly<{ model: string; provider: string }>> = [];
+  const provider = new OpenAIProvider({
+    capabilities: new CapabilityRegistry([
+      capabilityProfile("openai", "model-a"),
+      capabilityProfile("openai", "model-b"),
+    ]),
+    credential: (context) => {
+      contexts.push(Object.freeze({ ...context }));
+      return context.model === "model-a" ? "key-a" : "key-b";
+    },
+    transport,
+  });
+
+  await provider.generate(basicRequest("model-a"));
+  await provider.generate(basicRequest("model-b"));
+
+  assert.deepEqual(contexts, [
+    { model: "model-a", provider: "openai" },
+    { model: "model-b", provider: "openai" },
+  ]);
+  assert.equal(transport.requests[0]?.headers.authorization, "Bearer key-a");
+  assert.equal(transport.requests[1]?.headers.authorization, "Bearer key-b");
+});
