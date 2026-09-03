@@ -23,8 +23,8 @@ export const TOOL_VERSION = "1";
 export const MAX_RELEVANT_FILES = 4;
 export const MAX_FILE_BYTES = 20_000;
 
-const QUALITY_PREFIX = "quality:";
-const CHANGED_FILE_PREFIX = "changed-file:";
+export const QUALITY_DEFINITION_PREFIX = "quality:";
+export const CHANGED_FILE_DEFINITION_PREFIX = "changed-file:";
 
 export const ZERO_COUNTERS: BudgetCounters = Object.freeze({
   attempts: 0,
@@ -133,6 +133,10 @@ export interface CodingFinalReport {
   readonly attempts: number;
   readonly changedFiles: readonly string[];
   readonly quality: CodingQualityEvidence;
+  readonly verification: {
+    readonly outcome: "PASS";
+    readonly resultHash: string;
+  };
   readonly auditReferences: readonly string[];
   readonly limitations: readonly string[];
 }
@@ -220,11 +224,11 @@ export function planTasks(plan: CodingPlan): readonly MissionTaskInput[] {
       ...plan.task,
       definitionOfDone: [
         ...plan.task.definitionOfDone,
-        `${CHANGED_FILE_PREFIX}${plan.change.path}`,
+        `${CHANGED_FILE_DEFINITION_PREFIX}${plan.change.path}`,
       ],
     },
     {
-      definitionOfDone: [`${QUALITY_PREFIX}${plan.qualityCommandId}`],
+      definitionOfDone: [`${QUALITY_DEFINITION_PREFIX}${plan.qualityCommandId}`],
       dependsOn: [plan.task.id],
       id: QUALITY_TASK_ID,
       priority: 0,
@@ -306,11 +310,13 @@ export function latestFailureSignature(snapshot: MissionSnapshot): string {
 
 export function changedFileFromMission(snapshot: MissionSnapshot): string {
   const task = changeTaskFromMission(snapshot);
-  const marker = task.definitionOfDone.find((item) => item.startsWith(CHANGED_FILE_PREFIX));
+  const marker = task.definitionOfDone.find((item) =>
+    item.startsWith(CHANGED_FILE_DEFINITION_PREFIX),
+  );
   if (marker === undefined) {
     throw new MissionDomainError("Mission is missing its changed-file marker.");
   }
-  const path = marker.slice(CHANGED_FILE_PREFIX.length);
+  const path = marker.slice(CHANGED_FILE_DEFINITION_PREFIX.length);
   if (path.trim() === "") throw new MissionDomainError("Mission changed-file marker is empty.");
   return path;
 }
@@ -318,11 +324,11 @@ export function changedFileFromMission(snapshot: MissionSnapshot): string {
 export function qualityCommandFromMission(snapshot: MissionSnapshot): string {
   const task = snapshot.tasks.find((candidate) => candidate.id === QUALITY_TASK_ID);
   if (task === undefined) throw new MissionDomainError("Mission is missing the M4 quality task.");
-  const marker = task.definitionOfDone.find((item) => item.startsWith(QUALITY_PREFIX));
+  const marker = task.definitionOfDone.find((item) => item.startsWith(QUALITY_DEFINITION_PREFIX));
   if (marker === undefined) {
     throw new MissionDomainError("Mission is missing its quality command marker.");
   }
-  const commandId = marker.slice(QUALITY_PREFIX.length);
+  const commandId = marker.slice(QUALITY_DEFINITION_PREFIX.length);
   if (commandId.trim() === "") throw new MissionDomainError("Mission quality marker is empty.");
   return commandId;
 }
@@ -331,7 +337,7 @@ export function changeTaskFromMission(snapshot: MissionSnapshot): MissionSnapsho
   const task = snapshot.tasks.find(
     (candidate) =>
       candidate.id !== QUALITY_TASK_ID &&
-      candidate.definitionOfDone.some((item) => item.startsWith(CHANGED_FILE_PREFIX)),
+      candidate.definitionOfDone.some((item) => item.startsWith(CHANGED_FILE_DEFINITION_PREFIX)),
   );
   if (task === undefined) throw new MissionDomainError("Mission is missing the M4 change task.");
   return task;
@@ -482,7 +488,9 @@ export function isJsonObject(value: JsonValue | undefined): value is JsonObject 
 function rejectReservedDefinitionMarkers(values: readonly string[]): void {
   if (
     values.some(
-      (value) => value.startsWith(QUALITY_PREFIX) || value.startsWith(CHANGED_FILE_PREFIX),
+      (value) =>
+        value.startsWith(QUALITY_DEFINITION_PREFIX) ||
+        value.startsWith(CHANGED_FILE_DEFINITION_PREFIX),
     )
   ) {
     throw new MissionDomainError(

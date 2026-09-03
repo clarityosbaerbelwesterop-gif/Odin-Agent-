@@ -8,6 +8,7 @@ import type { JsonObject, ModelProvider, ModelResponse } from "../providers/type
 import type { QualityCommandRunner } from "../tools/repository.js";
 import type { ToolRuntime } from "../tools/runtime.js";
 import type { CapabilityGrant, ToolExecutionRequest } from "../tools/types.js";
+import type { VerificationAuthority, VerificationGateResult } from "../verification/types.js";
 import {
   auditReference,
   BOOTSTRAP_TASK_ID,
@@ -21,6 +22,7 @@ import {
   type CodingRunResult,
   type CodingStartInput,
   changedFileFromMission,
+  changeTaskFromMission,
   eventKey,
   grantExpiry,
   integerField,
@@ -54,6 +56,7 @@ import {
   validateUsage,
   ZERO_COUNTERS,
 } from "./coding-contract.js";
+import { createCodingVerificationRequest } from "./coding-verification.js";
 
 export type {
   CodingCompletedResult,
@@ -80,7 +83,18 @@ export interface CodingRuntimeDependencies {
   readonly grants: CapabilityGrantSink;
   readonly quality: QualityCommandRunner;
   readonly audit: ToolAuditReader;
+  readonly verification: VerificationAuthority;
   readonly clock?: () => string;
+}
+
+export class CodingVerificationGateError extends MissionDomainError {
+  readonly gate: VerificationGateResult | null;
+
+  constructor(message: string, gate: VerificationGateResult | null) {
+    super(message);
+    this.name = "CodingVerificationGateError";
+    this.gate = gate;
+  }
 }
 
 export class CodingOrchestrator {
@@ -91,6 +105,7 @@ export class CodingOrchestrator {
   readonly #grants: CapabilityGrantSink;
   readonly #quality: QualityCommandRunner;
   readonly #audit: ToolAuditReader;
+  readonly #verification: VerificationAuthority;
   readonly #clock: () => string;
   #grantSerial = 0;
 
@@ -102,6 +117,7 @@ export class CodingOrchestrator {
     this.#grants = dependencies.grants;
     this.#quality = dependencies.quality;
     this.#audit = dependencies.audit;
+    this.#verification = dependencies.verification;
     this.#clock = dependencies.clock ?? (() => new Date().toISOString());
   }
 
@@ -154,13 +170,6 @@ export class CodingOrchestrator {
     snapshot = await this.#mission.setTaskStatus(
       snapshot.id,
       snapshot.version,
-      plan.task.id,
-      "VERIFIED",
-      eventKey(snapshot, "change-verified"),
-    );
-    snapshot = await this.#mission.setTaskStatus(
-      snapshot.id,
-      snapshot.version,
       QUALITY_TASK_ID,
       "RUNNING",
       eventKey(snapshot, "quality-running"),
@@ -171,7 +180,7 @@ export class CodingOrchestrator {
     snapshot = firstQuality.snapshot;
     if (firstQuality.exitCode === 0) {
       return {
-        report: await this.#complete(snapshot, plan.qualityCommandId, null, [plan.change.path]),
+        report: await this.#complete(snapshot, firstQuality, null, [plan.change.path]),
         status: "completed",
       };
     }
@@ -314,24 +323,73 @@ export class CodingOrchestrator {
       );
     }
 
-    return this.#complete(snapshot, qualityCommandId, failureSignature, [targetPath]);
+    return this.#complete(snapshot, finalQuality, failureSignature, [targetPath]);
   }
 
   async #complete(
     initial: MissionSnapshot,
-    qualityCommandId: string,
+    finalQuality: QualityRunResult,
     firstFailureSignature: string | null,
     changedFiles: readonly string[],
   ): Promise<CodingFinalReport> {
     if (initial.state !== "VERIFYING") {
       throw new MissionDomainError("Completion requires the mission to be in VERIFYING.");
     }
-    let snapshot = await this.#mission.setTaskStatus(
-      initial.id,
-      initial.version,
+    let snapshot = initial;
+    const observedFiles: RepositoryFileEvidence[] = [];
+    for (const [index, path] of [...new Set(changedFiles)].sort().entries()) {
+      const observed = await this.#readMissionFile(
+        snapshot,
+        QUALITY_TASK_ID,
+        path,
+        `verification-read-${index}`,
+      );
+      snapshot = observed.snapshot;
+      observedFiles.push(observed.file);
+    }
+
+    let verification: VerificationGateResult;
+    try {
+      verification = this.#verification.verify(
+        createCodingVerificationRequest({
+          evaluatedAt: this.#clock(),
+          mission: snapshot,
+          observedFiles,
+          quality: finalQuality,
+        }),
+      );
+    } catch {
+      return this.#denyCompletion(
+        snapshot,
+        "verification-authority-failed",
+        "Independent verification failed closed.",
+        null,
+      );
+    }
+    if (!isPassingVerificationGate(verification, snapshot.id)) {
+      const outcome = verificationOutcome(verification);
+      await this.#denyCompletion(
+        snapshot,
+        `verification-${outcome.toLowerCase()}`,
+        `Independent verification denied completion with ${outcome}.`,
+        verification,
+      );
+    }
+
+    const changeTaskId = changeTaskFromMission(snapshot).id;
+    snapshot = await this.#mission.setTaskStatus(
+      snapshot.id,
+      snapshot.version,
+      changeTaskId,
+      "VERIFIED",
+      eventKey(snapshot, "change-verified"),
+    );
+    snapshot = await this.#mission.setTaskStatus(
+      snapshot.id,
+      snapshot.version,
       QUALITY_TASK_ID,
       "VERIFIED",
-      eventKey(initial, "quality-verified"),
+      eventKey(snapshot, "quality-verified"),
     );
     snapshot = await this.#mission.transition(
       snapshot.id,
@@ -374,14 +432,33 @@ export class CodingOrchestrator {
         outputTokens: snapshot.budgetUsage.outputTokens,
       },
       quality: {
-        commandId: qualityCommandId,
+        commandId: finalQuality.commandId,
         finalExitCode: 0,
         firstFailureSignature,
       },
       state: "COMPLETED",
       taskStatuses: { ...snapshot.taskStatuses },
       toolCalls: snapshot.budgetUsage.toolCalls,
+      verification: {
+        outcome: "PASS",
+        resultHash: verification.resultHash,
+      },
     };
+  }
+
+  async #denyCompletion(
+    snapshot: MissionSnapshot,
+    label: string,
+    message: string,
+    gate: VerificationGateResult | null,
+  ): Promise<never> {
+    await this.#mission.transition(
+      snapshot.id,
+      snapshot.version,
+      "BLOCKED",
+      eventKey(snapshot, label),
+    );
+    throw new CodingVerificationGateError(message, gate);
   }
 
   async #discoverBootstrap(
@@ -660,4 +737,33 @@ export class CodingOrchestrator {
     }
     return snapshot;
   }
+}
+
+function isPassingVerificationGate(
+  gate: unknown,
+  missionId: string,
+): gate is VerificationGateResult {
+  if (!isRecord(gate) || !isRecord(gate.verification) || !isRecord(gate.review)) return false;
+  return (
+    gate.outcome === "PASS" &&
+    gate.verification.verdict === "PASS" &&
+    gate.verification.missionId === missionId &&
+    gate.review.verdict === "ACCEPT" &&
+    gate.review.missionId === missionId &&
+    gate.review.verificationResultHash === gate.verification.resultHash &&
+    typeof gate.resultHash === "string" &&
+    /^[a-f0-9]{64}$/u.test(gate.resultHash) &&
+    typeof gate.verification.resultHash === "string" &&
+    /^[a-f0-9]{64}$/u.test(gate.verification.resultHash) &&
+    typeof gate.review.resultHash === "string" &&
+    /^[a-f0-9]{64}$/u.test(gate.review.resultHash)
+  );
+}
+
+function verificationOutcome(gate: unknown): string {
+  return isRecord(gate) && typeof gate.outcome === "string" ? gate.outcome : "INVALID";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
