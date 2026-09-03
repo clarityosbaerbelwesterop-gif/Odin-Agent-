@@ -1,6 +1,6 @@
 # Odin architecture
 
-Status: M5 verification-engine implementation checkpoint, 2026-09-03.
+Status: M5 verification-engine verified checkpoint, 2026-09-03.
 
 ## Repository finding
 

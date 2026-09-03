@@ -17,12 +17,13 @@ Updated: 2026-09-03.
 M0 repository foundation, M1 provider core, M2 deterministic mission runtime, M3 fail-closed tool
 runtime, and M4 coding vertical slice are merged and verified in pull-request CI.
 
-M5 implementation and local verification are complete. The original PR #7 checkpoint
+M5 implementation is verified in pull-request CI. The original PR #7 checkpoint
 `cf0adff3c831ba5ee2ce010ab7fca0523022dc11` was not complete: Actions run `33679627182` failed in
 Biome, the branch had no M5 tests, and M4 completion did not consume the verifier. The repaired branch
 adds fail-closed evidence/reviewer validation, 16 dedicated verification and M4 gate scenarios, and
-requires M5 before M4 can mark tasks verified or enter completion. M5 remains
-`PARTIALLY_VERIFIED` until the updated pull-request CI run passes.
+requires M5 before M4 can mark tasks verified or enter completion. Actions run `33724426019` passed
+the complete implementation checkpoint. M5 is `VERIFIED`; this synchronized documentation commit is
+the final PR checkpoint.
 
 Odin still does not claim a production coding agent, OS-level sandbox, arbitrary shell execution,
 external network tools, durable database persistence, live-provider end-to-end compatibility, mobile
@@ -45,9 +46,10 @@ npm run verify
   `0a9a76bc7ce2b52e8e879d81d3b261a8168efb29`.
 - M4 implementation run `33678970596` passed with 61 tests, and final documentation run
   `33679222149` passed before merge `c60ee329d66511dfbd708176c850557d48e9c9df`.
-- Current M5 local gate: `npm run verify` passes with 77 tests, 0 failures, strict TypeScript, Biome,
-  foundation validation, and aggregate coverage above configured floors. This is local evidence only;
-  the updated PR run is still required.
+- M5 implementation run `33724426019` passed at
+  `f28bcb9758c2079d9f46826ea672c19bd6e538ff`: foundation validation, Biome, and strict TypeScript
+  passed; 77 tests passed with 0 failures; aggregate coverage was 87.83% lines, 74.73% branches, and
+  94.29% functions.
 
 Provider tests remain injected-transport contracts with synthetic fixtures. M4/M5 integration tests
 remain scripted-provider, in-memory event/audit, and injected workspace/quality contracts. CI performs
@@ -85,7 +87,6 @@ no live provider call, network tool action, production repository mutation, depl
 
 ## Open risks
 
-- Updated M5 pull-request CI has not yet supplied the required remote checkpoint.
 - Provider adapters have not been exercised in an opt-in live end-to-end smoke test.
 - Repository workspace and quality adapters remain injected seams; production sandboxing,
   canonical-root/symlink enforcement, process isolation, CPU/memory/output limits, and worker leases
@@ -100,7 +101,8 @@ no live provider call, network tool action, production repository mutation, depl
 
 ## Exact next action
 
-Push the repaired M5 checkpoint to the existing PR #7 and observe its full Actions result. If green,
-record the run/commit/coverage evidence, mark M5 verified, run the documentation-only checkpoint, and
-observe that final CI result. Only then begin an M6 task contract for working/project memory, source
-precedence, structured session snapshots, context priorities, and deterministic context compilation.
+Keep PR #7 unmerged until explicitly authorized. After the synchronized M5 documentation checkpoint
+passes, create an M6 branch/task contract from the M5 head and implement the smallest coherent
+working/project-memory and context-compiler slice: source precedence, versioned records, deterministic
+priority budgeting, structured snapshots, and retrieval tests. Do not claim durable database memory,
+embeddings, or production cache behavior in that slice.

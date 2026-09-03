@@ -50,15 +50,15 @@ SQLite/PostgreSQL recovery.
 
 ## M5 — Verification engine
 
-- [ ] Typed claim/evidence/binding contracts and deterministic fail-closed verifier.
-- [ ] Independent adversarial review with validated `ACCEPT`, `BLOCK`, and bounded
+- [x] Typed claim/evidence/binding contracts and deterministic fail-closed verifier.
+- [x] Independent adversarial review with validated `ACCEPT`, `BLOCK`, and bounded
   `REPAIR_REQUIRED` outcomes.
-- [ ] M4 completion gated by fresh, scoped, hash-addressed M5 evidence.
-- [ ] Required verifier and coding-integration regression scenarios pass.
-- [ ] Final pull-request CI result observed and recorded.
+- [x] M4 completion gated by fresh, scoped, hash-addressed M5 evidence.
+- [x] Required verifier and coding-integration regression scenarios pass.
+- [x] Pull-request implementation CI result observed and recorded.
 
-Implementation and local verification are complete on the M5 branch. Checkboxes remain open until
-the pull-request CI checkpoint provides remote repository evidence.
+GitHub Actions run `33724426019` passed on M5 implementation head
+`f28bcb9758c2079d9f46826ea672c19bd6e538ff` with 77 tests and all configured gates.
 
 ## M6–M12
 
