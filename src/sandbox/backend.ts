@@ -119,13 +119,19 @@ interface InflightAllocation {
   readonly promise: Promise<SandboxSession>;
 }
 
+interface InflightRelease {
+  readonly reason: SandboxReleaseReason;
+  readonly promise: Promise<void>;
+}
+
 export class SandboxBackendRegistry {
   readonly #backends = new Map<string, RegisteredBackend>();
   readonly #bindings = new Map<string, NormalizedBinding>();
   readonly #credentialResolver: SandboxCredentialResolver;
   readonly #allocations = new Map<string, AllocationRecord>();
   readonly #inflight = new Map<string, InflightAllocation>();
-  readonly #released = new Set<string>();
+  readonly #releaseInflight = new Map<string, InflightRelease>();
+  readonly #released = new Map<string, SandboxReleaseReason>();
 
   constructor(
     registrations: readonly SandboxBackendRegistration[],
@@ -318,7 +324,21 @@ export class SandboxBackendRegistry {
     if (stored === undefined || !sameSession(stored.session, session)) {
       throw new SandboxError("SESSION_INVALID", "Sandbox session is unknown or does not match.");
     }
-    if (this.#released.has(session.allocationKey)) return "REPLAYED";
+
+    const releasedReason = this.#released.get(session.allocationKey);
+    if (releasedReason !== undefined) {
+      assertReleaseReason(releasedReason, request.reason);
+      return "REPLAYED";
+    }
+    const inflight = this.#releaseInflight.get(session.allocationKey);
+    if (inflight !== undefined) {
+      assertReleaseReason(inflight.reason, request.reason);
+      await inflight.promise;
+      if (request.signal.aborted) {
+        throw new SandboxError("CANCELLED", "Sandbox release replay was cancelled.");
+      }
+      return "REPLAYED";
+    }
 
     const binding = this.#bindings.get(modelKey(session));
     if (binding === undefined || binding.backendId !== session.backendId) {
@@ -329,31 +349,47 @@ export class SandboxBackendRegistry {
       throw new SandboxError("BACKEND_NOT_FOUND", "Sandbox backend is unavailable.");
     }
 
-    if (backend.adapter.destroy !== undefined) {
-      const credential = backend.descriptor.requiresCredential
-        ? await this.#resolveCredential(binding.credentialRef)
-        : undefined;
-      if (request.signal.aborted) {
-        throw new SandboxError("CANCELLED", "Sandbox release was cancelled.");
-      }
-      await backend.adapter.destroy(
-        Object.freeze({
-          ...(credential === undefined ? {} : { credential }),
-          idempotencyKey: `release:${session.allocationKey}`,
-          missionId: session.missionId,
-          model: session.model,
-          profileVersion: session.profileVersion,
-          provider: session.provider,
-          reason: request.reason,
-          sessionId: session.sessionId,
-          signal: request.signal,
-          taskId: session.taskId,
-        }),
-      );
+    const promise = this.#destroyAllocation({ backend, binding, request, session });
+    this.#releaseInflight.set(
+      session.allocationKey,
+      Object.freeze({ promise, reason: request.reason }),
+    );
+    try {
+      await promise;
+      this.#released.set(session.allocationKey, request.reason);
+      return "RELEASED";
+    } finally {
+      this.#releaseInflight.delete(session.allocationKey);
     }
+  }
 
-    this.#released.add(session.allocationKey);
-    return "RELEASED";
+  async #destroyAllocation(input: {
+    readonly backend: RegisteredBackend;
+    readonly binding: NormalizedBinding;
+    readonly request: SandboxReleaseRequest;
+    readonly session: SandboxSession;
+  }): Promise<void> {
+    if (input.backend.adapter.destroy === undefined) return;
+    const credential = input.backend.descriptor.requiresCredential
+      ? await this.#resolveCredential(input.binding.credentialRef)
+      : undefined;
+    if (input.request.signal.aborted) {
+      throw new SandboxError("CANCELLED", "Sandbox release was cancelled.");
+    }
+    await input.backend.adapter.destroy(
+      Object.freeze({
+        ...(credential === undefined ? {} : { credential }),
+        idempotencyKey: `release:${input.session.allocationKey}`,
+        missionId: input.session.missionId,
+        model: input.session.model,
+        profileVersion: input.session.profileVersion,
+        provider: input.session.provider,
+        reason: input.request.reason,
+        sessionId: input.session.sessionId,
+        signal: input.request.signal,
+        taskId: input.session.taskId,
+      }),
+    );
   }
 
   async #createAllocation(input: {
@@ -565,6 +601,18 @@ function assertAllocationFingerprint(existing: string, requested: string): void 
     throw new SandboxError(
       "SESSION_INVALID",
       "Sandbox allocation replay conflicts with its original immutable request.",
+    );
+  }
+}
+
+function assertReleaseReason(
+  existing: SandboxReleaseReason,
+  requested: SandboxReleaseReason,
+): void {
+  if (existing !== requested) {
+    throw new SandboxError(
+      "SESSION_INVALID",
+      "Sandbox release replay conflicts with the established release reason.",
     );
   }
 }

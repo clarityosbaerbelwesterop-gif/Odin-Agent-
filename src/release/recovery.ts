@@ -88,9 +88,14 @@ function normalizeProof(input: RecoveryProof): RecoveryProof {
   return rebuilt;
 }
 
-function normalizeScenarios(input: readonly RecoveryScenarioResult[]): readonly RecoveryScenarioResult[] {
+function normalizeScenarios(
+  input: readonly RecoveryScenarioResult[],
+): readonly RecoveryScenarioResult[] {
   if (!Array.isArray(input) || input.length !== REQUIRED_SCENARIOS.length) {
-    throw new ReleaseProofError("INVALID", "Recovery proof must contain every required scenario exactly once.");
+    throw new ReleaseProofError(
+      "INVALID",
+      "Recovery proof must contain every required scenario exactly once.",
+    );
   }
   const normalized = input.map((scenario) => normalizeScenario(scenario));
   normalized.sort((left, right) => left.scenario.localeCompare(right.scenario));
@@ -99,7 +104,10 @@ function normalizeScenarios(input: readonly RecoveryScenarioResult[]): readonly 
     names.some((name, index) => name !== [...REQUIRED_SCENARIOS].sort()[index]) ||
     new Set(names).size !== REQUIRED_SCENARIOS.length
   ) {
-    throw new ReleaseProofError("INVALID", "Recovery proof scenario set is incomplete or duplicated.");
+    throw new ReleaseProofError(
+      "INVALID",
+      "Recovery proof scenario set is incomplete or duplicated.",
+    );
   }
   return Object.freeze(normalized);
 }

@@ -4,9 +4,9 @@ import test from "node:test";
 import {
   createRecoveryProof,
   createRecoveryReleaseEvidence,
-  ReleaseProofError,
   type RecoveryScenarioKind,
   type RecoveryScenarioResult,
+  ReleaseProofError,
 } from "../../src/release/index.js";
 
 function hash(value: string): string {
