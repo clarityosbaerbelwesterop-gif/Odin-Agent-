@@ -117,11 +117,42 @@ process/container/worktree isolation, or a production sandbox.
 M9 proves the local protocol/controller/reconnect/UI contract. It does not claim a public HTTP service,
 authentication, WebSocket/SSE transport, production hosting, push notifications, or native binaries.
 
-## M10–M12
+## M10 — Progressive skill lifecycle and synthesis
 
-- [ ] M10 progressively loaded, permissioned, independently tested skills.
-- [ ] M11 empirical model routing, caching, concurrency, and cost optimization.
-- [ ] M12 security/load/recovery hardening, backups, observability, and eval release gates.
+- [x] Immutable versioned skill packages with deterministic SHA-256 content identity and provenance.
+- [x] Compact discovery metadata separated from bounded full-instruction loading.
+- [x] Learned/community packages enter as non-loadable candidates and cannot self-promote.
+- [x] Independent hash-bound verification plus trusted activation, supersession, revocation, and rollback.
+- [x] Solved-task synthesis creates candidate-only learned skills behind runtime attestation and idempotency.
+- [x] Lifecycle audit history records registration, verification, activation, supersession, rollback, and revocation without private reasoning.
+- [x] Required-tool declarations do not create M3 handlers, grants, credentials, or host execution authority.
+- [x] Implementation CI observed: run `33777800516`, 172/172 tests passed; aggregate coverage was
+  89.84% lines, 76.97% branches, and 95.66% functions.
+
+M10 converts repeated solved procedures into reusable, progressively loaded skill candidates while
+keeping execution authority in M3 and completion authority in M5. It does not download or execute
+public skills, run arbitrary skill code, or claim autonomous self-improvement/AGI equivalence.
+
+## M11 — Adaptive reasoning, routing, and efficiency
+
+- [ ] Empirical capability/quality/cost/latency routing with deterministic quality floors and escalation.
+- [ ] Cache and concurrency policy that cannot bypass freshness, scope, verification, or budgets.
+- [ ] Bounded multi-pass critique and targeted self-correction using independent evidence.
+- [ ] Bounded branch search for ambiguous/high-risk tasks with explicit branch/attempt/token ceilings.
+- [ ] Evaluation harness comparing small/fast models against stronger baselines on repository missions.
+
+## M12 — Production hardening and release proof
+
+- [ ] Real process/container/worktree sandboxing plus canonical-root/symlink and outbound-network controls.
+- [ ] Live-provider smoke/evaluation matrix, load/recovery tests, observability, backups, and release gates.
+- [ ] Public-service/auth/transport hardening only after the local trust boundaries remain intact.
+
+## Post-MVP capability track
+
+- [ ] Production hybrid memory retrieval/retention (lexical/FTS plus optional vector retrieval) behind M6 scope and privacy rules.
+- [ ] Post-task learning curation, memory compression/pruning, and evidence-backed self-nudging.
+- [ ] Event-driven background mission service, scheduler/triggers, and resumable automation.
+- [ ] Permissioned MCP/Agent-Skills-style adapters and omnichannel clients behind the same capability model.
 
 ## MVP definition of done
 
