@@ -17,32 +17,59 @@ M0 repository foundation, M1 provider core, M2 deterministic mission runtime, M3
 runtime, M4 coding vertical slice, M5 verification engine, M6 memory/context engine, and M7
 specialist coordination are merged and verified on `main`.
 
-M8 implementation is present on `agent/m8-durable-missions` but is **not yet declared VERIFIED**.
-It adds the local durable runtime slice required by `docs/milestones/M8_DURABLE_MISSIONS.md`:
+M8 durable missions and worker recovery is **implementation-VERIFIED**. GitHub Actions run
+`33766277108` passed on head `041c42a7d506bd0c4543052f88765521dfd34ba1`: foundation validation,
+Biome, strict TypeScript, and **149/149 tests** passed with aggregate coverage **88.91% lines, 76.49%
+branches, and 95.24% functions**. This documentation synchronization commit must also pass before M8
+is merged.
 
-- SQLite-backed canonical M2 mission events with optimistic versions and durable idempotency;
-- integrity-checked derived mission checkpoints that are revalidated against canonical events;
-- durable worker jobs with bounded attempts, deterministic claims, expiring leases, fencing
-  generations, opaque lease tokens whose hashes alone are stored, retries, cancellation, and
-  lifecycle events;
-- runtime-owned handler timeout, heartbeat, cooperative cancellation, structured settlement, and
-  normalized worker errors;
-- cursor-based mission-scoped lifecycle replay and close/reopen recovery;
-- adversarial fixtures covering two SQLite connections, stale settlement rejection, corruption,
-  cancellation-vs-success, retry exhaustion, and a 32-job interrupted mission.
+## Implemented M8 behavior
 
-The latest full user-authored CI attempt, run `33765932493`, reached all tests: foundation, Biome, and
-strict TypeScript passed; 148/149 tests passed. The single failure exposed a boundary-normalization bug:
-a corrupted checkpoint was correctly rejected by M2 but leaked `MissionDomainError` instead of the
-M8 persistence error type. The durable boundary now catches that lower-level integrity failure and
-normalizes it to `DurableStoreCorruptionError` at commit
-`3b40a30c36a6a30043707a5c029d56d7a449f8a3`. That bot-authored commit received GitHub Actions
-`action_required`, so this synchronized handover commit intentionally triggers the next normal
-pull-request CI run over the repaired code.
+- `src/durable` uses Node 24 built-in SQLite with foreign keys, WAL, `synchronous=FULL`, bounded busy
+  timeout, strict tables, explicit schema versioning, and short `BEGIN IMMEDIATE` transactions.
+- Canonical M2 mission event batches persist contiguous sequence/aggregate versions, canonical UTC
+  timestamps, mission-scoped idempotency fingerprints, bounded canonical JSON, and SHA-256 hashes.
+  Close/reopen replay produces the same M2 projection and continues at the next version.
+- Mission checkpoints are derived artifacts. Saves are idempotent, version regression/conflicting
+  same-version content are rejected, and reads validate metadata/hash plus reproduce the snapshot from
+  canonical events. Lower-level integrity failures are normalized to the durable corruption boundary.
+- Durable jobs persist stable job/mission/task identity, priority, readiness, attempts, artifact
+  references, lease generation, and lifecycle state. Raw prompts, repository contents, credentials,
+  raw worker exceptions, and plaintext lease tokens are not job metadata.
+- Atomic deterministic claims increment attempt and fencing generation. The claimant receives an
+  opaque random token while SQLite stores only its SHA-256 hash. Heartbeat/settlement require exact
+  job/mission/task/worker scope, matching generation/token, and an unexpired lease.
+- Expired jobs can be reclaimed at a higher generation while attempts remain. Stale generations cannot
+  settle. Retry exhaustion becomes `BLOCKED`. Running cancellation becomes `CANCELLING`, and
+  cancellation defeats a late success proposal.
+- `DurableJobRunner` owns timeout, heartbeat, cooperative cancellation observation, structured
+  settlement, and raw-error normalization. Injected handlers receive only an immutable lease/job
+  envelope plus `AbortSignal`.
+- Typed hash-addressed lifecycle events expose mission-scoped strictly increasing cursors. Tampered
+  event hashes fail closed. Reopen recovery resumes after a stored cursor without accepting stale
+  settlement.
+- The long-mission fixture persists and drains 32 jobs across interruption/reopen with one retry, one
+  block, one cancellation, and deterministic final counts.
 
-Odin still does not claim a production OS sandbox, arbitrary shell execution, external network tools,
-live-provider end-to-end compatibility, hosted distributed queue, PostgreSQL durability, mobile
-client, hosted service, or complete MVP.
+## M8 adversarial evidence
+
+Tests cover:
+
+- durable event idempotency and optimistic version conflicts across reopen;
+- checkpoint regression/conflict/corruption and unsupported newer SQLite schema versions;
+- deterministic claim ordering and two-connection lease exclusivity;
+- hashed-at-rest lease tokens and stale fencing rejection;
+- bounded retry ceilings and terminal block;
+- cancellation-vs-late-success races;
+- handler timeout, cooperative abort, and exception-message redaction;
+- cursor paging, mission isolation, and lifecycle event hash tampering;
+- fresh-process mission/checkpoint replay, expired-job reclaim, stale completion rejection, and the
+  32-job recovery fixture.
+
+The earlier full run `33765932493` reached 148/149 tests and exposed one useful bug: checkpoint
+corruption was rejected by M2 but leaked `MissionDomainError` instead of the M8 persistence error type.
+The durable boundary was repaired to normalize that failure to `DurableStoreCorruptionError`; the
+subsequent full run `33766277108` passed all 149 tests. No test or gate was weakened.
 
 ## Verified evidence through M7
 
@@ -55,71 +82,59 @@ npm run verify
 
 - M0 Actions run `33664864552` passed at `3b2886028abd2f240cc524bc7f7610d4b6558ba5`.
 - M1 Actions run `33667957350` passed at `8d4f33c4bee066fc94d924a911aaa4a876a0539b`.
-- M2 Actions run `33672695583` passed at `bc97c7bc206db00eb641965556a4156094ec79a7`
-  with 41 tests.
-- M3 implementation run `33675783522` passed with 55 tests; its verified merge is
+- M2 Actions run `33672695583` passed at `bc97c7bc206db00eb641965556a4156094ec79a7` with 41 tests.
+- M3 implementation run `33675783522` passed with 55 tests; verified merge
   `0a9a76bc7ce2b52e8e879d81d3b261a8168efb29`.
-- M4 implementation run `33678970596` passed with 61 tests, and final documentation run
+- M4 implementation run `33678970596` passed with 61 tests; final documentation run
   `33679222149` passed before merge `c60ee329d66511dfbd708176c850557d48e9c9df`.
-- M5 implementation run `33724426019` passed at
-  `f28bcb9758c2079d9f46826ea672c19bd6e538ff`: 77 tests passed with 0 failures.
-- M5 synchronized-documentation run `33724647879` passed at
-  `2221ad823348f3bbd4a9b8fc703bb5f460cd6888`.
-- M6 implementation run `33752964771` passed at
-  `8934e8f3956db0a66528f484faf34a7e8ea92628`: 108 tests passed with 0 failures.
-- M6 synchronized-documentation run `33753281792` passed at
-  `df6d310adcf2882e26a6bb7d6f8a4165c080e7ea`; final-evidence run `33753417686` also passed.
-- M7 implementation run `33755851793` passed at
-  `88cedbb8b33cb9863a0b4b1b30abbd6ec2e2cb19`: 132 tests passed with 0 failures.
-- M7 synchronized-documentation run `33756217402` passed at
-  `91cc54b367f3f946988a80243ac2dbe5d2c485f7` with the same 132 tests.
+- M5 implementation run `33724426019` passed with 77 tests; documentation run `33724647879` passed.
+- M6 implementation run `33752964771` passed with 108 tests; documentation run `33753281792` and
+  final-evidence run `33753417686` passed.
+- M7 implementation run `33755851793` passed with 132 tests; documentation run `33756217402` passed.
 
-Provider tests remain injected-transport contracts with synthetic fixtures. M4/M5 integration tests
-remain scripted-provider, in-memory audit, and injected workspace/quality contracts. M7 uses injected
-in-process deterministic workers and an injected fixture evidence authority. None of those CI paths
-perform live provider calls, production repository mutation, deployment, or paid actions.
+Provider tests remain injected-transport contracts with synthetic fixtures. Coding/verification tests
+remain scripted-provider and injected workspace/tool/evidence contracts. M7 uses injected in-process
+workers. M8 uses temporary local SQLite files and injected deterministic handlers. CI performs no live
+provider call, production repository mutation, deployment, production migration, or paid action.
 
-## M8 design decisions
+## Decisions
 
-- Keep the strict TypeScript modular monolith and use Node 24 built-in `node:sqlite`; no new runtime
-  database dependency is introduced.
-- Canonical mission events remain source of truth. Checkpoints are validated derived artifacts and
-  must reproduce from the event stream before acceptance.
-- Use WAL, foreign keys, explicit FULL synchronous durability, bounded busy timeout, strict tables,
-  short `BEGIN IMMEDIATE` transactions, schema versioning, bounded canonical JSON, and fail-closed
-  decoding.
-- Treat local SQLite as a single-runtime persistence target, not a distributed queue or globally
-  ordered execution system.
-- Job delivery is at least once. Fencing prevents stale database settlement but cannot undo an
-  external side effect; M3 idempotency remains mandatory for side-effecting tools.
-- Workers receive immutable lease/job envelopes plus `AbortSignal`. Database handles, credentials,
-  policy state, peer communication, and completion authority stay runtime-owned.
-- Lease tokens are opaque bearer material returned only to the claimant; persistence stores only a
-  SHA-256 token hash. Raw worker exceptions are normalized to stable reason codes.
-- Cursor reconnect is mission-scoped and strictly monotonic. Tampered lifecycle event hashes fail
-  closed instead of being skipped.
+- Preserve the strict TypeScript modular monolith; durable state is a domain boundary, not a new
+  microservice.
+- Canonical mission events remain source of truth. Checkpoints are validated derivatives.
+- Use Node 24 built-in SQLite for the first local durable adapter; do not add a runtime DB dependency
+  before a demonstrated need.
+- Treat job delivery as at least once. Fencing prevents stale database settlement but cannot undo an
+  external side effect; side-effecting M3 tools still require idempotency.
+- Keep model/worker output untrusted. Runtime owns leases, clock validation, heartbeat, cancellation,
+  retries, settlement, budgets, and completion gates.
+- Store concise durable metadata and hashes only. Lease bearer tokens are never persisted in plaintext;
+  raw worker exceptions are normalized to stable reason codes.
+- Keep SQLite claims local. Do not describe M8 as a hosted/distributed queue, exactly-once system,
+  cross-host lock, or multi-region service.
 
-## Open risks after M8 implementation
+## Open risks after M8
 
-- M8 is not verified until the repaired implementation and synchronized documentation both pass
-  pull-request CI and final evidence is recorded.
+- The synchronized documentation head still needs its own successful pull-request CI before merge.
 - SQLite does not provide distributed queue semantics, multi-host fencing, leader election,
   multi-region availability, or PostgreSQL-grade service durability.
 - Worker abort remains cooperative. There is still no subprocess/container/worktree isolation,
-  symlink-safe production repository boundary, CPU/memory/output enforcement, or sandbox escape
-  protection.
+  canonical-root/symlink-safe production repository boundary, CPU/memory/output enforcement, or
+  sandbox escape protection.
 - Provider adapters have not been exercised in an opt-in live end-to-end smoke test.
-- M6 memory/context/cache remains in-memory; encryption at rest, tenant administration, semantic
-  retrieval, retention jobs, distributed invalidation, and backups remain future work.
+- M6 memory/context/cache remains in-memory; encryption at rest, retention jobs, tenant administration,
+  semantic retrieval, distributed invalidation, and backups remain future work.
 - Artifact references are durable metadata only; artifact bytes and repository snapshots are not yet
-  stored by M8.
+  persisted by M8.
 - External browser/email/payment/deployment/network tools remain denied and unimplemented.
 - Full skill package installation/promotion remains M10 work.
 
 ## Exact next action
 
-Run pull-request CI on the repaired M8 head through `npm run verify`. If all gates pass, update
-`ROADMAP.md` and `docs/milestones/M8_DURABLE_MISSIONS.md` to `VERIFIED`, record the exact run/head in
-this handover, run synchronized-documentation CI once more, then merge PR #10 only after the final
-verified head is mergeable. After merge, branch M9 from the new `main` head and start the responsive
-web/native-client protocol milestone without weakening the M8 durability boundaries.
+Run pull-request CI on this synchronized documentation head. If all gates pass, record that exact run
+and head in this handover, run one final evidence-only CI checkpoint, then merge M8 into `main` using
+the already authorized merge workflow. Because PR #10 is a draft and the connector has previously
+failed to undraft PRs, use the established safe workaround if necessary: close only the draft PR,
+open a normal PR with the exact same verified branch head, observe PR-specific CI, then merge that
+normal PR. After the merge, create M9 from the new `main` head and start the responsive web/native
+client protocol milestone without weakening M8 durability boundaries.

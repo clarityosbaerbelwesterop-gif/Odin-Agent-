@@ -45,8 +45,7 @@ the repository; no product capability is overstated.
 - [x] Interruption/resume demonstrated end to end over replayed M2 event-store state.
 
 M4 proves orchestration across the M1/M2/M3 contracts with scripted provider responses and injected
-in-memory fixtures. It does not claim a production OS sandbox, live-provider compatibility, or durable
-SQLite/PostgreSQL recovery.
+in-memory fixtures. It does not claim a production OS sandbox or live-provider compatibility.
 
 ## M5 — Verification engine
 
@@ -82,9 +81,28 @@ GitHub Actions run `33724426019` passed on M5 implementation head
 - [x] Implementation CI observed: run `33755851793`, 132/132 tests passed.
 - [x] Synchronized documentation CI observed: run `33756217402`; final M7 evidence recorded.
 
-## M8–M12
+## M8 — Durable missions and worker recovery
 
-- [ ] M8 implementation present: SQLite mission events/checkpoints, fenced durable jobs, lifecycle cursors, runner recovery, and 32-job fixture; final CI/evidence synchronization pending.
+- [x] Node 24 SQLite adapter persists canonical M2 mission events with optimistic versions,
+  mission-scoped idempotency, canonical UTC metadata, bounded JSON, hashes, and fail-closed replay.
+- [x] Derived mission checkpoints persist across close/reopen, reject regression/conflict/corruption,
+  and reproduce from canonical events before acceptance.
+- [x] Durable jobs provide deterministic atomic claims, bounded attempts, expiring fenced leases,
+  hashed opaque lease tokens, retries, cancellation, and terminal blocking on exhaustion.
+- [x] Runtime-owned worker timeout, heartbeat, cooperative cancellation, structured settlement, and
+  secret-safe error normalization are implemented with injected handlers.
+- [x] Mission-scoped lifecycle events expose strictly increasing reconnect cursors and validate hashes.
+- [x] Crash/reopen recovery reclaims expired in-flight work at a higher generation and rejects stale
+  settlement; a 32-job fixture proves bounded retry/block/cancel/reopen draining.
+- [x] Implementation CI observed: run `33766277108`, 149/149 tests passed; aggregate coverage was
+  88.91% lines, 76.49% branches, and 95.24% functions.
+
+M8 proves local SQLite restart durability and at-least-once worker delivery. It does not claim hosted
+queue semantics, PostgreSQL/service durability, exactly-once external effects, cross-host fencing,
+process/container/worktree isolation, or a production sandbox.
+
+## M9–M12
+
 - [ ] M9 responsive web client and native-client protocol strategy.
 - [ ] M10 progressively loaded, permissioned, independently tested skills.
 - [ ] M11 empirical model routing, caching, concurrency, and cost optimization.
