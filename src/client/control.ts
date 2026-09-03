@@ -1,8 +1,8 @@
 import type { DurableJobStatus, JobLifecycleEvent } from "../durable/types.js";
 import {
-  EventStoreConflictError,
   type EventAppendItem,
   type EventStore,
+  EventStoreConflictError,
   type StoredEvent,
 } from "../events/store.js";
 import {
@@ -98,7 +98,10 @@ export class EventStoreMissionCommandAuthority implements MissionCommandAuthorit
     try {
       snapshot = projectMission(workingEvents);
     } catch {
-      throw new ClientProtocolError("CONFLICT", "Command cannot project its expected mission state.");
+      throw new ClientProtocolError(
+        "CONFLICT",
+        "Command cannot project its expected mission state.",
+      );
     }
     if (snapshot.id !== request.missionId || snapshot.version !== request.expectedVersion) {
       throw new ClientProtocolError("STALE_VERSION", "Command mission version does not match.");
@@ -140,7 +143,9 @@ export class EventStoreMissionCommandAuthority implements MissionCommandAuthorit
       );
     } catch (error) {
       if (error instanceof EventStoreConflictError) {
-        const code = error.message.toLowerCase().includes("idempotency") ? "CONFLICT" : "STALE_VERSION";
+        const code = error.message.toLowerCase().includes("idempotency")
+          ? "CONFLICT"
+          : "STALE_VERSION";
         throw new ClientProtocolError(code, "Command conflicts with canonical mission state.");
       }
       throw error;
@@ -251,7 +256,8 @@ export class ClientProtocolGateway {
       throw new ClientProtocolError("DENIED", "Client capability is missing, foreign, or expired.");
     }
     if (command === null) {
-      if (!grant.canRead) throw new ClientProtocolError("DENIED", "Client read capability is denied.");
+      if (!grant.canRead)
+        throw new ClientProtocolError("DENIED", "Client read capability is denied.");
       return;
     }
     if (!grant.commands.includes(command)) {
@@ -279,7 +285,10 @@ function commandTargets(command: ClientCommandName, snapshot: MissionSnapshot) {
   if (command === "mission.pause") return ["PAUSING", "PAUSED"] as const;
   if (command === "mission.cancel") return ["CANCELLING", "CANCELLED"] as const;
   if (snapshot.state !== "PAUSED" || snapshot.resumeState === null) {
-    throw new ClientProtocolError("CONFLICT", "Mission cannot resume without a captured pause state.");
+    throw new ClientProtocolError(
+      "CONFLICT",
+      "Mission cannot resume without a captured pause state.",
+    );
   }
   return ["RESUMING", snapshot.resumeState] as const;
 }

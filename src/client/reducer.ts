@@ -1,5 +1,5 @@
 import { decodeClientStateResponse } from "./protocol.js";
-import { type ClientReducerState, ClientProtocolError } from "./types.js";
+import { ClientProtocolError, type ClientReducerState } from "./types.js";
 
 const MAX_TRACKED_EVENT_HASHES = 512;
 
@@ -19,7 +19,10 @@ export function reduceClientState(
   }
 
   if (current.missionId !== response.missionId || current.sessionId !== response.sessionId) {
-    throw new ClientProtocolError("RESYNC_REQUIRED", "Client response crossed mission/session scope.");
+    throw new ClientProtocolError(
+      "RESYNC_REQUIRED",
+      "Client response crossed mission/session scope.",
+    );
   }
   if (response.projection.version < current.projection.version) {
     throw new ClientProtocolError("RESYNC_REQUIRED", "Client projection version moved backwards.");
@@ -35,7 +38,10 @@ export function reduceClientState(
       }
       const knownHash = current.recentEventHashes[String(event.cursor)];
       if (knownHash === undefined || knownHash !== event.eventHash) {
-        throw new ClientProtocolError("RESYNC_REQUIRED", "Replayed lifecycle event is unknown or changed.");
+        throw new ClientProtocolError(
+          "RESYNC_REQUIRED",
+          "Replayed lifecycle event is unknown or changed.",
+        );
       }
     }
     return Object.freeze({

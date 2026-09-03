@@ -15,11 +15,7 @@ import {
   type ClientVerificationSummary,
 } from "./types.js";
 
-const COMMANDS = new Set<ClientCommandName>([
-  "mission.pause",
-  "mission.resume",
-  "mission.cancel",
-]);
+const COMMANDS = new Set<ClientCommandName>(["mission.pause", "mission.resume", "mission.cancel"]);
 const MISSION_STATES = new Set([
   "CREATED",
   "UNDERSTANDING",
@@ -142,7 +138,8 @@ export function normalizeCapabilityGrant(value: ClientCapabilityGrant): ClientCa
     if (!COMMANDS.has(command)) malformed("capability command is unsupported.");
     return command;
   });
-  if (new Set(commands).size !== commands.length) malformed("capability commands contain duplicates.");
+  if (new Set(commands).size !== commands.length)
+    malformed("capability commands contain duplicates.");
   return Object.freeze({
     canRead: object.canRead,
     commands: Object.freeze([...commands].sort()),
@@ -162,7 +159,8 @@ export function buildClientProjection(
   const normalizedVerification = normalizeVerification(verification);
   const tasks = snapshot.tasks.map((task) => {
     const status = snapshot.taskStatuses[task.id];
-    if (status === undefined || !TASK_STATUSES.has(status)) malformed("mission task status is invalid.");
+    if (status === undefined || !TASK_STATUSES.has(status))
+      malformed("mission task status is invalid.");
     return Object.freeze({
       dependsOn: Object.freeze([...task.dependsOn]),
       id: identifier(task.id, "task id"),
@@ -222,7 +220,9 @@ export function normalizeLifecycleEvent(value: JobLifecycleEvent): ClientLifecyc
     missionId: identifier(object.missionId, "lifecycle missionId"),
     occurredAt: canonicalTimestamp(object.occurredAt, "lifecycle occurredAt"),
     reasonCode:
-      object.reasonCode === null ? null : identifier(object.reasonCode, "lifecycle reasonCode", 200),
+      object.reasonCode === null
+        ? null
+        : identifier(object.reasonCode, "lifecycle reasonCode", 200),
     status: status as ClientLifecycleEvent["status"],
     type: type as ClientLifecycleEvent["type"],
   });
@@ -323,7 +323,10 @@ function decodeProjection(value: unknown): ClientMissionProjection {
     });
   });
   const resumeState = object.resumeState;
-  if (resumeState !== null && (typeof resumeState !== "string" || !MISSION_STATES.has(resumeState))) {
+  if (
+    resumeState !== null &&
+    (typeof resumeState !== "string" || !MISSION_STATES.has(resumeState))
+  ) {
     malformed("projection resumeState is unsupported.");
   }
   return Object.freeze({
@@ -403,7 +406,8 @@ function objectValue(value: unknown, label: string): Record<string, unknown> {
 
 function exactKeys(object: Record<string, unknown>, keys: readonly string[], label: string): void {
   const expected = new Set(keys);
-  if (Object.keys(object).length !== expected.size) malformed(`${label} has an unexpected field count.`);
+  if (Object.keys(object).length !== expected.size)
+    malformed(`${label} has an unexpected field count.`);
   for (const key of Object.keys(object)) {
     if (!expected.has(key)) malformed(`${label} contains unknown field ${key}.`);
   }
@@ -438,7 +442,12 @@ function canonicalTimestamp(value: unknown, label: string): string {
   return result;
 }
 
-function safeInteger(value: unknown, label: string, minimum: number, maximum = Number.MAX_SAFE_INTEGER): number {
+function safeInteger(
+  value: unknown,
+  label: string,
+  minimum: number,
+  maximum = Number.MAX_SAFE_INTEGER,
+): number {
   if (
     typeof value !== "number" ||
     !Number.isSafeInteger(value) ||

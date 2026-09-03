@@ -17,7 +17,8 @@ test("client protocol accepts only the supported version and exact bounded reque
 
   assert.throws(
     () => decodeClientStateRequest({ ...stateRequest(), protocol: { major: 2, minor: 0 } }),
-    (error: unknown) => error instanceof ClientProtocolError && error.code === "UNSUPPORTED_VERSION",
+    (error: unknown) =>
+      error instanceof ClientProtocolError && error.code === "UNSUPPORTED_VERSION",
   );
   assert.throws(
     () => decodeClientStateRequest({ ...stateRequest(), unexpected: true }),
@@ -35,7 +36,11 @@ test("client protocol accepts only the supported version and exact bounded reque
 
 test("command codec refuses arbitrary mutation types and unknown command payload fields", () => {
   assert.throws(
-    () => decodeClientCommandRequest({ ...commandRequest("mission.pause", 6), command: "mission.complete" }),
+    () =>
+      decodeClientCommandRequest({
+        ...commandRequest("mission.pause", 6),
+        command: "mission.complete",
+      }),
     ClientProtocolError,
   );
   assert.throws(
@@ -47,7 +52,8 @@ test("command codec refuses arbitrary mutation types and unknown command payload
     ClientProtocolError,
   );
   assert.throws(
-    () => decodeClientCommandRequest({ ...commandRequest("mission.cancel", 6), expectedVersion: -1 }),
+    () =>
+      decodeClientCommandRequest({ ...commandRequest("mission.cancel", 6), expectedVersion: -1 }),
     ClientProtocolError,
   );
 });
@@ -57,7 +63,8 @@ test("capability grants are exact, scoped, canonical, and deduplicated", () => {
   assert.deepEqual(normalized.commands, ["mission.cancel", "mission.pause", "mission.resume"]);
   assert.equal(normalized.expiresAt > T0, true);
   assert.throws(
-    () => normalizeCapabilityGrant({ ...capability(), commands: ["mission.pause", "mission.pause"] }),
+    () =>
+      normalizeCapabilityGrant({ ...capability(), commands: ["mission.pause", "mission.pause"] }),
     ClientProtocolError,
   );
   assert.throws(

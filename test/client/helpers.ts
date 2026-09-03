@@ -2,11 +2,15 @@ import { createHash } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type {
+  ClientCapabilityGrant,
+  ClientCommandRequest,
+  ClientStateRequest,
+} from "../../src/client/types.js";
+import type { SqliteDurableStore } from "../../src/durable/store.js";
 import type { JobEnqueueInput } from "../../src/durable/types.js";
-import type { ClientCapabilityGrant, ClientCommandRequest, ClientStateRequest } from "../../src/client/types.js";
 import type { MissionCreateInput, MissionSnapshot } from "../../src/mission/runtime.js";
 import { MissionRuntime } from "../../src/mission/runtime.js";
-import type { SqliteDurableStore } from "../../src/durable/store.js";
 
 export const T0 = "2026-09-03T15:00:00.000Z";
 
@@ -50,7 +54,13 @@ export async function executingMission(
 ): Promise<MissionSnapshot> {
   const runtime = new MissionRuntime(store, () => T0);
   let snapshot = await runtime.create(missionInput(id), `create-${id}`);
-  for (const state of ["UNDERSTANDING", "RETRIEVING", "PLANNING", "RISK_CHECK", "EXECUTING"] as const) {
+  for (const state of [
+    "UNDERSTANDING",
+    "RETRIEVING",
+    "PLANNING",
+    "RISK_CHECK",
+    "EXECUTING",
+  ] as const) {
     snapshot = await runtime.transition(snapshot.id, snapshot.version, state, `${id}-${state}`);
   }
   return snapshot;
