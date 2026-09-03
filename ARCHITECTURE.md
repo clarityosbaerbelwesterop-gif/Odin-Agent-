@@ -1,6 +1,6 @@
 # Odin architecture
 
-Status: M9 client protocol and responsive web shell verified, 2026-09-03.
+Status: M10 skill lifecycle implementation verified; synchronized documentation pending final PR CI, 2026-09-03.
 
 ## Repository finding
 
@@ -27,6 +27,8 @@ system has been prematurely split into microservices.
     external effects.
 13. Clients are observers/controllers. They cannot append arbitrary events, settle jobs, call tools or
     models directly, or bypass M5 completion evidence.
+14. Skill instructions are reusable procedure, never authority. Learned/community skills require exact
+    provenance, independent verification, and trusted promotion before normal runtime loading.
 
 ## Logical architecture
 
@@ -38,7 +40,7 @@ Web / future native clients
            -> planner / model router / context compiler
            -> tool gateway -> isolated workers (future production sandbox)
            -> verifier and repair loop
-        -> canonical events / checkpoints / durable jobs / artifacts / memory
+        -> canonical events / checkpoints / durable jobs / artifacts / memory / skills
 ```
 
 ### Trusted control plane
@@ -151,6 +153,20 @@ fixture data through text/DOM APIs, uses no live transport, and stores no missio
 persistent storage. M9 does not claim hosting, public auth, SSE/WebSocket transport, push, offline
 writes, or native binaries.
 
+### M10 — Progressive skill lifecycle and synthesis
+
+`src/skills` adds immutable hash-addressed skill packages, compact discovery, separately bounded full
+instruction loading, provenance/trust classes, candidate/verified/active/revoked lifecycle,
+independent verification, trusted promotion, deterministic supersession/rollback, and concise
+lifecycle audit events. Learned/community content never becomes normal runtime instruction merely
+because a model or worker claims success.
+
+`SkillSynthesisService` can convert an attested solved task into a learned `CANDIDATE` with exact source
+mission/task provenance and idempotency. It does not execute generated code, install public packages,
+register M3 tools, mint capabilities, expose credentials, or bypass M5/M7 authorities. This is
+capability amplification through verified reusable procedure, not evidence that a weaker base model
+has become AGI or universally equivalent to a stronger model.
+
 ## Current module map
 
 ```text
@@ -166,7 +182,8 @@ src/
   coordination/  specialist registry, logical ownership, bounded execution, reconciliation
   durable/       SQLite mission events/checkpoints/jobs, lifecycle cursors, runner recovery
   client/        M9 protocol codecs, controller gateway, reconnect reducer
-  routing/       M11 empirical model/effort selection
+  skills/        M10 progressive skill registry, synthesis, verification/promotion history
+  routing/       M11 empirical model/effort selection and bounded reasoning policy
   artifacts/     content-addressed artifact byte/storage layer later
   cli/           user-facing entry point later
 web/             M9 responsive static reference client
@@ -174,11 +191,17 @@ web/             M9 responsive static reference client
 
 ## Next architecture milestone
 
-M10 implements progressively loaded, permissioned, independently tested skill packages. Skills must
-have stable identity/version, provenance, compact discovery metadata, explicit required capabilities,
-separate instructions from executable authority, bounded loading, independent verification, and a
-promotion lifecycle for learned/community candidates. M10 may extend M3 discovery but must not let a
-skill grant itself permissions or execute outside the tool/policy boundary.
+M11 extends the existing provider, verification, context, coordination, durable, and skill boundaries
+with empirical adaptive reasoning. Routing must optimize measured quality/cost/latency under an
+explicit quality floor; bounded critique, targeted self-correction, and branch search must consume
+runtime-owned budgets and may never manufacture independent evidence. A small/fast model may be
+escalated when uncertainty, verification failure, or task risk demands it.
+
+The broader capability-amplification path then moves to M12 production isolation/live evals and a
+post-MVP runtime track for hybrid memory, evidence-backed post-task learning, scheduler/triggers,
+background missions, and permissioned MCP/Agent-Skills/omnichannel adapters. Those mechanisms are
+intended to close practical capability gaps, but claims of model-level or AGI equivalence require
+benchmark evidence rather than architecture alone.
 
 ## Storage and deployment direction
 
