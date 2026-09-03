@@ -6,6 +6,7 @@ import {
   InMemoryClientCapabilityPolicy,
 } from "../../src/client/index.js";
 import { SqliteDurableStore } from "../../src/durable/index.js";
+import { createMissionCheckpoint } from "../../src/mission/checkpoint.js";
 import {
   capability,
   commandRequest,
@@ -23,6 +24,7 @@ test("pause, resume, and cancel are atomic M2 command sequences with durable ide
     const executing = await executingMission(store);
     assert.equal(executing.state, "EXECUTING");
     assert.equal(executing.version, 6);
+    await store.saveCheckpoint(createMissionCheckpoint(executing, executing.version), T0);
 
     const gateway = new ClientProtocolGateway({
       activity: store,
@@ -32,24 +34,30 @@ test("pause, resume, and cancel are atomic M2 command sequences with durable ide
     });
 
     const paused = await gateway.command(commandRequest("mission.pause", executing.version));
+    assert.equal(paused.outcome, "APPLIED");
     assert.equal(paused.projection.state, "PAUSED");
     assert.equal(paused.projection.resumeState, "EXECUTING");
     assert.equal(paused.projection.version, 8);
+    assert.equal(paused.projection.checkpointVersion, 6);
 
     const replay = await gateway.command(
       commandRequest("mission.pause", executing.version, "mission-client", {
         requestId: "pause-replay",
       }),
     );
+    assert.equal(replay.outcome, "REPLAYED");
     assert.equal(replay.projection.version, 8);
+    assert.equal(replay.projection.checkpointVersion, 6);
     assert.equal((await store.load("mission-client")).length, 8);
 
     const resumed = await gateway.command(commandRequest("mission.resume", 8));
+    assert.equal(resumed.outcome, "APPLIED");
     assert.equal(resumed.projection.state, "EXECUTING");
     assert.equal(resumed.projection.resumeState, null);
     assert.equal(resumed.projection.version, 10);
 
     const cancelled = await gateway.command(commandRequest("mission.cancel", 10));
+    assert.equal(cancelled.outcome, "APPLIED");
     assert.equal(cancelled.projection.state, "CANCELLED");
     assert.equal(cancelled.projection.version, 12);
     store.close();
@@ -116,6 +124,7 @@ test("client capabilities enforce exact mission/session/read/command scope and r
 
     const state = await gateway.state(stateRequest("mission-client", { capabilityId: "cap-read" }));
     assert.equal(state.projection.state, "EXECUTING");
+    assert.equal(state.projection.checkpointVersion, null);
 
     await assert.rejects(
       gateway.command(
