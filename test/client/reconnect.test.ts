@@ -81,9 +81,12 @@ test("duplicate pages are idempotent while changed hashes, cursor gaps, and fore
     const tampered = structuredClone(first);
     const event = tampered.events[0];
     assert.ok(event);
-    tampered.events = [{ ...event, eventHash: "0".repeat(64) }, ...tampered.events.slice(1)];
+    const tamperedResponse = {
+      ...tampered,
+      events: [{ ...event, eventHash: "0".repeat(64) }, ...tampered.events.slice(1)],
+    };
     assert.throws(
-      () => reduceClientState(initial, tampered),
+      () => reduceClientState(initial, tamperedResponse),
       (error: unknown) => error instanceof ClientProtocolError && error.code === "RESYNC_REQUIRED",
     );
 

@@ -344,7 +344,7 @@ function decodeProjection(value: unknown): ClientMissionProjection {
   });
 }
 
-function normalizeJobCounts(value: Readonly<Record<string, number>>): ClientJobCounts {
+function normalizeJobCounts(value: Readonly<Record<string, unknown>>): ClientJobCounts {
   exactKeys(value as Record<string, unknown>, [...JOB_STATUSES], "job counts");
   const result = {} as Record<(typeof JOB_STATUSES)[number], number>;
   for (const status of JOB_STATUSES) {
