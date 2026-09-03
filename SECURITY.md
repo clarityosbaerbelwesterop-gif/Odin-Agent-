@@ -1,7 +1,7 @@
 # Security model
 
-Status: design baseline plus implemented M1 provider-boundary, M3 tool-control, and M5 verification
-safeguards.
+Status: design baseline plus implemented M1 provider-boundary, M3 tool-control, M5 verification, and
+M6 memory/context safeguards.
 Controls not explicitly identified as implemented remain future work.
 
 ## Protected assets
@@ -103,6 +103,29 @@ and deterministic hash are validated before use; malformed output or reviewer fa
 blocking result. The M4 orchestrator performs a post-change scoped read and cannot transition to
 `COMPLETED` unless verification returns internally consistent `PASS` and `ACCEPT` results. Verdicts
 store concise evidence references and hashes rather than raw source, tool output, or hidden reasoning.
+
+## Implemented M6 memory and context safeguards
+
+Memory records are isolated by exact user/project scope, with an additional exact mission boundary for
+working memory. Records carry canonical timestamps, hashes, sensitivity, provenance, versions, expiry,
+and lifecycle state. Durable user preferences require explicit-user provenance; inferred preferences
+fail closed. Optimistic versions reject competing updates, idempotency keys reject mismatched replay,
+and retrieval is bounded and deterministic.
+
+Tombstones remove raw memory content, content-like keys/tags, and earlier write replay results from the
+in-memory adapter. A tombstoned stable ID cannot be resurrected or returned by retrieval. Revision
+history retains metadata only. Provenance references are expected to be opaque identifiers; secrets or
+raw personal data must not be placed in IDs, tags, keys, or references.
+
+Retrieved memory is always compiled as P5 data. Source/priority validation prevents memory or history
+from impersonating system, mission, task, repository, or observation context. Current authoritative
+sources win semantic collisions. P0–P2 cannot be silently truncated, malformed hashes/timestamps and
+budgets fail closed, sensitive candidates bypass the compile cache, and memory mutations trigger
+targeted cache invalidation.
+
+Session snapshot hashes detect accidental corruption and bind the snapshot to a mission/event version
+and raw-history reference. They are not signatures. Durable snapshot authentication, access control,
+encryption at rest, retention, and cross-process cache coherence remain unimplemented.
 
 ## Prompt injection and durable learning
 

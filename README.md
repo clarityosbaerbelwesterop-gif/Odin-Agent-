@@ -6,9 +6,10 @@ repair, checkpoints, budgets, and auditable evidence.
 
 Odin is at the **early core stage**. Repository foundation, the provider-neutral inference boundary,
 the deterministic mission runtime, the fail-closed tool-control boundary, a fixture-backed coding
-vertical slice, and independent evidence verification are implemented and contract-tested. The
-repository does not yet provide a production coding agent, OS-level sandbox, durable database
-persistence, mobile client, or hosted service, and no live-provider smoke test has been claimed.
+vertical slice, independent evidence verification, and a scoped memory/context slice are implemented
+and contract-tested. The repository does not yet provide a production coding agent, OS-level sandbox,
+durable database persistence, mobile client, or hosted service, and no live-provider smoke test has
+been claimed.
 Current status and verified capabilities are tracked in [ROADMAP.md](ROADMAP.md) and
 [HANDOVER.md](HANDOVER.md).
 
@@ -52,6 +53,14 @@ The M5 verification authority maps every persisted definition of done to typed, 
 evidence and runs a separate adversarial review before M4 may report completion. Missing, stale,
 foreign, malformed, failed, contradictory, weak, or self-authored evidence blocks completion or
 returns a bounded repair request. Verifier output carries deterministic hashes, not private reasoning.
+
+The M6 knowledge slice stores versioned, provenance-bearing working/project/user/episodic/semantic
+memory behind an asynchronous contract and retrieves it within exact user/project/mission boundaries.
+Its context compiler preserves mandatory P0 system, P1 mission, and P2 task context, gives current
+repository evidence authority over memory/history, applies deterministic token estimates and budgets,
+and excludes sensitive compilations from its bounded cache. Structured session snapshots retain a
+raw-event reference; neither the in-memory store nor snapshot hash is a durability/authentication
+claim.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the current architecture map and
 [SECURITY.md](SECURITY.md) for the trust boundaries.

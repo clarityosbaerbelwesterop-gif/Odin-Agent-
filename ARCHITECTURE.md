@@ -1,6 +1,6 @@
 # Odin architecture
 
-Status: M5 verification-engine verified checkpoint, 2026-09-03.
+Status: M6 memory/context implementation verified checkpoint, 2026-09-03.
 
 ## Repository finding
 
@@ -170,6 +170,27 @@ done into M5 claims. Task verification and `CHECKPOINTING -> FINAL_AUDIT -> COMP
 a consistent verifier `PASS`, reviewer `ACCEPT`, and aggregate `PASS`. Other outcomes leave the
 mission terminally `BLOCKED` with a typed gate error for the controlling layer.
 
+## Implemented M6 knowledge and context slice
+
+`src/memory` defines asynchronous storage/retrieval contracts for working, episodic, semantic,
+project, and explicit user-preference memory. Records bind stable identity to user/project/optional
+mission scope, optimistic version, provenance, content/record hashes, canonical times, sensitivity,
+tags, expiry, and lifecycle status. The current in-memory adapter provides atomic single-process
+version checks, idempotent replay, bounded deterministic lexical/tag retrieval, metadata-only revision
+history, and privacy-aware tombstones. It is a contract adapter, not durable storage.
+
+`src/context` assigns every candidate a fixed source/priority class from P0 system through P6 history.
+The deterministic compiler validates source/hash metadata, preserves all mandatory P0–P2 items,
+resolves optional semantic collisions in favor of current authority, and accounts against item,
+section, and total budgets using a named approximate estimator. Results include selected/dropped IDs,
+section estimates, source fingerprint, and result hash.
+
+The bounded content-addressed cache returns defensive copies and cannot cache any request containing a
+sensitive candidate. A context facade retrieves exact-scope memory as P5 only and subscribes to memory
+changes for targeted invalidation. Structured session snapshots preserve typed mission/decision/task/
+test summaries plus a hash-addressed raw-event reference and reject foreign, stale, or tampered input.
+No model summary can replace canonical mission events.
+
 ## Current module map
 
 ```text
@@ -182,7 +203,8 @@ src/
   persistence/   local SQLite adapter later; server PostgreSQL adapter later
   routing/       empirical model/effort selection later
   verification/ M5 typed evidence verifier and adversarial review authority
-  context/       M6 priority budgets and context packages
+  memory/        M6 asynchronous memory contracts and in-memory test adapter
+  context/       M6 retrieval facade, priority compiler/cache, session snapshots
   artifacts/     content-addressed artifact metadata later
   cli/           first user-facing entry point later
 ```
@@ -193,10 +215,9 @@ worker adapters.
 
 ## Next architecture milestone
 
-M6 adds working/project memory, source-aware retrieval, structured session snapshots, context priority
-budgets, and a deterministic context compiler. Repository and current source evidence must override
-remembered facts; compaction may discard lower-priority history but never system invariants or the
-current mission/task contract.
+M7 adds isolated specialist contracts, task/file/resource ownership, dependency-safe parallelism, and
+result reconciliation. It must build on M6 context scopes and M2 task dependencies without allowing
+specialists to communicate chaotically or mutate shared files concurrently.
 
 ## Storage direction
 

@@ -60,9 +60,20 @@ SQLite/PostgreSQL recovery.
 GitHub Actions run `33724426019` passed on M5 implementation head
 `f28bcb9758c2079d9f46826ea672c19bd6e538ff` with 77 tests and all configured gates.
 
-## M6–M12
+## M6 — Memory and context engine
 
-- [ ] M6 memory, context compiler, token budgets, and cache.
+- [x] Scoped/versioned memory contracts and asynchronous in-memory adapter.
+- [x] Optimistic concurrency, idempotency, expiry, tombstones, and bounded deterministic retrieval.
+- [x] Fixed P0–P6 source priorities, current-source precedence, and mandatory P0–P2 context.
+- [x] Deterministic item/section/total token estimates and fail-closed budget handling.
+- [x] Bounded content-addressed cache with sensitive-data exclusion and memory invalidation.
+- [x] Structured, integrity-checked session snapshots retaining raw-history references.
+- [x] Retrieval-to-context vertical slice and requirement-derived regression tests.
+- [x] Implementation CI observed: run `33752964771`, 108/108 tests passed.
+- [x] Synchronized documentation CI observed: run `33753281792`; final evidence recorded.
+
+## M7–M12
+
 - [ ] M7 isolated specialists, ownership, and reconciliation.
 - [ ] M8 persistent workers, event fan-out, reconnect, and long-running recovery.
 - [ ] M9 responsive web client and native-client protocol strategy.
