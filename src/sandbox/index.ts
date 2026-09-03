@@ -17,6 +17,12 @@ export { SandboxBackendRegistry } from "./backend.js";
 export { OutboundNetworkPolicy } from "./network.js";
 export { NodeProcessAdapter, SandboxProcessRunner } from "./process.js";
 export type {
+  RoutedSandboxAllocationRequest,
+  RoutedSandboxSession,
+  SandboxRouteChoice,
+} from "./routing.js";
+export { RoutedSandboxAllocator } from "./routing.js";
+export type {
   CanonicalWorkspacePath,
   DnsResolver,
   HostEnvironment,
