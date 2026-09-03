@@ -81,7 +81,10 @@ test("malformed, oversized, duplicate, and foreign-trust packages fail closed", 
 
   const normal = new SkillRegistry();
   normal.registerTrusted(projectSkill());
-  assert.deepEqual(normal.registerTrusted(projectSkill()), normal.resolveForReview("coding.safe_patch", "1.0.0"));
+  assert.deepEqual(
+    normal.registerTrusted(projectSkill()),
+    normal.resolveForReview("coding.safe_patch", "1.0.0"),
+  );
   assert.throws(
     () => normal.registerTrusted({ ...projectSkill(), summary: "Conflicting immutable content" }),
     (error: unknown) => error instanceof SkillError && error.code === "CONFLICT",
@@ -167,7 +170,10 @@ test("learned skills cannot load, self-verify, or activate before independent ve
     version: "1.0.0",
   });
   assert.equal(active.lifecycle, "ACTIVE");
-  assert.equal(registry.resolveActive("learned.safe_migration").contentHash, candidate.package.contentHash);
+  assert.equal(
+    registry.resolveActive("learned.safe_migration").contentHash,
+    candidate.package.contentHash,
+  );
 });
 
 test("activation supersedes one version, rollback is explicit, and revocation blocks loading", () => {
@@ -175,16 +181,36 @@ test("activation supersedes one version, rollback is explicit, and revocation bl
   registry.registerTrusted(projectSkill("1.0.0"));
   registry.registerTrusted(projectSkill("2.0.0"));
 
-  registry.activate({ actor: "trusted_runtime", name: "coding.safe_patch", promotedAt: T1, version: "1.0.0" });
-  registry.activate({ actor: "trusted_runtime", name: "coding.safe_patch", promotedAt: T2, version: "2.0.0" });
+  registry.activate({
+    actor: "trusted_runtime",
+    name: "coding.safe_patch",
+    promotedAt: T1,
+    version: "1.0.0",
+  });
+  registry.activate({
+    actor: "trusted_runtime",
+    name: "coding.safe_patch",
+    promotedAt: T2,
+    version: "2.0.0",
+  });
   assert.equal(registry.resolveForReview("coding.safe_patch", "1.0.0").lifecycle, "VERIFIED");
   assert.equal(registry.resolveActive("coding.safe_patch").version, "2.0.0");
 
-  registry.rollback({ actor: "user_approved", name: "coding.safe_patch", promotedAt: T3, version: "1.0.0" });
+  registry.rollback({
+    actor: "user_approved",
+    name: "coding.safe_patch",
+    promotedAt: T3,
+    version: "1.0.0",
+  });
   assert.equal(registry.resolveActive("coding.safe_patch").version, "1.0.0");
   assert.equal(registry.resolveForReview("coding.safe_patch", "2.0.0").lifecycle, "VERIFIED");
 
-  registry.revoke({ actor: "user_approved", name: "coding.safe_patch", revokedAt: T3, version: "1.0.0" });
+  registry.revoke({
+    actor: "user_approved",
+    name: "coding.safe_patch",
+    revokedAt: T3,
+    version: "1.0.0",
+  });
   assert.equal(registry.resolveForReview("coding.safe_patch", "1.0.0").lifecycle, "REVOKED");
   assert.throws(() => registry.resolve("coding.safe_patch", "1.0.0"), SkillError);
   assert.throws(() => registry.resolveActive("coding.safe_patch"), SkillError);
@@ -194,7 +220,12 @@ test("skill tool declarations never register handlers or mint execution authorit
   const skills = new SkillRegistry();
   const tools = new ToolRegistry();
   skills.registerTrusted(projectSkill());
-  skills.activate({ actor: "trusted_runtime", name: "coding.safe_patch", promotedAt: T1, version: "1.0.0" });
+  skills.activate({
+    actor: "trusted_runtime",
+    name: "coding.safe_patch",
+    promotedAt: T1,
+    version: "1.0.0",
+  });
 
   assert.deepEqual(skills.resolveActive("coding.safe_patch").requiredTools, [
     "repo.patch",

@@ -3,8 +3,8 @@ import test from "node:test";
 import {
   SkillError,
   SkillRegistry,
-  SkillSynthesisService,
   type SkillSynthesisAuthority,
+  SkillSynthesisService,
 } from "../../src/skills/index.js";
 
 const T0 = "2026-09-03T16:00:00.000Z";
@@ -28,7 +28,9 @@ function proposal(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function authority(result: "allow" | "deny" | "foreign" | "stale" = "allow"): SkillSynthesisAuthority {
+function authority(
+  result: "allow" | "deny" | "foreign" | "stale" = "allow",
+): SkillSynthesisAuthority {
   return {
     async attestSolvedTask(missionId, taskId) {
       if (result === "deny") return null;
@@ -96,7 +98,9 @@ test("exact synthesis replay is idempotent while conflicting replay fails closed
   assert.equal(registry.listReviewSummaries().length, 1);
 
   await assert.rejects(
-    service.createCandidate(proposal({ instructions: "Conflicting instructions under the same replay key." })),
+    service.createCandidate(
+      proposal({ instructions: "Conflicting instructions under the same replay key." }),
+    ),
     (error: unknown) => error instanceof SkillError && error.code === "CONFLICT",
   );
   assert.equal(registry.listReviewSummaries().length, 1);

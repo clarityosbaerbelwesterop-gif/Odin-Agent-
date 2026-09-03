@@ -48,13 +48,19 @@ export class SkillRegistry {
   registerTrusted(value: unknown): SkillRecord {
     const skill = normalizePackage(value, this.#limits);
     if (skill.trustClass !== "builtin" && skill.trustClass !== "project") {
-      throw new SkillError("DENIED", "Trusted registration accepts builtin or project skills only.");
+      throw new SkillError(
+        "DENIED",
+        "Trusted registration accepts builtin or project skills only.",
+      );
     }
     if (
       (skill.trustClass === "builtin" && skill.provenance.kind !== "system") ||
       (skill.trustClass === "project" && skill.provenance.kind !== "project")
     ) {
-      throw new SkillError("INVALID_INPUT", "Trusted skill provenance does not match its trust class.");
+      throw new SkillError(
+        "INVALID_INPUT",
+        "Trusted skill provenance does not match its trust class.",
+      );
     }
     return this.#insert(skill, "VERIFIED");
   }
@@ -62,23 +68,30 @@ export class SkillRegistry {
   registerCandidate(value: unknown): SkillRecord {
     const skill = normalizePackage(value, this.#limits);
     if (skill.trustClass !== "learned" && skill.trustClass !== "community") {
-      throw new SkillError("DENIED", "Candidate registration accepts learned or community skills only.");
+      throw new SkillError(
+        "DENIED",
+        "Candidate registration accepts learned or community skills only.",
+      );
     }
     if (skill.provenance.kind !== skill.trustClass) {
       throw new SkillError("INVALID_INPUT", "Candidate provenance does not match its trust class.");
     }
     if (
       skill.trustClass === "learned" &&
-      (skill.provenance.sourceMissionId === undefined || skill.provenance.sourceTaskId === undefined)
+      (skill.provenance.sourceMissionId === undefined ||
+        skill.provenance.sourceTaskId === undefined)
     ) {
-      throw new SkillError("INVALID_INPUT", "Learned skills require source mission and task identity.");
+      throw new SkillError(
+        "INVALID_INPUT",
+        "Learned skills require source mission and task identity.",
+      );
     }
     return this.#insert(skill, "CANDIDATE");
   }
 
   listAvailableSummaries(): readonly SkillSummary[] {
-    return this.#listSummaries((record) =>
-      record.lifecycle === "ACTIVE" || record.lifecycle === "VERIFIED",
+    return this.#listSummaries(
+      (record) => record.lifecycle === "ACTIVE" || record.lifecycle === "VERIFIED",
     );
   }
 
@@ -115,16 +128,25 @@ export class SkillRegistry {
       throw new SkillError("DENIED", "Revoked skills cannot be verified.");
     }
     if (evidence.contentHash !== current.package.contentHash) {
-      throw new SkillError("VERIFICATION_FAILED", "Verification evidence targets a different package hash.");
+      throw new SkillError(
+        "VERIFICATION_FAILED",
+        "Verification evidence targets a different package hash.",
+      );
     }
     if (evidence.status !== "PASS") {
       throw new SkillError("VERIFICATION_FAILED", "Skill verification evidence did not pass.");
     }
     if (!INDEPENDENT_PRODUCERS.has(evidence.producerClass)) {
-      throw new SkillError("VERIFICATION_FAILED", "Skill verification must be independently produced.");
+      throw new SkillError(
+        "VERIFICATION_FAILED",
+        "Skill verification must be independently produced.",
+      );
     }
     if (Date.parse(evidence.observedAt) < Date.parse(current.package.provenance.observedAt)) {
-      throw new SkillError("VERIFICATION_FAILED", "Skill verification predates its package provenance.");
+      throw new SkillError(
+        "VERIFICATION_FAILED",
+        "Skill verification predates its package provenance.",
+      );
     }
     if (current.lifecycle === "VERIFIED" || current.lifecycle === "ACTIVE") {
       return cloneRecord(current);
@@ -167,7 +189,10 @@ export class SkillRegistry {
   #activate(request: SkillPromotionRequest, rollback: boolean): SkillRecord {
     const current = this.#record(request.name, request.version);
     if (current.lifecycle !== "VERIFIED" && current.lifecycle !== "ACTIVE") {
-      throw new SkillError("DENIED", `${rollback ? "Rollback" : "Activation"} requires a verified skill.`);
+      throw new SkillError(
+        "DENIED",
+        `${rollback ? "Rollback" : "Activation"} requires a verified skill.`,
+      );
     }
     if (
       current.verifiedAt !== null &&
@@ -207,7 +232,10 @@ export class SkillRegistry {
       if (existing.package.contentHash === skill.contentHash && existing.lifecycle === lifecycle) {
         return cloneRecord(existing);
       }
-      throw new SkillError("CONFLICT", `Skill ${key} is already registered with different state or content.`);
+      throw new SkillError(
+        "CONFLICT",
+        `Skill ${key} is already registered with different state or content.`,
+      );
     }
     const record = freezeRecord({
       activatedAt: null,
@@ -224,7 +252,8 @@ export class SkillRegistry {
     assertSkillName(name);
     assertVersion(version);
     const record = this.#records.get(skillKey(name, version));
-    if (record === undefined) throw new SkillError("NOT_FOUND", `Unknown skill ${name}@${version}.`);
+    if (record === undefined)
+      throw new SkillError("NOT_FOUND", `Unknown skill ${name}@${version}.`);
     return record;
   }
 
@@ -244,29 +273,58 @@ export class SkillRegistry {
             version: record.package.version,
           }),
         )
-        .sort((left, right) => skillKey(left.name, left.version).localeCompare(skillKey(right.name, right.version))),
+        .sort((left, right) =>
+          skillKey(left.name, left.version).localeCompare(skillKey(right.name, right.version)),
+        ),
     );
   }
 }
 
-export function normalizePackage(value: unknown, limits: SkillRegistryLimits = DEFAULT_LIMITS): SkillPackage {
+export function normalizePackage(
+  value: unknown,
+  limits: SkillRegistryLimits = DEFAULT_LIMITS,
+): SkillPackage {
   const object = objectValue(value, "skill package");
   exactKeys(
     object,
-    ["instructions", "name", "provenance", "requiredTools", "summary", "tags", "testRefs", "trustClass", "version"],
+    [
+      "instructions",
+      "name",
+      "provenance",
+      "requiredTools",
+      "summary",
+      "tags",
+      "testRefs",
+      "trustClass",
+      "version",
+    ],
     [],
     "skill package",
   );
   const trustClass = text(object.trustClass, "skill trustClass") as SkillTrustClass;
   if (!TRUST_CLASSES.has(trustClass)) invalid("Skill trustClass is unsupported.");
   const normalized: SkillPackageInput = {
-    instructions: boundedText(object.instructions, "skill instructions", limits.maxInstructionsBytes),
+    instructions: boundedText(
+      object.instructions,
+      "skill instructions",
+      limits.maxInstructionsBytes,
+    ),
     name: skillName(object.name),
     provenance: normalizeProvenance(object.provenance),
-    requiredTools: normalizedIdentifiers(object.requiredTools, "required tool", limits.maxTools, toolName),
+    requiredTools: normalizedIdentifiers(
+      object.requiredTools,
+      "required tool",
+      limits.maxTools,
+      toolName,
+    ),
     summary: boundedText(object.summary, "skill summary", limits.maxSummaryBytes),
     tags: normalizedIdentifiers(object.tags, "skill tag", limits.maxTags, tagName),
-    testRefs: normalizedIdentifiers(object.testRefs, "skill test ref", limits.maxTestRefs, referenceName),
+    testRefs: normalizedIdentifiers(
+      object.testRefs,
+      "skill test ref",
+      limits.maxTestRefs,
+      referenceName,
+    ),
     trustClass,
     version: version(object.version),
   };
@@ -308,7 +366,10 @@ function normalizeVerificationEvidence(value: unknown): SkillVerificationEvidenc
     [],
     "skill verification evidence",
   );
-  const producerClass = text(object.producerClass, "verification producer") as SkillVerificationProducer;
+  const producerClass = text(
+    object.producerClass,
+    "verification producer",
+  ) as SkillVerificationProducer;
   const producers = new Set<SkillVerificationProducer>([
     "independent_test",
     "independent_verifier",
@@ -320,8 +381,14 @@ function normalizeVerificationEvidence(value: unknown): SkillVerificationEvidenc
   if (!producers.has(producerClass)) invalid("Verification producer is unsupported.");
   const status = text(object.status, "verification status");
   if (status !== "PASS" && status !== "FAIL") invalid("Verification status is unsupported.");
-  const evidenceRefs = normalizedIdentifiers(object.evidenceRefs, "evidence ref", 64, referenceName);
-  if (evidenceRefs.length === 0) invalid("Verification evidence requires at least one evidence ref.");
+  const evidenceRefs = normalizedIdentifiers(
+    object.evidenceRefs,
+    "evidence ref",
+    64,
+    referenceName,
+  );
+  if (evidenceRefs.length === 0)
+    invalid("Verification evidence requires at least one evidence ref.");
   return Object.freeze({
     contentHash: sha256(object.contentHash, "verification contentHash"),
     evidenceRefs,
@@ -361,7 +428,8 @@ function normalizeRevocation(value: unknown): SkillRevocationRequest {
 
 function normalizeLimits(value: SkillRegistryLimits): SkillRegistryLimits {
   for (const [key, limit] of Object.entries(value)) {
-    if (!Number.isSafeInteger(limit) || limit < 1) invalid(`Skill registry limit ${key} must be positive.`);
+    if (!Number.isSafeInteger(limit) || limit < 1)
+      invalid(`Skill registry limit ${key} must be positive.`);
   }
   return Object.freeze({ ...value });
 }
@@ -433,7 +501,8 @@ function exactKeys(
 }
 
 function objectValue(value: unknown, label: string): Record<string, unknown> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) invalid(`${label} must be an object.`);
+  if (value === null || typeof value !== "object" || Array.isArray(value))
+    invalid(`${label} must be an object.`);
   return value as Record<string, unknown>;
 }
 
@@ -492,7 +561,8 @@ function sha256(value: unknown, label: string): string {
 function canonicalTimestamp(value: unknown, label: string): string {
   const result = text(value, label);
   const parsed = Date.parse(result);
-  if (Number.isNaN(parsed) || new Date(parsed).toISOString() !== result) invalid(`${label} must be canonical UTC.`);
+  if (Number.isNaN(parsed) || new Date(parsed).toISOString() !== result)
+    invalid(`${label} must be canonical UTC.`);
   return result;
 }
 

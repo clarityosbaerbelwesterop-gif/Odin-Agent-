@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { normalizePackage, SkillRegistry } from "./registry.js";
+import { normalizePackage, type SkillRegistry } from "./registry.js";
 import {
   type SkillCandidateProposal,
   SkillError,
@@ -15,10 +15,7 @@ export interface SkillSynthesisAttestation {
 }
 
 export interface SkillSynthesisAuthority {
-  attestSolvedTask(
-    missionId: string,
-    taskId: string,
-  ): Promise<SkillSynthesisAttestation | null>;
+  attestSolvedTask(missionId: string, taskId: string): Promise<SkillSynthesisAttestation | null>;
 }
 
 interface ReplayEntry {
@@ -47,10 +44,14 @@ export class SkillSynthesisService {
       attestation.evidenceRefs.length === 0 ||
       Date.parse(attestation.observedAt) < Date.parse(proposal.observedAt)
     ) {
-      throw new SkillError("DENIED", "Learned skill synthesis requires a valid solved-task attestation.");
+      throw new SkillError(
+        "DENIED",
+        "Learned skill synthesis requires a valid solved-task attestation.",
+      );
     }
     assertCanonicalTimestamp(attestation.observedAt, "synthesis attestation observedAt");
-    for (const reference of attestation.evidenceRefs) assertReference(reference, "synthesis evidence ref");
+    for (const reference of attestation.evidenceRefs)
+      assertReference(reference, "synthesis evidence ref");
 
     const input: SkillPackageInput = {
       instructions: proposal.instructions,
@@ -89,7 +90,10 @@ export class SkillSynthesisService {
         replay.name !== normalized.name ||
         replay.version !== normalized.version
       ) {
-        throw new SkillError("CONFLICT", "Synthesized skill idempotency replay conflicts with prior input.");
+        throw new SkillError(
+          "CONFLICT",
+          "Synthesized skill idempotency replay conflicts with prior input.",
+        );
       }
       return this.#registry.resolveForReview(replay.name, replay.version);
     }
@@ -121,7 +125,10 @@ function normalizeCandidateProposal(value: unknown): SkillCandidateProposal {
   ];
   const keys = Object.keys(object);
   if (keys.length !== expected.length || keys.some((key) => !expected.includes(key))) {
-    throw new SkillError("INVALID_INPUT", "Skill candidate proposal contains missing or unknown fields.");
+    throw new SkillError(
+      "INVALID_INPUT",
+      "Skill candidate proposal contains missing or unknown fields.",
+    );
   }
   const proposal: SkillCandidateProposal = {
     idempotencyKey: reference(object.idempotencyKey, "candidate idempotency key"),
@@ -158,7 +165,8 @@ function objectValue(value: unknown, label: string): Record<string, unknown> {
 }
 
 function stringValue(value: unknown, label: string): string {
-  if (typeof value !== "string") throw new SkillError("INVALID_INPUT", `${label} must be a string.`);
+  if (typeof value !== "string")
+    throw new SkillError("INVALID_INPUT", `${label} must be a string.`);
   return value;
 }
 
