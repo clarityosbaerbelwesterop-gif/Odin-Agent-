@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { RoutingCandidate, RoutingDecision } from "../../src/routing/index.js";
 import {
+  RoutedSandboxAllocator,
   type SandboxBackendAdapter,
   type SandboxBackendCreateRequest,
   SandboxBackendRegistry,
   SandboxError,
-  RoutedSandboxAllocator,
 } from "../../src/sandbox/index.js";
 
 class RoutedBackend implements SandboxBackendAdapter {
