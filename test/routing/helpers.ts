@@ -99,6 +99,7 @@ export function routeRequest(overrides: Partial<RouteRequest> = {}): RouteReques
       maxBranches: 4,
       maxCritiquePasses: 2,
       maxEstimatedCostMicros: 100_000,
+      maxEstimatedTokens: 9_000,
       maxModelCalls: 6,
       maxParallelCalls: 3,
       maxRepairs: 2,

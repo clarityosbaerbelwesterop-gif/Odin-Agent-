@@ -70,6 +70,7 @@ export interface RoutingRequirements {
 
 export interface RoutingBudget {
   readonly maxEstimatedCostMicros: number;
+  readonly maxEstimatedTokens: number;
   readonly maxModelCalls: number;
   readonly maxParallelCalls: number;
   readonly maxBranches: number;
@@ -133,6 +134,8 @@ export interface ReasoningPlan {
   readonly branches: readonly ReasoningBranch[];
   readonly critiquePasses: number;
   readonly repairAttempts: number;
+  readonly estimatedTokensPerCall: number;
+  readonly maxEstimatedTokens: number;
   readonly maxModelCalls: number;
   readonly parallelism: number;
   readonly planHash: string;

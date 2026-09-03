@@ -176,3 +176,30 @@ test("reasoning decisions are deterministic and attempt state cannot exceed rout
     (error: unknown) => error instanceof RoutingError && error.code === "BUDGET_EXCEEDED",
   );
 });
+
+test("explicit token ceiling reduces calls and blocks when one call cannot fit", () => {
+  const router = new EmpiricalModelRouter();
+  const inputs = {
+    evaluations: [routingEvaluation("provider-a", "base", { id: "token-base", quality: 8_500 })],
+    profiles: [routingProfile("provider-a", "base")],
+  };
+  const base = routeRequest();
+  const bounded = router.route(
+    routeRequest({
+      budget: { ...base.budget, maxEstimatedTokens: 3_000 },
+      risk: "high",
+      uncertaintyBps: 7_500,
+    }),
+    inputs,
+  );
+  assert.equal(bounded.reasoning.estimatedTokensPerCall, 1_500);
+  assert.equal(bounded.reasoning.maxEstimatedTokens, 3_000);
+  assert.equal(bounded.reasoning.maxModelCalls, 2);
+  assert.ok(bounded.reasoning.branchCount <= 2);
+
+  assert.throws(
+    () =>
+      router.route(routeRequest({ budget: { ...base.budget, maxEstimatedTokens: 1_499 } }), inputs),
+    (error: unknown) => error instanceof RoutingError && error.code === "BUDGET_EXCEEDED",
+  );
+});

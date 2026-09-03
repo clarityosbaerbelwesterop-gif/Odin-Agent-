@@ -24,12 +24,14 @@ export function createReasoningPlan(request: RouteRequest): ReasoningPlan {
   const desiredCritiques =
     desiredByRisk(request.risk, 0, 1, 1, 2) + (request.uncertaintyBps >= 7_500 ? 1 : 0);
   const desiredRepairs = desiredByRisk(request.risk, 1, 1, 2, 2);
+  const estimatedTokensPerCall = request.estimatedInputTokens + request.estimatedOutputTokens;
+  const tokenCallCeiling =
+    estimatedTokensPerCall === 0
+      ? request.budget.maxModelCalls
+      : Math.floor(request.budget.maxEstimatedTokens / estimatedTokensPerCall);
+  const maxModelCalls = Math.min(request.budget.maxModelCalls, tokenCallCeiling);
 
-  const branchCount = Math.min(
-    desiredBranches,
-    request.budget.maxBranches,
-    request.budget.maxModelCalls,
-  );
+  const branchCount = Math.min(desiredBranches, request.budget.maxBranches, maxModelCalls);
   if (branchCount < 1) {
     throw new RoutingError(
       "BUDGET_EXCEEDED",
@@ -37,19 +39,20 @@ export function createReasoningPlan(request: RouteRequest): ReasoningPlan {
     );
   }
 
-  let remainingCalls = request.budget.maxModelCalls - branchCount;
+  let remainingCalls = maxModelCalls - branchCount;
+  const reservedRepairCalls = Math.min(
+    desiredRepairs,
+    request.budget.maxRepairs,
+    remainingCalls > 0 ? 1 : 0,
+  );
   const critiquePasses = Math.min(
     desiredCritiques,
     request.budget.maxCritiquePasses,
-    remainingCalls,
+    Math.max(0, remainingCalls - reservedRepairCalls),
   );
   remainingCalls -= critiquePasses;
   const repairAttempts = Math.min(desiredRepairs, request.budget.maxRepairs, remainingCalls);
-  const parallelism = Math.min(
-    request.budget.maxParallelCalls,
-    branchCount,
-    request.budget.maxModelCalls,
-  );
+  const parallelism = Math.min(request.budget.maxParallelCalls, branchCount, maxModelCalls);
   const branches = Object.freeze(
     Array.from(
       { length: branchCount },
@@ -64,7 +67,9 @@ export function createReasoningPlan(request: RouteRequest): ReasoningPlan {
     branchCount,
     branches,
     critiquePasses,
-    maxModelCalls: request.budget.maxModelCalls,
+    estimatedTokensPerCall,
+    maxEstimatedTokens: request.budget.maxEstimatedTokens,
+    maxModelCalls,
     parallelism,
     repairAttempts,
   };
