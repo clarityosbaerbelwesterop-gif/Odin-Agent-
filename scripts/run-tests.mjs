@@ -41,6 +41,8 @@ await rm(join(root, "dist"), { force: true, recursive: true });
   if (compileExitCode !== 0) {
     process.exitCode = compileExitCode;
   } else {
+    await import("./copy-web-assets.mjs");
+
     const tests = await findTests(testRoot);
     if (tests.length === 0) {
       throw new Error("No compiled test files were found.");
