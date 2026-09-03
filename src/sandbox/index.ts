@@ -5,12 +5,16 @@ export type {
   SandboxBackendCreateRequest,
   SandboxBackendCreateResult,
   SandboxBackendDescriptor,
+  SandboxBackendDestroyRequest,
   SandboxBackendKind,
   SandboxBackendRegistration,
   SandboxBindingSummary,
   SandboxCredentialResolver,
   SandboxIsolationClass,
   SandboxModelIdentity,
+  SandboxReleaseOutcome,
+  SandboxReleaseReason,
+  SandboxReleaseRequest,
   SandboxSession,
 } from "./backend.js";
 export { SandboxBackendRegistry } from "./backend.js";
