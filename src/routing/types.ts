@@ -44,6 +44,7 @@ export interface ModelEvaluationInput {
   readonly model: string;
   readonly profileVersion: string;
   readonly taskClass: RoutingTaskClass;
+  readonly reasoningEffort: ReasoningEffort | null;
   readonly samples: number;
   readonly qualityScoreBps: number;
   readonly passRateBps: number;
@@ -119,7 +120,7 @@ export interface RoutingCandidate {
   readonly passRateBps: number;
   readonly medianLatencyMs: number;
   readonly estimatedCostMicros: number;
-  readonly reasoningEffort?: ReasoningEffort;
+  readonly reasoningEffort: ReasoningEffort | null;
 }
 
 export interface ReasoningBranch {
