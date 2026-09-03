@@ -9,6 +9,8 @@ const MAX_TIMEOUT_MS = 60 * 60_000;
 
 export type SandboxBackendKind = "local_process" | "remote_api";
 export type SandboxIsolationClass = "host_process" | "provider_managed";
+export type SandboxReleaseReason = "cancelled" | "completed" | "failed" | "expired";
+export type SandboxReleaseOutcome = "RELEASED" | "REPLAYED";
 
 export interface SandboxBackendDescriptor {
   readonly id: string;
@@ -40,6 +42,7 @@ export interface SandboxAllocationRequest extends SandboxModelIdentity {
 }
 
 export interface SandboxBackendCreateRequest extends SandboxModelIdentity {
+  readonly idempotencyKey: string;
   readonly missionId: string;
   readonly taskId: string;
   readonly timeoutMs: number;
@@ -52,8 +55,19 @@ export interface SandboxBackendCreateResult {
   readonly expiresAt?: string;
 }
 
+export interface SandboxBackendDestroyRequest extends SandboxModelIdentity {
+  readonly idempotencyKey: string;
+  readonly missionId: string;
+  readonly taskId: string;
+  readonly sessionId: string;
+  readonly reason: SandboxReleaseReason;
+  readonly signal: AbortSignal;
+  readonly credential?: string;
+}
+
 export interface SandboxBackendAdapter {
   create(request: SandboxBackendCreateRequest): Promise<SandboxBackendCreateResult>;
+  destroy?(request: SandboxBackendDestroyRequest): Promise<void>;
 }
 
 export interface SandboxBackendRegistration {
@@ -63,13 +77,22 @@ export interface SandboxBackendRegistration {
 
 export type SandboxCredentialResolver = (credentialRef: string) => Promise<string> | string;
 
-export interface SandboxSession {
+export interface SandboxSession extends SandboxModelIdentity {
+  readonly allocationKey: string;
   readonly sessionId: string;
+  readonly missionId: string;
+  readonly taskId: string;
   readonly backendId: string;
   readonly backendKind: SandboxBackendKind;
   readonly isolation: SandboxIsolationClass;
   readonly expiresAt?: string;
   readonly selectionHash: string;
+}
+
+export interface SandboxReleaseRequest {
+  readonly session: SandboxSession;
+  readonly reason: SandboxReleaseReason;
+  readonly signal: AbortSignal;
 }
 
 export interface SandboxBindingSummary extends SandboxModelIdentity {
@@ -86,10 +109,23 @@ interface RegisteredBackend {
   readonly adapter: SandboxBackendAdapter;
 }
 
+interface AllocationRecord {
+  readonly fingerprint: string;
+  readonly session: SandboxSession;
+}
+
+interface InflightAllocation {
+  readonly fingerprint: string;
+  readonly promise: Promise<SandboxSession>;
+}
+
 export class SandboxBackendRegistry {
   readonly #backends = new Map<string, RegisteredBackend>();
   readonly #bindings = new Map<string, NormalizedBinding>();
   readonly #credentialResolver: SandboxCredentialResolver;
+  readonly #allocations = new Map<string, AllocationRecord>();
+  readonly #inflight = new Map<string, InflightAllocation>();
+  readonly #released = new Set<string>();
 
   constructor(
     registrations: readonly SandboxBackendRegistration[],
@@ -111,6 +147,12 @@ export class SandboxBackendRegistry {
       const descriptor = normalizeDescriptor(registration.descriptor);
       if (typeof registration.adapter?.create !== "function") {
         throw new SandboxError("BACKEND_INVALID", "Sandbox backend adapter is invalid.");
+      }
+      if (descriptor.kind === "remote_api" && typeof registration.adapter.destroy !== "function") {
+        throw new SandboxError(
+          "BACKEND_INVALID",
+          "Remote sandbox backends must implement deterministic cleanup.",
+        );
       }
       if (this.#backends.has(descriptor.id)) {
         throw new SandboxError(
@@ -222,46 +264,159 @@ export class SandboxBackendRegistry {
       throw new SandboxError("BACKEND_NOT_FOUND", "Sandbox backend is unavailable.");
     }
 
-    let credential: string | undefined;
-    if (backend.descriptor.requiresCredential) {
-      credential = await this.#resolveCredential(binding.credentialRef);
-    }
-    if (request.signal.aborted) {
-      throw new SandboxError("CANCELLED", "Sandbox allocation was cancelled.");
-    }
-
-    const result = await backend.adapter.create(
-      Object.freeze({
-        ...(credential === undefined ? {} : { credential }),
-        missionId,
-        model: identity.model,
-        profileVersion: identity.profileVersion,
-        provider: identity.provider,
-        signal: request.signal,
-        taskId,
-        timeoutMs,
-      }),
-    );
-    const sessionId = identifier(result?.sessionId, "sessionId", MAX_SESSION_ID_LENGTH);
-    const expiresAt = normalizeOptionalTimestamp(result?.expiresAt);
-    const selectionHash = selectionHashFor({
+    const allocationKey = allocationKeyFor({
       backendId: backend.descriptor.id,
       missionId,
       model: identity.model,
       profileVersion: identity.profileVersion,
       provider: identity.provider,
-      sessionId,
       taskId,
     });
+    const fingerprint = selectionHashFor({ allocationKey, timeoutMs: String(timeoutMs) });
+    const settled = this.#allocations.get(allocationKey);
+    if (settled !== undefined) {
+      assertAllocationFingerprint(settled.fingerprint, fingerprint);
+      if (this.#released.has(allocationKey)) {
+        throw new SandboxError("SESSION_INVALID", "Released sandbox allocation cannot be reused.");
+      }
+      return settled.session;
+    }
+    const inflight = this.#inflight.get(allocationKey);
+    if (inflight !== undefined) {
+      assertAllocationFingerprint(inflight.fingerprint, fingerprint);
+      return inflight.promise;
+    }
 
-    return Object.freeze({
-      backendId: backend.descriptor.id,
-      backendKind: backend.descriptor.kind,
+    const promise = this.#createAllocation({
+      allocationKey,
+      backend,
+      binding,
+      fingerprint,
+      identity,
+      missionId,
+      signal: request.signal,
+      taskId,
+      timeoutMs,
+    });
+    this.#inflight.set(allocationKey, Object.freeze({ fingerprint, promise }));
+    try {
+      return await promise;
+    } finally {
+      this.#inflight.delete(allocationKey);
+    }
+  }
+
+  async release(request: SandboxReleaseRequest): Promise<SandboxReleaseOutcome> {
+    if (request.signal.aborted) {
+      throw new SandboxError("CANCELLED", "Sandbox release was cancelled.");
+    }
+    if (!isReleaseReason(request.reason)) {
+      throw new SandboxError("SESSION_INVALID", "Sandbox release reason is invalid.");
+    }
+    const session = normalizeSession(request.session);
+    const stored = this.#allocations.get(session.allocationKey);
+    if (stored === undefined || !sameSession(stored.session, session)) {
+      throw new SandboxError("SESSION_INVALID", "Sandbox session is unknown or does not match.");
+    }
+    if (this.#released.has(session.allocationKey)) return "REPLAYED";
+
+    const binding = this.#bindings.get(modelKey(session));
+    if (binding === undefined || binding.backendId !== session.backendId) {
+      throw new SandboxError("SESSION_INVALID", "Sandbox session binding no longer matches.");
+    }
+    const backend = this.#backends.get(session.backendId);
+    if (backend === undefined) {
+      throw new SandboxError("BACKEND_NOT_FOUND", "Sandbox backend is unavailable.");
+    }
+
+    if (backend.adapter.destroy !== undefined) {
+      const credential = backend.descriptor.requiresCredential
+        ? await this.#resolveCredential(binding.credentialRef)
+        : undefined;
+      if (request.signal.aborted) {
+        throw new SandboxError("CANCELLED", "Sandbox release was cancelled.");
+      }
+      await backend.adapter.destroy(
+        Object.freeze({
+          ...(credential === undefined ? {} : { credential }),
+          idempotencyKey: `release:${session.allocationKey}`,
+          missionId: session.missionId,
+          model: session.model,
+          profileVersion: session.profileVersion,
+          provider: session.provider,
+          reason: request.reason,
+          sessionId: session.sessionId,
+          signal: request.signal,
+          taskId: session.taskId,
+        }),
+      );
+    }
+
+    this.#released.add(session.allocationKey);
+    return "RELEASED";
+  }
+
+  async #createAllocation(input: {
+    readonly allocationKey: string;
+    readonly backend: RegisteredBackend;
+    readonly binding: NormalizedBinding;
+    readonly fingerprint: string;
+    readonly identity: SandboxModelIdentity;
+    readonly missionId: string;
+    readonly taskId: string;
+    readonly timeoutMs: number;
+    readonly signal: AbortSignal;
+  }): Promise<SandboxSession> {
+    const credential = input.backend.descriptor.requiresCredential
+      ? await this.#resolveCredential(input.binding.credentialRef)
+      : undefined;
+    if (input.signal.aborted) {
+      throw new SandboxError("CANCELLED", "Sandbox allocation was cancelled.");
+    }
+    const result = await input.backend.adapter.create(
+      Object.freeze({
+        ...(credential === undefined ? {} : { credential }),
+        idempotencyKey: input.allocationKey,
+        missionId: input.missionId,
+        model: input.identity.model,
+        profileVersion: input.identity.profileVersion,
+        provider: input.identity.provider,
+        signal: input.signal,
+        taskId: input.taskId,
+        timeoutMs: input.timeoutMs,
+      }),
+    );
+    const sessionId = identifier(result?.sessionId, "sessionId", MAX_SESSION_ID_LENGTH);
+    const expiresAt = normalizeOptionalTimestamp(result?.expiresAt);
+    const selectionHash = selectionHashFor({
+      allocationKey: input.allocationKey,
+      backendId: input.backend.descriptor.id,
+      missionId: input.missionId,
+      model: input.identity.model,
+      profileVersion: input.identity.profileVersion,
+      provider: input.identity.provider,
+      sessionId,
+      taskId: input.taskId,
+    });
+    const session = Object.freeze({
+      allocationKey: input.allocationKey,
+      backendId: input.backend.descriptor.id,
+      backendKind: input.backend.descriptor.kind,
       ...(expiresAt === undefined ? {} : { expiresAt }),
-      isolation: backend.descriptor.isolation,
+      isolation: input.backend.descriptor.isolation,
+      missionId: input.missionId,
+      model: input.identity.model,
+      profileVersion: input.identity.profileVersion,
+      provider: input.identity.provider,
       selectionHash,
       sessionId,
+      taskId: input.taskId,
     });
+    this.#allocations.set(
+      input.allocationKey,
+      Object.freeze({ fingerprint: input.fingerprint, session }),
+    );
+    return session;
   }
 
   async #resolveCredential(reference: string | undefined): Promise<string> {
@@ -351,8 +506,31 @@ function normalizeIdentity(value: SandboxModelIdentity): SandboxModelIdentity {
   });
 }
 
+function normalizeSession(value: SandboxSession): SandboxSession {
+  if (typeof value !== "object" || value === null) {
+    throw new SandboxError("SESSION_INVALID", "Sandbox session is invalid.");
+  }
+  const identity = normalizeIdentity(value);
+  return Object.freeze({
+    allocationKey: identifier(value.allocationKey, "allocationKey", 64),
+    backendId: identifier(value.backendId, "backendId"),
+    backendKind: value.backendKind,
+    ...(value.expiresAt === undefined ? {} : { expiresAt: normalizeOptionalTimestamp(value.expiresAt) }),
+    isolation: value.isolation,
+    missionId: identifier(value.missionId, "missionId"),
+    ...identity,
+    selectionHash: identifier(value.selectionHash, "selectionHash", 64),
+    sessionId: identifier(value.sessionId, "sessionId", MAX_SESSION_ID_LENGTH),
+    taskId: identifier(value.taskId, "taskId"),
+  });
+}
+
 function modelKey(value: SandboxModelIdentity): string {
   return `${value.provider}\u0000${value.model}\u0000${value.profileVersion}`;
+}
+
+function allocationKeyFor(value: Readonly<Record<string, string>>): string {
+  return selectionHashFor(value);
 }
 
 function selectionHashFor(value: Readonly<Record<string, string>>): string {
@@ -361,6 +539,36 @@ function selectionHashFor(value: Readonly<Record<string, string>>): string {
     .map((key) => `${key}:${JSON.stringify(value[key])}`)
     .join("\n");
   return createHash("sha256").update(canonical).digest("hex");
+}
+
+function sameSession(left: SandboxSession, right: SandboxSession): boolean {
+  return (
+    left.allocationKey === right.allocationKey &&
+    left.backendId === right.backendId &&
+    left.backendKind === right.backendKind &&
+    left.expiresAt === right.expiresAt &&
+    left.isolation === right.isolation &&
+    left.missionId === right.missionId &&
+    left.model === right.model &&
+    left.profileVersion === right.profileVersion &&
+    left.provider === right.provider &&
+    left.selectionHash === right.selectionHash &&
+    left.sessionId === right.sessionId &&
+    left.taskId === right.taskId
+  );
+}
+
+function assertAllocationFingerprint(existing: string, requested: string): void {
+  if (existing !== requested) {
+    throw new SandboxError(
+      "SESSION_INVALID",
+      "Sandbox allocation replay conflicts with its original immutable request.",
+    );
+  }
+}
+
+function isReleaseReason(value: string): value is SandboxReleaseReason {
+  return value === "cancelled" || value === "completed" || value === "failed" || value === "expired";
 }
 
 function identifier(value: string, label: string, maximum = MAX_IDENTIFIER_LENGTH): string {
