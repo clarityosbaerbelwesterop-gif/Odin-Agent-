@@ -62,7 +62,7 @@ GitHub Actions run `33724426019` passed on M5 implementation head
 
 ## M6–M12
 
-- [ ] M6 memory, context compiler, token budgets, and cache.
+- [ ] M6 scoped/versioned memory, structured snapshots, context compiler, token budgets, and cache.
 - [ ] M7 isolated specialists, ownership, and reconciliation.
 - [ ] M8 persistent workers, event fan-out, reconnect, and long-running recovery.
 - [ ] M9 responsive web client and native-client protocol strategy.
