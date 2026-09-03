@@ -1,15 +1,15 @@
 import { spawn } from "node:child_process";
 import { isAbsolute } from "node:path";
-import { CanonicalWorkspaceBoundary, normalizeRelativePath } from "./workspace.js";
 import {
   type HostEnvironment,
   type ProcessAdapter,
-  SandboxError,
   type SandboxCommandDefinition,
+  SandboxError,
   type SandboxProcessResult,
   type SandboxProcessRunnerOptions,
   type SpawnRequest,
 } from "./types.js";
+import { type CanonicalWorkspaceBoundary, normalizeRelativePath } from "./workspace.js";
 
 const MAX_ARGUMENTS = 64;
 const MAX_ARGUMENT_BYTES = 8_192;
@@ -39,7 +39,10 @@ export class SandboxProcessRunner {
     for (const command of commands) {
       const normalized = normalizeCommand(command);
       if (this.#commands.has(normalized.id)) {
-        throw new SandboxError("COMMAND_INVALID", `Duplicate sandbox command ID: ${normalized.id}.`);
+        throw new SandboxError(
+          "COMMAND_INVALID",
+          `Duplicate sandbox command ID: ${normalized.id}.`,
+        );
       }
       this.#commands.set(normalized.id, normalized);
     }
@@ -200,7 +203,9 @@ function normalizeCommand(value: SandboxCommandDefinition): SandboxCommandDefini
   if (!Array.isArray(value.args) || value.args.length > MAX_ARGUMENTS) {
     throw new SandboxError("COMMAND_INVALID", "Sandbox command argument list is malformed.");
   }
-  const args = value.args.map((argument) => boundedText(argument, "command argument", MAX_ARGUMENT_BYTES));
+  const args = value.args.map((argument) =>
+    boundedText(argument, "command argument", MAX_ARGUMENT_BYTES),
+  );
   const cwd = normalizeRelativePath(value.cwd, true);
   const timeoutMs = positiveInteger(value.timeoutMs, "timeoutMs", MAX_TIMEOUT_MS);
   const maxStdoutBytes = positiveInteger(value.maxStdoutBytes, "maxStdoutBytes", MAX_OUTPUT_BYTES);
@@ -218,7 +223,10 @@ function normalizeCommand(value: SandboxCommandDefinition): SandboxCommandDefini
   for (const [name, rawValue] of fixedEntries) {
     validateEnvironmentName(name);
     if (inheritEnv.includes(name)) {
-      throw new SandboxError("COMMAND_INVALID", "Fixed and inherited environment names must be disjoint.");
+      throw new SandboxError(
+        "COMMAND_INVALID",
+        "Fixed and inherited environment names must be disjoint.",
+      );
     }
     fixedEnv[name] = boundedText(rawValue, "environment value", MAX_ENVIRONMENT_VALUE_BYTES);
   }
@@ -247,7 +255,10 @@ function normalizeEnvironmentNames(value: readonly string[]): readonly string[] 
     return name;
   });
   if (new Set(names).size !== names.length) {
-    throw new SandboxError("COMMAND_INVALID", "Inherited environment allowlist contains duplicates.");
+    throw new SandboxError(
+      "COMMAND_INVALID",
+      "Inherited environment allowlist contains duplicates.",
+    );
   }
   return Object.freeze([...names].sort());
 }
@@ -271,7 +282,11 @@ function validateEnvironmentName(value: string): void {
 }
 
 function boundedText(value: string, label: string, maximumBytes: number): string {
-  if (typeof value !== "string" || value.includes("\u0000") || Buffer.byteLength(value) > maximumBytes) {
+  if (
+    typeof value !== "string" ||
+    value.includes("\u0000") ||
+    Buffer.byteLength(value) > maximumBytes
+  ) {
     throw new SandboxError("COMMAND_INVALID", `${label} is malformed or exceeds its byte bound.`);
   }
   return value;
@@ -298,9 +313,7 @@ function cancelledResult(commandId: string): SandboxProcessResult {
   });
 }
 
-function stripCommandId(
-  value: SandboxProcessResult,
-): Omit<SandboxProcessResult, "commandId"> {
+function stripCommandId(value: SandboxProcessResult): Omit<SandboxProcessResult, "commandId"> {
   const { commandId: _commandId, ...result } = value;
   return Object.freeze(result);
 }

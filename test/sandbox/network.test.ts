@@ -1,10 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  type DnsResolver,
-  OutboundNetworkPolicy,
-  SandboxError,
-} from "../../src/sandbox/index.js";
+import { type DnsResolver, OutboundNetworkPolicy, SandboxError } from "../../src/sandbox/index.js";
 
 class Resolver implements DnsResolver {
   readonly #answers: Readonly<Record<string, readonly string[]>>;

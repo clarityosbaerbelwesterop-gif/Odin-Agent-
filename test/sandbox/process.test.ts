@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -7,8 +7,8 @@ import {
   CanonicalWorkspaceBoundary,
   NodeProcessAdapter,
   type ProcessAdapter,
-  SandboxError,
   type SandboxCommandDefinition,
+  SandboxError,
   SandboxProcessRunner,
   type SpawnRequest,
 } from "../../src/sandbox/index.js";
@@ -197,7 +197,12 @@ test("command registration rejects relative executables and ambiguous environmen
         new SandboxProcessRunner(
           fixture.workspace,
           new RecordingAdapter(),
-          [command("duplicate-env", { fixedEnv: { SAFE_FLAG: "fixed" }, inheritEnv: ["SAFE_FLAG"] })],
+          [
+            command("duplicate-env", {
+              fixedEnv: { SAFE_FLAG: "fixed" },
+              inheritEnv: ["SAFE_FLAG"],
+            }),
+          ],
           { maxConcurrent: 1 },
         ),
       (error: unknown) => error instanceof SandboxError && error.code === "COMMAND_INVALID",

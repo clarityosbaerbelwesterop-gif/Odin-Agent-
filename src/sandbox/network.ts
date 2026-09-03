@@ -88,7 +88,11 @@ export class OutboundNetworkPolicy {
     } catch {
       throw new SandboxError("NETWORK_DENIED", "Outbound DNS resolution failed.");
     }
-    if (!Array.isArray(addresses) || addresses.length === 0 || addresses.length > MAX_DNS_ADDRESSES) {
+    if (
+      !Array.isArray(addresses) ||
+      addresses.length === 0 ||
+      addresses.length > MAX_DNS_ADDRESSES
+    ) {
       throw new SandboxError("NETWORK_DENIED", "Outbound DNS result count is outside its bound.");
     }
     return Object.freeze([...addresses]);
@@ -127,8 +131,7 @@ function isHostnameSyntax(value: string): boolean {
   if (value.length > 253 || value.endsWith(".")) return false;
   const labels = value.split(".");
   return labels.every(
-    (label) =>
-      /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u.test(label) && label.length <= 63,
+    (label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u.test(label) && label.length <= 63,
   );
 }
 
@@ -173,11 +176,7 @@ function isPublicIpv6(bytes: readonly number[]): boolean {
   if (bytes[0] === 0x20 && bytes[1] === 0x01 && bytes[2] === 0x0d && bytes[3] === 0xb8) {
     return false;
   }
-  if (
-    bytes.slice(0, 10).every((byte) => byte === 0) &&
-    bytes[10] === 0xff &&
-    bytes[11] === 0xff
-  ) {
+  if (bytes.slice(0, 10).every((byte) => byte === 0) && bytes[10] === 0xff && bytes[11] === 0xff) {
     return isPublicIpv4(bytes.slice(12));
   }
   return true;
@@ -228,5 +227,9 @@ function ipv6Hextets(value: string): number[] | null {
 }
 
 function hasControlCharacter(value: string): boolean {
-  return /[\u0000-\u001f\u007f]/u.test(value);
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (code <= 0x1f || code === 0x7f) return true;
+  }
+  return false;
 }

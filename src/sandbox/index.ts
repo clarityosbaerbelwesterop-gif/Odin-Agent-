@@ -1,9 +1,5 @@
 export { OutboundNetworkPolicy } from "./network.js";
 export { NodeProcessAdapter, SandboxProcessRunner } from "./process.js";
-export {
-  CanonicalWorkspaceBoundary,
-  normalizeRelativePath,
-} from "./workspace.js";
 export type {
   CanonicalWorkspacePath,
   DnsResolver,
@@ -19,3 +15,7 @@ export type {
   SpawnRequest,
 } from "./types.js";
 export { SandboxError } from "./types.js";
+export {
+  CanonicalWorkspaceBoundary,
+  normalizeRelativePath,
+} from "./workspace.js";

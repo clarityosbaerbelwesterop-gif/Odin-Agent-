@@ -1,12 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import {
-  CanonicalWorkspaceBoundary,
-  SandboxError,
-} from "../../src/sandbox/index.js";
+import { CanonicalWorkspaceBoundary, SandboxError } from "../../src/sandbox/index.js";
 
 async function withWorkspace(
   callback: (input: { readonly base: string; readonly root: string }) => Promise<void>,
