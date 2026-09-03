@@ -515,7 +515,9 @@ function normalizeSession(value: SandboxSession): SandboxSession {
     allocationKey: identifier(value.allocationKey, "allocationKey", 64),
     backendId: identifier(value.backendId, "backendId"),
     backendKind: value.backendKind,
-    ...(value.expiresAt === undefined ? {} : { expiresAt: normalizeOptionalTimestamp(value.expiresAt) }),
+    ...(value.expiresAt === undefined
+      ? {}
+      : { expiresAt: normalizeOptionalTimestamp(value.expiresAt) }),
     isolation: value.isolation,
     missionId: identifier(value.missionId, "missionId"),
     ...identity,
@@ -568,7 +570,9 @@ function assertAllocationFingerprint(existing: string, requested: string): void 
 }
 
 function isReleaseReason(value: string): value is SandboxReleaseReason {
-  return value === "cancelled" || value === "completed" || value === "failed" || value === "expired";
+  return (
+    value === "cancelled" || value === "completed" || value === "failed" || value === "expired"
+  );
 }
 
 function identifier(value: string, label: string, maximum = MAX_IDENTIFIER_LENGTH): string {
