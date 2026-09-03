@@ -5,10 +5,30 @@ const fixture = Object.freeze({
     { cursor: 42, jobId: "verify-change", status: "RUNNING", type: "job.heartbeat" },
   ],
   projection: {
-    budgetLimits: { attempts: 20, costMicros: 2_000_000, inputTokens: 120_000, outputTokens: 40_000, toolCalls: 80 },
-    budgetUsage: { attempts: 7, costMicros: 620_000, inputTokens: 38_000, outputTokens: 11_000, toolCalls: 27 },
+    budgetLimits: {
+      attempts: 20,
+      costMicros: 2_000_000,
+      inputTokens: 120_000,
+      outputTokens: 40_000,
+      toolCalls: 80,
+    },
+    budgetUsage: {
+      attempts: 7,
+      costMicros: 620_000,
+      inputTokens: 38_000,
+      outputTokens: 11_000,
+      toolCalls: 27,
+    },
     focus: "complex",
-    jobs: { BLOCKED: 0, CANCELLED: 0, CANCELLING: 0, PENDING: 2, RETRY_WAIT: 0, RUNNING: 1, SUCCEEDED: 4 },
+    jobs: {
+      BLOCKED: 0,
+      CANCELLED: 0,
+      CANCELLING: 0,
+      PENDING: 2,
+      RETRY_WAIT: 0,
+      RUNNING: 1,
+      SUCCEEDED: 4,
+    },
     missionId: "fixture-mission",
     objective: "Verify a bounded coding mission and preserve durable recovery evidence.",
     resumeState: null,
@@ -42,7 +62,8 @@ required("cancel-control").addEventListener("click", () => {
 
 if (cancelDialog instanceof HTMLDialogElement) {
   cancelDialog.addEventListener("close", () => {
-    if (cancelDialog.returnValue === "confirm") missionState.textContent = "CANCELLED (fixture intent)";
+    if (cancelDialog.returnValue === "confirm")
+      missionState.textContent = "CANCELLED (fixture intent)";
   });
 }
 
@@ -82,10 +103,13 @@ function render(state) {
 
   replaceList(
     required("activity-list"),
-    state.events.map((event) => `#${event.cursor} · ${event.jobId} · ${event.type} · ${event.status}`),
+    state.events.map(
+      (event) => `#${event.cursor} · ${event.jobId} · ${event.type} · ${event.status}`,
+    ),
   );
 
-  required("evidence-summary").textContent = `Verification status: ${projection.verification.status}`;
+  required("evidence-summary").textContent =
+    `Verification status: ${projection.verification.status}`;
   replaceList(required("evidence-list"), projection.verification.evidenceRefs);
 }
 

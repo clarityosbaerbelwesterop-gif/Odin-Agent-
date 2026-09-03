@@ -27,7 +27,6 @@ import {
   type ClientCommandRequest,
   type ClientCommandResponse,
   ClientProtocolError,
-  type ClientStateRequest,
   type ClientStateResponse,
   type ClientVerificationSummary,
 } from "./types.js";
