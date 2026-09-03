@@ -1,6 +1,6 @@
 # Odin architecture
 
-Status: M4 coding-vertical-slice checkpoint, 2026-09-02.
+Status: M5 verification-engine implementation checkpoint, 2026-09-03.
 
 ## Repository finding
 
@@ -149,6 +149,27 @@ This is contract-level evidence, not a production-runtime claim. CI uses a scrip
 in-memory/injected workspace, quality-runner, event-store, and audit fixtures. It proves orchestration
 semantics but not live-provider reliability, OS isolation, or durable process recovery.
 
+## Implemented M5 verification authority
+
+`src/verification` is a non-mutating authority between execution evidence and completion. The
+verifier accepts bounded typed claims, evidence, and bindings. It requires canonical UTC timestamps,
+allowlisted evidence kinds/producers/statuses, SHA-256 content metadata, matching mission/task scope,
+fresh observations, successful status, and explicit coverage of every required evidence kind.
+Duplicates, missing references, pre-change/future/stale observations, and contradictory results fail
+closed. Findings and verdicts are deterministically sorted and hash-addressed.
+
+The adversarial reviewer is a separate interface and pass. It checks evidence reuse across unrelated
+task scopes, weak or self-authored provenance, stale/pre-change observations, and contradictory
+status. It may `ACCEPT`, `BLOCK`, or issue a bounded `REPAIR_REQUIRED` request, but it has no tool,
+repository, mission-state, network, or credential authority. Its output is validated for scope,
+schema, verdict/finding consistency, bounds, and result hash; failure or malformed output blocks.
+
+M4 requires this authority as an injected dependency. After the registered quality gate succeeds,
+the orchestrator performs a fresh scoped repository read and compiles all persisted definitions of
+done into M5 claims. Task verification and `CHECKPOINTING -> FINAL_AUDIT -> COMPLETED` occur only after
+a consistent verifier `PASS`, reviewer `ACCEPT`, and aggregate `PASS`. Other outcomes leave the
+mission terminally `BLOCKED` with a typed gate error for the controlling layer.
+
 ## Current module map
 
 ```text
@@ -157,10 +178,10 @@ src/
   events/        append-only event contracts and in-memory contract adapter
   providers/     normalized model API, capabilities, adapters, errors
   tools/         contracts, discovery, policy, audit, repository execution boundary
-  runtime/       M4 coding orchestrator and strict plan/repair contracts
+  runtime/       M4 coding orchestrator, strict plan/repair, M5 evidence compilation
   persistence/   local SQLite adapter later; server PostgreSQL adapter later
   routing/       empirical model/effort selection later
-  verification/ M5 independent verifier and adversarial review next
+  verification/ M5 typed evidence verifier and adversarial review authority
   context/       M6 priority budgets and context packages
   artifacts/     content-addressed artifact metadata later
   cli/           first user-facing entry point later
@@ -172,11 +193,10 @@ worker adapters.
 
 ## Next architecture milestone
 
-M5 adds an independent verification layer above the M4 workflow. The verifier must consume declared
-definitions of done and collected evidence without trusting planner/runtime self-assessment, produce a
-typed verdict, and allow adversarial review to block completion or request bounded targeted repair.
-False-positive completion, stale evidence, verifier disagreement, and review-triggered repair become
-first-class regression cases.
+M6 adds working/project memory, source-aware retrieval, structured session snapshots, context priority
+budgets, and a deterministic context compiler. Repository and current source evidence must override
+remembered facts; compaction may discard lower-priority history but never system invariants or the
+current mission/task contract.
 
 ## Storage direction
 

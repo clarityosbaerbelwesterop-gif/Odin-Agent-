@@ -15,6 +15,11 @@ Odin tests behavior derived from requirements, not the internal implementation s
 6. Eval suites compare model-alone and model-plus-Odin completion, verified correctness, cost,
    latency, and recovery across fixed tasks.
 
+M5 verification fixtures derive claims from definitions of done and exercise valid evidence, missing
+bindings, canonical time/freshness, foreign scope, failed and contradictory observations, reuse,
+weak/self-authored provenance, malformed reviewer results, bounded repair requests, deterministic
+replay, and the M4 completion gate. A green quality command alone is explicitly insufficient.
+
 Every confirmed bug should receive a regression test when reproducible. Provider tests use injected
 HTTP transports and recorded schema-shaped fixtures; live-provider smoke tests are opt-in, never run
 on pull requests, and must obey an explicit cost budget.

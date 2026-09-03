@@ -1,6 +1,6 @@
 # M5 — Independent verification and adversarial review
 
-Status: implementation in progress. Updated: 2026-09-02.
+Status: implementation complete; pull-request CI verification pending. Updated: 2026-09-03.
 
 ## Objective
 
@@ -63,7 +63,33 @@ provider credentials, shell execution, or network authority.
 - M7 specialist agents and cross-agent reconciliation.
 - Production sandbox, process isolation, or network-capable tools.
 
+## Implemented design
+
+`src/verification` now separates typed claims, evidence, bindings, verifier findings, adversarial
+findings, repair requests, and aggregate gate results. Inputs are bounded, timestamps must use a
+canonical UTC representation, evidence kinds/producers/statuses are allowlisted, SHA-256 metadata is
+validated, and mission/task scope, freshness, ordering, duplicates, missing bindings, failures, and
+contradictions fail closed. Result objects are deterministically ordered and hash-addressed.
+
+The built-in reviewer is a separate authority. It independently checks cross-task evidence reuse,
+self-authored or weak provenance, stale/pre-change observations, and contradictory results. Reviewer
+output is itself treated as untrusted: malformed scope, findings, repair requests, verdict/hash
+inconsistency, or reviewer failure becomes a typed blocking result. Repair requests have hard claim,
+reason, and instruction bounds and have no execution authority.
+
+M4 now requires an injected `VerificationAuthority`. After a registered quality command succeeds,
+the runtime performs a fresh scoped repository read, compiles every persisted definition of done into
+an evidence-bound M5 request, and permits task verification and `COMPLETED` only for a consistent
+`PASS`/`ACCEPT` gate. `BLOCK` and `REPAIR_REQUIRED` transition the mission to `BLOCKED`; a verifier
+failure also fails closed. Raw repository and quality output are reduced to hashes in verification
+metadata rather than copied into verdicts.
+
+Deterministic tests cover the required pass, missing, stale, foreign, conflicting, reused,
+self-authored, malformed-reviewer, replay, malformed-input, duplicate, and M4 integration paths. No
+test uses live inference, network access, production workspaces, or paid resources.
+
 ## Verification strategy
 
-Run `npm run verify`. M5 is `VERIFIED` only when the final pull-request CI checkpoint passes with
-repository documentation synchronized to the observed evidence.
+Local checkpoint: `npm run verify` passes with 77 tests and all configured coverage floors. M5 remains
+unverified until the final pull-request CI checkpoint passes and this document records that remote
+evidence.

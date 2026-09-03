@@ -1,6 +1,7 @@
 # Security model
 
-Status: design baseline plus implemented M1 provider-boundary and M3 tool-control safeguards.
+Status: design baseline plus implemented M1 provider-boundary, M3 tool-control, and M5 verification
+safeguards.
 Controls not explicitly identified as implemented remain future work.
 
 ## Protected assets
@@ -89,6 +90,19 @@ SSRF, DNS rebinding, and private-network access.
 
 Plugins capable of code execution must run out of process over authenticated, versioned RPC. Packages
 must be pinned, provenance recorded, and community extensions begin with no authority.
+
+## Implemented M5 verification safeguards
+
+Planner/runtime assertions and repository or tool output are not completion authority. M5 accepts
+only bounded typed evidence with canonical timestamps, allowlisted kinds/producers/statuses, explicit
+mission/task scope, and SHA-256 content metadata. Missing, foreign, stale, future, pre-change, failed,
+duplicated, or contradictory evidence fails closed.
+
+Adversarial review is a distinct non-mutating interface. Its verdict, findings, repair request, scope,
+and deterministic hash are validated before use; malformed output or reviewer failure becomes a
+blocking result. The M4 orchestrator performs a post-change scoped read and cannot transition to
+`COMPLETED` unless verification returns internally consistent `PASS` and `ACCEPT` results. Verdicts
+store concise evidence references and hashes rather than raw source, tool output, or hidden reasoning.
 
 ## Prompt injection and durable learning
 

@@ -48,9 +48,20 @@ M4 proves orchestration across the M1/M2/M3 contracts with scripted provider res
 in-memory fixtures. It does not claim a production OS sandbox, live-provider compatibility, or durable
 SQLite/PostgreSQL recovery.
 
-## M5–M12
+## M5 — Verification engine
 
-- [ ] M5 verification engine and adversarial review.
+- [ ] Typed claim/evidence/binding contracts and deterministic fail-closed verifier.
+- [ ] Independent adversarial review with validated `ACCEPT`, `BLOCK`, and bounded
+  `REPAIR_REQUIRED` outcomes.
+- [ ] M4 completion gated by fresh, scoped, hash-addressed M5 evidence.
+- [ ] Required verifier and coding-integration regression scenarios pass.
+- [ ] Final pull-request CI result observed and recorded.
+
+Implementation and local verification are complete on the M5 branch. Checkboxes remain open until
+the pull-request CI checkpoint provides remote repository evidence.
+
+## M6–M12
+
 - [ ] M6 memory, context compiler, token budgets, and cache.
 - [ ] M7 isolated specialists, ownership, and reconciliation.
 - [ ] M8 persistent workers, event fan-out, reconnect, and long-running recovery.
