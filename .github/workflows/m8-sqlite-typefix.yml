@@ -1,0 +1,70 @@
+name: M8 SQLite typefix helper
+
+on:
+  push:
+    branches:
+      - agent/m8-durable-missions
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Remove invalid StatementSync close calls
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/durable/store.ts')
+          text = path.read_text()
+          replacements = {
+          '''  const statement = database.prepare(sql);
+  try {
+    statement.run(...parameters);
+  } finally {
+    statement.close();
+  }
+''': '''  database.prepare(sql).run(...parameters);
+''',
+          '''  const statement = database.prepare(sql);
+  try {
+    return statement.get(...parameters);
+  } finally {
+    statement.close();
+  }
+''': '''  return database.prepare(sql).get(...parameters);
+''',
+          '''  const statement = database.prepare(sql);
+  try {
+    return statement.all(...parameters) as unknown[];
+  } finally {
+    statement.close();
+  }
+''': '''  return database.prepare(sql).all(...parameters) as unknown[];
+''',
+          }
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise SystemExit('Expected exactly one SQLite helper pattern')
+              text = text.replace(old, new)
+          path.write_text(text)
+          PY
+      - run: npx biome check --write src/durable/store.ts
+      - name: Commit typefix and remove helper
+        run: |
+          rm .github/workflows/m8-sqlite-typefix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/durable/store.ts .github/workflows/m8-sqlite-typefix.yml
+          git commit -m "fix(m8): use Node SQLite statement API correctly"
+          git push origin HEAD:agent/m8-durable-missions
