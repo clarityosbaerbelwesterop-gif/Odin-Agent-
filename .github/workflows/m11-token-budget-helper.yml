@@ -1,0 +1,101 @@
+name: M11 token budget helper
+
+on:
+  push:
+    branches:
+      - agent/m11-adaptive-reasoning
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Add explicit M11 token ceiling
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          function replace(path, oldText, newText) {
+            let text = fs.readFileSync(path, 'utf8');
+            if (!text.includes(oldText)) throw new Error(`Missing expected pattern in ${path}`);
+            text = text.replace(oldText, newText);
+            fs.writeFileSync(path, text);
+          }
+
+          replace(
+            'src/routing/types.ts',
+            '  readonly maxEstimatedCostMicros: number;\n  readonly maxModelCalls: number;',
+            '  readonly maxEstimatedCostMicros: number;\n  readonly maxEstimatedTokens: number;\n  readonly maxModelCalls: number;',
+          );
+          replace(
+            'src/routing/types.ts',
+            '  readonly critiquePasses: number;\n  readonly repairAttempts: number;\n  readonly maxModelCalls: number;\n  readonly parallelism: number;',
+            '  readonly critiquePasses: number;\n  readonly repairAttempts: number;\n  readonly estimatedTokensPerCall: number;\n  readonly maxEstimatedTokens: number;\n  readonly maxModelCalls: number;\n  readonly parallelism: number;',
+          );
+
+          replace(
+            'src/routing/router.ts',
+            '      "maxEstimatedCostMicros",\n      "maxModelCalls",',
+            '      "maxEstimatedCostMicros",\n      "maxEstimatedTokens",\n      "maxModelCalls",',
+          );
+          replace(
+            'src/routing/router.ts',
+            '    maxEstimatedCostMicros: safeInteger(\n      object.maxEstimatedCostMicros,\n      "budget maxEstimatedCostMicros",\n      0,\n    ),\n    maxModelCalls,',
+            '    maxEstimatedCostMicros: safeInteger(\n      object.maxEstimatedCostMicros,\n      "budget maxEstimatedCostMicros",\n      0,\n    ),\n    maxEstimatedTokens: safeInteger(object.maxEstimatedTokens, "budget maxEstimatedTokens", 0),\n    maxModelCalls,',
+          );
+
+          replace(
+            'src/routing/reasoning.ts',
+            '  const desiredRepairs = desiredByRisk(request.risk, 1, 1, 2, 2);\n\n  const branchCount = Math.min(\n    desiredBranches,\n    request.budget.maxBranches,\n    request.budget.maxModelCalls,\n  );',
+            '  const desiredRepairs = desiredByRisk(request.risk, 1, 1, 2, 2);\n  const estimatedTokensPerCall = request.estimatedInputTokens + request.estimatedOutputTokens;\n  const tokenCallCeiling =\n    estimatedTokensPerCall === 0\n      ? request.budget.maxModelCalls\n      : Math.floor(request.budget.maxEstimatedTokens / estimatedTokensPerCall);\n  const maxModelCalls = Math.min(request.budget.maxModelCalls, tokenCallCeiling);\n\n  const branchCount = Math.min(desiredBranches, request.budget.maxBranches, maxModelCalls);',
+          );
+          replace(
+            'src/routing/reasoning.ts',
+            '  let remainingCalls = request.budget.maxModelCalls - branchCount;',
+            '  let remainingCalls = maxModelCalls - branchCount;',
+          );
+          replace(
+            'src/routing/reasoning.ts',
+            '    request.budget.maxParallelCalls,\n    branchCount,\n    request.budget.maxModelCalls,',
+            '    request.budget.maxParallelCalls,\n    branchCount,\n    maxModelCalls,',
+          );
+          replace(
+            'src/routing/reasoning.ts',
+            '    critiquePasses,\n    maxModelCalls: request.budget.maxModelCalls,\n    parallelism,\n    repairAttempts,',
+            '    critiquePasses,\n    estimatedTokensPerCall,\n    maxEstimatedTokens: request.budget.maxEstimatedTokens,\n    maxModelCalls,\n    parallelism,\n    repairAttempts,',
+          );
+
+          replace(
+            'test/routing/helpers.ts',
+            '      maxEstimatedCostMicros: 100_000,\n      maxModelCalls: 6,',
+            '      maxEstimatedCostMicros: 100_000,\n      maxEstimatedTokens: 9_000,\n      maxModelCalls: 6,',
+          );
+
+          const testPath = 'test/routing/reasoning.test.ts';
+          let tests = fs.readFileSync(testPath, 'utf8');
+          const addition = `\n\ntest("explicit token ceiling reduces calls and blocks when one call cannot fit", () => {\n  const router = new EmpiricalModelRouter();\n  const inputs = {\n    evaluations: [routingEvaluation("provider-a", "base", { id: "token-base", quality: 8_500 })],\n    profiles: [routingProfile("provider-a", "base")],\n  };\n  const bounded = router.route(\n    routeRequest({ budget: { maxEstimatedTokens: 3_000 }, risk: "high", uncertaintyBps: 7_500 }),\n    inputs,\n  );\n  assert.equal(bounded.reasoning.estimatedTokensPerCall, 1_500);\n  assert.equal(bounded.reasoning.maxEstimatedTokens, 3_000);\n  assert.equal(bounded.reasoning.maxModelCalls, 2);\n  assert.ok(bounded.reasoning.branchCount <= 2);\n\n  assert.throws(\n    () => router.route(routeRequest({ budget: { maxEstimatedTokens: 1_499 } }), inputs),\n    (error: unknown) => error instanceof RoutingError && error.code === "BUDGET_EXCEEDED",\n  );\n});\n`;
+          if (!tests.includes('explicit token ceiling reduces calls')) {
+            tests += addition;
+            fs.writeFileSync(testPath, tests);
+          }
+          NODE
+      - run: npm run format
+      - run: npm run verify
+      - name: Commit patch and remove helper
+        run: |
+          rm .github/workflows/m11-token-budget-helper.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routing/types.ts src/routing/router.ts src/routing/reasoning.ts test/routing/helpers.ts test/routing/reasoning.test.ts .github/workflows/m11-token-budget-helper.yml
+          git commit -m "feat(m11): enforce explicit token ceilings"
+          git push origin HEAD:agent/m11-adaptive-reasoning
