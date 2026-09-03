@@ -21,44 +21,12 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Remove invalid StatementSync close calls
+      - name: Use Node 24 StatementSync API
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('src/durable/store.ts')
-          text = path.read_text()
-          replacements = {
-          '''  const statement = database.prepare(sql);
-  try {
-    statement.run(...parameters);
-  } finally {
-    statement.close();
-  }
-''': '''  database.prepare(sql).run(...parameters);
-''',
-          '''  const statement = database.prepare(sql);
-  try {
-    return statement.get(...parameters);
-  } finally {
-    statement.close();
-  }
-''': '''  return database.prepare(sql).get(...parameters);
-''',
-          '''  const statement = database.prepare(sql);
-  try {
-    return statement.all(...parameters) as unknown[];
-  } finally {
-    statement.close();
-  }
-''': '''  return database.prepare(sql).all(...parameters) as unknown[];
-''',
-          }
-          for old, new in replacements.items():
-              if text.count(old) != 1:
-                  raise SystemExit('Expected exactly one SQLite helper pattern')
-              text = text.replace(old, new)
-          path.write_text(text)
-          PY
+          perl -0pi -e 's/  const statement = database\.prepare\(sql\);\n  try \{\n    statement\.run\(\.\.\.parameters\);\n  \} finally \{\n    statement\.close\(\);\n  \}/  database.prepare(sql).run(...parameters);/g' src/durable/store.ts
+          perl -0pi -e 's/  const statement = database\.prepare\(sql\);\n  try \{\n    return statement\.get\(\.\.\.parameters\);\n  \} finally \{\n    statement\.close\(\);\n  \}/  return database.prepare(sql).get(...parameters);/g' src/durable/store.ts
+          perl -0pi -e 's/  const statement = database\.prepare\(sql\);\n  try \{\n    return statement\.all\(\.\.\.parameters\) as unknown\[\];\n  \} finally \{\n    statement\.close\(\);\n  \}/  return database.prepare(sql).all(...parameters) as unknown[];/g' src/durable/store.ts
+          test "$(grep -c 'statement.close' src/durable/store.ts || true)" -eq 0
       - run: npx biome check --write src/durable/store.ts
       - name: Commit typefix and remove helper
         run: |
