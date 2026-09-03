@@ -33,7 +33,8 @@ jobs:
           text = text.replace(oldText, newText);
           fs.writeFileSync(path, text);
           NODE
-      - run: npm run format
+      - name: Apply scoped safe Biome fixes
+        run: npx biome check --write src/sandbox test/sandbox
       - run: npm run verify
       - name: Commit formatted M12 tranche and remove helper
         run: |
@@ -41,5 +42,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/sandbox test/sandbox .github/workflows/m12-format-helper.yml
-          git commit -m "fix(m12): format sandbox hardening tranche"
+          git commit -m "fix(m12): normalize sandbox hardening tranche"
           git push origin HEAD:agent/m12-production-hardening
