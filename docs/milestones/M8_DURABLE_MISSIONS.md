@@ -115,7 +115,12 @@ use a bounded strictly increasing cursor and validate event hashes before return
 ## Verification evidence
 
 GitHub Actions run `33766161672` passed on implementation/documentation checkpoint
-`7ca2e5ee3a7ff0d34641dcdf7a0418a4e90fec04` after adversarial repairs:
+`7ca2e5ee3a7ff0d34641dcdf7a0418a4e90fec04` after adversarial repairs. A later full implementation
+run `33766277108` passed on `041c42a7d506bd0c4543052f88765521dfd34ba1`, and synchronized architecture,
+security, roadmap, and handover run `33766944528` passed on
+`1e1bc56b7e19ef34a4aef4950f681955f004c649`.
+
+Across the verified M8 checkpoints:
 
 - foundation validation: passed;
 - Biome: passed;
@@ -129,9 +134,9 @@ connection fencing, lease-token hash secrecy, stale-generation denial, attempt e
 cancellation-wins, lifecycle cursor paging, lifecycle-hash corruption denial, fresh-process recovery,
 a 32-job reopen fixture, normalized handler errors, timeout abort, and cooperative cancellation.
 
-A final synchronized documentation CI checkpoint is required to preserve these claims after the repo
-status files are updated. No M8 verification run uses live inference, an external network tool,
-production workspace mutation, deployment, migration, or paid resource.
+No M8 verification run uses live inference, an external network tool, production workspace mutation,
+deployment, production migration, or paid resources. The final evidence-only documentation checkpoint
+must pass before merge so the exact synchronized run remains represented on the merge head.
 
 ## Out of scope and remaining limits
 
