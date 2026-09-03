@@ -1,13 +1,18 @@
 export type SandboxErrorCode =
+  | "BACKEND_INVALID"
+  | "BACKEND_NOT_FOUND"
+  | "BINDING_NOT_FOUND"
   | "CANCELLED"
   | "COMMAND_INVALID"
   | "COMMAND_NOT_FOUND"
   | "CONCURRENCY_EXCEEDED"
+  | "CREDENTIAL_INVALID"
   | "DESTINATION_INVALID"
   | "NETWORK_DENIED"
   | "PATH_ESCAPE"
   | "PATH_INVALID"
-  | "PROCESS_SPAWN_FAILED";
+  | "PROCESS_SPAWN_FAILED"
+  | "SESSION_INVALID";
 
 export class SandboxError extends Error {
   readonly code: SandboxErrorCode;
