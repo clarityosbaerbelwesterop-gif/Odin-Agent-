@@ -74,7 +74,8 @@ GitHub Actions run `33724426019` passed on M5 implementation head
 
 ## M7–M12
 
-- [ ] M7 isolated specialists, ownership, and reconciliation.
+- [ ] M7 bounded specialist registry, dependency-safe ownership leases, parallel execution, and
+  reconciliation.
 - [ ] M8 persistent workers, event fan-out, reconnect, and long-running recovery.
 - [ ] M9 responsive web client and native-client protocol strategy.
 - [ ] M10 progressively loaded, permissioned, independently tested skills.
