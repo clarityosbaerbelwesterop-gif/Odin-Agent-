@@ -1,7 +1,7 @@
 # Security model
 
-Status: design baseline plus implemented M1 provider-boundary, M3 tool-control, M5 verification, and
-M6 memory/context safeguards.
+Status: design baseline plus implemented M1 provider-boundary, M3 tool-control, M5 verification, M6
+memory/context, and M7 specialist-coordination safeguards.
 Controls not explicitly identified as implemented remain future work.
 
 ## Protected assets
@@ -126,6 +126,29 @@ targeted cache invalidation.
 Session snapshot hashes detect accidental corruption and bind the snapshot to a mission/event version
 and raw-history reference. They are not signatures. Durable snapshot authentication, access control,
 encryption at rest, retention, and cross-process cache coherence remain unimplemented.
+
+## Implemented M7 specialist-coordination safeguards
+
+Specialist workers are untrusted proposal producers. Registry discovery reveals bounded metadata but
+not handler references. The coordinator selects only dependency-ready M2 tasks, applies global/batch/
+worker capacity ceilings, and reserves expiring mission/task/specialist-bound logical leases before
+calling a worker. Repository, resource, and shared-state claims block intersecting writes; read/read
+sharing is explicit.
+
+Assignments are immutable data plus an abort signal and expose no peer messaging, mission mutation,
+repository adapter, tool runtime, policy, credentials, or evidence authority. Returned proposals use
+an exact bounded schema. Foreign identity, impossible/future time, duplicate or malformed references,
+unsupported fields such as numeric confidence/private reasoning, and changed files outside reserved
+write claims are blocked. Raw worker exceptions are reduced to typed reasons rather than persisted.
+
+A specialist cannot self-certify by labeling evidence `independent_tool`. `ACCEPTED` requires an
+injected runtime authority to attest at least one matching passing evidence reference, and the
+reconciliation records the attested IDs. Reconciliation still cannot mark an M2 task verified or a
+mission complete; M5 remains the final claim/evidence completion authority.
+
+M7 locks, plan records, and workers are in memory and single-process. Hashes detect envelope tampering
+but are not signatures. Abort is cooperative, repository claims do not resolve symlinks, and no
+process/container/worktree, durable lease, cross-host fencing, or crash recovery is claimed.
 
 ## Prompt injection and durable learning
 

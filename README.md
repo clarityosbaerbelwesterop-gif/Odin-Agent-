@@ -7,9 +7,10 @@ repair, checkpoints, budgets, and auditable evidence.
 Odin is at the **early core stage**. Repository foundation, the provider-neutral inference boundary,
 the deterministic mission runtime, the fail-closed tool-control boundary, a fixture-backed coding
 vertical slice, independent evidence verification, and a scoped memory/context slice are implemented
-and contract-tested. The repository does not yet provide a production coding agent, OS-level sandbox,
-durable database persistence, mobile client, or hosted service, and no live-provider smoke test has
-been claimed.
+and contract-tested. A bounded specialist coordinator now adds dependency-safe logical ownership,
+parallel injected workers, and strict result reconciliation. The repository does not yet provide a
+production coding agent, OS-level sandbox, durable database persistence, mobile client, or hosted
+service, and no live-provider smoke test has been claimed.
 Current status and verified capabilities are tracked in [ROADMAP.md](ROADMAP.md) and
 [HANDOVER.md](HANDOVER.md).
 
@@ -61,6 +62,14 @@ repository evidence authority over memory/history, applies deterministic token e
 and excludes sensitive compilations from its bounded cache. Structured session snapshots retain a
 raw-event reference; neither the in-memory store nor snapshot hash is a durability/authentication
 claim.
+
+The M7 coordination slice discovers specialists through compact role/capability metadata, reserves
+expiring repository/resource/state ownership before execution, and sends each injected worker one
+immutable assignment. Workers cannot communicate with peers or receive tool, policy, credential, or
+mission authority through this interface. Results remain untrusted proposals: identity, timestamps,
+hashes, bounds, changed-file ownership, and runtime evidence attestations are checked before a result
+can be `ACCEPTED`. Reconciliation does not itself verify an M2 task or complete a mission. Current
+workers and locks are in-process test contracts, not durable jobs or OS isolation.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the current architecture map and
 [SECURITY.md](SECURITY.md) for the trust boundaries.

@@ -72,10 +72,18 @@ GitHub Actions run `33724426019` passed on M5 implementation head
 - [x] Implementation CI observed: run `33752964771`, 108/108 tests passed.
 - [x] Synchronized documentation CI observed: run `33753281792`; final evidence recorded.
 
-## M7–M12
+## M7 — Specialist coordination
 
-- [ ] M7 bounded specialist registry, dependency-safe ownership leases, parallel execution, and
-  reconciliation.
+- [x] Bounded specialist registry with compact discovery metadata and injected handlers.
+- [x] M2 dependency-ready task selection plus deterministic role/capability matching.
+- [x] Expiring repository/resource/state ownership leases with read/write conflict detection.
+- [x] Bounded parallel execution, timeout/cancellation cleanup, and partial-failure preservation.
+- [x] Strict structured proposal validation and runtime-attested evidence reconciliation.
+- [x] Implementation CI observed: run `33755851793`, 132/132 tests passed.
+- [ ] Synchronized documentation CI observed and final M7 evidence recorded.
+
+## M8–M12
+
 - [ ] M8 persistent workers, event fan-out, reconnect, and long-running recovery.
 - [ ] M9 responsive web client and native-client protocol strategy.
 - [ ] M10 progressively loaded, permissioned, independently tested skills.

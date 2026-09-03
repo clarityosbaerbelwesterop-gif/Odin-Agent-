@@ -1,6 +1,6 @@
 # M7 — Specialist coordination task contract
 
-Status: implementation in progress. Updated: 2026-09-03.
+Status: implementation CI passed; synchronized documentation evidence pending. Updated: 2026-09-03.
 
 ## Objective
 
@@ -40,6 +40,9 @@ side effects, and self-certified completion.
   No numeric confidence or private reasoning is accepted or persisted.
 - The coordinator validates output identity, timestamps, bounds, evidence/artifact hashes, uniqueness,
   and changed-file ownership. A worker cannot report a write outside its reserved claims.
+- A passing `independent_tool` label is insufficient by itself. A runtime-owned injected evidence
+  authority must attest the assignment-bound reference; exceptions and missing attestations fail
+  closed without exposing the authority to the worker.
 - Reconciliation returns `ACCEPTED`, `RETRY_REQUIRED`, or `BLOCKED` per task plus deterministic hashes.
   Only a successful proposal with `VERIFIED` status may be accepted; coordinator output is data and
   does not itself mutate M2 mission/task state.
@@ -63,7 +66,7 @@ side effects, and self-certified completion.
 - Logical locks prevent contract-level overlap but are not an OS sandbox, distributed lock, or durable
   worker lease claim.
 - `VERIFIED` requires supplied evidence metadata; a specialist cannot become completion authority by
-  labeling an unsupported result successful.
+  labeling an unsupported result successful. M5 remains the final mission completion authority.
 
 ## Out of scope
 
@@ -77,6 +80,7 @@ side effects, and self-certified completion.
 
 ## Verification strategy
 
-Run `npm run verify`. M7 is `VERIFIED` only after local adversarial review/repair and both implementation
-and synchronized-documentation pull-request CI checkpoints pass. Until then all M7 roadmap claims
-remain open.
+Run `npm run verify`. Implementation run `33755851793` passed at
+`88cedbb8b33cb9863a0b4b1b30abbd6ec2e2cb19` with 132 tests and aggregate coverage of 88.95% lines,
+77.46% branches, and 95.19% functions. M7 is `VERIFIED` only after the synchronized-documentation
+pull-request CI checkpoint also passes.
