@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Odin Mission Console</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Odin Agent · fixture client</p>
+        <h1 id="mission-title">Mission console</h1>
+      </div>
+      <div class="connection" aria-live="polite">
+        <span id="connection-state">Fixture mode · no backend connected</span>
+        <span id="cursor-state">Cursor 0</span>
+      </div>
+    </header>
+
+    <main class="dashboard" aria-label="Mission dashboard">
+      <section class="panel hero" aria-labelledby="mission-heading">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Mission</p>
+            <h2 id="mission-heading">Current state</h2>
+          </div>
+          <span class="state-pill" id="mission-state">EXECUTING</span>
+        </div>
+        <p id="mission-objective">Loading fixture projection…</p>
+        <dl class="metrics" aria-label="Mission metadata">
+          <div><dt>Version</dt><dd id="mission-version">0</dd></div>
+          <div><dt>Focus</dt><dd id="mission-focus">—</dd></div>
+          <div><dt>Verification</dt><dd id="verification-state">—</dd></div>
+        </dl>
+      </section>
+
+      <section class="panel" aria-labelledby="tasks-heading">
+        <div class="panel-heading">
+          <div><p class="eyebrow">Plan</p><h2 id="tasks-heading">Tasks</h2></div>
+        </div>
+        <ul id="task-list" class="task-list"></ul>
+      </section>
+
+      <section class="panel" aria-labelledby="budgets-heading">
+        <div class="panel-heading">
+          <div><p class="eyebrow">Guardrails</p><h2 id="budgets-heading">Budgets</h2></div>
+        </div>
+        <div id="budget-grid" class="budget-grid"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="workers-heading">
+        <div class="panel-heading">
+          <div><p class="eyebrow">Durable runtime</p><h2 id="workers-heading">Worker activity</h2></div>
+        </div>
+        <div id="worker-counts" class="worker-counts"></div>
+        <ol id="activity-list" class="activity-list"></ol>
+      </section>
+
+      <section class="panel" aria-labelledby="evidence-heading">
+        <div class="panel-heading">
+          <div><p class="eyebrow">Independent checks</p><h2 id="evidence-heading">Evidence</h2></div>
+        </div>
+        <p id="evidence-summary">No verification source connected in this fixture.</p>
+        <ul id="evidence-list" class="evidence-list"></ul>
+      </section>
+
+      <section class="panel controls-panel" aria-labelledby="controls-heading">
+        <div class="panel-heading">
+          <div><p class="eyebrow">Controller</p><h2 id="controls-heading">Mission controls</h2></div>
+        </div>
+        <p>These controls modify only the local fixture. A real command must be revalidated by the runtime.</p>
+        <div class="control-row">
+          <button type="button" id="pause-control">Pause</button>
+          <button type="button" id="resume-control">Resume</button>
+          <button type="button" id="cancel-control" class="danger">Cancel mission</button>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="cancel-dialog" aria-labelledby="cancel-title">
+      <form method="dialog">
+        <h2 id="cancel-title">Confirm cancellation</h2>
+        <p>Cancel is terminal in the mission state machine. Confirm only if you intend to stop this fixture.</p>
+        <div class="dialog-actions">
+          <button type="submit" value="dismiss">Keep running</button>
+          <button type="submit" value="confirm" class="danger">Confirm cancel</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

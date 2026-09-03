@@ -101,9 +101,24 @@ M8 proves local SQLite restart durability and at-least-once worker delivery. It 
 queue semantics, PostgreSQL/service durability, exactly-once external effects, cross-host fencing,
 process/container/worktree isolation, or a production sandbox.
 
-## M9–M12
+## M9 — Client protocol and responsive web shell
 
-- [ ] M9 responsive web client and native-client protocol strategy.
+- [x] Versioned strict client request/response contracts with bounded user-facing mission projections.
+- [x] Runtime-scoped read/command capabilities and exact pause/resume/cancel control only.
+- [x] Optimistic expected-version commands plus durable mission-scoped idempotency and stale replay denial.
+- [x] Bootstrap and reconnect over M8 lifecycle cursors with deterministic reducer replay and tamper checks.
+- [x] Framework-free accessible responsive web fixture for mission state, tasks, budgets, workers,
+  verification, reconnect state, and deliberate cancellation.
+- [x] One protocol strategy documented for web, iOS/iPadOS/macOS, and Android clients without moving
+  canonical long-running state onto devices.
+- [x] Implementation CI observed: run `33773644733`, 161/161 tests passed; aggregate coverage was
+  89.31% lines, 76.56% branches, and 95.41% functions.
+
+M9 proves the local protocol/controller/reconnect/UI contract. It does not claim a public HTTP service,
+authentication, WebSocket/SSE transport, production hosting, push notifications, or native binaries.
+
+## M10–M12
+
 - [ ] M10 progressively loaded, permissioned, independently tested skills.
 - [ ] M11 empirical model routing, caching, concurrency, and cost optimization.
 - [ ] M12 security/load/recovery hardening, backups, observability, and eval release gates.

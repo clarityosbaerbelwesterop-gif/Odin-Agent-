@@ -1,8 +1,8 @@
 # Security model
 
-Status: design baseline plus implemented M1 provider-boundary, M3 tool-control, M5 verification, M6
-memory/context, M7 specialist-coordination, and M8 durable mission/worker safeguards.
-Controls not explicitly identified as implemented remain future work.
+Status: design baseline plus implemented M1 provider, M3 tool-control, M5 verification, M6
+memory/context, M7 specialist coordination, M8 durable mission/worker, and M9 client-protocol
+safeguards. Controls not explicitly identified as implemented remain future work.
 
 ## Protected assets
 
@@ -17,9 +17,9 @@ Controls not explicitly identified as implemented remain future work.
 Trusted: the minimal control plane, policy engine, secret broker, validated protocol handlers, and
 durable state layer.
 
-Untrusted by default: user input, web/email/chat content, repositories being analyzed, dependency
-metadata, tool output, model output, community skills/plugins, generated code, browsers, and workers.
-An instruction embedded in untrusted content never becomes runtime authority.
+Untrusted by default: user/client input, web/email/chat content, repositories being analyzed,
+dependency metadata, tool output, model output, community skills/plugins, generated code, browsers,
+and workers. An instruction embedded in untrusted content never becomes runtime authority.
 
 ## Default policy
 
@@ -33,197 +33,171 @@ external-write: require-scoped-grant
 high-impact-action: require-explicit-approval
 ```
 
-Capabilities bind subject, tenant, mission, task, tool, resource, allowed operation, network scope,
-secret handle, call limit, and expiry. Policy decisions are `ALLOW`, `DENY`, `REQUIRE_APPROVAL`, or
-`ALLOW_WITH_RESTRICTIONS`. Denial is the fallback for malformed or missing policy data.
-
-The implemented M3 policy currently binds mission, task, tool, operation, resource prefix, call
-ceiling, and expiry. High-risk tool calls require matching unexpired approval evidence. Tenant,
-network-scope, and secret-handle capability fields remain later control-plane work and are not claimed
-by the in-memory M3 policy adapter.
+Capabilities bind the narrowest available subject and resource scope. Denial is the fallback for
+malformed or missing policy data. A model, worker, skill, or client cannot mint authority merely by
+including a capability-shaped object in its output.
 
 ## Credential handling
 
-Long-lived credentials reside only in a protected credential store. Models and normal worker
-processes receive neither raw keys nor a general-purpose environment containing them. The control
-plane proxies requests or issues the narrowest possible short-lived handle. Redaction applies before
-logs, events, artifacts, errors, memory, or crash reports are persisted.
+Long-lived credentials reside only in a protected credential store. Models, clients, and normal worker
+processes receive neither raw keys nor a general-purpose environment containing them. The control plane
+proxies requests or issues the narrowest possible short-lived handle. Redaction applies before logs,
+events, artifacts, errors, memory, client payloads, or crash reports are persisted or returned.
 
 The committed `.env.example` contains names and blank values only. Real `.env` files are ignored.
 
-The M1 adapters resolve a credential only after request shape and capability checks pass. They deny
-redirects and obvious private-network base URLs by default, reject credentials containing header
-delimiters, bound response/event sizes, and normalize transport errors without copying thrown
-messages. DNS rebinding protection and destination re-resolution still belong to the later network
-policy boundary and are not claimed here.
+M1 resolves credentials only after request-shape and capability checks pass. Provider HTTP denies
+redirects and obvious private-network targets by default, rejects header-delimiter credentials, bounds
+responses/events, and normalizes transport errors. DNS rebinding and destination re-resolution remain
+future outbound-network-policy work.
 
 ## Implemented M3 tool controls
 
 Model-proposed tool calls are untrusted data. `src/tools` validates stable tool/version selection and
-strict input schemas before policy or handler execution. Unsupported schema keywords, unknown input
-properties, missing required values, invalid types, and configured bound violations fail closed.
+strict input schemas before policy or handler execution. Capability grants bind mission/task/tool/
+operation/resource scope, call ceiling, and expiry. High-impact operations require matching unexpired
+approval evidence.
 
-Side-effecting tools require non-empty idempotency keys. Calls sharing the same mission/task/tool/
-version/key are serialized before execution; a matching replay returns the prior result and a key
-reused with different input fails. Side-effecting handlers are single-attempt in M3 until a worker
-boundary can prove idempotent execution across timeout/crash boundaries.
+Side-effecting calls require idempotency keys. Matching replays return the prior result while mismatched
+replay fails. Handler attempts are bounded by runtime-owned timeout/cancellation and capability-call
+ceilings. Audit records retain typed metadata and hashes rather than raw inputs or resource paths.
 
-Every handler attempt is bounded by runtime-owned timeout/cancellation and capability-call ceilings.
-Audit records contain mission/task/tool metadata, policy/result classification, attempt/timestamps,
-and SHA-256 hashes of input and resolved resource. Raw tool inputs and raw resource paths are not
-persisted by the M3 audit record contract.
+Built-in repository operations accept normalized workspace-relative paths and stable quality-command
+IDs only. Arbitrary model-provided shell strings and network destinations are not accepted.
 
-The built-in repository registrations accept workspace-relative paths only, reject absolute paths,
-backslashes, NULs, and `..` traversal, and expose quality commands only through pre-discovered stable
-command IDs. They do not accept arbitrary shell strings or network destinations.
-
-## Execution and network
-
-Production sandbox/container execution is not implemented. The current repository tools call injected
-workspace and quality-runner interfaces so the control boundary can be tested without host execution.
-Path normalization is defense in depth, not proof of canonical-root or symlink isolation.
-
-A later execution boundary must run generated commands in ephemeral, resource-limited workspaces with
-explicit filesystem roots, CPU/memory/time/output limits, canonical path checks, and destination-based
-network policy. HTTP tools must resolve and validate destinations before and after redirects to resist
-SSRF, DNS rebinding, and private-network access.
-
-Plugins capable of code execution must run out of process over authenticated, versioned RPC. Packages
-must be pinned, provenance recorded, and community extensions begin with no authority.
+M3 is a control boundary, not a production sandbox. Canonical-root/symlink isolation, subprocess or
+container isolation, CPU/memory/output limits, and destination-based network enforcement remain future
+execution work.
 
 ## Implemented M5 verification safeguards
 
-Planner/runtime assertions and repository or tool output are not completion authority. M5 accepts
-only bounded typed evidence with canonical timestamps, allowlisted kinds/producers/statuses, explicit
-mission/task scope, and SHA-256 content metadata. Missing, foreign, stale, future, pre-change, failed,
-duplicated, or contradictory evidence fails closed.
+Planner/runtime assertions are not completion authority. M5 accepts bounded typed evidence with
+canonical timestamps, allowlisted kinds/producers/statuses, exact mission/task scope, hashes, freshness,
+and explicit coverage. Missing, foreign, stale, future, pre-change, failed, duplicated, contradictory,
+or weak evidence fails closed.
 
-Adversarial review is a distinct non-mutating interface. Its verdict, findings, repair request, scope,
-and deterministic hash are validated before use; malformed output or reviewer failure becomes a
-blocking result. The coding orchestrator performs a post-change scoped read and cannot transition to
-`COMPLETED` unless verification returns internally consistent `PASS` and `ACCEPT` results. Verdicts
-store concise evidence references and hashes rather than raw source, tool output, or hidden reasoning.
+A separate non-mutating adversarial reviewer can `ACCEPT`, `BLOCK`, or request bounded repair. Malformed
+review output or reviewer failure blocks. The coding orchestrator cannot reach `COMPLETED` without an
+internally consistent verifier pass and reviewer acceptance. Stored decisions use concise evidence
+references and hashes rather than hidden reasoning.
 
 ## Implemented M6 memory and context safeguards
 
-Memory records are isolated by exact user/project scope, with an additional exact mission boundary for
-working memory. Records carry canonical timestamps, hashes, sensitivity, provenance, versions, expiry,
-and lifecycle state. Durable user preferences require explicit-user provenance; inferred preferences
-fail closed. Optimistic versions reject competing updates, idempotency keys reject mismatched replay,
-and retrieval is bounded and deterministic.
+Memory records are isolated by exact user/project scope, with exact mission scope for working memory.
+Records carry hashes, sensitivity, provenance, versions, expiry, and lifecycle state. Durable user
+preferences require explicit-user provenance. Optimistic versions reject competing updates;
+idempotency keys reject mismatched replay; tombstones remove raw content and prevent resurrection.
 
-Tombstones remove raw memory content, content-like keys/tags, and earlier write replay results from the
-in-memory adapter. A tombstoned stable ID cannot be resurrected or returned by retrieval. Revision
-history retains metadata only. Provenance references are expected to be opaque identifiers; secrets or
-raw personal data must not be placed in IDs, tags, keys, or references.
+Retrieved memory is always compiled as lower-authority memory context. Source/priority validation stops
+memory/history from impersonating system, mission, task, repository, or observation context. Current
+authoritative sources win semantic collisions. Mandatory P0–P2 context cannot be silently truncated,
+and sensitive compilations bypass cache. M6 memory remains an in-memory contract; encryption at rest,
+retention enforcement, and cross-process cache coherence remain future work.
 
-Retrieved memory is always compiled as P5 data. Source/priority validation prevents memory or history
-from impersonating system, mission, task, repository, or observation context. Current authoritative
-sources win semantic collisions. P0–P2 cannot be silently truncated, malformed hashes/timestamps and
-budgets fail closed, sensitive candidates bypass the compile cache, and memory mutations trigger
-targeted cache invalidation.
+## Implemented M7 specialist safeguards
 
-Session snapshot hashes detect accidental corruption and bind the snapshot to a mission/event version
-and raw-history reference. They are not signatures. M8 durability does not automatically make M6
-memory durable; encryption at rest, retention, and cross-process cache coherence remain unimplemented.
+Specialist workers are untrusted proposal producers. Registry discovery exposes bounded metadata, not
+handler authority. The coordinator selects dependency-ready M2 tasks, applies concurrency ceilings,
+and reserves expiring logical ownership before calling a worker. Repository/resource/state write
+claims conflict conservatively.
 
-## Implemented M7 specialist-coordination safeguards
+Workers receive immutable assignments and abort signals but no peer messaging, mission mutation,
+repository adapter, policy, credential, or completion authority. Returned proposals use exact bounded
+schemas. Foreign identity, future/impossible time, duplicate/malformed references, private-reasoning
+fields, and writes outside ownership are blocked. A worker cannot self-certify independent evidence;
+runtime attestation is required before reconciliation can accept evidence references.
 
-Specialist workers are untrusted proposal producers. Registry discovery reveals bounded metadata but
-not handler references. The coordinator selects only dependency-ready M2 tasks, applies global/batch/
-worker capacity ceilings, and reserves expiring mission/task/specialist-bound logical leases before
-calling a worker. Repository, resource, and shared-state claims block intersecting writes; read/read
-sharing is explicit.
+M7 ownership is single-process logical coordination, not a durable cross-host lock or sandbox.
 
-Assignments are immutable data plus an abort signal and expose no peer messaging, mission mutation,
-repository adapter, tool runtime, policy, credentials, or evidence authority. Returned proposals use
-an exact bounded schema. Foreign identity, impossible/future time, duplicate or malformed references,
-unsupported fields such as numeric confidence/private reasoning, and changed files outside reserved
-write claims are blocked. Raw worker exceptions are reduced to typed reasons rather than persisted.
+## Implemented M8 durable safeguards
 
-A specialist cannot self-certify by labeling evidence `independent_tool`. `ACCEPTED` requires an
-injected runtime authority to attest at least one matching passing evidence reference, and the
-reconciliation records the attested IDs. Reconciliation still cannot mark an M2 task verified or a
-mission complete; M5 remains the final claim/evidence completion authority.
+`src/durable` is a trusted local persistence boundary over Node 24 built-in SQLite with foreign keys,
+WAL, `synchronous=FULL`, bounded busy timeout, strict tables, and explicit schema versioning. Unknown
+newer schemas fail closed.
 
-M7 repository/resource/state ownership remains in-memory and single-process. M8 adds a separate
-durable worker-job lease/fencing contract, but does not convert M7 logical ownership into a durable
-cross-host lock or symlink-safe repository isolation boundary.
+Canonical M2 event batches enforce mission identity, contiguous sequence/aggregate versions, canonical
+UTC time, mission-scoped idempotency fingerprints, bounded canonical JSON, and SHA-256 integrity.
+Checkpoints are derived artifacts and must reproduce from canonical events before acceptance.
 
-## Implemented M8 durable mission and worker safeguards
+Durable jobs persist bounded orchestration metadata and artifact references/hashes, not raw prompts,
+repository contents, credentials, raw worker exceptions, or plaintext lease tokens. Claims create
+opaque random tokens but persist only their hashes. Heartbeat and settlement require exact job/
+mission/task/worker scope, generation, token, and unexpired lease. Stale generations cannot settle after
+reclaim. Retries are bounded; exhaustion blocks; cancellation defeats late success.
 
-`src/durable` is a trusted local persistence boundary over Node 24 built-in SQLite. It enables foreign
-keys, WAL, `synchronous=FULL`, a bounded busy timeout, strict tables, and an explicit schema version.
-Unknown newer schema versions fail closed. Database paths are trusted runtime configuration, not model
-output.
+Lifecycle events are typed, hash-addressed, mission-scoped, and read through a globally increasing
+cursor. Corrupt event hashes fail closed. M8 provides local at-least-once recovery, not exactly-once
+external effects, hosted queues, leader election, multi-region durability, or cross-host fencing.
 
-Canonical M2 event batches are stored with mission identity, contiguous sequence/aggregate version,
-canonical UTC time, mission-scoped idempotency fingerprint, bounded canonical JSON, and SHA-256 data
-hash. Reopen validates identity, sequence, hash, and event shape rather than skipping corrupt rows.
-Checkpoint JSON is size-bounded and integrity checked. A checkpoint must match its metadata and
-reproduce from canonical mission events before it is accepted. Lower-level checkpoint integrity
-errors are normalized to the durable corruption error boundary.
+## Implemented M9 client safeguards
 
-Durable jobs persist only bounded orchestration metadata and artifact references/hashes. Raw prompts,
-repository contents, credentials, raw worker exceptions, and raw lease tokens are not job metadata.
-Each claim creates an opaque random lease token but stores only its SHA-256 hash. Heartbeat and
-settlement require exact job/mission/task/worker scope, matching fencing generation/token, and an
-unexpired lease. A stale or superseded generation cannot settle after another worker reclaims work.
+`src/client` treats every client request and every protocol payload as untrusted at the protocol
+boundary. State and command requests use exact key sets, bounded identifiers/collections, canonical UTC
+timestamps, explicit protocol versions, and fail-closed decoding. Unsupported versions, commands,
+unknown fields, malformed counters, invalid states, and malformed lifecycle events are rejected.
 
-Retries consume attempts and are bounded. Exhausted work becomes terminal `BLOCKED`. Pending/retry
-cancellation is terminal immediately; running work becomes `CANCELLING`, and cancellation defeats a
-late success proposal. The runner owns timeout, heartbeat, cancellation observation, and settlement;
-handlers receive only an immutable lease/job envelope and `AbortSignal`, not database, policy,
-credential, peer, or mission-completion authority.
+Client capability identifiers are opaque. The runtime resolves the actual grant and requires exact
+session and mission scope plus expiry. State reads require read authority. Commands are limited to
+`mission.pause`, `mission.resume`, and `mission.cancel`; they require an exact expected mission version
+and durable scoped idempotency. Clients cannot append arbitrary mission events, settle worker jobs,
+call providers/tools, verify tasks, or complete missions.
 
-Lifecycle events are typed, hash-addressed, mission-scoped, and read by a strictly increasing cursor.
-Tampered lifecycle hashes fail closed. Reconnect/reopen tests prove cursor continuation without
-accepting stale settlement. The 32-job fixture proves bounded local recovery behavior without live
-external I/O.
+Client projections expose only bounded user-facing state: mission identity/version/objective/focus,
+task status, budgets, checkpoint version, durable job counts/activity, and evidence references. They
+exclude provider keys, credentials, lease bearer tokens, raw repository contents, definitions of done,
+failure signatures, private reasoning, raw worker exceptions, and hidden policy internals.
 
-M8 guarantees neither exactly-once external effects nor distributed correctness. A handler may have
-performed an external side effect before losing its lease; side-effecting M3 tools must still use their
-own idempotency contracts. SQLite is a local single-runtime persistence target, not a hosted queue,
-leader-election system, multi-region service, or cross-host fencing authority.
+Reconnect uses M8 lifecycle event hashes plus exact mission/session scope and `afterCursor` chaining.
+Because M8 lifecycle cursors are global but reads are mission-scoped, numeric gaps inside a mission are
+valid. The client reducer rejects moving the requested cursor ahead of its accepted cursor, changed or
+unknown replay hashes, foreign scope, incompatible protocol versions, and backwards mission
+projections; unsafe continuity requires a fresh bootstrap.
 
-## Prompt injection and durable learning
+The M9 web shell is a static reference fixture. Dynamic values are inserted with text/DOM APIs rather
+than unsanitized HTML. It contains no live network transport, cookies, `localStorage`, or
+`sessionStorage`. Cancellation requires a deliberate dialog confirmation. Production authentication,
+transport security, CSP/security headers, push notifications, device administration, offline writes,
+and native application security remain future work.
 
-Every context item carries origin and trust metadata. Tool results are quoted as data. Model output
-is schema-validated before it can request a transition or tool. Untrusted observations cannot modify
-policy, system-protected skills, credentials, or durable user preferences.
+## Prompt injection and skill security
 
-Agent-learned skills follow candidate, provenance review, replay tests, independent verification,
-versioned staging, and promotion. All promotions are reversible and auditable.
+Every context item carries origin/trust metadata. Tool results and external content are data, not
+instructions. Model output is schema-validated before requesting a transition or tool. Untrusted
+observations cannot modify policy, protected skills, credentials, or durable user preferences.
+
+M10 skill packages must preserve this rule: compact discovery metadata may be broadly visible, but
+instructions load progressively and executable authority remains entirely in M3/tool policy. Learned
+or community skills must have provenance, versioning, tests, independent verification, staged
+promotion, and reversible rollback; they cannot self-promote or self-grant capabilities.
 
 ## Audit and privacy
 
-Consequential records contain initiator, mission/task, action type, input hash, policy decision,
-result, side-effect summary, verification, and timestamp. Do not persist private chain-of-thought;
-store concise decision records and evidence. Memory is namespaced, versioned, exportable, selectively
-deletable, and retention-aware.
+Consequential records should contain initiator, mission/task, action type, input hash, policy decision,
+result, side-effect summary, verification, and timestamp without private chain-of-thought. Durable job
+and client-facing records use typed statuses, reason codes, hashes, timestamps, and references rather
+than raw prompts, credentials, or worker exceptions.
 
-Durable job/event records use stable identifiers, typed status, reason codes, hashes, timestamps, and
-artifact references rather than raw prompts or worker exceptions. Lease bearer tokens are never stored
-in plaintext.
+Memory must remain namespaced, versioned, exportable, selectively deletable, and retention-aware as
+persistence expands.
 
 ## Threats required in security tests
 
 - prompt injection requesting secrets or durable authority;
-- malicious tool arguments and malformed model JSON;
+- malicious client/tool arguments and malformed model/protocol JSON;
 - path traversal, symlink escape, and unsafe archive extraction;
 - SSRF, DNS rebinding, redirect bypass, and network exfiltration;
-- secrets in logs, errors, command lines, patches, artifacts, or durable job metadata;
+- secrets in logs, errors, command lines, patches, artifacts, durable jobs, or client payloads;
 - replayed external writes and duplicated payments/messages/deployments;
 - stale/superseded worker settlement after lease expiry or recovery;
-- confused-deputy access across user, tenant, mission, task, worker, or device;
+- stale/conflicting/replayed client controls and confused-deputy client capability scope;
 - compromised plugin/skill packages and dependency substitution;
-- privilege escalation through retries, repair loops, or fallback providers;
-- race conditions between cancellation, checkpointing, tools, leases, and completion;
+- privilege escalation through retries, repair loops, fallback providers, or learned skills;
+- race conditions between cancellation, checkpointing, tools, leases, commands, and completion;
 - budget bypass and denial-of-wallet;
-- recovery from tampered/incompatible events, lifecycle rows, or checkpoints.
+- recovery from tampered/incompatible events, lifecycle rows, checkpoints, and client pages.
 
 ## Vulnerability reporting
 
 Do not open a public issue containing an exploitable vulnerability, credential, or private user data.
-Use the repository owner's private security reporting channel when enabled. Until that channel is
-configured, contact the owner privately and provide the smallest safe reproduction.
+Use the repository owner's private security reporting channel when enabled. Until then, contact the
+owner privately and provide the smallest safe reproduction.

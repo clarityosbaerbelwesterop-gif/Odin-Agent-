@@ -1,0 +1,224 @@
+:root {
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color-scheme: light dark;
+  background: Canvas;
+  color: CanvasText;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: color-mix(in srgb, Canvas 94%, CanvasText 6%);
+}
+
+button {
+  min-height: 44px;
+  border: 1px solid color-mix(in srgb, CanvasText 22%, transparent);
+  border-radius: 12px;
+  padding: 0.7rem 1rem;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+button:focus-visible {
+  outline: 3px solid Highlight;
+  outline-offset: 3px;
+}
+
+button.danger {
+  border-width: 2px;
+  border-color: currentColor;
+  font-weight: 800;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding: 1.25rem clamp(1rem, 3vw, 2.5rem);
+  border-bottom: 1px solid color-mix(in srgb, CanvasText 14%, transparent);
+  background: Canvas;
+}
+
+.topbar h1,
+.panel h2 {
+  margin: 0;
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.68;
+}
+
+.connection {
+  display: grid;
+  justify-items: end;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1rem;
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2.5rem);
+}
+
+.panel {
+  grid-column: span 6;
+  min-width: 0;
+  padding: 1.2rem;
+  border: 1px solid color-mix(in srgb, CanvasText 14%, transparent);
+  border-radius: 18px;
+  background: Canvas;
+  box-shadow: 0 8px 32px color-mix(in srgb, CanvasText 5%, transparent);
+}
+
+.panel.hero,
+.controls-panel {
+  grid-column: span 12;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.state-pill {
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.metrics,
+.worker-counts,
+.budget-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.metrics > div,
+.worker-counts > div,
+.budget-card {
+  min-width: 0;
+  padding: 0.8rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, Canvas 88%, CanvasText 12%);
+}
+
+.metrics dt,
+.budget-label,
+.worker-label {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.metrics dd {
+  margin: 0.25rem 0 0;
+  font-weight: 700;
+}
+
+.task-list,
+.activity-list,
+.evidence-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.task-list li,
+.activity-list li,
+.evidence-list li {
+  padding: 0.45rem 0;
+}
+
+.task-status,
+.worker-value,
+.budget-value {
+  font-weight: 750;
+}
+
+.control-row,
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+#cancel-dialog {
+  max-width: min(520px, calc(100vw - 2rem));
+  border: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
+  border-radius: 18px;
+  padding: 1.25rem;
+}
+
+#cancel-dialog::backdrop {
+  background: rgb(0 0 0 / 55%);
+}
+
+@media (max-width: 900px) {
+  .panel {
+    grid-column: span 12;
+  }
+
+  .metrics,
+  .worker-counts,
+  .budget-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .connection {
+    justify-items: start;
+  }
+
+  .dashboard {
+    padding: 0.75rem;
+  }
+
+  .panel {
+    padding: 1rem;
+    border-radius: 14px;
+  }
+
+  .metrics,
+  .worker-counts,
+  .budget-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .control-row,
+  .dialog-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  button {
+    width: 100%;
+  }
+}
