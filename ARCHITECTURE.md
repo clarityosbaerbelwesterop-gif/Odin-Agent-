@@ -1,6 +1,6 @@
 # Odin architecture
 
-Status: M10 progressive skill lifecycle and synthesis verified, 2026-09-03.
+Status: M11 adaptive reasoning, empirical routing, and bounded efficiency verified, 2026-09-03.
 
 ## Repository finding
 
@@ -14,7 +14,7 @@ system has been prematurely split into microservices.
 2. The model proposes; deterministic runtime and policy decide what executes.
 3. Important work cannot become complete without mapped verification evidence.
 4. Execution is scoped, interruptible, budgeted, and deny-by-default.
-5. Provider, tool, skill, memory, persistence, worker, and client protocols are versioned boundaries.
+5. Provider, tool, skill, memory, persistence, worker, client, and routing protocols are versioned boundaries.
 6. External content, repository content under analysis, tool output, model output, worker output, and
    client input are untrusted.
 7. Credentials remain in the trusted control plane and are never placed in model or client payloads.
@@ -29,6 +29,9 @@ system has been prematurely split into microservices.
     models directly, or bypass M5 completion evidence.
 14. Skill instructions are reusable procedure, never authority. Learned/community skills require exact
     provenance, independent verification, and trusted promotion before normal runtime loading.
+15. Adaptive reasoning is runtime policy, not model authority: route, branch, critique, repair,
+    escalation, cost, call, concurrency, and token ceilings remain runtime-owned and independently
+    verifiable.
 
 ## Logical architecture
 
@@ -37,23 +40,25 @@ Web / future native clients
   -> versioned client protocol / future API + realtime transport
      -> mission/session policy and controller gateway
         -> deterministic mission runtime and scheduler
-           -> planner / model router / context compiler
+           -> planner / empirical model router / context compiler
+              -> bounded branch / critique / repair / escalation policy
            -> tool gateway -> isolated workers (future production sandbox)
            -> verifier and repair loop
-        -> canonical events / checkpoints / durable jobs / artifacts / memory / skills
+        -> canonical events / checkpoints / durable jobs / artifacts / memory / skills / eval metadata
 ```
 
 ### Trusted control plane
 
 Owns identity, sessions, missions, permissions, budgets, provider configuration, secret brokering,
-worker leases, canonical events, approvals, persistence, and future client fan-out. It does not load
-arbitrary plugins in-process and does not trust client-supplied capability objects.
+worker leases, canonical events, approvals, persistence, routing policy, and future client fan-out. It
+does not load arbitrary plugins in-process and does not trust client-supplied capability objects.
 
 ### Cognitive runtime
 
 Owns task classification, planning effort, dependency-aware task graphs, context compilation,
-provider-independent model requests, verification strategy, evidence collection, targeted repair, and
-final audit. It cannot bypass policy or mark itself complete without required evidence.
+provider-independent model requests, empirical route selection, bounded reasoning strategy,
+verification strategy, evidence collection, targeted repair, and final audit. It cannot bypass policy,
+raise its own budget/quality evidence, or mark itself complete without required evidence.
 
 ### Execution plane
 
@@ -167,6 +172,24 @@ register M3 tools, mint capabilities, expose credentials, or bypass M5/M7 author
 capability amplification through verified reusable procedure, not evidence that a weaker base model
 has become AGI or universally equivalent to a stronger model.
 
+### M11 — Adaptive reasoning, routing, and efficiency
+
+`src/routing` adds hash-addressed empirical evaluation records, exact provider/model/profile/effort
+binding, capability-first filtering, risk/uncertainty-adjusted quality floors, deterministic
+quality-before-cost route selection, stronger eligible escalation paths, bounded cache metadata, and an
+offline small/fast-versus-stronger evaluation harness.
+
+`AdaptiveReasoningController` limits continuation to `ACCEPT`, `CRITIQUE`, `REPAIR`, `ESCALATE`, or
+`BLOCK`. Only independent non-contradictory PASS evidence can accept. Branch, critique, repair,
+model-call, parallel-call, cost, and estimated-token ceilings are runtime-owned. The explicit token
+ceiling derives a stricter effective call ceiling and blocks if even one estimated call cannot fit.
+When budget permits, the planner reserves targeted repair capacity before spending every remaining call
+on extra critique.
+
+M11 is an offline deterministic policy/evaluation proof. It does not claim current live-provider
+benchmark superiority, production distributed caching, public traffic experimentation, or authority to
+expand M3/M5/M7/M10 permissions.
+
 ## Current module map
 
 ```text
@@ -183,7 +206,7 @@ src/
   durable/       SQLite mission events/checkpoints/jobs, lifecycle cursors, runner recovery
   client/        M9 protocol codecs, controller gateway, reconnect reducer
   skills/        M10 progressive skill registry, synthesis, verification/promotion history
-  routing/       M11 empirical model/effort selection and bounded reasoning policy
+  routing/       M11 empirical model/effort selection, cache, eval harness, bounded reasoning
   artifacts/     content-addressed artifact byte/storage layer later
   cli/           user-facing entry point later
 web/             M9 responsive static reference client
@@ -191,17 +214,15 @@ web/             M9 responsive static reference client
 
 ## Next architecture milestone
 
-M11 extends the existing provider, verification, context, coordination, durable, and skill boundaries
-with empirical adaptive reasoning. Routing must optimize measured quality/cost/latency under an
-explicit quality floor; bounded critique, targeted self-correction, and branch search must consume
-runtime-owned budgets and may never manufacture independent evidence. A small/fast model may be
-escalated when uncertainty, verification failure, or task risk demands it.
+M12 hardens the local execution and release boundaries without weakening M3/M5/M11 policy. The first
+allowed tranche should implement deterministic local process/workspace isolation contracts,
+canonical-root and symlink escape prevention, bounded command/environment/output/timeout behavior,
+and outbound-destination policy tests behind injected adapters.
 
-The broader capability-amplification path then moves to M12 production isolation/live evals and a
-post-MVP runtime track for hybrid memory, evidence-backed post-task learning, scheduler/triggers,
-background missions, and permissioned MCP/Agent-Skills/omnichannel adapters. Those mechanisms are
-intended to close practical capability gaps, but claims of model-level or AGI equivalence require
-benchmark evidence rather than architecture alone.
+Live-provider smoke/evaluation matrices, production deployment, public service/auth transport,
+external sandboxes, and any paid infrastructure require separate explicit authorization and remain
+unproven until actually exercised. M12 must distinguish local hardening evidence from production or
+live-provider claims.
 
 ## Storage and deployment direction
 
