@@ -61,8 +61,8 @@ jobs:
           );
           replace(
             'src/routing/reasoning.ts',
-            '  let remainingCalls = request.budget.maxModelCalls - branchCount;',
-            '  let remainingCalls = maxModelCalls - branchCount;',
+            '  let remainingCalls = request.budget.maxModelCalls - branchCount;\n  const critiquePasses = Math.min(\n    desiredCritiques,\n    request.budget.maxCritiquePasses,\n    remainingCalls,\n  );\n  remainingCalls -= critiquePasses;\n  const repairAttempts = Math.min(desiredRepairs, request.budget.maxRepairs, remainingCalls);',
+            '  let remainingCalls = maxModelCalls - branchCount;\n  const reservedRepairCalls = Math.min(\n    desiredRepairs,\n    request.budget.maxRepairs,\n    remainingCalls > 0 ? 1 : 0,\n  );\n  const critiquePasses = Math.min(\n    desiredCritiques,\n    request.budget.maxCritiquePasses,\n    Math.max(0, remainingCalls - reservedRepairCalls),\n  );\n  remainingCalls -= critiquePasses;\n  const repairAttempts = Math.min(desiredRepairs, request.budget.maxRepairs, remainingCalls);',
           );
           replace(
             'src/routing/reasoning.ts',
