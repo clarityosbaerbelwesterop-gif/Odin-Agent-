@@ -1,0 +1,93 @@
+name: M10 documentation sync
+
+on:
+  push:
+    branches:
+      - agent/m10-skill-lifecycle
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Synchronize M10 architecture evidence
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          function replace(path, oldText, newText) {
+            let text = fs.readFileSync(path, 'utf8');
+            if (!text.includes(oldText)) throw new Error(`Missing expected pattern in ${path}`);
+            text = text.replace(oldText, newText);
+            fs.writeFileSync(path, text);
+          }
+
+          replace(
+            'ROADMAP.md',
+            `## M10–M12\n\n- [ ] M10 progressively loaded, permissioned, independently tested skills.\n- [ ] M11 empirical model routing, caching, concurrency, and cost optimization.\n- [ ] M12 security/load/recovery hardening, backups, observability, and eval release gates.`,
+            `## M10 — Progressive skill lifecycle and synthesis\n\n- [x] Immutable versioned skill packages with deterministic SHA-256 content identity and provenance.\n- [x] Compact discovery metadata separated from bounded full-instruction loading.\n- [x] Learned/community packages enter as non-loadable candidates and cannot self-promote.\n- [x] Independent hash-bound verification plus trusted activation, supersession, revocation, and rollback.\n- [x] Solved-task synthesis creates candidate-only learned skills behind runtime attestation and idempotency.\n- [x] Lifecycle audit history records registration, verification, activation, supersession, rollback, and revocation without private reasoning.\n- [x] Required-tool declarations do not create M3 handlers, grants, credentials, or host execution authority.\n- [x] Implementation CI observed: run \`33777800516\`, 172/172 tests passed; aggregate coverage was 89.84% lines, 76.97% branches, and 95.66% functions.\n\nM10 converts repeated solved procedures into reusable, progressively loaded skill candidates while keeping execution authority in M3 and completion authority in M5. It does not download or execute public skills, run arbitrary skill code, or claim autonomous self-improvement/AGI equivalence.\n\n## M11 — Adaptive reasoning, routing, and efficiency\n\n- [ ] Empirical capability/quality/cost/latency routing with deterministic quality floors and escalation.\n- [ ] Cache and concurrency policy that cannot bypass freshness, scope, verification, or budgets.\n- [ ] Bounded multi-pass critique and targeted self-correction using independent evidence.\n- [ ] Bounded branch search for ambiguous/high-risk tasks with explicit branch/attempt/token ceilings.\n- [ ] Evaluation harness comparing small/fast models against stronger baselines on repository missions.\n\n## M12 — Production hardening and release proof\n\n- [ ] Real process/container/worktree sandboxing plus canonical-root/symlink and outbound-network controls.\n- [ ] Live-provider smoke/evaluation matrix, load/recovery tests, observability, backups, and release gates.\n- [ ] Public-service/auth/transport hardening only after the local trust boundaries remain intact.\n\n## Post-MVP capability track\n\n- [ ] Production hybrid memory retrieval/retention (lexical/FTS plus optional vector retrieval) behind M6 scope and privacy rules.\n- [ ] Post-task learning curation, memory compression/pruning, and evidence-backed self-nudging.\n- [ ] Event-driven background mission service, scheduler/triggers, and resumable automation.\n- [ ] Permissioned MCP/Agent-Skills-style adapters and omnichannel clients behind the same capability model.`,
+          );
+
+          replace(
+            'ARCHITECTURE.md',
+            'Status: M9 client protocol and responsive web shell verified, 2026-09-03.',
+            'Status: M10 skill lifecycle implementation verified; synchronized documentation pending final PR CI, 2026-09-03.',
+          );
+          replace(
+            '13. Clients are observers/controllers. They cannot append arbitrary events, settle jobs, call tools or\n    models directly, or bypass M5 completion evidence.',
+            '13. Clients are observers/controllers. They cannot append arbitrary events, settle jobs, call tools or\n    models directly, or bypass M5 completion evidence.\n14. Skill instructions are reusable procedure, never authority. Learned/community skills require exact provenance, independent verification, and trusted promotion before normal runtime loading.',
+          );
+          replace(
+            '### M9 — Client protocol and responsive shell',
+            `### M9 — Client protocol and responsive shell`,
+          );
+          replace(
+            'M9 does not claim hosting, public auth, SSE/WebSocket transport, push, offline\nwrites, or native binaries.\n\n## Current module map',
+            `M9 does not claim hosting, public auth, SSE/WebSocket transport, push, offline\nwrites, or native binaries.\n\n### M10 — Progressive skill lifecycle and synthesis\n\n\`src/skills\` adds immutable hash-addressed skill packages, compact discovery, separately bounded full instruction loading, provenance/trust classes, candidate/verified/active/revoked lifecycle, independent verification, trusted promotion, deterministic supersession/rollback, and concise lifecycle audit events. Learned/community content never becomes normal runtime instruction merely because a model or worker claims success.\n\n\`SkillSynthesisService\` can convert an attested solved task into a learned \`CANDIDATE\` with exact source mission/task provenance and idempotency. It does not execute generated code, install public packages, register M3 tools, mint capabilities, expose credentials, or bypass M5/M7 authorities. This is capability amplification through verified reusable procedure, not evidence that a weaker base model has become AGI or universally equivalent to a stronger model.\n\n## Current module map`,
+          );
+          replace(
+            '  client/        M9 protocol codecs, controller gateway, reconnect reducer\n  routing/       M11 empirical model/effort selection',
+            '  client/        M9 protocol codecs, controller gateway, reconnect reducer\n  skills/        M10 progressive skill registry, synthesis, verification/promotion history\n  routing/       M11 empirical model/effort selection and bounded reasoning policy',
+          );
+          replace(
+            `## Next architecture milestone\n\nM10 implements progressively loaded, permissioned, independently tested skill packages. Skills must\nhave stable identity/version, provenance, compact discovery metadata, explicit required capabilities,\nseparate instructions from executable authority, bounded loading, independent verification, and a\npromotion lifecycle for learned/community candidates. M10 may extend M3 discovery but must not let a\nskill grant itself permissions or execute outside the tool/policy boundary.`,
+            `## Next architecture milestone\n\nM11 extends the existing provider, verification, context, coordination, durable, and skill boundaries with empirical adaptive reasoning. Routing must optimize measured quality/cost/latency under an explicit quality floor; bounded critique, targeted self-correction, and branch search must consume runtime-owned budgets and may never manufacture independent evidence. A small/fast model may be escalated when uncertainty, verification failure, or task risk demands it.\n\nThe broader capability-amplification path then moves to M12 production isolation/live evals and a post-MVP runtime track for hybrid memory, evidence-backed post-task learning, scheduler/triggers, background missions, and permissioned MCP/Agent-Skills/omnichannel adapters. Those mechanisms are intended to close practical capability gaps, but claims of model-level or AGI equivalence require benchmark evidence rather than architecture alone.`,
+          );
+
+          replace(
+            'SECURITY.md',
+            'Status: design baseline plus implemented M1 provider, M3 tool-control, M5 verification, M6\nmemory/context, M7 specialist coordination, M8 durable mission/worker, and M9 client-protocol\nsafeguards. Controls not explicitly identified as implemented remain future work.',
+            'Status: design baseline plus implemented M1 provider, M3 tool-control, M5 verification, M6 memory/context, M7 specialist coordination, M8 durable mission/worker, M9 client-protocol, and M10 skill-lifecycle safeguards. Controls not explicitly identified as implemented remain future work.',
+          );
+          replace(
+            `M10 skill packages must preserve this rule: compact discovery metadata may be broadly visible, but\ninstructions load progressively and executable authority remains entirely in M3/tool policy. Learned\nor community skills must have provenance, versioning, tests, independent verification, staged\npromotion, and reversible rollback; they cannot self-promote or self-grant capabilities.`,
+            `Implemented M10 preserves this rule in \`src/skills\`: compact discovery omits instructions; normal resolution accepts only verified/active packages; learned/community packages start as candidates; package content is hash-addressed; independent passing evidence must bind the exact package hash; and activation/rollback require trusted runtime or user-approved actors. Model, worker, and runtime-authored verification claims cannot promote learned/community skills.\n\nSkill synthesis additionally requires an injected solved-task attestation and can create only a learned candidate with exact mission/task provenance. Exact replay is idempotent and conflicting replay fails closed. Lifecycle events record concise actor/producer/evidence references for registration, verification, activation, supersession, rollback, and revocation. Required-tool names are declarations only: M10 never registers an M3 handler, creates a capability grant, exposes credentials, or grants arbitrary host execution. Public skill downloads, package signing/marketplace trust, and executable skill sandboxes remain future work.`,
+          );
+
+          let m10 = fs.readFileSync('docs/milestones/M10_SKILL_LIFECYCLE.md', 'utf8');
+          m10 = m10.replace(
+            'Status: implementation in progress. Updated: 2026-09-03.',
+            'Status: implementation verified; synchronized documentation pending final PR CI. Updated: 2026-09-03.',
+          );
+          m10 = m10.replace(
+            'M10 is `VERIFIED` only after implementation, requirement-derived tests, synchronized architecture/\nsecurity/roadmap/handover documentation, and final pull-request CI all pass.',
+            `## Implementation evidence\n\nGitHub Actions run \`33777800516\` passed on implementation head \`340d9dea9f3bc45f8185575cbc982a2e3d0fca25\` with **172 tests, 172 passes, 0 failures**. Aggregate coverage was **89.84% lines, 76.97% branches, and 95.66% functions**; \`src/skills/registry.ts\` reached 96.20% line coverage and \`src/skills/synthesis.ts\` 97.24%. Foundation validation, Biome, and strict TypeScript all passed.\n\nM10 is \`VERIFIED\` only after this synchronized documentation state also receives green final pull-request CI.`,
+          );
+          fs.writeFileSync('docs/milestones/M10_SKILL_LIFECYCLE.md', m10);
+
+          const handover = `# Engineering handover\n\nUpdated: 2026-09-03.\n\n## Current state\n\n- Repository: \`clarityosbaerbelwesterop-gif/Odin-Agent-\` (private).\n- \`main\` contains verified M0–M9 at M9 merge commit \`0d47e31fec79b6341be2ced4b0d67df126eeabe4\`.\n- Active branch: \`agent/m10-skill-lifecycle\`; Draft PR #13 targets \`main\`.\n- M10 implementation is green on head \`340d9dea9f3bc45f8185575cbc982a2e3d0fca25\` via GitHub Actions run \`33777800516\`.\n- Final synchronized documentation CI is still required before M10 can be marked fully \`VERIFIED\` and merged. The user has explicitly authorized merge and continued implementation once the verified gate is satisfied.\n\n## M10 implemented capability\n\nM10 adds \`src/skills\` as a first-class capability-amplification boundary:\n\n- immutable versioned packages with deterministic SHA-256 content identity, provenance, trust class, bounded instructions/tags/tools/test refs, and exact runtime validation;\n- compact discovery without instructions, plus separate full loading only for \`VERIFIED\`/\`ACTIVE\` packages;\n- learned/community packages enter as \`CANDIDATE\` and cannot self-promote;\n- independent passing evidence binds exact name/version/content hash before verification; model/worker/runtime-authored verification cannot promote learned/community packages;\n- trusted activation, deterministic one-active-version supersession, explicit rollback, and revocation;\n- concise immutable lifecycle history for registration, verification, activation, supersession, rollback, and revocation;\n- solved-task synthesis behind an injected runtime attestation creates only learned candidates with exact mission/task provenance and scoped idempotency;\n- skill required-tool declarations do not create M3 tool handlers, capabilities, credentials, host execution, or completion authority.\n\n## M10 evidence\n\nCanonical command remains:\n\n\`\`\`bash\nnpm ci\nnpm run verify\n\`\`\`\n\nGitHub Actions run \`33777800516\` passed on \`340d9dea9f3bc45f8185575cbc982a2e3d0fca25\` with **172/172 tests**, **0 failures**, and aggregate coverage **89.84% lines / 76.97% branches / 95.66% functions**. The new skill modules were strongly exercised: registry 96.20% lines / 80.56% branches / 98.28% functions; synthesis 97.24% lines / 88.57% branches / 100% functions. Foundation validation, Biome, and strict TypeScript passed.\n\nRegression coverage includes compact/progressive discovery, malformed/oversized/conflicting package rejection, candidate/revoked denial, exact hash verification, failed/self-authored evidence denial, trusted activation, supersession, rollback/revocation, immutable audit history, solved-task attestation, synthesis replay/conflict handling, and proof that skill tool declarations do not mint M3 execution authority.\n\n## AGI-bridge architecture mapping\n\nThe new research direction is incorporated as capability amplification rather than an unsupported AGI claim. Existing M4/M5 provide test/repair/independent verification; M6 provides scoped memory and context compilation; M7 provides bounded specialist decomposition; M8 provides durable background-ready mission state; M10 now converts verified solved procedures into reusable candidate skills.\n\nNext, M11 should add empirical model routing, quality floors, caching/concurrency policy, bounded multi-pass critique/self-correction, and bounded branch search. M12 should add real process/container/worktree isolation, outbound-network enforcement, live-provider smoke/evals, load/recovery, observability, backups, and release gates. Post-MVP work should productionize hybrid lexical/vector memory, post-task learning curation/compression, event-driven scheduler/triggers/background missions, and permissioned MCP/Agent-Skills/omnichannel adapters.\n\nThese layers may let a small/fast model produce much stronger practical outcomes, but model-level or AGI equivalence must be demonstrated empirically rather than asserted from architecture.\n\n## Earlier verified evidence\n\n- M0 run \`33664864552\`.\n- M1 run \`33667957350\`.\n- M2 run \`33672695583\` with 41 tests.\n- M3 implementation run \`33675783522\`; verified merge \`0a9a76bc7ce2b52e8e879d81d3b261a8168efb29\`.\n- M4 implementation run \`33678970596\`; documentation run \`33679222149\`; merge \`c60ee329d66511dfbd708176c850557d48e9c9df\`.\n- M5 implementation run \`33724426019\` with 77 tests; documentation run \`33724647879\`.\n- M6 implementation run \`33752964771\` with 108 tests; documentation run \`33753281792\`; final evidence run \`33753417686\`.\n- M7 implementation run \`33755851793\` with 132 tests; documentation run \`33756217402\`.\n- M8 implementation run \`33766277108\` with 149 tests; documentation run \`33766944528\`; merge \`ce0fdb0454999218d1d1145f406d5165a225e6a8\`.\n- M9 implementation run \`33773644733\` with 161 tests; synchronized docs run \`33774320732\`; merge \`0d47e31fec79b6341be2ced4b0d67df126eeabe4\`.\n\nCI uses injected provider/tool/worker/skill boundaries and temporary local SQLite stores. No live provider call, public network write, deployment, production migration, production repository mutation, or paid external resource was used for M10.\n\n## Security and architecture boundaries\n\n- M3 remains the only tool execution/capability authority; skill instructions are never grants.\n- M5 remains completion authority; M10 verification does not allow a model or worker to self-certify promotion.\n- M6 memory remains an in-memory contract; no production vector DB/FTS hybrid is claimed.\n- M7 ownership remains logical single-process coordination.\n- M8 durability remains local SQLite; no distributed cross-host fencing or exactly-once external effect is claimed.\n- No production OS/process/container/worktree sandbox, live MCP/Agent-Skills server, browser automation, public service/auth/realtime transport, daemon/scheduler, omnichannel integration, or live-provider E2E is implemented yet.\n\n## Exact next action\n\nRun final PR-specific \`npm run verify\` on the synchronized M10 documentation head. If green and PR #13 remains mergeable, mark M10 \`VERIFIED\`, update the PR evidence, and squash-merge with exact-head protection under the user's existing authorization. Then branch M11 from the resulting \`main\` and implement empirical adaptive routing/reasoning without weakening M3/M5/M6/M7/M8/M10 boundaries.\n`;
+          fs.writeFileSync('HANDOVER.md', handover);
+          NODE
+      - name: Commit synchronized docs and remove helper
+        run: |
+          rm .github/workflows/m10-doc-sync-helper.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ROADMAP.md ARCHITECTURE.md SECURITY.md HANDOVER.md docs/milestones/M10_SKILL_LIFECYCLE.md .github/workflows/m10-doc-sync-helper.yml
+          git commit -m "docs(m10): synchronize verified skill architecture"
+          git push origin HEAD:agent/m10-skill-lifecycle
