@@ -2,15 +2,16 @@
 
 Odin is a provider-independent runtime for complex, long-running AI missions. Its purpose is
 to turn a model call into a controlled system with planning, task state, tools, verification,
-repair, checkpoints, budgets, durable recovery, and auditable evidence.
+repair, checkpoints, budgets, durable recovery, auditable evidence, and a safe client protocol.
 
 Odin is at the **early core stage**. Repository foundation, the provider-neutral inference boundary,
 the deterministic mission runtime, the fail-closed tool-control boundary, a fixture-backed coding
 vertical slice, independent evidence verification, scoped memory/context, bounded specialist
-coordination, and a local SQLite durable-mission/job slice are implemented and contract-tested.
+coordination, local SQLite durable missions/jobs, and the first versioned client/controller/reconnect
+boundary with a responsive reference web shell are implemented and contract-tested.
 The repository does not yet provide a production coding agent, OS-level sandbox, arbitrary shell
-execution, external network tools, mobile client, hosted service, distributed worker queue, or
-live-provider end-to-end smoke proof.
+execution, external network tools, a hosted service, production authentication/realtime transport,
+native mobile binaries, a distributed worker queue, or live-provider end-to-end smoke proof.
 Current status and verified capabilities are tracked in [ROADMAP.md](ROADMAP.md) and
 [HANDOVER.md](HANDOVER.md).
 
@@ -28,7 +29,8 @@ Request -> Understand -> Plan -> Risk check -> Execute -> Observe
 ```
 
 The language model proposes reasoning and actions. The runtime owns state transitions,
-permissions, budgets, timeouts, retries, cancellation, and completion.
+permissions, budgets, timeouts, retries, cancellation, and completion. Clients observe canonical
+runtime state and request narrowly scoped control actions; they do not become mission authority.
 
 ## Architecture direction
 
@@ -43,7 +45,7 @@ Core boundaries:
 - cognitive runtime: planner, context compiler, model router, verifier, repair loop;
 - execution plane: isolated workers, tools, sandboxes, browsers, repository workspaces;
 - knowledge plane: artifacts, project memory, user memory, skills, evaluations;
-- clients: web first, followed by native mobile/desktop clients over one versioned protocol.
+- clients: one versioned protocol for the responsive web client and later native mobile/desktop apps.
 
 The current M3 tool runtime is a control boundary, not a sandbox claim. It validates tool schemas,
 scoped capability grants, approval evidence, idempotency, retry/timeout behavior, and secret-safe
@@ -76,6 +78,13 @@ the same SQLite file, reclaim expired work at a higher generation, reject stale 
 cursor, and drain a 32-job fixture. This is **local at-least-once durability**, not a hosted queue,
 exactly-once external effects, cross-host fencing, or distributed availability.
 
+The M9 client slice adds strict versioned request/response codecs, exact mission/session capabilities,
+optimistic pause/resume/cancel commands, deterministic bootstrap/reconnect projection over M8 lifecycle
+cursors, privacy filtering, and a framework-free responsive web fixture. Numeric lifecycle cursors do
+not need to be consecutive inside one mission because M8 cursors are global; continuity is validated by
+request chaining, monotonic delivered events, exact scope, and hashes. M9 is a contract/UI proof, not a
+public API, authentication system, realtime transport, deployment, or native-app claim.
+
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the current architecture map and
 [SECURITY.md](SECURITY.md) for the trust boundaries.
 
@@ -92,8 +101,9 @@ npm run verify
 ```
 
 No provider key is required for verification; provider protocol tests use injected transports and
-synthetic responses. Durable tests use only temporary local SQLite files and injected handlers. Never
-put credentials in source, fixtures, logs, prompts, or committed environment files.
+synthetic responses. Durable/client tests use temporary local SQLite files and injected runtime
+boundaries. Never put credentials in source, fixtures, logs, prompts, client payloads, or committed
+environment files.
 
 ## Engineering priorities
 
