@@ -9,11 +9,11 @@ Updated: 2026-09-03.
   `bfc76b57a3531f5b6824fa3a3c285c5a55fd13d0`.
 - Active branch: `agent/m11-adaptive-reasoning`; Draft PR #14 targets `main`.
 - M11 core plus the explicit token-budget acceptance fix is verified. Helper verification run
-  `33784031658` passed with 199/199 tests, and normal PR run `33784322602` passed after the
-  human-authored implementation-evidence checkpoint.
-- Roadmap, architecture, security, milestone, and handover are now synchronized to M11. A final normal
-  PR-specific `npm run verify` on the synchronized documentation head is required before exact-head
-  squash merge.
+  `33784031658` passed with 199/199 tests, normal PR run `33784322602` passed after the implementation
+  evidence checkpoint, and synchronized Roadmap/Architecture/Security/Handover run `33784732544`
+  passed.
+- M11 is repository/CI `VERIFIED`. The current evidence-only documentation checkpoint must preserve the
+  same green PR gate before exact-head squash merge.
 - The user has explicitly authorized merge after the verified gate and immediate continuation into M12.
 
 ## M11 verified capability
@@ -67,9 +67,9 @@ functions**. `src/routing/reasoning.ts` reached 94.24% line / 86.67% branch / 10
 Foundation validation, Biome, strict TypeScript, and the full repository suite passed.
 
 Normal pull-request CI run `33784322602` subsequently passed on human-authored evidence head
-`b002136c43d9ebbe7978e81606bc4f8d9c30eb35`, proving that the clean branch works outside the temporary
-helper workflow. The final synchronized documentation head must still receive normal PR CI before M11
-is merged.
+`b002136c43d9ebbe7978e81606bc4f8d9c30eb35`. Fully synchronized M11 Roadmap, Architecture, Security,
+and Handover then passed normal PR CI run `33784732544`. Temporary helper workflows are absent from the
+clean branch.
 
 ## Earlier verified evidence
 
@@ -112,10 +112,10 @@ or paid external resource.
 
 ## Exact next action
 
-Observe normal PR-specific `npm run verify` on the synchronized M11 documentation head. If green and PR
-#14 remains mergeable, mark it ready and squash-merge with exact-head protection under the user's
-existing authorization. Then create a fresh M12 branch from the resulting `main` and begin deterministic
-local production-hardening work: canonical-root/symlink isolation, bounded process/workspace contracts,
+Observe normal PR-specific `npm run verify` on this evidence-only M11 checkpoint. If green and PR #14
+remains mergeable, mark it ready and squash-merge with exact-head protection under the user's existing
+authorization. Then create a fresh M12 branch from the resulting `main` and begin deterministic local
+production-hardening work: canonical-root/symlink isolation, bounded process/workspace contracts,
 secret-safe environment/output limits, and outbound destination policy tests. Do not perform live
 provider calls, deployment, production migration, or paid-resource creation without separate explicit
 approval.
