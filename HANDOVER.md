@@ -7,7 +7,8 @@ Updated: 2026-09-03.
 - Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).
 - `main` contains the verified M0–M4 history at merge commit
   `c60ee329d66511dfbd708176c850557d48e9c9df`.
-- Work branch: `agent/m5-verification-engine`; Draft PR #7 targets `main`.
+- M5 branch: `agent/m5-verification-engine`; Draft PR #7 targets `main`.
+- Work branch: `agent/m6-memory-context`; stacked Draft PR #8 targets the M5 branch.
 - The supplied Hermes/OpenClaw report was read in full before architecture work. Derived KEEP,
   IMPROVE, REPLACE, and AVOID decisions remain in
   `docs/research/HERMES_OPENCLAW_DECISIONS.md`.
@@ -17,13 +18,10 @@ Updated: 2026-09-03.
 M0 repository foundation, M1 provider core, M2 deterministic mission runtime, M3 fail-closed tool
 runtime, and M4 coding vertical slice are merged and verified in pull-request CI.
 
-M5 implementation is verified in pull-request CI. The original PR #7 checkpoint
-`cf0adff3c831ba5ee2ce010ab7fca0523022dc11` was not complete: Actions run `33679627182` failed in
-Biome, the branch had no M5 tests, and M4 completion did not consume the verifier. The repaired branch
-adds fail-closed evidence/reviewer validation, 16 dedicated verification and M4 gate scenarios, and
-requires M5 before M4 can mark tasks verified or enter completion. Actions run `33724426019` passed
-the complete implementation checkpoint. M5 is `VERIFIED`; this synchronized documentation commit is
-the final PR checkpoint.
+M5 is verified in pull-request CI and remains unmerged pending explicit authorization. M6 was branched
+from that verified head. Its memory/context implementation passed Actions run `33752964771`; the
+synchronized documentation checkpoint is still pending, so M6 remains `PARTIALLY_VERIFIED` until that
+second run is observed.
 
 Odin still does not claim a production coding agent, OS-level sandbox, arbitrary shell execution,
 external network tools, durable database persistence, live-provider end-to-end compatibility, mobile
@@ -50,40 +48,47 @@ npm run verify
   `f28bcb9758c2079d9f46826ea672c19bd6e538ff`: foundation validation, Biome, and strict TypeScript
   passed; 77 tests passed with 0 failures; aggregate coverage was 87.83% lines, 74.73% branches, and
   94.29% functions.
+- M5 synchronized-documentation run `33724647879` passed at
+  `2221ad823348f3bbd4a9b8fc703bb5f460cd6888`.
+- M6 implementation run `33752964771` passed at
+  `8934e8f3956db0a66528f484faf34a7e8ea92628`: foundation validation, Biome, and strict TypeScript
+  passed; 108 tests passed with 0 failures; aggregate coverage was 88.92% lines, 76.53% branches, and
+  95.25% functions.
 
 Provider tests remain injected-transport contracts with synthetic fixtures. M4/M5 integration tests
 remain scripted-provider, in-memory event/audit, and injected workspace/quality contracts. CI performs
 no live provider call, network tool action, production repository mutation, deployment, or paid action.
 
-## Implemented M5 behavior
+## Implemented M6 behavior
 
-- Claims, evidence, bindings, verifier findings, reviewer findings, repair requests, and aggregate
-  gate outcomes are distinct typed contracts.
-- Evidence is bounded and checked for canonical timestamps, allowlisted kinds/producers/statuses,
-  SHA-256 metadata, mission/task scope, freshness, ordering, required kind, pass status, uniqueness,
-  missing references, and contradictions.
-- Identical normalized inputs produce deterministically ordered findings, satisfied claim IDs, and
-  SHA-256 result hashes.
-- The built-in adversarial reviewer independently detects cross-task reuse, weak/self-authored
-  evidence, stale/pre-change observations, and conflicts.
-- Reviewer failures and malformed scope/findings/verdict/repair/hash output become typed `BLOCK`
-  results. Repair requests are bounded data and cannot execute tools or mutate state.
-- M4 performs a fresh scoped post-change read, maps every persisted definition of done to evidence,
-  and requires verifier `PASS`, reviewer `ACCEPT`, and aggregate `PASS` before task verification and
-  completion. `BLOCK`, `REPAIR_REQUIRED`, or verifier failure transitions the mission to `BLOCKED`.
+- Async memory contracts distinguish working, episodic, semantic, project, and explicit user
+  preferences without conflating procedural skills.
+- The in-memory contract adapter validates scope, provenance, hashes, canonical time, expiry,
+  sensitivity, optimistic versions, idempotency, and deterministic lexical/tag retrieval.
+- Working memory is mission-bound; user preferences require explicit-user provenance; tombstones
+  remove raw content and cached/replay paths and prohibit same-ID resurrection.
+- Context candidates have fixed P0–P6 source classes. P0–P2 remain mandatory, and repository/current
+  sources deterministically override semantically conflicting memory/history.
+- The compiler owns bounded item/section/total estimates, explicit drop reasons, deterministic hashes,
+  and an immutable content-addressed cache that excludes sensitive inputs.
+- The facade performs scoped retrieval asynchronously, injects memory as P5 only, and invalidates
+  affected cache entries on memory changes.
+- Typed session snapshots preserve mission/task/test state plus the canonical raw-history reference and
+  reject foreign, stale, malformed, or hash-tampered state.
 
 ## Decisions
 
-- Preserve the strict TypeScript modular monolith; M5 adds a domain boundary, not a service.
-- Planner/runtime assertions remain claims, never facts. Independent deterministic tool observations
-  are the current strongest accepted evidence class.
-- Canonical UTC timestamps and bounded collections reduce ambiguous parsing and denial-of-service
-  surface. Unknown kinds or malformed metadata fail closed.
-- Verification and review store concise reasons, IDs, and hashes, not raw tool output or private
-  reasoning.
-- M5 does not own M2 transitions. It returns a gate result; the coding orchestrator owns the guarded
-  transition to `BLOCKED` or the existing checkpoint/final-audit path.
-- A green quality command is necessary but cannot alone produce `COMPLETED`.
+- Preserve the strict TypeScript modular monolith; memory and context are domain boundaries, not new
+  services.
+- Use asynchronous storage contracts now so later SQLite/PostgreSQL adapters do not require a breaking
+  runtime interface.
+- Treat memory as retrieved P5 evidence, never policy or instruction. Current repository/state sources
+  win conflicts.
+- Keep raw events canonical. Structured snapshots are deterministic derived views with exact source
+  pointers, not destructive summaries.
+- Use a documented approximate tokenizer for deterministic budgeting now; exact provider tokenizers
+  and empirical allocation remain M11.
+- Skip the cache whenever any candidate is sensitive; correctness and privacy outrank cache hit rate.
 
 ## Open risks
 
@@ -93,6 +98,9 @@ no live provider call, network tool action, production repository mutation, depl
   are not implemented.
 - Mission events, checkpoints, tool audit records, and verification results are not backed by
   SQLite/PostgreSQL durability or an artifact store.
+- M6 memory, snapshots, and context cache are in-memory contracts; encryption at rest, retention jobs,
+  tenant administration, semantic/vector retrieval, distributed invalidation, and backups are not
+  implemented.
 - A blocked M5 evidence package cannot yet be recollected and resumed automatically; the bounded
   request is exposed for a later controller/repair workflow.
 - External network/browser/email/payment/deployment tools remain denied and unimplemented.
@@ -101,8 +109,7 @@ no live provider call, network tool action, production repository mutation, depl
 
 ## Exact next action
 
-Keep PR #7 unmerged until explicitly authorized. After the synchronized M5 documentation checkpoint
-passes, create an M6 branch/task contract from the M5 head and implement the smallest coherent
-working/project-memory and context-compiler slice: source precedence, versioned records, deterministic
-priority budgeting, structured snapshots, and retrieval tests. Do not claim durable database memory,
-embeddings, or production cache behavior in that slice.
+Keep PR #7 and stacked PR #8 unmerged until explicitly authorized. Push this synchronized M6
+documentation checkpoint, observe CI, then record final evidence and mark M6 verified. After that,
+define M7 specialist/ownership/reconciliation acceptance criteria from the verified M6 head. Do not
+claim durable database memory, embeddings, production cache coherence, or multi-agent safety yet.
