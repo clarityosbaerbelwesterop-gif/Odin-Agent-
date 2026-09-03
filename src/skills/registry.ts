@@ -130,10 +130,11 @@ export class SkillRegistry {
     const matches = [...this.#records.values()].filter(
       (record) => record.package.name === name && record.lifecycle === "ACTIVE",
     );
-    if (matches.length !== 1) {
+    const active = matches[0];
+    if (matches.length !== 1 || active === undefined) {
       throw new SkillError("NOT_FOUND", `No active skill version exists for ${name}.`);
     }
-    return clonePackage(matches[0].package);
+    return clonePackage(active.package);
   }
 
   resolveForReview(name: string, version: string): SkillRecord {

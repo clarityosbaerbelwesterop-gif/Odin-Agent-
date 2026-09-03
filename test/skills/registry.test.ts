@@ -60,10 +60,14 @@ test("discovery is compact, deterministic, and full instructions load progressiv
 
   const summaries = registry.listAvailableSummaries();
   assert.equal(summaries.length, 1);
-  assert.equal("instructions" in summaries[0], false);
+  const summary = summaries[0];
+  assert.ok(summary);
+  assert.equal("instructions" in summary, false);
   assert.equal(JSON.stringify(summaries).includes("smallest change"), false);
-  assert.deepEqual(summaries[0].requiredTools, ["repo.patch", "repo.quality", "repo.read"]);
-  assert.equal(first.package.contentHash, secondRegistry.listAvailableSummaries()[0].contentHash);
+  assert.deepEqual(summary.requiredTools, ["repo.patch", "repo.quality", "repo.read"]);
+  const reorderedSummary = secondRegistry.listAvailableSummaries()[0];
+  assert.ok(reorderedSummary);
+  assert.equal(first.package.contentHash, reorderedSummary.contentHash);
 
   const loaded = registry.resolve("coding.safe_patch", "1.0.0");
   assert.match(loaded.instructions, /smallest change/u);
@@ -263,9 +267,11 @@ test("lifecycle history records promotion, supersession, rollback, verification,
     learnedHistory.map((event) => event.action),
     ["REGISTERED", "VERIFIED", "ACTIVATED"],
   );
-  assert.deepEqual(learnedHistory[1].evidenceRefs, ["evidence:independent"]);
-  assert.equal(learnedHistory[1].producerClass, "independent_verifier");
-  assert.throws(() => (learnedHistory[1].evidenceRefs as string[]).push("mutated"), TypeError);
+  const verificationEvent = learnedHistory[1];
+  assert.ok(verificationEvent);
+  assert.deepEqual(verificationEvent.evidenceRefs, ["evidence:independent"]);
+  assert.equal(verificationEvent.producerClass, "independent_verifier");
+  assert.throws(() => (verificationEvent.evidenceRefs as string[]).push("mutated"), TypeError);
 
   registry.registerTrusted(projectSkill("1.0.0"));
   registry.registerTrusted(projectSkill("2.0.0"));
