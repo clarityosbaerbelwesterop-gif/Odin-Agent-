@@ -1,0 +1,126 @@
+name: M12 documentation sync
+
+on:
+  push:
+    branches:
+      - agent/m12-production-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Synchronize M12 repository facts and remove helper
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'target snippet not found in {path}')
+              p.write_text(text.replace(old, new, 1))
+
+          replace('ROADMAP.md', '''## M12 — Production hardening and release proof
+
+- [ ] Real process/container/worktree sandboxing plus canonical-root/symlink and outbound-network controls.
+- [ ] Live-provider smoke/evaluation matrix, load/recovery tests, observability, backups, and release gates.
+- [ ] Public-service/auth/transport hardening only after the local trust boundaries remain intact.
+''', '''## M12 — Production hardening and release proof
+
+Status: **PARTIALLY_VERIFIED**. Local deterministic hardening is verified; live/infrastructure proof is intentionally still open.
+
+- [x] Canonical workspace boundary rejects traversal, absolute-path ambiguity, root-prefix confusion,
+  and symlink escapes for read/write/cwd resolution.
+- [x] Bounded trusted-command subprocess runner uses `shell: false`, deny-by-default environment,
+  concurrency ceilings, timeout/cancellation, and independent stdout/stderr byte limits.
+- [x] Fail-closed outbound destination policy enforces HTTPS, scoped host/port grants, reserved/private
+  address denial, injected DNS evidence, and fresh authorization after destination changes.
+- [x] Exact provider/model/profile sandbox bindings select runtime-owned backends and resolve credentials
+  only in the control plane; M11 primary/escalation routing feeds that selection.
+- [x] Remote sandbox lifecycle contract provides deterministic allocation keys, concurrent replay collapse,
+  conflict rejection, required cleanup, idempotent release, and no released-session reuse.
+- [x] Normal pull-request CI observed: run `33794095989`, 237/237 tests passed; aggregate coverage was
+  89.43% lines, 76.28% branches, and 95.37% functions.
+- [ ] M12-C structured observability, deterministic load/recovery evidence, backup/release manifests,
+  and fail-closed release gates.
+- [ ] Live-provider/sandbox smoke and evaluation matrix against explicitly authorized credentials/resources.
+- [ ] Public-service authentication/realtime transport and deployment hardening after local boundaries remain intact.
+
+M12-A/B prove local deterministic enforcement and a provider-neutral remote-sandbox lifecycle contract.
+They do **not** prove Docker/Kubernetes/VM isolation, a specific hosted sandbox API, transport-level DNS
+pinning, live-provider compatibility, deployment, production auth, backups, or public traffic.
+''')
+
+          replace('docs/milestones/M12_PRODUCTION_HARDENING.md', 'Status: implementation in progress. Updated: 2026-09-03.', 'Status: **PARTIALLY_VERIFIED** — M12-A/B local hardening verified; M12-C/live infrastructure evidence remains open. Updated: 2026-09-03.')
+          p = Path('docs/milestones/M12_PRODUCTION_HARDENING.md')
+          text = p.read_text()
+          marker = '## M12-C — Observability, load/recovery, and release gates\n'
+          evidence = '''## Verified M12-A/B repository evidence\n\nNormal pull-request CI run `33794095989` passed on human-authored head\n`661510592ffa7e9c2370d8d0097f8355ea9f34fc` with **237 tests, 237 passes, 0 failures** and aggregate\ncoverage **89.43% lines / 76.28% branches / 95.37% functions**. Foundation validation, Biome, strict\nTypeScript, and the complete repository suite passed.\n\nThe verified local tranche includes `src/sandbox` canonical workspace enforcement, bounded process\nexecution, outbound destination policy, exact provider/model/profile sandbox-backend binding,\nmodel-specific provider credential context, M11 route-to-sandbox selection, deterministic remote\nallocation idempotency, concurrent replay collapse, required remote cleanup, idempotent release, and\nreleased-session reuse denial. Remote adapters are injected contracts only; no hosted sandbox provider\nwas called and no paid resource was created.\n\n'''
+          if evidence not in text:
+              text = text.replace(marker, evidence + marker, 1)
+          p.write_text(text)
+
+          p = Path('HANDOVER.md')
+          text = p.read_text()
+          start = text.index('## Current state\n')
+          end = text.index('## M11 verified capability\n')
+          current = '''## Current state\n\n- Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).\n- `main` contains verified M0–M11 at M11 squash merge\n  `bd9c42a2c07918aed140aebcd0d0d59082a71678`.\n- Active branch: `agent/m12-production-hardening`; Draft PR #15 targets `main`.\n- M12-A/B local hardening and provider-neutral sandbox lifecycle are repository/CI verified. Normal PR\n  run `33794095989` passed with 237/237 tests and aggregate coverage 89.43% lines / 76.28% branches /\n  95.37% functions.\n- M12 remains `PARTIALLY_VERIFIED`: no hosted sandbox provider, live provider, deployment, production\n  migration, public traffic, billing, or paid resource was exercised.\n- The user has explicitly authorized merging verified work and immediate continuation.\n\n## M12 partially verified capability\n\nM12 currently adds a fail-closed local execution/sandbox boundary:\n\n- canonical workspace root plus realpath/symlink escape enforcement for reads, writes, and cwd;\n- stable trusted command IDs only, `shell: false`, explicit environment inheritance, concurrency limits,\n  timeout/cancellation, and independent bounded stdout/stderr;\n- outbound HTTPS/host/port/address policy with injected DNS evidence and redirect re-authorization;\n- exact provider + model + capability-profile binding to a sandbox backend;\n- provider credential resolution receives exact provider/model context while sandbox credentials remain\n  behind runtime-owned `credentialRef`s;\n- M11 routing decisions deterministically select the corresponding sandbox backend for primary or\n  escalation routes;\n- remote sandbox allocation uses deterministic idempotency keys, collapses concurrent identical creates,\n  rejects conflicting replay, requires `destroy`, and provides replay-safe cleanup;\n- released sandbox allocations cannot silently become usable again.\n\nThis is a provider-neutral contract and local process boundary. It is not proof of a specific hosted\nsandbox API, kernel/container isolation, transport-level DNS pinning, or production readiness.\n\n'''
+          text = text[:start] + current + text[end:]
+          exact = text.index('## Exact next action\n')
+          text = text[:exact] + '''## Exact next action\n\nAfter the synchronized M12-A/B documentation checkpoint passes normal PR CI, mark PR #15 ready and\nsquash-merge the exact verified head under the user\'s authorization. Then create a fresh branch from\nthe resulting `main` for **M12-C**: structured security/runtime observability, deterministic load and\nrecovery fixtures, release-evidence manifests, backup/recovery contracts, and fail-closed release gates.\nDo not perform live provider/sandbox calls, deployment, production migration, billing, or paid-resource\ncreation without separate explicit approval.\n'''
+          p.write_text(text)
+
+          replace('ARCHITECTURE.md', 'Status: M11 adaptive reasoning, empirical routing, and bounded efficiency verified, 2026-09-03.', 'Status: M12-A/B local execution and provider-neutral sandbox lifecycle partially verified, 2026-09-03.')
+          replace('ARCHITECTURE.md', '''### Execution plane\n\nRuns filesystem, terminal, browser, repository, and programmatic-workflow tools behind policy and\nisolation boundaries. Host execution and unrestricted network access are never defaults. M3 implements\nthe control boundary in front of execution; production process/container/worktree isolation remains\nfuture work.\n''', '''### Execution plane\n\nRuns filesystem, terminal, browser, repository, and programmatic-workflow tools behind policy and\nisolation boundaries. Host execution and unrestricted network access are never defaults. M3 remains\nthe tool authority. M12 adds canonical workspace enforcement, a bounded trusted-command host-process\nrunner, fail-closed outbound destination policy, and a provider-neutral remote-sandbox lifecycle/\nbinding boundary. The host-process runner is not kernel/container isolation, and no specific hosted\nsandbox provider is claimed until a real adapter is authorized and exercised.\n''')
+          p = Path('ARCHITECTURE.md')
+          text = p.read_text()
+          insert = '''### M12 — Local execution hardening and sandbox backend boundary\n\n`src/sandbox` canonicalizes the trusted workspace root, denies lexical/canonical escape, bounds trusted\nsubprocess execution, and evaluates outbound destinations before a future transport is allowed to use\nthem. Sandbox backends are selected by exact provider/model/profile identity. Runtime-owned credential\nreferences are resolved only after binding checks, and M11 route decisions feed the same exact model\nidentity into sandbox allocation.\n\nRemote sandbox creation is idempotent per mission/task/backend/model/profile allocation identity;\nidentical concurrent requests share one create operation, conflicting replay fails closed, remote\nbackends must implement cleanup, release is idempotent, and released sessions cannot be reused. This\ncontract is intentionally provider-neutral and has no live sandbox-provider proof yet.\n\n'''
+          marker = '## Current module map\n'
+          if insert not in text:
+              text = text.replace(marker, insert + marker, 1)
+          text = text.replace('  routing/       M11 empirical model/effort selection, cache, eval harness, bounded reasoning\n', '  routing/       M11 empirical model/effort selection, cache, eval harness, bounded reasoning\n  sandbox/       M12 canonical workspace, bounded process/network policy, backend lifecycle/routing\n')
+          old = '''## Next architecture milestone\n\nM12 hardens the local execution and release boundaries without weakening M3/M5/M11 policy. The first\nallowed tranche should implement deterministic local process/workspace isolation contracts,\ncanonical-root and symlink escape prevention, bounded command/environment/output/timeout behavior,\nand outbound-destination policy tests behind injected adapters.\n\nLive-provider smoke/evaluation matrices, production deployment, public service/auth transport,\nexternal sandboxes, and any paid infrastructure require separate explicit authorization and remain\nunproven until actually exercised. M12 must distinguish local hardening evidence from production or\nlive-provider claims.\n'''
+          new = '''## Next architecture milestone\n\nM12-C completes the no-cost production-hardening work around the verified M12-A/B execution boundary:\nstructured secret-safe observability, deterministic load/recovery evidence, backup/recovery contracts,\nrelease manifests, and fail-closed release gates.\n\nLive-provider/sandbox smoke matrices, production deployment, public service/auth transport, and any\npaid infrastructure require separate explicit authorization and remain unproven until actually\nexercised.\n'''
+          if old not in text:
+              raise SystemExit('architecture next milestone target missing')
+          p.write_text(text.replace(old, new, 1))
+
+          p = Path('SECURITY.md')
+          text = p.read_text()
+          text = text.replace('M11 adaptive-routing safeguards. Controls not explicitly identified as implemented remain future work.', 'M11 adaptive-routing safeguards, plus M12-A/B local execution/sandbox safeguards. Controls not explicitly identified as implemented remain future work.', 1)
+          text = text.replace('M3 is a control boundary, not a production sandbox. Canonical-root/symlink isolation, subprocess or\ncontainer isolation, CPU/memory/output limits, and destination-based network enforcement remain future\nexecution work.', 'M3 remains the capability/tool authority. M12-A/B now add canonical-root and symlink-escape checks, a\nbounded trusted-command host-process runner, output/time/concurrency limits, and a fail-closed outbound\ndestination policy. The host-process runner is still not kernel/container isolation, and the outbound\npolicy alone is not transport-level DNS pinning.', 1)
+          marker = '## Prompt injection and skill security\n'
+          m12 = '''## Implemented M12-A/B execution and sandbox safeguards\n\n`src/sandbox` treats workspace paths, subprocess outcomes, destination URLs, model/sandbox bindings,\nprovider-managed session metadata, and lifecycle requests as validated runtime data. Workspace access\ncanonicalizes the trusted root and denies lexical traversal, absolute paths, root-prefix confusion, and\nsymlink escapes. Trusted commands use fixed runtime-owned executable/arguments with `shell: false`, an\nexplicit environment allowlist, bounded concurrency, timeout/cancellation, and bounded stdout/stderr.\n\nOutbound policy defaults to HTTPS, rejects URL credentials/fragments and private/reserved addresses,\nrequires scoped host/port authorization, validates every injected DNS answer, and requires a fresh\ndecision when a destination changes. A future transport must consume the decision without unsafe\nre-resolution before DNS-rebinding resistance can be claimed.\n\nSandbox backend selection binds exact provider/model/profile identity. Credentials are resolved in the\ncontrol plane only after the exact binding is accepted. Remote allocation uses deterministic\nidempotency keys, collapses concurrent identical creates, rejects conflicting replay, requires a cleanup\nmethod, makes release idempotent, and rejects released-session reuse. No live hosted sandbox provider or\npaid resource has been exercised.\n\n'''
+          if m12 not in text:
+              text = text.replace(marker, m12 + marker, 1)
+          p.write_text(text)
+
+          p = Path('README.md')
+          text = p.read_text()
+          old = '''Odin is at the **early core stage**. Repository foundation, the provider-neutral inference boundary,\nthe deterministic mission runtime, the fail-closed tool-control boundary, a fixture-backed coding\nvertical slice, independent evidence verification, scoped memory/context, bounded specialist\ncoordination, local SQLite durable missions/jobs, and the first versioned client/controller/reconnect\nboundary with a responsive reference web shell are implemented and contract-tested.\nThe repository does not yet provide a production coding agent, OS-level sandbox, arbitrary shell\nexecution, external network tools, a hosted service, production authentication/realtime transport,\nnative mobile binaries, a distributed worker queue, or live-provider end-to-end smoke proof.\n'''
+          new = '''Odin is at the **early core stage**. M0–M11 are verified, and M12-A/B local execution hardening is\npartially verified: canonical workspace enforcement, bounded trusted subprocesses, outbound destination\npolicy, adaptive provider/model/profile-to-sandbox binding, and replay-safe remote sandbox lifecycle\ncontracts are implemented and contract-tested.\nThe repository does not yet claim kernel/container isolation, a live hosted sandbox adapter, arbitrary\nshell execution, a public hosted service, production authentication/realtime transport, native mobile\nbinaries, a distributed worker queue, or live-provider end-to-end smoke proof.\n'''
+          if old not in text:
+              raise SystemExit('README stage target missing')
+          text = text.replace(old, new, 1)
+          marker = 'See [ARCHITECTURE.md](ARCHITECTURE.md) for the current architecture map and\n'
+          m12 = '''The M12-A/B execution slice adds `src/sandbox`: canonical root/symlink protection, stable runtime-owned\ncommand IDs with `shell: false`, bounded environment/output/timeout/concurrency behavior, fail-closed\noutbound destination authorization, exact model-profile sandbox binding, and deterministic remote\ncreate/destroy idempotency. M11 routing can select different sandbox backends for different routed\nmodels while raw provider/sandbox credentials remain in the control plane. These are local and\nprovider-neutral contracts; no paid hosted sandbox or production deployment is claimed.\n\n'''
+          if m12 not in text:
+              text = text.replace(marker, m12 + marker, 1)
+          p.write_text(text)
+
+          Path('.github/workflows/m12-doc-sync.yml').unlink()
+      - name: Commit synchronized documentation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ROADMAP.md HANDOVER.md ARCHITECTURE.md SECURITY.md README.md docs/milestones/M12_PRODUCTION_HARDENING.md .github/workflows/m12-doc-sync.yml
+          git commit -m "docs(m12): record verified local hardening boundary"
+          git push
