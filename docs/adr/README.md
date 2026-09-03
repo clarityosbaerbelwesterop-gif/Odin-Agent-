@@ -13,3 +13,5 @@ Current records:
 - `0004` progressive versioned skills
 - `0005` client/server mobile architecture
 - `0006` independent verification authority
+- `0007` source-aware memory and context compilation
+- `0008` runtime-owned specialist coordination

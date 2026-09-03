@@ -20,6 +20,13 @@ bindings, canonical time/freshness, foreign scope, failed and contradictory obse
 weak/self-authored provenance, malformed reviewer results, bounded repair requests, deterministic
 replay, and the M4 completion gate. A green quality command alone is explicitly insufficient.
 
+M7 coordination fixtures use injected deterministic workers only. They cover dependency readiness,
+stable selection and hashes, missing specifications/capabilities, batch/global/worker capacity,
+read/write ownership across repository/resource/state namespaces, active/expired/cross-plan leases,
+clock rollback, plan tampering/replay, strict result validation, runtime evidence attestation,
+unowned writes, partial failure, timeout/cancellation cleanup, and a two-worker barrier that would
+time out under accidental sequential execution.
+
 Every confirmed bug should receive a regression test when reproducible. Provider tests use injected
 HTTP transports and recorded schema-shaped fixtures; live-provider smoke tests are opt-in, never run
 on pull requests, and must obey an explicit cost budget.

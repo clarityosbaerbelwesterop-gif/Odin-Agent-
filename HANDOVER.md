@@ -8,7 +8,8 @@ Updated: 2026-09-03.
 - `main` contains the verified M0–M4 history at merge commit
   `c60ee329d66511dfbd708176c850557d48e9c9df`.
 - M5 branch: `agent/m5-verification-engine`; Draft PR #7 targets `main`.
-- Work branch: `agent/m6-memory-context`; stacked Draft PR #8 targets the M5 branch.
+- M6 branch: `agent/m6-memory-context`; stacked Draft PR #8 targets the M5 branch.
+- Work branch: `agent/m7-specialist-coordination`; stacked Draft PR #9 targets the M6 branch.
 - The supplied Hermes/OpenClaw report was read in full before architecture work. Derived KEEP,
   IMPROVE, REPLACE, and AVOID decisions remain in
   `docs/research/HERMES_OPENCLAW_DECISIONS.md`.
@@ -20,8 +21,13 @@ runtime, and M4 coding vertical slice are merged and verified in pull-request CI
 
 M5 is verified in pull-request CI and remains unmerged pending explicit authorization. M6 was branched
 from that verified head. Its memory/context implementation passed Actions run `33752964771`, and its
-synchronized documentation passed run `33753281792`. M6 is `VERIFIED`; both stacked pull requests
+synchronized documentation passed run `33753281792`. M6 is `VERIFIED`; the M5 and M6 pull requests
 remain draft and unmerged.
+
+M7 was branched from the verified M6 head. Its specialist registry, ownership-aware planning,
+bounded parallel execution, runtime evidence attestation, and reconciliation implementation passed
+Actions run `33755851793`. Synchronized documentation passed run `33756217402`. M7 is `VERIFIED`;
+all three pull requests remain draft and unmerged.
 
 Odin still does not claim a production coding agent, OS-level sandbox, arbitrary shell execution,
 external network tools, durable database persistence, live-provider end-to-end compatibility, mobile
@@ -56,10 +62,20 @@ npm run verify
   95.25% functions.
 - M6 synchronized-documentation run `33753281792` passed at
   `df6d310adcf2882e26a6bb7d6f8a4165c080e7ea`.
+- M6 final-evidence run `33753417686` passed at
+  `853b06243129a8e3b6ef01aa6311d38bfd55fc95`.
+- M7 implementation run `33755851793` passed at
+  `88cedbb8b33cb9863a0b4b1b30abbd6ec2e2cb19`: foundation validation, Biome, and strict TypeScript
+  passed; 132 tests passed with 0 failures; aggregate coverage was 88.95% lines, 77.46% branches,
+  and 95.19% functions.
+- M7 synchronized-documentation run `33756217402` passed at
+  `91cc54b367f3f946988a80243ac2dbe5d2c485f7` with the same 132 tests and coverage.
 
 Provider tests remain injected-transport contracts with synthetic fixtures. M4/M5 integration tests
 remain scripted-provider, in-memory event/audit, and injected workspace/quality contracts. CI performs
 no live provider call, network tool action, production repository mutation, deployment, or paid action.
+M7 uses injected in-process deterministic workers and an injected fixture evidence authority; it does
+not invoke a model, subagent service, external worker, or repository write.
 
 ## Implemented M6 behavior
 
@@ -91,6 +107,29 @@ no live provider call, network tool action, production repository mutation, depl
 - Use a documented approximate tokenizer for deterministic budgeting now; exact provider tokenizers
   and empirical allocation remain M11.
 - Skip the cache whenever any candidate is sensitive; correctness and privacy outrank cache hit rate.
+- Keep specialist selection, ownership, leases, concurrency, cancellation, and reconciliation in the
+  deterministic runtime; workers receive one immutable proposal contract and cannot talk to peers.
+- Treat repository/resource/state ownership as conservative logical locking before execution. Do not
+  describe this as a durable/distributed lock, worktree, process sandbox, or symlink-safe boundary.
+- Require runtime evidence attestation for M7 acceptance. A worker-supplied `independent_tool` label is
+  not authority, and M7 acceptance still cannot replace M5 task/mission verification.
+
+## Implemented M7 behavior
+
+- The bounded registry stores versioned role/capability/provenance/trust metadata separately from
+  injected worker handlers and returns deterministic compact discovery summaries.
+- Only dependency-ready `PENDING` tasks in an `EXECUTING` M2 mission are eligible. Missing specs,
+  specialists, capacity, and ownership are explicit typed deferrals.
+- Repository ancestor/descendant overlap is conservative; resource and state keys conflict exactly;
+  read/read sharing is permitted and any intersecting write is deferred.
+- Plans, assignments, and expiring leases are generation-bound, immutable, hash-addressed, and
+  replay-checked. Clock rollback fails closed.
+- Strict proposals include bounded summary/evidence/files/artifacts/assumptions/risks/remaining work.
+  Foreign or malformed output, unowned file writes, and unsupported fields are blocked.
+- Independent passing evidence must be attested by a runtime-owned authority. Reconciliation is
+  deterministic data only and releases leases on success, failure, timeout, cancellation, or expiry.
+- A barrier-based test proves two different specialists actually enter execution concurrently, while
+  partial failure preserves an independently accepted sibling result.
 
 ## Open risks
 
@@ -103,6 +142,9 @@ no live provider call, network tool action, production repository mutation, depl
 - M6 memory, snapshots, and context cache are in-memory contracts; encryption at rest, retention jobs,
   tenant administration, semantic/vector retrieval, distributed invalidation, and backups are not
   implemented.
+- M7 plans and leases are single-process and in memory. Worker abort is cooperative; workers are not
+  isolated in subprocesses/containers/worktrees, locks are not durable or cross-host fenced, and
+  coordination cannot yet recover after process restart.
 - A blocked M5 evidence package cannot yet be recollected and resumed automatically; the bounded
   request is exposed for a later controller/repair workflow.
 - External network/browser/email/payment/deployment tools remain denied and unimplemented.
@@ -111,7 +153,7 @@ no live provider call, network tool action, production repository mutation, depl
 
 ## Exact next action
 
-Keep PR #7 and stacked PR #8 unmerged until explicitly authorized. Create the M7 task contract from
-the verified M6 head, then implement the smallest specialist/ownership/reconciliation slice with
-dependency and file/resource conflict tests. Do not claim durable database memory, embeddings,
-production cache coherence, or multi-agent safety beyond evidence added by that later slice.
+Keep PR #7, stacked PR #8, and stacked PR #9 unmerged until explicitly authorized. Start M8 with a
+task contract for persistent worker jobs, durable leases, event fan-out, reconnect, cancellation, and
+restart recovery. Preserve the M7 coordinator contract and do not claim process isolation,
+distributed fencing, worktree safety, or durable recovery before M8 adds and verifies that evidence.

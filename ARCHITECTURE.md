@@ -1,6 +1,6 @@
 # Odin architecture
 
-Status: M6 memory/context implementation verified checkpoint, 2026-09-03.
+Status: M7 specialist coordination verified, 2026-09-03.
 
 ## Repository finding
 
@@ -21,6 +21,7 @@ speculative microservices.
 8. Every state transition and consequential side effect is auditable without storing hidden reasoning.
 9. Context is compiled progressively from state and artifacts; raw history remains recoverable.
 10. Quality-per-cost is measured, but cost optimization may not silently violate required quality.
+11. Specialists propose bounded work; the runtime retains scheduling, ownership, and acceptance.
 
 ## Logical architecture
 
@@ -191,6 +192,30 @@ changes for targeted invalidation. Structured session snapshots preserve typed m
 test summaries plus a hash-addressed raw-event reference and reject foreign, stale, or tampered input.
 No model summary can replace canonical mission events.
 
+## Implemented M7 specialist coordination slice
+
+`src/coordination` adds the first controlled multi-agent boundary without recursive agents or peer
+chat. A bounded registry keeps compact role/capability/version/provenance metadata separate from
+injected worker handlers. Coordination specifications bind existing M2 tasks to one goal, an M6-style
+context package reference, and explicit repository/resource/shared-state ownership.
+
+The runtime considers only dependency-ready `PENDING` tasks while the mission is `EXECUTING`.
+Selection and IDs are deterministic, while configured batch/global capacity and each profile's
+concurrency ceiling bound fan-out. Expiring logical leases are reserved before execution. Read/read
+sharing is permitted; any intersecting write is deferred, with conservative ancestor/descendant
+matching for repository paths.
+
+Each worker receives one immutable assignment and an abort signal, with no peer, mission, repository,
+tool, policy, or credential interface. Output is a strict proposal whose identity, time, sizes, hashes,
+unique references, and reported changed files are validated. A worker-provided evidence label is not
+authority: acceptance requires a matching runtime-owned evidence attestation. Reconciliation returns
+hash-addressed `ACCEPTED`, `RETRY_REQUIRED`, or `BLOCKED` data without mutating M2 state, and leases are
+released across success, partial failure, malformed output, timeout, cancellation, and expiry.
+
+This slice uses injected in-process workers and in-memory logical leases. It does not claim worktree,
+process/container, distributed-lock, durable-queue, or restart recovery isolation; those are M8
+responsibilities.
+
 ## Current module map
 
 ```text
@@ -205,6 +230,7 @@ src/
   verification/ M5 typed evidence verifier and adversarial review authority
   memory/        M6 asynchronous memory contracts and in-memory test adapter
   context/       M6 retrieval facade, priority compiler/cache, session snapshots
+  coordination/  M7 specialist registry, ownership leases, bounded execution, reconciliation
   artifacts/     content-addressed artifact metadata later
   cli/           first user-facing entry point later
 ```
@@ -215,9 +241,9 @@ worker adapters.
 
 ## Next architecture milestone
 
-M7 adds isolated specialist contracts, task/file/resource ownership, dependency-safe parallelism, and
-result reconciliation. It must build on M6 context scopes and M2 task dependencies without allowing
-specialists to communicate chaotically or mutate shared files concurrently.
+M8 turns the M7 single-process coordination contract into persistent worker jobs with durable leases,
+event fan-out, reconnect, cancellation recovery, and restart-safe long-running execution. It must not
+overstate cooperative abort or logical path locks as process or filesystem isolation.
 
 ## Storage direction
 
