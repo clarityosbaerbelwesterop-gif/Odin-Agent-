@@ -5,35 +5,46 @@ Updated: 2026-09-03.
 ## Current state
 
 - Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).
-- `main` contains the verified M0–M4 history at merge commit
-  `c60ee329d66511dfbd708176c850557d48e9c9df`.
-- M5 branch: `agent/m5-verification-engine`; Draft PR #7 targets `main`.
-- M6 branch: `agent/m6-memory-context`; stacked Draft PR #8 targets the M5 branch.
-- Work branch: `agent/m7-specialist-coordination`; stacked Draft PR #9 targets the M6 branch.
-- The supplied Hermes/OpenClaw report was read in full before architecture work. Derived KEEP,
-  IMPROVE, REPLACE, and AVOID decisions remain in
-  `docs/research/HERMES_OPENCLAW_DECISIONS.md`.
+- `main` contains the verified M0–M7 history at merge commit
+  `d2a3833ea4b4069160fcca8bcf9786f2707d22a9`.
+- Active branch: `agent/m8-durable-missions`; Draft PR #10 targets `main`.
+- The supplied Hermes/OpenClaw report was read before architecture work. Derived KEEP, IMPROVE,
+  REPLACE, and AVOID decisions remain in `docs/research/HERMES_OPENCLAW_DECISIONS.md`.
 
 ## Active milestone
 
 M0 repository foundation, M1 provider core, M2 deterministic mission runtime, M3 fail-closed tool
-runtime, and M4 coding vertical slice are merged and verified in pull-request CI.
+runtime, M4 coding vertical slice, M5 verification engine, M6 memory/context engine, and M7
+specialist coordination are merged and verified on `main`.
 
-M5 is verified in pull-request CI and remains unmerged pending explicit authorization. M6 was branched
-from that verified head. Its memory/context implementation passed Actions run `33752964771`, and its
-synchronized documentation passed run `33753281792`. M6 is `VERIFIED`; the M5 and M6 pull requests
-remain draft and unmerged.
+M8 implementation is present on `agent/m8-durable-missions` but is **not yet declared VERIFIED**.
+It adds the local durable runtime slice required by `docs/milestones/M8_DURABLE_MISSIONS.md`:
 
-M7 was branched from the verified M6 head. Its specialist registry, ownership-aware planning,
-bounded parallel execution, runtime evidence attestation, and reconciliation implementation passed
-Actions run `33755851793`. Synchronized documentation passed run `33756217402`. M7 is `VERIFIED`;
-all three pull requests remain draft and unmerged.
+- SQLite-backed canonical M2 mission events with optimistic versions and durable idempotency;
+- integrity-checked derived mission checkpoints that are revalidated against canonical events;
+- durable worker jobs with bounded attempts, deterministic claims, expiring leases, fencing
+  generations, opaque lease tokens whose hashes alone are stored, retries, cancellation, and
+  lifecycle events;
+- runtime-owned handler timeout, heartbeat, cooperative cancellation, structured settlement, and
+  normalized worker errors;
+- cursor-based mission-scoped lifecycle replay and close/reopen recovery;
+- adversarial fixtures covering two SQLite connections, stale settlement rejection, corruption,
+  cancellation-vs-success, retry exhaustion, and a 32-job interrupted mission.
 
-Odin still does not claim a production coding agent, OS-level sandbox, arbitrary shell execution,
-external network tools, durable database persistence, live-provider end-to-end compatibility, mobile
+The latest full user-authored CI attempt, run `33765932493`, reached all tests: foundation, Biome, and
+strict TypeScript passed; 148/149 tests passed. The single failure exposed a boundary-normalization bug:
+a corrupted checkpoint was correctly rejected by M2 but leaked `MissionDomainError` instead of the
+M8 persistence error type. The durable boundary now catches that lower-level integrity failure and
+normalizes it to `DurableStoreCorruptionError` at commit
+`3b40a30c36a6a30043707a5c029d56d7a449f8a3`. That bot-authored commit received GitHub Actions
+`action_required`, so this synchronized handover commit intentionally triggers the next normal
+pull-request CI run over the repaired code.
+
+Odin still does not claim a production OS sandbox, arbitrary shell execution, external network tools,
+live-provider end-to-end compatibility, hosted distributed queue, PostgreSQL durability, mobile
 client, hosted service, or complete MVP.
 
-## Verified evidence
+## Verified evidence through M7
 
 Canonical command:
 
@@ -51,109 +62,64 @@ npm run verify
 - M4 implementation run `33678970596` passed with 61 tests, and final documentation run
   `33679222149` passed before merge `c60ee329d66511dfbd708176c850557d48e9c9df`.
 - M5 implementation run `33724426019` passed at
-  `f28bcb9758c2079d9f46826ea672c19bd6e538ff`: foundation validation, Biome, and strict TypeScript
-  passed; 77 tests passed with 0 failures; aggregate coverage was 87.83% lines, 74.73% branches, and
-  94.29% functions.
+  `f28bcb9758c2079d9f46826ea672c19bd6e538ff`: 77 tests passed with 0 failures.
 - M5 synchronized-documentation run `33724647879` passed at
   `2221ad823348f3bbd4a9b8fc703bb5f460cd6888`.
 - M6 implementation run `33752964771` passed at
-  `8934e8f3956db0a66528f484faf34a7e8ea92628`: foundation validation, Biome, and strict TypeScript
-  passed; 108 tests passed with 0 failures; aggregate coverage was 88.92% lines, 76.53% branches, and
-  95.25% functions.
+  `8934e8f3956db0a66528f484faf34a7e8ea92628`: 108 tests passed with 0 failures.
 - M6 synchronized-documentation run `33753281792` passed at
-  `df6d310adcf2882e26a6bb7d6f8a4165c080e7ea`.
-- M6 final-evidence run `33753417686` passed at
-  `853b06243129a8e3b6ef01aa6311d38bfd55fc95`.
+  `df6d310adcf2882e26a6bb7d6f8a4165c080e7ea`; final-evidence run `33753417686` also passed.
 - M7 implementation run `33755851793` passed at
-  `88cedbb8b33cb9863a0b4b1b30abbd6ec2e2cb19`: foundation validation, Biome, and strict TypeScript
-  passed; 132 tests passed with 0 failures; aggregate coverage was 88.95% lines, 77.46% branches,
-  and 95.19% functions.
+  `88cedbb8b33cb9863a0b4b1b30abbd6ec2e2cb19`: 132 tests passed with 0 failures.
 - M7 synchronized-documentation run `33756217402` passed at
-  `91cc54b367f3f946988a80243ac2dbe5d2c485f7` with the same 132 tests and coverage.
+  `91cc54b367f3f946988a80243ac2dbe5d2c485f7` with the same 132 tests.
 
 Provider tests remain injected-transport contracts with synthetic fixtures. M4/M5 integration tests
-remain scripted-provider, in-memory event/audit, and injected workspace/quality contracts. CI performs
-no live provider call, network tool action, production repository mutation, deployment, or paid action.
-M7 uses injected in-process deterministic workers and an injected fixture evidence authority; it does
-not invoke a model, subagent service, external worker, or repository write.
+remain scripted-provider, in-memory audit, and injected workspace/quality contracts. M7 uses injected
+in-process deterministic workers and an injected fixture evidence authority. None of those CI paths
+perform live provider calls, production repository mutation, deployment, or paid actions.
 
-## Implemented M6 behavior
+## M8 design decisions
 
-- Async memory contracts distinguish working, episodic, semantic, project, and explicit user
-  preferences without conflating procedural skills.
-- The in-memory contract adapter validates scope, provenance, hashes, canonical time, expiry,
-  sensitivity, optimistic versions, idempotency, and deterministic lexical/tag retrieval.
-- Working memory is mission-bound; user preferences require explicit-user provenance; tombstones
-  remove raw content and cached/replay paths and prohibit same-ID resurrection.
-- Context candidates have fixed P0–P6 source classes. P0–P2 remain mandatory, and repository/current
-  sources deterministically override semantically conflicting memory/history.
-- The compiler owns bounded item/section/total estimates, explicit drop reasons, deterministic hashes,
-  and an immutable content-addressed cache that excludes sensitive inputs.
-- The facade performs scoped retrieval asynchronously, injects memory as P5 only, and invalidates
-  affected cache entries on memory changes.
-- Typed session snapshots preserve mission/task/test state plus the canonical raw-history reference and
-  reject foreign, stale, malformed, or hash-tampered state.
+- Keep the strict TypeScript modular monolith and use Node 24 built-in `node:sqlite`; no new runtime
+  database dependency is introduced.
+- Canonical mission events remain source of truth. Checkpoints are validated derived artifacts and
+  must reproduce from the event stream before acceptance.
+- Use WAL, foreign keys, explicit FULL synchronous durability, bounded busy timeout, strict tables,
+  short `BEGIN IMMEDIATE` transactions, schema versioning, bounded canonical JSON, and fail-closed
+  decoding.
+- Treat local SQLite as a single-runtime persistence target, not a distributed queue or globally
+  ordered execution system.
+- Job delivery is at least once. Fencing prevents stale database settlement but cannot undo an
+  external side effect; M3 idempotency remains mandatory for side-effecting tools.
+- Workers receive immutable lease/job envelopes plus `AbortSignal`. Database handles, credentials,
+  policy state, peer communication, and completion authority stay runtime-owned.
+- Lease tokens are opaque bearer material returned only to the claimant; persistence stores only a
+  SHA-256 token hash. Raw worker exceptions are normalized to stable reason codes.
+- Cursor reconnect is mission-scoped and strictly monotonic. Tampered lifecycle event hashes fail
+  closed instead of being skipped.
 
-## Decisions
+## Open risks after M8 implementation
 
-- Preserve the strict TypeScript modular monolith; memory and context are domain boundaries, not new
-  services.
-- Use asynchronous storage contracts now so later SQLite/PostgreSQL adapters do not require a breaking
-  runtime interface.
-- Treat memory as retrieved P5 evidence, never policy or instruction. Current repository/state sources
-  win conflicts.
-- Keep raw events canonical. Structured snapshots are deterministic derived views with exact source
-  pointers, not destructive summaries.
-- Use a documented approximate tokenizer for deterministic budgeting now; exact provider tokenizers
-  and empirical allocation remain M11.
-- Skip the cache whenever any candidate is sensitive; correctness and privacy outrank cache hit rate.
-- Keep specialist selection, ownership, leases, concurrency, cancellation, and reconciliation in the
-  deterministic runtime; workers receive one immutable proposal contract and cannot talk to peers.
-- Treat repository/resource/state ownership as conservative logical locking before execution. Do not
-  describe this as a durable/distributed lock, worktree, process sandbox, or symlink-safe boundary.
-- Require runtime evidence attestation for M7 acceptance. A worker-supplied `independent_tool` label is
-  not authority, and M7 acceptance still cannot replace M5 task/mission verification.
-
-## Implemented M7 behavior
-
-- The bounded registry stores versioned role/capability/provenance/trust metadata separately from
-  injected worker handlers and returns deterministic compact discovery summaries.
-- Only dependency-ready `PENDING` tasks in an `EXECUTING` M2 mission are eligible. Missing specs,
-  specialists, capacity, and ownership are explicit typed deferrals.
-- Repository ancestor/descendant overlap is conservative; resource and state keys conflict exactly;
-  read/read sharing is permitted and any intersecting write is deferred.
-- Plans, assignments, and expiring leases are generation-bound, immutable, hash-addressed, and
-  replay-checked. Clock rollback fails closed.
-- Strict proposals include bounded summary/evidence/files/artifacts/assumptions/risks/remaining work.
-  Foreign or malformed output, unowned file writes, and unsupported fields are blocked.
-- Independent passing evidence must be attested by a runtime-owned authority. Reconciliation is
-  deterministic data only and releases leases on success, failure, timeout, cancellation, or expiry.
-- A barrier-based test proves two different specialists actually enter execution concurrently, while
-  partial failure preserves an independently accepted sibling result.
-
-## Open risks
-
+- M8 is not verified until the repaired implementation and synchronized documentation both pass
+  pull-request CI and final evidence is recorded.
+- SQLite does not provide distributed queue semantics, multi-host fencing, leader election,
+  multi-region availability, or PostgreSQL-grade service durability.
+- Worker abort remains cooperative. There is still no subprocess/container/worktree isolation,
+  symlink-safe production repository boundary, CPU/memory/output enforcement, or sandbox escape
+  protection.
 - Provider adapters have not been exercised in an opt-in live end-to-end smoke test.
-- Repository workspace and quality adapters remain injected seams; production sandboxing,
-  canonical-root/symlink enforcement, process isolation, CPU/memory/output limits, and worker leases
-  are not implemented.
-- Mission events, checkpoints, tool audit records, and verification results are not backed by
-  SQLite/PostgreSQL durability or an artifact store.
-- M6 memory, snapshots, and context cache are in-memory contracts; encryption at rest, retention jobs,
-  tenant administration, semantic/vector retrieval, distributed invalidation, and backups are not
-  implemented.
-- M7 plans and leases are single-process and in memory. Worker abort is cooperative; workers are not
-  isolated in subprocesses/containers/worktrees, locks are not durable or cross-host fenced, and
-  coordination cannot yet recover after process restart.
-- A blocked M5 evidence package cannot yet be recollected and resumed automatically; the bounded
-  request is exposed for a later controller/repair workflow.
-- External network/browser/email/payment/deployment tools remain denied and unimplemented.
+- M6 memory/context/cache remains in-memory; encryption at rest, tenant administration, semantic
+  retrieval, retention jobs, distributed invalidation, and backups remain future work.
+- Artifact references are durable metadata only; artifact bytes and repository snapshots are not yet
+  stored by M8.
+- External browser/email/payment/deployment/network tools remain denied and unimplemented.
 - Full skill package installation/promotion remains M10 work.
-- Branch protection and required-check repository settings remain outside this code checkpoint.
 
 ## Exact next action
 
-Keep PR #7, stacked PR #8, and stacked PR #9 unmerged until explicitly authorized. Start M8 with a
-task contract for persistent worker jobs, durable leases, event fan-out, reconnect, cancellation, and
-restart recovery. Preserve the M7 coordinator contract and do not claim process isolation,
-distributed fencing, worktree safety, or durable recovery before M8 adds and verifies that evidence.
+Run pull-request CI on the repaired M8 head through `npm run verify`. If all gates pass, update
+`ROADMAP.md` and `docs/milestones/M8_DURABLE_MISSIONS.md` to `VERIFIED`, record the exact run/head in
+this handover, run synchronized-documentation CI once more, then merge PR #10 only after the final
+verified head is mergeable. After merge, branch M9 from the new `main` head and start the responsive
+web/native-client protocol milestone without weakening the M8 durability boundaries.
