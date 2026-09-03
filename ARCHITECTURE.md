@@ -1,6 +1,6 @@
 # Odin architecture
 
-Status: M10 skill lifecycle implementation verified; synchronized documentation pending final PR CI, 2026-09-03.
+Status: M10 progressive skill lifecycle and synthesis verified, 2026-09-03.
 
 ## Repository finding
 
