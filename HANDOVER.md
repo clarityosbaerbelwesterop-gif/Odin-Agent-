@@ -19,9 +19,9 @@ M0 repository foundation, M1 provider core, M2 deterministic mission runtime, M3
 runtime, and M4 coding vertical slice are merged and verified in pull-request CI.
 
 M5 is verified in pull-request CI and remains unmerged pending explicit authorization. M6 was branched
-from that verified head. Its memory/context implementation passed Actions run `33752964771`; the
-synchronized documentation checkpoint is still pending, so M6 remains `PARTIALLY_VERIFIED` until that
-second run is observed.
+from that verified head. Its memory/context implementation passed Actions run `33752964771`, and its
+synchronized documentation passed run `33753281792`. M6 is `VERIFIED`; both stacked pull requests
+remain draft and unmerged.
 
 Odin still does not claim a production coding agent, OS-level sandbox, arbitrary shell execution,
 external network tools, durable database persistence, live-provider end-to-end compatibility, mobile
@@ -54,6 +54,8 @@ npm run verify
   `8934e8f3956db0a66528f484faf34a7e8ea92628`: foundation validation, Biome, and strict TypeScript
   passed; 108 tests passed with 0 failures; aggregate coverage was 88.92% lines, 76.53% branches, and
   95.25% functions.
+- M6 synchronized-documentation run `33753281792` passed at
+  `df6d310adcf2882e26a6bb7d6f8a4165c080e7ea`.
 
 Provider tests remain injected-transport contracts with synthetic fixtures. M4/M5 integration tests
 remain scripted-provider, in-memory event/audit, and injected workspace/quality contracts. CI performs
@@ -109,7 +111,7 @@ no live provider call, network tool action, production repository mutation, depl
 
 ## Exact next action
 
-Keep PR #7 and stacked PR #8 unmerged until explicitly authorized. Push this synchronized M6
-documentation checkpoint, observe CI, then record final evidence and mark M6 verified. After that,
-define M7 specialist/ownership/reconciliation acceptance criteria from the verified M6 head. Do not
-claim durable database memory, embeddings, production cache coherence, or multi-agent safety yet.
+Keep PR #7 and stacked PR #8 unmerged until explicitly authorized. Create the M7 task contract from
+the verified M6 head, then implement the smallest specialist/ownership/reconciliation slice with
+dependency and file/resource conflict tests. Do not claim durable database memory, embeddings,
+production cache coherence, or multi-agent safety beyond evidence added by that later slice.

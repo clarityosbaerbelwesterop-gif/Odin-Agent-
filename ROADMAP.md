@@ -70,7 +70,7 @@ GitHub Actions run `33724426019` passed on M5 implementation head
 - [x] Structured, integrity-checked session snapshots retaining raw-history references.
 - [x] Retrieval-to-context vertical slice and requirement-derived regression tests.
 - [x] Implementation CI observed: run `33752964771`, 108/108 tests passed.
-- [ ] Synchronized documentation CI observed and final evidence recorded.
+- [x] Synchronized documentation CI observed: run `33753281792`; final evidence recorded.
 
 ## M7–M12
 

@@ -1,6 +1,6 @@
 # M6 — Memory and context engine task contract
 
-Status: implementation verified; documentation synchronization pending. Updated: 2026-09-03.
+Status: `VERIFIED`. Updated: 2026-09-03.
 
 ## Objective
 
@@ -88,5 +88,10 @@ open.
 GitHub Actions run `33752964771` passed on implementation commit
 `8934e8f3956db0a66528f484faf34a7e8ea92628`: foundation validation, Biome, strict TypeScript, and all
 108 tests passed with 0 failures. Aggregate coverage was 88.92% lines, 76.53% branches, and 95.25%
-functions. This evidence verifies the implementation; final M6 status remains pending until the
-synchronized documentation checkpoint also passes.
+functions. This evidence verified the implementation; M6 status at that checkpoint remained pending
+until synchronized documentation also passed.
+
+GitHub Actions run `33753281792` then passed on synchronized-documentation commit
+`df6d310adcf2882e26a6bb7d6f8a4165c080e7ea`. M6 is therefore `VERIFIED`; durable database memory,
+semantic retrieval, exact provider tokenization, and distributed cache behavior remain explicitly
+outside this milestone.
