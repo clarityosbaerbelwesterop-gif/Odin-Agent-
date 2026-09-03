@@ -1,0 +1,60 @@
+name: M12C concurrent release fix
+
+on:
+  push:
+    branches:
+      - agent/m12c-release-proof
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Collapse concurrent release and reject conflicting release replay
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('src/sandbox/backend.ts')
+          text = path.read_text()
+          old = '''interface InflightAllocation {\n  readonly fingerprint: string;\n  readonly promise: Promise<SandboxSession>;\n}\n'''
+          new = old + '''\ninterface InflightRelease {\n  readonly reason: SandboxReleaseReason;\n  readonly promise: Promise<void>;\n}\n'''
+          if old not in text:
+              raise SystemExit('inflight allocation block not found')
+          text = text.replace(old, new, 1)
+          old_fields = '''  readonly #allocations = new Map<string, AllocationRecord>();\n  readonly #inflight = new Map<string, InflightAllocation>();\n  readonly #released = new Set<string>();\n'''
+          new_fields = '''  readonly #allocations = new Map<string, AllocationRecord>();\n  readonly #inflight = new Map<string, InflightAllocation>();\n  readonly #releaseInflight = new Map<string, InflightRelease>();\n  readonly #released = new Map<string, SandboxReleaseReason>();\n'''
+          if old_fields not in text:
+              raise SystemExit('registry fields not found')
+          text = text.replace(old_fields, new_fields, 1)
+
+          start = text.index('  async release(request: SandboxReleaseRequest): Promise<SandboxReleaseOutcome> {')
+          end = text.index('  async #createAllocation(', start)
+          replacement = '''  async release(request: SandboxReleaseRequest): Promise<SandboxReleaseOutcome> {\n    if (request.signal.aborted) {\n      throw new SandboxError("CANCELLED", "Sandbox release was cancelled.");\n    }\n    if (!isReleaseReason(request.reason)) {\n      throw new SandboxError("SESSION_INVALID", "Sandbox release reason is invalid.");\n    }\n    const session = normalizeSession(request.session);\n    const stored = this.#allocations.get(session.allocationKey);\n    if (stored === undefined || !sameSession(stored.session, session)) {\n      throw new SandboxError("SESSION_INVALID", "Sandbox session is unknown or does not match.");\n    }\n\n    const releasedReason = this.#released.get(session.allocationKey);\n    if (releasedReason !== undefined) {\n      assertReleaseReason(releasedReason, request.reason);\n      return "REPLAYED";\n    }\n    const inflight = this.#releaseInflight.get(session.allocationKey);\n    if (inflight !== undefined) {\n      assertReleaseReason(inflight.reason, request.reason);\n      await inflight.promise;\n      if (request.signal.aborted) {\n        throw new SandboxError("CANCELLED", "Sandbox release replay was cancelled.");\n      }\n      return "REPLAYED";\n    }\n\n    const binding = this.#bindings.get(modelKey(session));\n    if (binding === undefined || binding.backendId !== session.backendId) {\n      throw new SandboxError("SESSION_INVALID", "Sandbox session binding no longer matches.");\n    }\n    const backend = this.#backends.get(session.backendId);\n    if (backend === undefined) {\n      throw new SandboxError("BACKEND_NOT_FOUND", "Sandbox backend is unavailable.");\n    }\n\n    const promise = this.#destroyAllocation({ backend, binding, request, session });\n    this.#releaseInflight.set(\n      session.allocationKey,\n      Object.freeze({ promise, reason: request.reason }),\n    );\n    try {\n      await promise;\n      this.#released.set(session.allocationKey, request.reason);\n      return "RELEASED";\n    } finally {\n      this.#releaseInflight.delete(session.allocationKey);\n    }\n  }\n\n  async #destroyAllocation(input: {\n    readonly backend: RegisteredBackend;\n    readonly binding: NormalizedBinding;\n    readonly request: SandboxReleaseRequest;\n    readonly session: SandboxSession;\n  }): Promise<void> {\n    if (input.backend.adapter.destroy === undefined) return;\n    const credential = input.backend.descriptor.requiresCredential\n      ? await this.#resolveCredential(input.binding.credentialRef)\n      : undefined;\n    if (input.request.signal.aborted) {\n      throw new SandboxError("CANCELLED", "Sandbox release was cancelled.");\n    }\n    await input.backend.adapter.destroy(\n      Object.freeze({\n        ...(credential === undefined ? {} : { credential }),\n        idempotencyKey: `release:${input.session.allocationKey}`,\n        missionId: input.session.missionId,\n        model: input.session.model,\n        profileVersion: input.session.profileVersion,\n        provider: input.session.provider,\n        reason: input.request.reason,\n        sessionId: input.session.sessionId,\n        signal: input.request.signal,\n        taskId: input.session.taskId,\n      }),\n    );\n  }\n\n'''
+          text = text[:start] + replacement + text[end:]
+          marker = '''function isReleaseReason(value: string): value is SandboxReleaseReason {\n'''
+          helper = '''function assertReleaseReason(\n  existing: SandboxReleaseReason,\n  requested: SandboxReleaseReason,\n): void {\n  if (existing !== requested) {\n    throw new SandboxError(\n      "SESSION_INVALID",\n      "Sandbox release replay conflicts with the established release reason.",\n    );\n  }\n}\n\n'''
+          if marker not in text:
+              raise SystemExit('release reason marker not found')
+          text = text.replace(marker, helper + marker, 1)
+          path.write_text(text)
+      - name: Format changed M12-C and sandbox files
+        run: npx biome check --write src/release src/sandbox/backend.ts test/release
+      - name: Remove helper and commit
+        run: |
+          rm .github/workflows/m12c-release-race-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/release src/sandbox/backend.ts test/release .github/workflows/m12c-release-race-fix.yml
+          git commit -m "fix(m12c): collapse concurrent sandbox release"
+          git push
