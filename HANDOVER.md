@@ -26,9 +26,8 @@ remain draft and unmerged.
 
 M7 was branched from the verified M6 head. Its specialist registry, ownership-aware planning,
 bounded parallel execution, runtime evidence attestation, and reconciliation implementation passed
-Actions run `33755851793`. Synchronized documentation CI and the final M7 evidence checkpoint are
-still pending, so M7 is not yet declared fully `VERIFIED`. All three stacked pull requests remain
-draft and unmerged.
+Actions run `33755851793`. Synchronized documentation passed run `33756217402`. M7 is `VERIFIED`;
+all three pull requests remain draft and unmerged.
 
 Odin still does not claim a production coding agent, OS-level sandbox, arbitrary shell execution,
 external network tools, durable database persistence, live-provider end-to-end compatibility, mobile
@@ -69,6 +68,8 @@ npm run verify
   `88cedbb8b33cb9863a0b4b1b30abbd6ec2e2cb19`: foundation validation, Biome, and strict TypeScript
   passed; 132 tests passed with 0 failures; aggregate coverage was 88.95% lines, 77.46% branches,
   and 95.19% functions.
+- M7 synchronized-documentation run `33756217402` passed at
+  `91cc54b367f3f946988a80243ac2dbe5d2c485f7` with the same 132 tests and coverage.
 
 Provider tests remain injected-transport contracts with synthetic fixtures. M4/M5 integration tests
 remain scripted-provider, in-memory event/audit, and injected workspace/quality contracts. CI performs
@@ -152,7 +153,7 @@ not invoke a model, subagent service, external worker, or repository write.
 
 ## Exact next action
 
-Keep PR #7, stacked PR #8, and stacked PR #9 unmerged until explicitly authorized. Push this M7
-documentation checkpoint, observe its pull-request CI, then record the exact final evidence in one
-small follow-up checkpoint. Do not start M8 or claim durable workers, process isolation, distributed
-leases, worktree safety, or restart recovery until M7 is fully verified.
+Keep PR #7, stacked PR #8, and stacked PR #9 unmerged until explicitly authorized. Start M8 with a
+task contract for persistent worker jobs, durable leases, event fan-out, reconnect, cancellation, and
+restart recovery. Preserve the M7 coordinator contract and do not claim process isolation,
+distributed fencing, worktree safety, or durable recovery before M8 adds and verifies that evidence.

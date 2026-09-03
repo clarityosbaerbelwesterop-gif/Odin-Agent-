@@ -1,6 +1,6 @@
 # M7 — Specialist coordination task contract
 
-Status: implementation CI passed; synchronized documentation evidence pending. Updated: 2026-09-03.
+Status: verified. Updated: 2026-09-03.
 
 ## Objective
 
@@ -82,5 +82,6 @@ side effects, and self-certified completion.
 
 Run `npm run verify`. Implementation run `33755851793` passed at
 `88cedbb8b33cb9863a0b4b1b30abbd6ec2e2cb19` with 132 tests and aggregate coverage of 88.95% lines,
-77.46% branches, and 95.19% functions. M7 is `VERIFIED` only after the synchronized-documentation
-pull-request CI checkpoint also passes.
+77.46% branches, and 95.19% functions. Synchronized documentation run `33756217402` passed at
+`91cc54b367f3f946988a80243ac2dbe5d2c485f7` with the same test and coverage result. M7 is
+`VERIFIED` at this checkpoint.

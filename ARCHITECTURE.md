@@ -1,6 +1,6 @@
 # Odin architecture
 
-Status: M7 specialist-coordination implementation verified checkpoint, 2026-09-03.
+Status: M7 specialist coordination verified, 2026-09-03.
 
 ## Repository finding
 
