@@ -58,6 +58,7 @@ export class InMemoryClientCapabilityPolicy implements ClientCapabilityPolicy {
 
 export interface ClientActivitySource {
   jobCounts(missionId: string): Promise<Readonly<Record<DurableJobStatus, number>>>;
+  loadCheckpoint(missionId: string): Promise<{ readonly aggregateVersion: number } | null>;
   readJobEvents(
     missionId: string,
     afterCursor: number,
@@ -76,7 +77,10 @@ export class UnavailableVerificationSource implements ClientVerificationSource {
 }
 
 export interface MissionCommandAuthority {
-  execute(request: ClientCommandRequest): Promise<MissionSnapshot>;
+  execute(request: ClientCommandRequest): Promise<{
+    readonly outcome: "APPLIED" | "REPLAYED";
+    readonly snapshot: MissionSnapshot;
+  }>;
 }
 
 export class EventStoreMissionCommandAuthority implements MissionCommandAuthority {
@@ -86,7 +90,10 @@ export class EventStoreMissionCommandAuthority implements MissionCommandAuthorit
     this.#store = store;
   }
 
-  async execute(request: ClientCommandRequest): Promise<MissionSnapshot> {
+  async execute(request: ClientCommandRequest): Promise<{
+    readonly outcome: "APPLIED" | "REPLAYED";
+    readonly snapshot: MissionSnapshot;
+  }> {
     const events = await this.#store.load(request.missionId);
     if (request.expectedVersion > events.length || request.expectedVersion < 1) {
       throw new ClientProtocolError("STALE_VERSION", "Command mission version is unavailable.");
@@ -107,8 +114,11 @@ export class EventStoreMissionCommandAuthority implements MissionCommandAuthorit
     }
 
     const targets = commandTargets(request.command, snapshot);
-    const items: EventAppendItem<MissionEventData>[] = [];
     const scopedIdempotencyKey = `client:${request.sessionId}:${request.idempotencyKey}`;
+    const outcome = events.some((event) => event.idempotencyKey === scopedIdempotencyKey)
+      ? "REPLAYED"
+      : "APPLIED";
+    const items: EventAppendItem<MissionEventData>[] = [];
     for (const target of targets) {
       let data: MissionEventData;
       try {
@@ -149,7 +159,10 @@ export class EventStoreMissionCommandAuthority implements MissionCommandAuthorit
       }
       throw error;
     }
-    return projectMission(await this.#store.load(request.missionId));
+    return {
+      outcome,
+      snapshot: projectMission(await this.#store.load(request.missionId)),
+    };
   }
 }
 
@@ -185,10 +198,11 @@ export class ClientProtocolGateway {
 
     const events = await this.#events.load(request.missionId);
     const snapshot = projectMission(events);
-    const [jobCounts, verification, rawPage] = await Promise.all([
+    const [jobCounts, verification, rawPage, checkpoint] = await Promise.all([
       this.#activity.jobCounts(request.missionId),
       this.#verification.summary(request.missionId),
       this.#activity.readJobEvents(request.missionId, request.afterCursor, request.limit + 1),
+      this.#activity.loadCheckpoint(request.missionId),
     ]);
     const normalized = rawPage.map(normalizeLifecycleEvent);
     if (normalized.some((event) => event.missionId !== request.missionId)) {
@@ -203,7 +217,12 @@ export class ClientProtocolGateway {
       hasMore,
       missionId: request.missionId,
       nextCursor: page.at(-1)?.cursor ?? request.afterCursor,
-      projection: buildClientProjection(snapshot, jobCounts, verification),
+      projection: buildClientProjection(
+        snapshot,
+        jobCounts,
+        verification,
+        checkpoint?.aggregateVersion ?? null,
+      ),
       protocol: CLIENT_PROTOCOL_VERSION,
       requestId: request.requestId,
       sessionId: request.sessionId,
@@ -222,16 +241,23 @@ export class ClientProtocolGateway {
       now,
     );
     this.#assertRequestTime(request.issuedAt, now);
-    const snapshot = await this.#commands.execute(request);
-    const [jobCounts, verification] = await Promise.all([
+    const execution = await this.#commands.execute(request);
+    const [jobCounts, verification, checkpoint] = await Promise.all([
       this.#activity.jobCounts(request.missionId),
       this.#verification.summary(request.missionId),
+      this.#activity.loadCheckpoint(request.missionId),
     ]);
     return Object.freeze({
       command: request.command,
       emittedAt: now,
       missionId: request.missionId,
-      projection: buildClientProjection(snapshot, jobCounts, verification),
+      outcome: execution.outcome,
+      projection: buildClientProjection(
+        execution.snapshot,
+        jobCounts,
+        verification,
+        checkpoint?.aggregateVersion ?? null,
+      ),
       protocol: CLIENT_PROTOCOL_VERSION,
       requestId: request.requestId,
       sessionId: request.sessionId,

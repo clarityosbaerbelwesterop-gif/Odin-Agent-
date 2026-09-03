@@ -154,6 +154,7 @@ export function buildClientProjection(
   snapshot: MissionSnapshot,
   jobs: Readonly<Record<string, number>>,
   verification: ClientVerificationSummary = { evidenceRefs: [], status: "UNAVAILABLE" },
+  checkpointVersion: number | null = null,
 ): ClientMissionProjection {
   const normalizedJobs = normalizeJobCounts(jobs);
   const normalizedVerification = normalizeVerification(verification);
@@ -177,6 +178,8 @@ export function buildClientProjection(
   return Object.freeze({
     budgetLimits: normalizeCounters(snapshot.budgetLimits, "budget limits"),
     budgetUsage: normalizeCounters(snapshot.budgetUsage, "budget usage"),
+    checkpointVersion:
+      checkpointVersion === null ? null : safeInteger(checkpointVersion, "checkpoint version", 1),
     focus: snapshot.focus,
     jobs: normalizedJobs,
     missionId: identifier(snapshot.id, "mission id"),
@@ -287,6 +290,7 @@ function decodeProjection(value: unknown): ClientMissionProjection {
     [
       "budgetLimits",
       "budgetUsage",
+      "checkpointVersion",
       "focus",
       "jobs",
       "missionId",
@@ -332,6 +336,10 @@ function decodeProjection(value: unknown): ClientMissionProjection {
   return Object.freeze({
     budgetLimits: normalizeCounters(object.budgetLimits, "projection budget limits"),
     budgetUsage: normalizeCounters(object.budgetUsage, "projection budget usage"),
+    checkpointVersion:
+      object.checkpointVersion === null
+        ? null
+        : safeInteger(object.checkpointVersion, "projection checkpoint version", 1),
     focus: focus as ClientMissionProjection["focus"],
     jobs: normalizeJobCounts(objectValue(object.jobs, "projection jobs")),
     missionId: identifier(object.missionId, "projection missionId"),

@@ -46,6 +46,7 @@ export interface ClientMissionProjection {
   readonly tasks: readonly ClientTaskProjection[];
   readonly budgetLimits: BudgetCounters;
   readonly budgetUsage: BudgetCounters;
+  readonly checkpointVersion: number | null;
   readonly jobs: ClientJobCounts;
   readonly verification: ClientVerificationSummary;
 }
@@ -105,6 +106,7 @@ export interface ClientCommandResponse {
   readonly missionId: string;
   readonly emittedAt: string;
   readonly command: ClientCommandName;
+  readonly outcome: "APPLIED" | "REPLAYED";
   readonly projection: ClientMissionProjection;
 }
 
