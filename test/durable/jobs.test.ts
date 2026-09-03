@@ -10,7 +10,9 @@ import { artifact, plusMs, T0, temporaryDatabase } from "./helpers.js";
 
 function job(
   jobId: string,
-  options: Partial<Pick<JobEnqueueInput, "idempotencyKey" | "maxAttempts" | "missionId" | "priority">> = {},
+  options: Partial<
+    Pick<JobEnqueueInput, "idempotencyKey" | "maxAttempts" | "missionId" | "priority">
+  > = {},
 ): JobEnqueueInput {
   return {
     availableAt: T0,
@@ -141,11 +143,7 @@ test("cancellation wins over a late success proposal", async () => {
     const cancelling = await store.cancelJob("job-cancel", plusMs(T0, 1));
     assert.equal(cancelling.status, "CANCELLING");
 
-    const cancelled = await store.settleJobSuccess(
-      lease,
-      artifact("too-late"),
-      plusMs(T0, 2),
-    );
+    const cancelled = await store.settleJobSuccess(lease, artifact("too-late"), plusMs(T0, 2));
     assert.equal(cancelled.status, "CANCELLED");
     assert.equal(cancelled.result, null);
     store.close();
@@ -168,11 +166,7 @@ test("mission-scoped lifecycle cursors resume strictly after the supplied cursor
     assert.equal(firstPage.length, 2);
     assert.ok(firstPage[0] && firstPage[1]);
     assert.ok(firstPage[0].cursor < firstPage[1].cursor);
-    const secondPage = await store.readJobEvents(
-      "mission-cursor",
-      firstPage[1].cursor,
-      10,
-    );
+    const secondPage = await store.readJobEvents("mission-cursor", firstPage[1].cursor, 10);
     const cursors = [...firstPage, ...secondPage].map((event) => event.cursor);
     assert.equal(new Set(cursors).size, cursors.length);
     assert.ok(cursors.every((cursor, index) => index === 0 || cursor > (cursors[index - 1] ?? -1)));

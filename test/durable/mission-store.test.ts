@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
-import { EventStoreConflictError } from "../../src/events/store.js";
-import { createMissionCheckpoint } from "../../src/mission/checkpoint.js";
-import { MissionRuntime } from "../../src/mission/runtime.js";
 import {
   DurableStoreConflictError,
   DurableStoreCorruptionError,
   SqliteDurableStore,
 } from "../../src/durable/index.js";
+import { EventStoreConflictError } from "../../src/events/store.js";
+import { createMissionCheckpoint } from "../../src/mission/checkpoint.js";
+import { MissionRuntime } from "../../src/mission/runtime.js";
 import { missionInput, plusMs, T0, temporaryDatabase } from "./helpers.js";
 
 test("SQLite mission events survive close/reopen with idempotency and exact replay", async () => {
@@ -128,10 +128,7 @@ test("tampered checkpoint payloads and newer SQLite schema versions fail closed"
     raw.close();
 
     const reopened = new SqliteDurableStore(temporary.path);
-    await assert.rejects(
-      reopened.loadCheckpoint("mission-corrupt"),
-      DurableStoreCorruptionError,
-    );
+    await assert.rejects(reopened.loadCheckpoint("mission-corrupt"), DurableStoreCorruptionError);
     reopened.close();
 
     const newer = new DatabaseSync(temporary.path);

@@ -1,7 +1,5 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createMissionCheckpoint } from "../../src/mission/checkpoint.js";
-import { MissionRuntime } from "../../src/mission/runtime.js";
 import {
   DurableJobRunner,
   type JobHandler,
@@ -9,13 +7,9 @@ import {
   SqliteDurableStore,
 } from "../../src/durable/index.js";
 import type { JobEnqueueInput } from "../../src/durable/types.js";
-import {
-  artifact,
-  missionInput,
-  plusMs,
-  T0,
-  temporaryDatabase,
-} from "./helpers.js";
+import { createMissionCheckpoint } from "../../src/mission/checkpoint.js";
+import { MissionRuntime } from "../../src/mission/runtime.js";
+import { artifact, missionInput, plusMs, T0, temporaryDatabase } from "./helpers.js";
 
 function durableJob(jobId: string, missionId = "mission-long"): JobEnqueueInput {
   return {
@@ -75,13 +69,8 @@ test("fresh process replays mission/checkpoint, reclaims expired work, and fence
       LeaseRejectedError,
     );
     assert.equal(
-      (
-        await reopened.settleJobSuccess(
-          freshLease,
-          artifact("fresh-result"),
-          plusMs(T0, 1_100),
-        )
-      ).status,
+      (await reopened.settleJobSuccess(freshLease, artifact("fresh-result"), plusMs(T0, 1_100)))
+        .status,
       "SUCCEEDED",
     );
 
@@ -125,7 +114,8 @@ test("32-job fixture drains deterministically across reopen with retry, block, c
     );
     const firstBatch = await firstRunner.drain(10);
     assert.equal(firstBatch.length, 10);
-    const cursorBeforeReopen = (await first.readJobEvents("mission-long", 0, 100)).at(-1)?.cursor ?? 0;
+    const cursorBeforeReopen =
+      (await first.readJobEvents("mission-long", 0, 100)).at(-1)?.cursor ?? 0;
     first.close();
 
     const reopened = new SqliteDurableStore(temporary.path);

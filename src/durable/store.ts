@@ -27,13 +27,14 @@ import {
 } from "./internal.js";
 import { missionEventCodec } from "./mission-codec.js";
 import {
+  type ArtifactReference,
   DEFAULT_DURABLE_LIMITS,
   type DurableCheckpointStore,
   type DurableJobRecord,
   type DurableJobStatus,
-  type DurableStoreLimits,
   DurableStoreConflictError,
   DurableStoreCorruptionError,
+  type DurableStoreLimits,
   type JobClaimInput,
   type JobEnqueueInput,
   type JobHeartbeatResult,
@@ -41,7 +42,6 @@ import {
   type JobLifecycleEvent,
   type JobLifecycleType,
   LeaseRejectedError,
-  type ArtifactReference,
 } from "./types.js";
 
 const SCHEMA_VERSION = 1;
@@ -81,9 +81,7 @@ export interface SqliteDurableStoreOptions {
   readonly busyTimeoutMs?: number;
 }
 
-export class SqliteDurableStore
-  implements EventStore<MissionEventData>, DurableCheckpointStore
-{
+export class SqliteDurableStore implements EventStore<MissionEventData>, DurableCheckpointStore {
   readonly #database: DatabaseSync;
   readonly #limits: DurableStoreLimits;
   #closed = false;
@@ -227,16 +225,15 @@ export class SqliteDurableStore
     return this.#decodeEventRows(rows, missionId, 1);
   }
 
-  async saveCheckpoint(
-    checkpoint: MissionCheckpoint,
-    savedAt: string,
-  ): Promise<MissionCheckpoint> {
+  async saveCheckpoint(checkpoint: MissionCheckpoint, savedAt: string): Promise<MissionCheckpoint> {
     this.#assertOpen();
     assertCanonicalTimestamp(savedAt, "checkpoint savedAt");
     const restored = restoreMissionCheckpoint(checkpoint, checkpoint.missionId);
     const canonical = createMissionCheckpoint(restored, checkpoint.eventSequence);
     if (canonical.snapshotHash !== checkpoint.snapshotHash) {
-      throw new DurableStoreCorruptionError("Checkpoint canonical hash does not match supplied hash.");
+      throw new DurableStoreCorruptionError(
+        "Checkpoint canonical hash does not match supplied hash.",
+      );
     }
     const json = canonicalJson(checkpoint, this.#limits.maxCheckpointBytes);
 
@@ -474,11 +471,7 @@ export class SqliteDurableStore
     });
   }
 
-  async heartbeatJob(
-    lease: JobLease,
-    now: string,
-    leaseMs: number,
-  ): Promise<JobHeartbeatResult> {
+  async heartbeatJob(lease: JobLease, now: string, leaseMs: number): Promise<JobHeartbeatResult> {
     this.#assertOpen();
     validateLeaseEnvelope(lease);
     assertCanonicalTimestamp(now, "heartbeat now");
@@ -843,7 +836,9 @@ export class SqliteDurableStore
       [missionId, firstSequence, firstSequence + count],
     );
     if (rows.length !== count) {
-      throw new DurableStoreCorruptionError("Idempotency record points to an incomplete event batch.");
+      throw new DurableStoreCorruptionError(
+        "Idempotency record points to an incomplete event batch.",
+      );
     }
     return this.#decodeEventRows(rows, missionId, firstSequence);
   }
@@ -903,7 +898,9 @@ export class SqliteDurableStore
       [checkpoint.missionId, checkpoint.aggregateVersion],
     );
     if (rows.length !== checkpoint.aggregateVersion) {
-      throw new DurableStoreCorruptionError("Checkpoint cannot be reproduced from canonical events.");
+      throw new DurableStoreCorruptionError(
+        "Checkpoint cannot be reproduced from canonical events.",
+      );
     }
     const events = this.#decodeEventRows(rows, checkpoint.missionId, 1);
     const projected = projectMission(events);
@@ -913,7 +910,9 @@ export class SqliteDurableStore
       canonicalJson(rebuilt.snapshot, this.#limits.maxCheckpointBytes) !==
         canonicalJson(checkpoint.snapshot, this.#limits.maxCheckpointBytes)
     ) {
-      throw new DurableStoreCorruptionError("Checkpoint snapshot disagrees with canonical mission events.");
+      throw new DurableStoreCorruptionError(
+        "Checkpoint snapshot disagrees with canonical mission events.",
+      );
     }
   }
 
@@ -927,11 +926,7 @@ export class SqliteDurableStore
     return decodeJobRow(asRow(row, "job row"));
   }
 
-  #requireValidLease(
-    lease: JobLease,
-    now: string,
-    allowCancelling: boolean,
-  ): DurableJobRecord {
+  #requireValidLease(lease: JobLease, now: string, allowCancelling: boolean): DurableJobRecord {
     const row = this.#requireJob(lease.jobId);
     if (row.missionId !== lease.missionId || row.taskId !== lease.taskId) {
       throw new LeaseRejectedError("Lease scope does not match the durable job identity.");
@@ -940,7 +935,8 @@ export class SqliteDurableStore
       throw new LeaseRejectedError("Lease worker or fencing generation is stale.");
     }
     const raw = this.#jobRow(lease.jobId);
-    if (raw === undefined) throw new LeaseRejectedError("Durable job disappeared during lease validation.");
+    if (raw === undefined)
+      throw new LeaseRejectedError("Durable job disappeared during lease validation.");
     const rawRow = asRow(raw, "lease row");
     const storedTokenHash = rowNullableString(rawRow, "lease_token_hash");
     if (storedTokenHash === null || hashText(lease.token) !== storedTokenHash) {
@@ -955,11 +951,7 @@ export class SqliteDurableStore
     return row;
   }
 
-  #blockRunningJob(
-    job: DurableJobRecord,
-    now: string,
-    reasonCode: string,
-  ): DurableJobRecord {
+  #blockRunningJob(job: DurableJobRecord, now: string, reasonCode: string): DurableJobRecord {
     assertReasonCode(reasonCode);
     dbRun(
       this.#database,
@@ -979,11 +971,7 @@ export class SqliteDurableStore
     return this.#requireJob(job.jobId);
   }
 
-  #cancelRunningJob(
-    job: DurableJobRecord,
-    now: string,
-    reasonCode: string,
-  ): DurableJobRecord {
+  #cancelRunningJob(job: DurableJobRecord, now: string, reasonCode: string): DurableJobRecord {
     assertReasonCode(reasonCode);
     dbRun(
       this.#database,
@@ -1011,7 +999,11 @@ export class SqliteDurableStore
       [now],
     );
     for (const raw of exhausted) {
-      this.#blockRunningJob(decodeJobRow(asRow(raw, "expired exhausted job")), now, "attempts_exhausted");
+      this.#blockRunningJob(
+        decodeJobRow(asRow(raw, "expired exhausted job")),
+        now,
+        "attempts_exhausted",
+      );
     }
     const cancelling = dbAll(
       this.#database,
@@ -1038,7 +1030,9 @@ export class SqliteDurableStore
   }): void {
     const count = scalarCount(this.#database, "SELECT COUNT(*) AS count FROM job_events");
     if (count >= this.#limits.maxJobEvents) {
-      throw new DurableStoreConflictError("Job lifecycle event collection exceeds its configured bound.");
+      throw new DurableStoreConflictError(
+        "Job lifecycle event collection exceeds its configured bound.",
+      );
     }
     const eventHash = hashText(canonicalJson(input, 8_192));
     dbRun(
@@ -1156,7 +1150,11 @@ function decodeJobRow(row: Record<string, unknown>): DurableJobRecord {
   const leaseWorkerId = rowNullableString(row, "lease_worker_id");
   const leaseExpiresAt = rowNullableString(row, "lease_expires_at");
   if (status === "RUNNING" || status === "CANCELLING") {
-    if (leaseWorkerId === null || leaseExpiresAt === null || rowNullableString(row, "lease_token_hash") === null) {
+    if (
+      leaseWorkerId === null ||
+      leaseExpiresAt === null ||
+      rowNullableString(row, "lease_token_hash") === null
+    ) {
       throw new DurableStoreCorruptionError("Running durable job is missing lease metadata.");
     }
   } else if (
@@ -1231,10 +1229,7 @@ function decodeJobEventRow(
     );
   }
   const expectedHash = hashText(
-    canonicalJson(
-      { generation, jobId, missionId, occurredAt, reasonCode, status, type },
-      8_192,
-    ),
+    canonicalJson({ generation, jobId, missionId, occurredAt, reasonCode, status, type }, 8_192),
   );
   if (expectedHash !== eventHash) {
     throw new DurableStoreCorruptionError("Job lifecycle event hash mismatch.");
@@ -1290,11 +1285,16 @@ function decodeCheckpoint(value: unknown): MissionCheckpoint {
 
 function addMilliseconds(timestamp: string, milliseconds: number): string {
   const value = Date.parse(timestamp) + milliseconds;
-  if (!Number.isSafeInteger(value)) throw new TypeError("Timestamp arithmetic exceeded safe bounds.");
+  if (!Number.isSafeInteger(value))
+    throw new TypeError("Timestamp arithmetic exceeded safe bounds.");
   return new Date(value).toISOString();
 }
 
-function scalarCount(database: DatabaseSync, sql: string, parameters: readonly SqlValue[] = []): number {
+function scalarCount(
+  database: DatabaseSync,
+  sql: string,
+  parameters: readonly SqlValue[] = [],
+): number {
   const row = dbGet(database, sql, parameters);
   return rowInteger(asRow(row, "SQLite count row"), "count");
 }
