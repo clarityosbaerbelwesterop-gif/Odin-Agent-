@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import {
   DurableStoreConflictError,
+  DurableStoreCorruptionError,
   LeaseRejectedError,
   SqliteDurableStore,
 } from "../../src/durable/index.js";
@@ -54,6 +57,26 @@ test("job enqueue is durable and idempotent but conflicting immutable input fail
   }
 });
 
+test("deterministic claims prefer ready time, then priority, creation time, and job id", async () => {
+  const temporary = await temporaryDatabase();
+  try {
+    const store = new SqliteDurableStore(temporary.path);
+    await store.enqueueJob(job("job-low", { priority: 10 }));
+    await store.enqueueJob(job("job-z-high", { priority: 90 }));
+    await store.enqueueJob(job("job-a-high", { priority: 90 }));
+
+    const first = await store.claimJob({ leaseMs: 5_000, now: T0, workerId: "worker-1" });
+    const second = await store.claimJob({ leaseMs: 5_000, now: T0, workerId: "worker-2" });
+    const third = await store.claimJob({ leaseMs: 5_000, now: T0, workerId: "worker-3" });
+    assert.equal(first?.jobId, "job-a-high");
+    assert.equal(second?.jobId, "job-z-high");
+    assert.equal(third?.jobId, "job-low");
+    store.close();
+  } finally {
+    await temporary.cleanup();
+  }
+});
+
 test("two SQLite connections cannot hold the same valid lease and stale fencing cannot settle", async () => {
   const temporary = await temporaryDatabase();
   try {
@@ -93,6 +116,32 @@ test("two SQLite connections cannot hold the same valid lease and stale fencing 
 
     firstStore.close();
     secondStore.close();
+  } finally {
+    await temporary.cleanup();
+  }
+});
+
+test("lease tokens are returned only to the claimant while SQLite stores only their SHA-256 hash", async () => {
+  const temporary = await temporaryDatabase();
+  try {
+    const store = new SqliteDurableStore(temporary.path);
+    await store.enqueueJob(job("job-secret-lease"));
+    const lease = await store.claimJob({ leaseMs: 5_000, now: T0, workerId: "worker-secret" });
+    assert.ok(lease);
+
+    const raw = new DatabaseSync(temporary.path, { readOnly: true });
+    const row = raw
+      .prepare("SELECT lease_token_hash FROM jobs WHERE job_id = ?")
+      .get("job-secret-lease") as Record<string, unknown> | undefined;
+    raw.close();
+    assert.ok(row);
+    assert.equal(typeof row.lease_token_hash, "string");
+    assert.notEqual(row.lease_token_hash, lease.token);
+    assert.equal(
+      row.lease_token_hash,
+      createHash("sha256").update(lease.token).digest("hex"),
+    );
+    store.close();
   } finally {
     await temporary.cleanup();
   }
@@ -172,6 +221,30 @@ test("mission-scoped lifecycle cursors resume strictly after the supplied cursor
     assert.ok(cursors.every((cursor, index) => index === 0 || cursor > (cursors[index - 1] ?? -1)));
     assert.ok([...firstPage, ...secondPage].every((event) => event.missionId === "mission-cursor"));
     store.close();
+  } finally {
+    await temporary.cleanup();
+  }
+});
+
+test("tampered lifecycle event hashes fail closed instead of being skipped", async () => {
+  const temporary = await temporaryDatabase();
+  try {
+    const store = new SqliteDurableStore(temporary.path);
+    await store.enqueueJob(job("job-event-integrity", { missionId: "mission-integrity" }));
+    store.close();
+
+    const raw = new DatabaseSync(temporary.path);
+    raw
+      .prepare("UPDATE job_events SET event_hash = ? WHERE mission_id = ?")
+      .run("0".repeat(64), "mission-integrity");
+    raw.close();
+
+    const reopened = new SqliteDurableStore(temporary.path);
+    await assert.rejects(
+      reopened.readJobEvents("mission-integrity", 0, 10),
+      DurableStoreCorruptionError,
+    );
+    reopened.close();
   } finally {
     await temporary.cleanup();
   }
