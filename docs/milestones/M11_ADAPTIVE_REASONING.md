@@ -1,6 +1,6 @@
 # M11 — Adaptive reasoning, routing, and efficiency
 
-Status: implementation in progress. Updated: 2026-09-03.
+Status: implementation verified; synchronized documentation and final PR CI pending. Updated: 2026-09-03.
 
 ## Objective
 
@@ -19,7 +19,7 @@ risk, uncertainty, or independent evidence requires more capability.
 2. **Empirical evidence:** routing scores come from bounded, hash-addressed evaluation records, not model self-report.
 3. **Capability first:** unsupported image/tool/structured-output/context requirements eliminate a model before scoring.
 4. **Freshness:** stale or malformed evaluation evidence cannot silently route production work.
-5. **Bounded reasoning:** branches, critique passes, repair attempts, model calls, parallel calls, and token estimates have runtime-owned ceilings.
+5. **Bounded reasoning:** branches, critique passes, repair attempts, model calls, parallel calls, estimated cost, and estimated tokens have runtime-owned ceilings.
 6. **Independent acceptance:** self-confidence, critique text, or majority vote never substitutes for M5 evidence.
 7. **Determinism:** equivalent normalized profiles/evaluations/requests produce the same route and decision hash.
 8. **No authority expansion:** M11 chooses strategy only; it cannot mint M3 capabilities, M5 evidence, M7 ownership, M10 skill promotion, or credentials.
@@ -31,13 +31,15 @@ risk, uncertainty, or independent evidence requires more capability.
 Each record binds:
 
 - provider/model/profile version;
+- exact reasoning effort when the model exposes controllable effort;
 - task class;
 - sample count and integer quality/pass scores;
-- observed latency and token/cost metrics;
+- observed latency and token metrics;
 - evaluation timestamp, producer class/reference, and SHA-256 content identity.
 
 Only allowlisted independent/project evaluation producers are routing evidence. Runtime/model/worker
-self-evaluations are rejected for quality-floor decisions.
+self-evaluations are rejected for quality-floor decisions. Future, stale, conflicting, malformed, or
+hash-tampered evidence fails closed.
 
 ### Route request
 
@@ -48,11 +50,16 @@ A route request defines:
 - risk and uncertainty classes;
 - base quality floor;
 - estimated input/output tokens;
-- maximum estimated cost, model calls, parallel calls, branches, critique passes, and repairs;
+- maximum estimated cost and maximum estimated tokens;
+- model calls, parallel calls, branches, critique passes, and repairs;
 - cache freshness/sensitivity policy.
 
 The runtime derives an **effective quality floor** from the base floor plus bounded risk/uncertainty
 uplift. Callers cannot lower the configured safety floor through negative or malformed values.
+
+`maxEstimatedTokens` is an explicit hard reasoning ceiling. The plan derives a token-based model-call
+ceiling from estimated input plus output tokens per call and takes the minimum with the configured call
+ceiling. If one estimated call cannot fit, routing fails with `BUDGET_EXCEEDED` before execution.
 
 ### Route decision
 
@@ -62,7 +69,7 @@ A successful route decision contains:
 - chosen supported reasoning effort when applicable;
 - estimated cost and observed empirical quality/latency;
 - ordered escalation candidates that meet the same floor;
-- bounded reasoning policy: branch count, critique passes, repair ceiling, and parallelism;
+- bounded reasoning policy: branch count, critique passes, repair ceiling, parallelism, per-call token estimate, total token ceiling, and effective model-call ceiling;
 - cache eligibility/key/freshness policy;
 - explicit reasons and a deterministic decision hash.
 
@@ -84,6 +91,10 @@ Branch search is finite and deterministic. Branches are proposal paths, not comp
 A branch can be selected for continuation only after its evidence state is accepted by the controller;
 majority vote or model confidence alone cannot make it final.
 
+For bounded high-risk plans, M11 reserves repair capacity before consuming every remaining model call
+on additional critique. That preserves targeted repair-before-escalation semantics without increasing
+the configured call or token ceilings.
+
 ## Cache and concurrency policy
 
 M11 may reuse a route/model result only when the cache key binds the normalized request, model/profile,
@@ -91,9 +102,8 @@ reasoning policy, relevant context/evidence identity, and freshness policy. Sens
 non-cacheable work never enters response cache. Cache hits do not bypass M5 verification or evidence
 freshness.
 
-Parallelism is bounded by the minimum of request ceiling, runtime ceiling, eligible branch count, and
-available model-call budget. High-risk work may deliberately reduce parallel speculative branches even
-when capacity exists.
+Parallelism is bounded by the minimum of request ceiling, eligible branch count, and effective
+model-call budget. The effective model-call budget is itself capped by the explicit token ceiling.
 
 ## Required regressions
 
@@ -101,15 +111,34 @@ when capacity exists.
 - stronger model wins when the cheap model is below floor;
 - no model below floor is selected when all candidates are insufficient;
 - capability mismatches eliminate candidates before scoring;
-- stale, foreign, malformed, duplicate, self-authored, or hash-tampered evaluation records fail closed;
+- stale, future, malformed, duplicate, self-authored, or hash-tampered evaluation records fail closed;
+- evaluation evidence is bound to exact provider/model/profile version and reasoning effort;
 - risk/uncertainty can raise the effective floor but never lower configured minimums;
 - deterministic candidate ordering and route hash survive input reordering;
 - estimated cost ceiling blocks or forces a different eligible route without lowering quality;
+- explicit estimated-token ceiling reduces the permitted model-call count and blocks when one call cannot fit;
 - critique/branch/repair/call/parallel ceilings cannot be exceeded;
+- bounded plans preserve a repair opportunity before escalation when configured budget permits it;
 - independent PASS can accept, verification failure can repair/escalate, and self-confidence cannot accept;
 - cache key changes when model/profile/context/evidence/reasoning policy changes;
 - sensitive or stale-cache work is not cacheable;
 - offline eval fixture compares small/fast and stronger profiles without live provider calls.
+
+## Implementation evidence
+
+GitHub Actions helper verification run `33784031658` passed on the implementation that became clean
+branch head `c70bf2eede8892ba34380d104cd73cefd9aacd2a` with **199 tests, 199 passes, 0 failures**.
+Aggregate coverage was **90.01% lines, 76.94% branches, and 95.63% functions**. Foundation validation,
+Biome, strict TypeScript, and the complete test suite all passed. `src/routing/reasoning.ts` reached
+94.24% line coverage and 86.67% branch coverage.
+
+The earlier normal PR run `33782424402` proved the pre-token-ceiling M11 core with 198/198 tests. The
+later acceptance review found the missing explicit token ceiling before merge; the requirement was
+implemented and exposed a repair-budget ordering defect, which was fixed by reserving repair capacity
+before additional critique. No gate was weakened.
+
+A normal pull-request CI run on the synchronized human-authored documentation head is still required
+before M11 is marked fully `VERIFIED` and merged.
 
 ## Out of scope
 
