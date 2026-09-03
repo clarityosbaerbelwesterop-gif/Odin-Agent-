@@ -5,74 +5,71 @@ Updated: 2026-09-03.
 ## Current state
 
 - Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).
-- `main` contains verified M0–M9 at M9 merge commit
-  `0d47e31fec79b6341be2ced4b0d67df126eeabe4`.
-- Active branch: `agent/m10-skill-lifecycle`; Draft PR #13 targets `main`.
-- M10 implementation CI passed on `340d9dea9f3bc45f8185575cbc982a2e3d0fca25` via run
-  `33777800516` with 172/172 tests.
-- The clean synchronized documentation head `8170401f33fc97bc537f6ffa3462c102394d03bc` passed final
-  PR-specific CI run `33780349974` after the failed one-shot helper was removed.
-- M10 is repository/CI `VERIFIED`. One last CI run is expected on this evidence-only documentation
-  checkpoint; if it stays green and PR #13 remains mergeable, the user has already authorized an
-  exact-head squash merge and immediate continuation into M11.
+- `main` contains verified M0–M10 at M10 squash merge
+  `bfc76b57a3531f5b6824fa3a3c285c5a55fd13d0`.
+- Active branch: `agent/m11-adaptive-reasoning`; Draft PR #14 targets `main`.
+- M11 core plus the explicit token-budget acceptance fix is verified. Helper verification run
+  `33784031658` passed with 199/199 tests, normal PR run `33784322602` passed after the implementation
+  evidence checkpoint, and synchronized Roadmap/Architecture/Security/Handover run `33784732544`
+  passed.
+- M11 is repository/CI `VERIFIED`. The current evidence-only documentation checkpoint must preserve the
+  same green PR gate before exact-head squash merge.
+- The user has explicitly authorized merge after the verified gate and immediate continuation into M12.
 
-## M10 verified capability
+## M11 verified capability
 
-M10 adds `src/skills` as a first-class capability-amplification boundary:
+M11 adds `src/routing` as a deterministic capability-amplification policy boundary:
 
-- immutable versioned packages with deterministic SHA-256 content identity, provenance, trust class,
-  bounded instructions/tags/tools/test refs, and exact runtime validation;
-- compact discovery without instructions, plus separate full loading only for `VERIFIED`/`ACTIVE`
-  packages;
-- learned/community packages enter as `CANDIDATE` and cannot self-promote;
-- independent passing evidence binds exact name/version/content hash before verification;
-  model/worker/runtime-authored verification cannot promote learned/community packages;
-- trusted activation, deterministic one-active-version supersession, explicit rollback, and revocation;
-- concise immutable lifecycle history for registration, verification, activation, supersession,
-  rollback, and revocation;
-- solved-task synthesis behind an injected runtime attestation creates only learned candidates with
-  exact mission/task provenance and scoped idempotency;
-- skill required-tool declarations do not create M3 tool handlers, capabilities, credentials, host
-  execution, or completion authority.
+- hash-addressed independent/project model-evaluation records bound to exact provider, model, profile
+  version, task class, and supported reasoning effort;
+- model/runtime/worker self-evaluation, stale/future evidence, tampered hashes, conflicting records,
+  unsupported capabilities, and mismatched pricing fail closed;
+- capability filtering and a risk/uncertainty-adjusted quality floor execute before cost/latency
+  optimization, so a cheaper model cannot win by lowering required quality;
+- deterministic primary selection plus stronger eligible escalation routes;
+- bounded branch, critique, repair, model-call, parallel-call, estimated-cost, and estimated-token
+  ceilings;
+- `maxEstimatedTokens` derives a stricter effective model-call ceiling and blocks if even one estimated
+  call cannot fit;
+- bounded high-risk plans reserve targeted repair capacity before using every remaining call for
+  additional critique, preserving repair-before-escalation semantics;
+- `AdaptiveReasoningController` can only ACCEPT/CRITIQUE/REPAIR/ESCALATE/BLOCK and requires independent,
+  non-contradictory PASS evidence for ACCEPT;
+- bounded response-cache metadata is identity/freshness scoped and disabled for sensitive work;
+- an offline deterministic eval harness compares small/fast and stronger profiles without provider
+  calls or spend.
 
-## M10 evidence
+M11 changes strategy selection only. It cannot mint M3 tool capabilities, manufacture M5 evidence,
+claim M7 ownership, promote M10 skills, obtain credentials, increase mission budgets, or deploy anything.
 
-Canonical command:
+## M11 evidence
+
+Canonical command remains:
 
 ```bash
 npm ci
 npm run verify
 ```
 
-GitHub Actions run `33777800516` passed with **172/172 tests**, **0 failures**, and aggregate coverage
-**89.84% lines / 76.97% branches / 95.66% functions**. The new skill modules were strongly exercised:
-registry 96.20% lines / 80.56% branches / 98.28% functions; synthesis 97.24% lines / 88.57% branches /
-100% functions. Foundation validation, Biome, and strict TypeScript passed.
+The first normal M11 implementation run `33782424402` passed with **198/198 tests** and aggregate
+coverage **89.98% lines / 76.90% branches / 95.63% functions**. Acceptance review then found that the
+ROADMAP promised an explicit token ceiling while implementation had only call/branch/cost ceilings, so
+M11 was deliberately not merged.
 
-Final synchronized repository CI run `33780349974` passed on
-`8170401f33fc97bc537f6ffa3462c102394d03bc`. Regression coverage includes compact/progressive
-discovery, malformed/oversized/conflicting package rejection, candidate/revoked denial, exact
-content-hash verification, failed/self-authored evidence denial, trusted activation, supersession,
-rollback/revocation, immutable audit history, solved-task attestation, synthesis replay/conflict
-handling, and proof that skill tool declarations do not mint M3 execution authority.
+The token-ceiling tranche introduced `maxEstimatedTokens`. Its first test attempt exposed a fixture
+shape issue; the next exposed a real reasoning-plan defect in which four branches plus two critiques
+used all six calls and left no targeted repair slot. The implementation was corrected rather than
+weakening the test or gate.
 
-## AGI-bridge architecture mapping
+GitHub Actions helper verification run `33784031658` then passed the corrected implementation with
+**199 tests, 199 passes, 0 failures** and aggregate coverage **90.01% lines / 76.94% branches / 95.63%
+functions**. `src/routing/reasoning.ts` reached 94.24% line / 86.67% branch / 100% function coverage.
+Foundation validation, Biome, strict TypeScript, and the full repository suite passed.
 
-The expanded research direction is incorporated as capability amplification rather than an unsupported
-AGI claim. Existing milestones already provide major pieces: M4/M5 provide test/repair/independent
-verification; M6 provides scoped memory and context compilation; M7 provides bounded specialist
-decomposition; M8 provides durable background-ready mission state; M10 converts verified solved
-procedures into reusable candidate skills.
-
-Next, M11 should add empirical model routing, quality floors, caching/concurrency policy, bounded
-multi-pass critique/self-correction, and bounded branch search. M12 should add real process/container/
-worktree isolation, outbound-network enforcement, live-provider smoke/evals, load/recovery,
-observability, backups, and release gates. Post-MVP work should productionize hybrid lexical/vector
-memory, post-task learning curation/compression, event-driven scheduler/triggers/background missions,
-and permissioned MCP/Agent-Skills/omnichannel adapters.
-
-These layers may let a small/fast model produce much stronger practical outcomes, but model-level or
-AGI equivalence must be demonstrated empirically rather than asserted from architecture.
+Normal pull-request CI run `33784322602` subsequently passed on human-authored evidence head
+`b002136c43d9ebbe7978e81606bc4f8d9c30eb35`. Fully synchronized M11 Roadmap, Architecture, Security,
+and Handover then passed normal PR CI run `33784732544`. Temporary helper workflows are absent from the
+clean branch.
 
 ## Earlier verified evidence
 
@@ -91,27 +88,34 @@ AGI equivalence must be demonstrated empirically rather than asserted from archi
   `ce0fdb0454999218d1d1145f406d5165a225e6a8`.
 - M9 implementation run `33773644733` with 161 tests; synchronized docs run `33774320732`; merge
   `0d47e31fec79b6341be2ced4b0d67df126eeabe4`.
+- M10 implementation run `33777800516` with 172 tests; clean docs run `33780349974`; final evidence
+  run `33780616385`; squash merge `bfc76b57a3531f5b6824fa3a3c285c5a55fd13d0`.
 
-CI uses injected provider/tool/worker/skill boundaries and temporary local SQLite stores. No live
-provider call, public network write, deployment, production migration, production repository mutation,
-or paid external resource was used for M10.
+CI uses injected provider/tool/worker/skill/routing boundaries and temporary local SQLite stores. M11
+used no live provider call, production traffic, public network write, deployment, production migration,
+or paid external resource.
 
 ## Security and architecture boundaries
 
-- M3 remains the only tool execution/capability authority; skill instructions are never grants.
-- M5 remains completion authority; M10 verification does not allow a model or worker to self-certify
-  promotion.
+- M3 remains the only tool execution/capability authority.
+- M5 remains completion authority; routing self-confidence cannot become independent evidence.
 - M6 memory remains an in-memory contract; no production vector DB/FTS hybrid is claimed.
 - M7 ownership remains logical single-process coordination.
 - M8 durability remains local SQLite; no distributed cross-host fencing or exactly-once external effect
   is claimed.
-- No production OS/process/container/worktree sandbox, live MCP/Agent-Skills server, browser
-  automation, public service/auth/realtime transport, daemon/scheduler, omnichannel integration, or
-  live-provider E2E is implemented yet.
+- M9 remains a local client protocol/reference UI proof, not hosted auth/realtime service.
+- M10 skill instructions remain procedure only; routing cannot promote or grant a skill.
+- M11 evaluations are offline deterministic evidence fixtures, not live-provider benchmark claims.
+- No production OS/process/container/worktree sandbox, hardened outbound network broker, live
+  MCP/Agent-Skills server, public service/auth/realtime transport, daemon/scheduler, omnichannel
+  integration, or live-provider E2E is implemented yet.
 
 ## Exact next action
 
-Observe the PR-specific `npm run verify` result on this final evidence checkpoint. If green and PR #13
-remains mergeable, mark it ready for review and squash-merge with exact-head protection under the
-user's existing authorization. Then branch M11 from the resulting `main` and implement empirical
-adaptive routing/reasoning without weakening M3/M5/M6/M7/M8/M10 boundaries.
+Observe normal PR-specific `npm run verify` on this evidence-only M11 checkpoint. If green and PR #14
+remains mergeable, mark it ready and squash-merge with exact-head protection under the user's existing
+authorization. Then create a fresh M12 branch from the resulting `main` and begin deterministic local
+production-hardening work: canonical-root/symlink isolation, bounded process/workspace contracts,
+secret-safe environment/output limits, and outbound destination policy tests. Do not perform live
+provider calls, deployment, production migration, or paid-resource creation without separate explicit
+approval.

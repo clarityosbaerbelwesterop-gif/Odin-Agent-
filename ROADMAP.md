@@ -135,11 +135,20 @@ public skills, run arbitrary skill code, or claim autonomous self-improvement/AG
 
 ## M11 — Adaptive reasoning, routing, and efficiency
 
-- [ ] Empirical capability/quality/cost/latency routing with deterministic quality floors and escalation.
-- [ ] Cache and concurrency policy that cannot bypass freshness, scope, verification, or budgets.
-- [ ] Bounded multi-pass critique and targeted self-correction using independent evidence.
-- [ ] Bounded branch search for ambiguous/high-risk tasks with explicit branch/attempt/token ceilings.
-- [ ] Evaluation harness comparing small/fast models against stronger baselines on repository missions.
+- [x] Empirical capability/quality/cost/latency routing with deterministic quality floors and escalation.
+- [x] Cache and concurrency policy that cannot bypass freshness, scope, verification, or budgets.
+- [x] Bounded multi-pass critique and targeted self-correction using independent evidence.
+- [x] Bounded branch search for ambiguous/high-risk tasks with explicit branch/attempt/call/cost/token ceilings.
+- [x] Offline evaluation harness comparing small/fast models against stronger baselines without live provider spend.
+- [x] Independent evaluation evidence is bound to exact provider/model/profile/reasoning effort and stale/future/self-authored/tampered evidence fails closed.
+- [x] Implementation verification observed: helper run `33784031658`, 199/199 tests passed; aggregate coverage was
+  90.01% lines, 76.94% branches, and 95.63% functions.
+- [x] Normal pull-request verification observed: run `33784322602` passed on synchronized M11 evidence head.
+
+M11 optimizes price and latency only inside a measured quality floor. Explicit estimated-token and
+model-call ceilings bound speculative branch/critique/repair work; bounded plans reserve targeted
+repair capacity before spending every remaining call on additional critique. M11 does not claim live
+provider benchmark results or permit model self-confidence to become independent completion evidence.
 
 ## M12 — Production hardening and release proof
 
