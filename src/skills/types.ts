@@ -1,5 +1,12 @@
 export type SkillTrustClass = "builtin" | "community" | "learned" | "project";
 export type SkillLifecycle = "ACTIVE" | "CANDIDATE" | "REVOKED" | "VERIFIED";
+export type SkillLifecycleAction =
+  | "ACTIVATED"
+  | "REGISTERED"
+  | "REVOKED"
+  | "ROLLED_BACK"
+  | "SUPERSEDED"
+  | "VERIFIED";
 export type SkillVerificationProducer =
   | "independent_test"
   | "independent_verifier"
@@ -50,6 +57,20 @@ export interface SkillSummary {
   readonly trustClass: SkillTrustClass;
   readonly lifecycle: SkillLifecycle;
   readonly contentHash: string;
+}
+
+export interface SkillLifecycleEvent {
+  readonly sequence: number;
+  readonly action: SkillLifecycleAction;
+  readonly name: string;
+  readonly version: string;
+  readonly contentHash: string;
+  readonly from: SkillLifecycle | null;
+  readonly to: SkillLifecycle;
+  readonly occurredAt: string;
+  readonly actor: SkillPromotionActor | null;
+  readonly producerClass: SkillVerificationProducer | null;
+  readonly evidenceRefs: readonly string[];
 }
 
 export interface SkillVerificationEvidence {
