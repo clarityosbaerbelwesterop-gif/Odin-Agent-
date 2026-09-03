@@ -1,6 +1,6 @@
 # M10 — Progressive skill lifecycle and synthesis
 
-Status: implementation in progress. Updated: 2026-09-03.
+Status: implementation verified; synchronized documentation pending final PR CI. Updated: 2026-09-03.
 
 ## Objective
 
@@ -116,7 +116,7 @@ milestones already provide important pieces: M6 gives scoped memory/context and 
 context compilation; M7 gives bounded specialist decomposition/parallel work; M8 gives durable
 long-running state; M5/M4 provide verification and repair loops.
 
-Future milestones should extend, not duplicate, those foundations:
+Future milestones extend, rather than duplicate, those foundations:
 
 - **M11 adaptive reasoning/router:** empirical model routing, caching, concurrency, quality floors,
   multi-pass critique, bounded branch search, and escalation based on uncertainty/evidence.
@@ -130,6 +130,20 @@ These mechanisms can substantially improve reliability, continuity, tool use, an
 small/fast models, but Odin must measure that improvement empirically rather than claiming model-level
 or AGI equivalence without evidence.
 
+## Implementation evidence
+
+GitHub Actions run `33777800516` passed on implementation head
+`340d9dea9f3bc45f8185575cbc982a2e3d0fca25` with **172 tests, 172 passes, 0 failures**. Aggregate
+coverage was **89.84% lines, 76.97% branches, and 95.66% functions**; `src/skills/registry.ts` reached
+96.20% line coverage and `src/skills/synthesis.ts` 97.24%. Foundation validation, Biome, and strict
+TypeScript all passed.
+
+The verified regressions cover compact/progressive discovery, malformed/oversized/conflicting package
+rejection, candidate/revoked load denial, exact hash verification, failed/self-authored evidence denial,
+trusted activation, supersession, rollback/revocation, immutable lifecycle audit history, solved-task
+attestation, synthesis replay/conflict handling, and proof that required-tool declarations never mint
+M3 execution authority.
+
 ## Out of scope
 
 - arbitrary Python or shell execution embedded inside a skill package;
@@ -140,5 +154,5 @@ or AGI equivalence without evidence.
 - autonomous background daemon/scheduler or messaging-channel integrations;
 - live provider calls, production deployment, paid resources, or production migration.
 
-M10 is `VERIFIED` only after implementation, requirement-derived tests, synchronized architecture/
-security/roadmap/handover documentation, and final pull-request CI all pass.
+M10 is `VERIFIED` only after this synchronized documentation state also receives green final
+pull-request CI and the merge is performed with exact-head protection.
