@@ -511,13 +511,13 @@ function normalizeSession(value: SandboxSession): SandboxSession {
     throw new SandboxError("SESSION_INVALID", "Sandbox session is invalid.");
   }
   const identity = normalizeIdentity(value);
+  const expiresAt =
+    value.expiresAt === undefined ? undefined : normalizeOptionalTimestamp(value.expiresAt);
   return Object.freeze({
     allocationKey: identifier(value.allocationKey, "allocationKey", 64),
     backendId: identifier(value.backendId, "backendId"),
     backendKind: value.backendKind,
-    ...(value.expiresAt === undefined
-      ? {}
-      : { expiresAt: normalizeOptionalTimestamp(value.expiresAt) }),
+    ...(expiresAt === undefined ? {} : { expiresAt }),
     isolation: value.isolation,
     missionId: identifier(value.missionId, "missionId"),
     ...identity,
