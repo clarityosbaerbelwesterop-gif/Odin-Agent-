@@ -61,9 +61,7 @@ export interface SandboxBackendRegistration {
   readonly adapter: SandboxBackendAdapter;
 }
 
-export type SandboxCredentialResolver = (
-  credentialRef: string,
-) => Promise<string> | string;
+export type SandboxCredentialResolver = (credentialRef: string) => Promise<string> | string;
 
 export interface SandboxSession {
   readonly sessionId: string;
@@ -115,7 +113,10 @@ export class SandboxBackendRegistry {
         throw new SandboxError("BACKEND_INVALID", "Sandbox backend adapter is invalid.");
       }
       if (this.#backends.has(descriptor.id)) {
-        throw new SandboxError("BACKEND_INVALID", `Duplicate sandbox backend ID: ${descriptor.id}.`);
+        throw new SandboxError(
+          "BACKEND_INVALID",
+          `Duplicate sandbox backend ID: ${descriptor.id}.`,
+        );
       }
       this.#backends.set(
         descriptor.id,
@@ -168,7 +169,10 @@ export class SandboxBackendRegistry {
         .map((binding) => {
           const backend = this.#backends.get(binding.backendId);
           if (backend === undefined) {
-            throw new SandboxError("BACKEND_NOT_FOUND", "Sandbox backend disappeared from registry.");
+            throw new SandboxError(
+              "BACKEND_NOT_FOUND",
+              "Sandbox backend disappeared from registry.",
+            );
           }
           return Object.freeze({
             backendId: binding.backendId,
@@ -298,10 +302,16 @@ function normalizeDescriptor(value: SandboxBackendDescriptor): SandboxBackendDes
     throw new SandboxError("BACKEND_INVALID", "Sandbox credential requirement is invalid.");
   }
   if (value.kind === "local_process" && value.isolation !== "host_process") {
-    throw new SandboxError("BACKEND_INVALID", "Local sandbox backend must use host-process isolation.");
+    throw new SandboxError(
+      "BACKEND_INVALID",
+      "Local sandbox backend must use host-process isolation.",
+    );
   }
   if (value.kind === "remote_api" && value.isolation !== "provider_managed") {
-    throw new SandboxError("BACKEND_INVALID", "Remote sandbox backend must use provider-managed isolation.");
+    throw new SandboxError(
+      "BACKEND_INVALID",
+      "Remote sandbox backend must use provider-managed isolation.",
+    );
   }
   return Object.freeze({
     id,
