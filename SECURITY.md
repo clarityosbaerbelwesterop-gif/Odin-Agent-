@@ -1,8 +1,8 @@
 # Security model
 
-Status: design baseline plus implemented M1 provider, M3 tool-control, M5 verification, M6 memory/context,
-M7 specialist coordination, M8 durable mission/worker, M9 client-protocol, M10 skill-lifecycle, and
-M11 adaptive-routing safeguards. Controls not explicitly identified as implemented remain future work.
+Status: implemented M1 provider, M3 tool-control, M5 verification, M6 memory/context, M7 specialist
+coordination, M8 durable mission/worker, M9 client-protocol, M10 skill-lifecycle, M11 adaptive-routing,
+and M12-A/B local execution/sandbox safeguards. Controls not explicitly identified as implemented remain future work.
 
 ## Protected assets
 
@@ -10,12 +10,12 @@ M11 adaptive-routing safeguards. Controls not explicitly identified as implement
 - user repositories, documents, memory, artifacts, and personal data;
 - mission integrity, budgets, approvals, durable events, checkpoints, job state, and audit history;
 - execution hosts, network access, connected devices, and external accounts;
-- system-protected skills, policies, evaluation records, routing decisions, and release artifacts.
+- system-protected skills, policies, evaluation records, routing decisions, sandbox sessions, and release artifacts.
 
 ## Trust boundaries
 
-Trusted: the minimal control plane, policy engine, secret broker, validated protocol handlers, and
-durable state layer.
+Trusted: the minimal control plane, policy engine, secret broker, validated protocol handlers, sandbox
+backend configuration, and durable state layer.
 
 Untrusted by default: user/client input, web/email/chat content, repositories being analyzed,
 dependency metadata, tool output, model output, community skills/plugins, generated code, browsers,
@@ -41,15 +41,18 @@ including a capability-shaped object in its output.
 
 Long-lived credentials reside only in a protected credential store. Models, clients, and normal worker
 processes receive neither raw keys nor a general-purpose environment containing them. The control plane
-proxies requests or issues the narrowest possible short-lived handle. Redaction applies before logs,
-events, artifacts, errors, memory, client payloads, or crash reports are persisted or returned.
+proxies requests or resolves the narrowest configured credential only after policy/binding checks.
+Redaction applies before logs, events, artifacts, errors, memory, client payloads, or crash reports are
+persisted or returned.
 
 The committed `.env.example` contains names and blank values only. Real `.env` files are ignored.
 
-M1 resolves credentials only after request-shape and capability checks pass. Provider HTTP denies
-redirects and obvious private-network targets by default, rejects header-delimiter credentials, bounds
-responses/events, and normalizes transport errors. DNS rebinding and destination re-resolution remain
-future outbound-network-policy work.
+M1 resolves credentials only after request-shape and capability checks pass. M12 extends provider
+credential resolution with exact provider/model context, allowing different routed models to use
+different configured credentials without placing those keys in prompt or worker data.
+
+Sandbox credentials are held behind runtime-owned `credentialRef`s. Public binding metadata exposes
+backend identity and credential requirement, not the credential reference or secret value.
 
 ## Implemented M3 tool controls
 
@@ -65,9 +68,10 @@ ceilings. Audit records retain typed metadata and hashes rather than raw inputs 
 Built-in repository operations accept normalized workspace-relative paths and stable quality-command
 IDs only. Arbitrary model-provided shell strings and network destinations are not accepted.
 
-M3 is a control boundary, not a production sandbox. Canonical-root/symlink isolation, subprocess or
-container isolation, CPU/memory/output limits, and destination-based network enforcement remain future
-execution work.
+M3 remains the capability/tool authority. M12-A/B add canonical-root and symlink-escape checks, a
+bounded trusted-command host-process runner, output/time/concurrency limits, and a fail-closed outbound
+destination policy. The host-process runner is still not kernel/container isolation, and the outbound
+policy alone is not transport-level DNS pinning.
 
 ## Implemented M5 verification safeguards
 
@@ -142,22 +146,29 @@ session and mission scope plus expiry. State reads require read authority. Comma
 and durable scoped idempotency. Clients cannot append arbitrary mission events, settle worker jobs,
 call providers/tools, verify tasks, or complete missions.
 
-Client projections expose only bounded user-facing state: mission identity/version/objective/focus,
-task status, budgets, checkpoint version, durable job counts/activity, and evidence references. They
-exclude provider keys, credentials, lease bearer tokens, raw repository contents, definitions of done,
-failure signatures, private reasoning, raw worker exceptions, and hidden policy internals.
+Client projections expose only bounded user-facing state. They exclude provider keys, credentials,
+lease bearer tokens, raw repository contents, definitions of done, failure signatures, private
+reasoning, raw worker exceptions, and hidden policy internals.
 
 Reconnect uses M8 lifecycle event hashes plus exact mission/session scope and `afterCursor` chaining.
 Because M8 lifecycle cursors are global but reads are mission-scoped, numeric gaps inside a mission are
-valid. The client reducer rejects moving the requested cursor ahead of its accepted cursor, changed or
-unknown replay hashes, foreign scope, incompatible protocol versions, and backwards mission
-projections; unsafe continuity requires a fresh bootstrap.
+valid. Unsafe continuity requires a fresh bootstrap.
 
-The M9 web shell is a static reference fixture. Dynamic values are inserted with text/DOM APIs rather
-than unsanitized HTML. It contains no live network transport, cookies, `localStorage`, or
-`sessionStorage`. Cancellation requires a deliberate dialog confirmation. Production authentication,
-transport security, CSP/security headers, push notifications, device administration, offline writes,
-and native application security remain future work.
+The M9 web shell is a static reference fixture. It contains no live network transport, cookies,
+`localStorage`, or `sessionStorage`. Production authentication, transport security, CSP/security
+headers, push notifications, device administration, offline writes, and native application security
+remain future work.
+
+## Implemented M10 skill safeguards
+
+`src/skills` keeps compact discovery separate from full instruction loading. Normal resolution accepts
+only verified/active packages; learned/community packages start as candidates; package content is
+hash-addressed; independent passing evidence must bind the exact package hash; activation/rollback
+require trusted runtime or user-approved actors.
+
+Skill synthesis requires an injected solved-task attestation and can create only a learned candidate
+with exact mission/task provenance. Required-tool names are declarations only: M10 never registers an
+M3 handler, creates a capability grant, exposes credentials, or grants arbitrary host execution.
 
 ## Implemented M11 routing and reasoning safeguards
 
@@ -167,46 +178,75 @@ fresh independent evaluation evidence, and the effective quality floor are satis
 are optimization criteria only among candidates that already meet the quality requirement.
 
 Evaluation records bind exact provider/model/profile version, task class, and reasoning effort where
-applicable. They are hash-addressed and timestamped. Model-, worker-, and runtime-authored
-self-evaluations cannot establish routing quality. Stale, future, duplicate, conflicting, malformed, or
-hash-tampered evaluation data fails closed rather than silently lowering quality.
+applicable. Model-, worker-, and runtime-authored self-evaluations cannot establish routing quality.
+Stale, future, duplicate, conflicting, malformed, or hash-tampered evaluation data fails closed.
 
-Risk and uncertainty can raise the effective quality floor but cannot lower the configured minimum.
-Unknown/mismatched pricing cannot bypass a cost ceiling. Reasoning is bounded by explicit branch,
-critique, repair, model-call, parallel-call, estimated-cost, and estimated-token ceilings. The token
-ceiling derives a stricter effective model-call ceiling; if one estimated call does not fit, execution
-is blocked. When bounded budget permits it, a repair slot is reserved before consuming every remaining
-call on additional critique.
+Risk and uncertainty can raise the effective quality floor but cannot lower it. Reasoning is bounded by
+explicit branch, critique, repair, model-call, parallel-call, estimated-cost, and estimated-token
+ceilings. Only independent, non-contradictory PASS evidence can accept a result.
 
-`AdaptiveReasoningController` accepts a result only with independent, non-contradictory PASS evidence.
-Model confidence, majority vote, or critique text cannot complete a task or manufacture M5 evidence.
-Escalation changes only the eligible model/effort route; it cannot mint M3 tool grants, M7 ownership,
-M10 skill promotion, credentials, or additional mission budget.
+Routing cannot mint M3 tool grants, M7 ownership, M10 skill promotion, credentials, or additional
+mission budget. Sensitive work disables routing cache. M11's evaluation harness is offline and
+deterministic; no live provider benchmark or production traffic experiment is claimed.
 
-Routing cache metadata binds request/context/evidence/model/profile/reasoning-policy identity and
-freshness. Sensitive work disables caching. Cache hits never bypass M5 evidence checks. M11's evaluation
-harness is offline and deterministic; no live provider benchmark, production traffic experiment, or
-paid resource is claimed.
+## Implemented M12-A/B execution and sandbox safeguards
 
-## Prompt injection and skill security
+`src/sandbox` treats workspace paths, subprocess outcomes, destination URLs, model/sandbox bindings,
+provider-managed session metadata, and lifecycle requests as validated runtime data.
+
+### Workspace and process
+
+- the trusted workspace root is canonicalized through the host filesystem;
+- lexical traversal, absolute paths, NUL/backslash ambiguity, root-prefix confusion, and canonical
+  symlink escapes are denied;
+- writes resolve through the nearest existing canonical parent;
+- models/workers select only runtime-registered command IDs; executable path and fixed arguments are
+  trusted configuration;
+- process execution uses `shell: false`;
+- child environment starts deny-by-default and inherits only explicitly allowlisted variables;
+- timeout and cancellation terminate the process;
+- stdout and stderr are independently byte-bounded and output flood terminates execution;
+- runtime concurrency is bounded, with the slot reserved before asynchronous cwd resolution and always
+  released in `finally`.
+
+This is a bounded host-process boundary, **not** OS/kernel/container isolation. It does not prevent all
+host filesystem visibility or provide namespace/cgroup isolation for arbitrary untrusted code.
+
+### Outbound destination policy
+
+- HTTPS is the default;
+- URL credentials, fragments, ambiguous syntax, and unauthorized host/port destinations are denied;
+- loopback, link-local, private, multicast, unspecified, mapped-private, and other reserved addresses
+  are denied;
+- every injected DNS answer must satisfy policy;
+- redirects or destination changes require a fresh decision.
+
+A future transport must consume the exact policy decision without unsafe re-resolution before DNS
+rebinding resistance can be claimed.
+
+### Provider/model-dependent sandbox lifecycle
+
+- exact `provider + model + profileVersion` identity selects the configured sandbox backend;
+- M11 primary or escalation routing provides that exact identity;
+- sandbox credentials are resolved only after exact binding checks and stay in the control plane;
+- remote create receives a deterministic allocation/idempotency key;
+- exact replay reuses the settled session and concurrent identical replay collapses to one create;
+- conflicting replay fails closed;
+- remote backends must implement deterministic cleanup at registry construction;
+- destroy receives a deterministic release idempotency key and exact mission/task/model/session scope;
+- release replay is idempotent and released sessions cannot be silently reused;
+- session expiry is canonical UTC when provided and omitted structurally when absent.
+
+Normal PR CI `33794095989` verified the M12-A/B local tranche with 237/237 tests. No hosted sandbox
+provider, live model provider, paid resource, production deployment, migration, billing change, or
+public traffic was exercised.
+
+## Prompt injection and untrusted-content security
 
 Every context item carries origin/trust metadata. Tool results and external content are data, not
 instructions. Model output is schema-validated before requesting a transition or tool. Untrusted
-observations cannot modify policy, protected skills, credentials, or durable user preferences.
-
-Implemented M10 preserves this rule in `src/skills`: compact discovery omits instructions; normal
-resolution accepts only verified/active packages; learned/community packages start as candidates;
-package content is hash-addressed; independent passing evidence must bind the exact package hash; and
-activation/rollback require trusted runtime or user-approved actors. Model, worker, and runtime-authored
-verification claims cannot promote learned/community skills.
-
-Skill synthesis additionally requires an injected solved-task attestation and can create only a learned
-candidate with exact mission/task provenance. Exact replay is idempotent and conflicting replay fails
-closed. Lifecycle events record concise actor/producer/evidence references for registration,
-verification, activation, supersession, rollback, and revocation. Required-tool names are declarations
-only: M10 never registers an M3 handler, creates a capability grant, exposes credentials, or grants
-arbitrary host execution. Public skill downloads, package signing/marketplace trust, and executable
-skill sandboxes remain future work.
+observations cannot modify policy, protected skills, credentials, sandbox bindings, or durable user
+preferences.
 
 ## Audit and privacy
 
@@ -224,17 +264,19 @@ persistence expands.
 - malicious client/tool arguments and malformed model/protocol JSON;
 - path traversal, symlink escape, and unsafe archive extraction;
 - SSRF, DNS rebinding, redirect bypass, and network exfiltration;
-- secrets in logs, errors, command lines, patches, artifacts, durable jobs, or client payloads;
-- replayed external writes and duplicated payments/messages/deployments;
+- secrets in logs, errors, command lines, patches, artifacts, durable jobs, client payloads, or sandbox metadata;
+- replayed external writes and duplicated payments/messages/deployments/sandbox allocations;
 - stale/superseded worker settlement after lease expiry or recovery;
 - stale/conflicting/replayed client controls and confused-deputy client capability scope;
 - compromised plugin/skill packages and dependency substitution;
 - forged, stale, future, self-authored, or tampered model-evaluation evidence;
+- sandbox binding confusion between provider/model/profile identities;
+- cleanup failure, replay, or released-session resurrection;
 - quality-floor downgrade or budget bypass through routing, fallback, retry, critique, repair, or cache;
-- privilege escalation through retries, repair loops, fallback providers, or learned skills;
-- race conditions between cancellation, checkpointing, tools, leases, commands, and completion;
+- privilege escalation through retries, repair loops, fallback providers, learned skills, or sandbox selection;
+- race conditions between cancellation, checkpointing, tools, leases, commands, sandbox allocation, cleanup, and completion;
 - budget bypass and denial-of-wallet;
-- recovery from tampered/incompatible events, lifecycle rows, checkpoints, client pages, and routing data.
+- recovery from tampered/incompatible events, lifecycle rows, checkpoints, client pages, routing data, and release evidence.
 
 ## Vulnerability reporting
 
