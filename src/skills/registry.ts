@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import {
   SkillError,
   type SkillLifecycle,
+  type SkillLifecycleEvent,
   type SkillPackage,
   type SkillPackageInput,
   type SkillPromotionRequest,
@@ -38,6 +39,7 @@ const PROVENANCE_KINDS = new Set<SkillProvenance["kind"]>([
 const PROMOTION_ACTORS = new Set(["trusted_runtime", "user_approved"] as const);
 
 export class SkillRegistry {
+  readonly #events: SkillLifecycleEvent[] = [];
   readonly #records = new Map<string, SkillRecord>();
   readonly #limits: SkillRegistryLimits;
 
@@ -97,6 +99,23 @@ export class SkillRegistry {
 
   listReviewSummaries(): readonly SkillSummary[] {
     return this.#listSummaries(() => true);
+  }
+
+  history(name?: string, version?: string): readonly SkillLifecycleEvent[] {
+    if (version !== undefined && name === undefined) {
+      throw new SkillError("INVALID_INPUT", "Skill history version requires a skill name.");
+    }
+    if (name !== undefined) assertSkillName(name);
+    if (version !== undefined) assertVersion(version);
+    return Object.freeze(
+      this.#events
+        .filter(
+          (event) =>
+            (name === undefined || event.name === name) &&
+            (version === undefined || event.version === version),
+        )
+        .map(cloneLifecycleEvent),
+    );
   }
 
   resolve(name: string, version: string): SkillPackage {
@@ -159,6 +178,18 @@ export class SkillRegistry {
       verifiedAt: evidence.observedAt,
     });
     this.#records.set(skillKey(current.package.name, current.package.version), next);
+    this.#appendEvent({
+      action: "VERIFIED",
+      actor: null,
+      contentHash: current.package.contentHash,
+      evidenceRefs: evidence.evidenceRefs,
+      from: current.lifecycle,
+      name: current.package.name,
+      occurredAt: evidence.observedAt,
+      producerClass: evidence.producerClass,
+      to: "VERIFIED",
+      version: current.package.version,
+    });
     return cloneRecord(next);
   }
 
@@ -183,6 +214,18 @@ export class SkillRegistry {
       revokedAt: request.revokedAt,
     });
     this.#records.set(skillKey(request.name, request.version), next);
+    this.#appendEvent({
+      action: "REVOKED",
+      actor: request.actor,
+      contentHash: current.package.contentHash,
+      evidenceRefs: [],
+      from: current.lifecycle,
+      name: request.name,
+      occurredAt: request.revokedAt,
+      producerClass: null,
+      to: "REVOKED",
+      version: request.version,
+    });
     return cloneRecord(next);
   }
 
@@ -213,6 +256,18 @@ export class SkillRegistry {
             lifecycle: "VERIFIED",
           }),
         );
+        this.#appendEvent({
+          action: "SUPERSEDED",
+          actor: request.actor,
+          contentHash: record.package.contentHash,
+          evidenceRefs: [],
+          from: "ACTIVE",
+          name: record.package.name,
+          occurredAt: request.promotedAt,
+          producerClass: null,
+          to: "VERIFIED",
+          version: record.package.version,
+        });
       }
     }
     const next = freezeRecord({
@@ -222,6 +277,18 @@ export class SkillRegistry {
       revokedAt: null,
     });
     this.#records.set(skillKey(request.name, request.version), next);
+    this.#appendEvent({
+      action: rollback ? "ROLLED_BACK" : "ACTIVATED",
+      actor: request.actor,
+      contentHash: current.package.contentHash,
+      evidenceRefs: [],
+      from: current.lifecycle,
+      name: request.name,
+      occurredAt: request.promotedAt,
+      producerClass: null,
+      to: "ACTIVE",
+      version: request.version,
+    });
     return cloneRecord(next);
   }
 
@@ -245,7 +312,28 @@ export class SkillRegistry {
       verifiedAt: lifecycle === "VERIFIED" ? skill.provenance.observedAt : null,
     });
     this.#records.set(key, record);
+    this.#appendEvent({
+      action: "REGISTERED",
+      actor: null,
+      contentHash: skill.contentHash,
+      evidenceRefs: [],
+      from: null,
+      name: skill.name,
+      occurredAt: skill.provenance.observedAt,
+      producerClass: null,
+      to: lifecycle,
+      version: skill.version,
+    });
     return cloneRecord(record);
+  }
+
+  #appendEvent(event: Omit<SkillLifecycleEvent, "sequence">): void {
+    this.#events.push(
+      freezeLifecycleEvent({
+        ...event,
+        sequence: this.#events.length + 1,
+      }),
+    );
   }
 
   #record(name: string, version: string): SkillRecord {
@@ -485,6 +573,17 @@ function freezeRecord(value: SkillRecord): SkillRecord {
 
 function cloneRecord(value: SkillRecord): SkillRecord {
   return freezeRecord(structuredClone(value));
+}
+
+function freezeLifecycleEvent(value: SkillLifecycleEvent): SkillLifecycleEvent {
+  return Object.freeze({
+    ...value,
+    evidenceRefs: Object.freeze([...value.evidenceRefs]),
+  });
+}
+
+function cloneLifecycleEvent(value: SkillLifecycleEvent): SkillLifecycleEvent {
+  return freezeLifecycleEvent(structuredClone(value));
 }
 
 function exactKeys(
