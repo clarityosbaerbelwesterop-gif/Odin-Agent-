@@ -8,8 +8,13 @@ import {
 import { routeRequest, routingEvaluation, routingProfile } from "./helpers.js";
 
 function routeForReasoning() {
+  const base = routeRequest();
   return new EmpiricalModelRouter().route(
-    routeRequest({ risk: "high", uncertaintyBps: 7_500 }),
+    routeRequest({
+      budget: { ...base.budget, maxModelCalls: 10 },
+      risk: "high",
+      uncertaintyBps: 7_500,
+    }),
     {
       evaluations: [
         routingEvaluation("provider-a", "base", {
@@ -45,7 +50,10 @@ test("reasoning plan obeys branch critique repair call and parallel ceilings", (
       route.reasoning.repairAttempts <=
       route.reasoning.maxModelCalls,
   );
-  assert.equal(new Set(route.reasoning.branches.map((branch) => branch.id)).size, route.reasoning.branchCount);
+  assert.equal(
+    new Set(route.reasoning.branches.map((branch) => branch.id)).size,
+    route.reasoning.branchCount,
+  );
 });
 
 test("only independent non-contradictory PASS can accept the current result", () => {
