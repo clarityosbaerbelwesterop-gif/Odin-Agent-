@@ -57,10 +57,15 @@ test("failed evidence and self-authored community evidence never promote a candi
     );
   }
 
-  assert.equal(registry.resolveForReview(candidate.package.name, candidate.package.version).lifecycle, "CANDIDATE");
+  assert.equal(
+    registry.resolveForReview(candidate.package.name, candidate.package.version).lifecycle,
+    "CANDIDATE",
+  );
   assert.equal(registry.listAvailableSummaries().length, 0);
   assert.deepEqual(
-    registry.history(candidate.package.name, candidate.package.version).map((event) => event.action),
+    registry
+      .history(candidate.package.name, candidate.package.version)
+      .map((event) => event.action),
     ["REGISTERED"],
   );
 });
