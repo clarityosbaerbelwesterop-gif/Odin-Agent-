@@ -140,7 +140,8 @@ function decodeTask(value: unknown): MissionTaskInput {
     id: boundedString(task.id, "task id", 200),
     title: boundedString(task.title, "task title", 1_000),
   };
-  if (dependsOn !== undefined) return priority === undefined ? { ...result, dependsOn } : { ...result, dependsOn, priority };
+  if (dependsOn !== undefined)
+    return priority === undefined ? { ...result, dependsOn } : { ...result, dependsOn, priority };
   return priority === undefined ? result : { ...result, priority };
 }
 
@@ -164,7 +165,8 @@ function missionState(value: unknown, label: string): MissionState {
 
 function exactKeys(object: Record<string, unknown>, keys: readonly string[], label: string): void {
   const expected = new Set(keys);
-  if (Object.keys(object).length !== expected.size) corrupt(`${label} has an unexpected field count.`);
+  if (Object.keys(object).length !== expected.size)
+    corrupt(`${label} has an unexpected field count.`);
   for (const key of Object.keys(object)) {
     if (!expected.has(key)) corrupt(`${label} contains unknown field ${key}.`);
   }
@@ -193,8 +195,18 @@ function boundedString(value: unknown, label: string, maxLength: number): string
   return text;
 }
 
-function safeInteger(value: unknown, label: string, minimum = 0, maximum = Number.MAX_SAFE_INTEGER): number {
-  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < minimum || value > maximum) {
+function safeInteger(
+  value: unknown,
+  label: string,
+  minimum = 0,
+  maximum = Number.MAX_SAFE_INTEGER,
+): number {
+  if (
+    typeof value !== "number" ||
+    !Number.isSafeInteger(value) ||
+    value < minimum ||
+    value > maximum
+  ) {
     corrupt(`${label} is not a valid safe integer.`);
   }
   return value;
