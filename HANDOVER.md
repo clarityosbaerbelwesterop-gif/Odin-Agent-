@@ -5,38 +5,37 @@ Updated: 2026-09-03.
 ## Current state
 
 - Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).
-- `main` contains verified M0–M8 at M8 merge commit
-  `ce0fdb0454999218d1d1145f406d5165a225e6a8`.
-- Active branch: `agent/m9-client-protocol`; Draft PR #12 targets `main`.
-- M9 implementation is verified on implementation head
-  `bd25f831e6e1ef8f06829802af648469d9d6eb62` by GitHub Actions run `33773644733`.
-- The synchronized M9 documentation checkpoint must receive its own green PR CI before PR #12 is
-  considered merge-ready. The current user request authorizes continued implementation, not merge.
+- `main` contains verified M0–M9 at M9 merge commit
+  `0d47e31fec79b6341be2ced4b0d67df126eeabe4`.
+- Active branch: `agent/m10-skill-lifecycle`; Draft PR #13 targets `main`.
+- M10 implementation is green on head `340d9dea9f3bc45f8185575cbc982a2e3d0fca25` via GitHub Actions
+  run `33777800516`.
+- Roadmap, architecture, security, milestone contract, and handover are synchronized to the verified
+  M10 implementation. One final PR-specific CI result on the synchronized branch head is still required
+  before M10 can be marked fully `VERIFIED` and merged.
+- The user has explicitly authorized merge and continued implementation once the verified gate is
+  satisfied.
 
-## M9 verified capability
+## M10 implemented capability
 
-M9 adds the first client-facing observation/control boundary in `src/client` plus a static responsive
-reference shell in `web`:
+M10 adds `src/skills` as a first-class capability-amplification boundary:
 
-- explicit client protocol version with exact bounded request/response decoders and unknown-field
-  rejection;
-- bounded user-facing mission projections for state/version/objective/focus, tasks, budgets,
-  checkpoint version, durable job counts, and verification evidence references;
-- exact mission/session capability grants with runtime expiry and read/command scope;
-- only `mission.pause`, `mission.resume`, and `mission.cancel` controls, using optimistic mission
-  versions and durable mission-event idempotency rather than arbitrary client mutation;
-- bootstrap plus paged reconnect over M8 lifecycle cursors and a deterministic client reducer;
-- fail-closed replay/tamper/session/mission/version continuity handling while correctly allowing
-  non-consecutive numeric lifecycle cursors caused by other missions;
-- a framework-free responsive HTML/CSS/JS fixture with mission, task, budget, worker, evidence,
-  reconnect, pause/resume, and deliberate cancel-confirmation surfaces;
-- one documented protocol strategy for web and later iOS/iPadOS/macOS/Android clients. Device clients
-  remain observers/controllers and never become canonical long-running mission state.
+- immutable versioned packages with deterministic SHA-256 content identity, provenance, trust class,
+  bounded instructions/tags/tools/test refs, and exact runtime validation;
+- compact discovery without instructions, plus separate full loading only for `VERIFIED`/`ACTIVE`
+  packages;
+- learned/community packages enter as `CANDIDATE` and cannot self-promote;
+- independent passing evidence binds exact name/version/content hash before verification;
+  model/worker/runtime-authored verification cannot promote learned/community packages;
+- trusted activation, deterministic one-active-version supersession, explicit rollback, and revocation;
+- concise immutable lifecycle history for registration, verification, activation, supersession,
+  rollback, and revocation;
+- solved-task synthesis behind an injected runtime attestation creates only learned candidates with
+  exact mission/task provenance and scoped idempotency;
+- skill required-tool declarations do not create M3 tool handlers, capabilities, credentials, host
+  execution, or completion authority.
 
-M9 is a local contract/UI proof. It does **not** provide a public HTTP service, production auth,
-WebSocket/SSE transport, production hosting, push notifications, offline writes, or native binaries.
-
-## M9 evidence
+## M10 evidence
 
 Canonical command:
 
@@ -45,21 +44,35 @@ npm ci
 npm run verify
 ```
 
-The first complete M9 run `33770457545` reached 159/161 tests and exposed that compiled web-asset
-tests resolved `dist/web/index.html` and `dist/web/app.js` while the static fixture had not been staged
-into `dist`. The quality gate was preserved. `scripts/copy-web-assets.mjs` plus a deterministic test
-build step fixed the root cause.
+GitHub Actions run `33777800516` passed on `340d9dea9f3bc45f8185575cbc982a2e3d0fca25` with **172/172
+ tests**, **0 failures**, and aggregate coverage **89.84% lines / 76.97% branches / 95.66% functions**.
+The new skill modules were strongly exercised: registry 96.20% lines / 80.56% branches / 98.28%
+functions; synthesis 97.24% lines / 88.57% branches / 100% functions. Foundation validation, Biome,
+and strict TypeScript passed.
 
-GitHub Actions run `33773644733` then passed on
-`bd25f831e6e1ef8f06829802af648469d9d6eb62` with **161 tests, 161 passes, 0 failures**. Aggregate
-coverage is **89.31% lines, 76.56% branches, and 95.41% functions**. Foundation validation, Biome, and
-strict TypeScript also passed.
+Regression coverage includes compact/progressive discovery, malformed/oversized/conflicting package
+rejection, candidate/revoked denial, exact content-hash verification, failed/self-authored evidence
+denial, trusted activation, supersession, rollback/revocation, immutable audit history, solved-task
+attestation, synthesis replay/conflict handling, and proof that skill tool declarations do not mint M3
+execution authority.
 
-M9 regression coverage includes protocol/version/unknown-field bounds, exact capability scope,
-stale-version denial, command idempotency/conflicting replay, pause/resume/cancel state-machine
-integration, deterministic reconnect across page chunking and SQLite reopen, duplicate/hash/scope
-resync behavior, client-projection privacy assertions, accessible web landmarks, deliberate
-cancellation, DOM text rendering, and absence of live transport or persistent browser state.
+## AGI-bridge architecture mapping
+
+The expanded research direction is incorporated as capability amplification rather than an unsupported
+AGI claim. Existing milestones already provide major pieces: M4/M5 provide test/repair/independent
+verification; M6 provides scoped memory and context compilation; M7 provides bounded specialist
+decomposition; M8 provides durable background-ready mission state; M10 now converts verified solved
+procedures into reusable candidate skills.
+
+Next, M11 should add empirical model routing, quality floors, caching/concurrency policy, bounded
+multi-pass critique/self-correction, and bounded branch search. M12 should add real process/container/
+worktree isolation, outbound-network enforcement, live-provider smoke/evals, load/recovery,
+observability, backups, and release gates. Post-MVP work should productionize hybrid lexical/vector
+memory, post-task learning curation/compression, event-driven scheduler/triggers/background missions,
+and permissioned MCP/Agent-Skills/omnichannel adapters.
+
+These layers may let a small/fast model produce much stronger practical outcomes, but model-level or
+AGI equivalence must be demonstrated empirically rather than asserted from architecture.
 
 ## Earlier verified evidence
 
@@ -71,45 +84,35 @@ cancellation, DOM text rendering, and absence of live transport or persistent br
 - M4 implementation run `33678970596`; documentation run `33679222149`; merge
   `c60ee329d66511dfbd708176c850557d48e9c9df`.
 - M5 implementation run `33724426019` with 77 tests; documentation run `33724647879`.
-- M6 implementation run `33752964771` with 108 tests; documentation run `33753281792`; final
-  evidence run `33753417686`.
+- M6 implementation run `33752964771` with 108 tests; documentation run `33753281792`; final evidence
+  run `33753417686`.
 - M7 implementation run `33755851793` with 132 tests; documentation run `33756217402`.
-- M8 implementation run `33766277108` with 149 tests; synchronized documentation run `33766944528`;
-  merged as `ce0fdb0454999218d1d1145f406d5165a225e6a8`.
+- M8 implementation run `33766277108` with 149 tests; documentation run `33766944528`; merge
+  `ce0fdb0454999218d1d1145f406d5165a225e6a8`.
+- M9 implementation run `33773644733` with 161 tests; synchronized docs run `33774320732`; merge
+  `0d47e31fec79b6341be2ced4b0d67df126eeabe4`.
 
-CI remains deterministic and uses injected provider/tool/worker boundaries and temporary local SQLite
-stores. It performs no live provider call, public network tool write, deployment, production
-migration, production repository mutation, or paid action.
+CI uses injected provider/tool/worker/skill boundaries and temporary local SQLite stores. No live
+provider call, public network write, deployment, production migration, production repository mutation,
+or paid external resource was used for M10.
 
 ## Security and architecture boundaries
 
-- Canonical mission state remains in M2/M8; client state is always a derived projection.
-- Client input, IDs, cursors, and UI content are untrusted and are revalidated at runtime boundaries.
-- Client projections exclude provider keys, credentials, lease bearer tokens, raw repository content,
-  definitions of done, failure signatures, private reasoning, and raw worker exceptions.
-- M3 permission checks and M5 evidence-backed completion remain authoritative; M9 cannot bypass them.
-- M3 repository path guards still do not prove canonical-root/symlink or OS sandbox isolation.
-- M7 logical ownership is still in-process; M8 SQLite durability still does not provide distributed
-  cross-host locks or exactly-once external effects.
-- Public authentication, tenant/device identity, production CSP/security headers, push delivery, and
-  transport security are not implemented by M9.
-
-## Open risks / remaining MVP work
-
-- production worker/process sandbox and real repository/worktree isolation are not implemented;
-- live provider end-to-end smoke is not yet proven;
-- no public service/auth/realtime transport connects the M9 protocol to a hosted client;
-- M6 memory persistence/encryption/retention and artifact byte storage remain future work;
-- server/team PostgreSQL or hosted queue durability, cross-host fencing, backups, HA, and load/recovery
-  hardening remain future milestones;
-- full permissioned skill package lifecycle is M10;
-- empirical model routing/caching/concurrency/cost optimization is M11;
-- release security/load/recovery hardening, observability, and eval gates are M12.
+- M3 remains the only tool execution/capability authority; skill instructions are never grants.
+- M5 remains completion authority; M10 verification does not allow a model or worker to self-certify
+  promotion.
+- M6 memory remains an in-memory contract; no production vector DB/FTS hybrid is claimed.
+- M7 ownership remains logical single-process coordination.
+- M8 durability remains local SQLite; no distributed cross-host fencing or exactly-once external effect
+  is claimed.
+- No production OS/process/container/worktree sandbox, live MCP/Agent-Skills server, browser
+  automation, public service/auth/realtime transport, daemon/scheduler, omnichannel integration, or
+  live-provider E2E is implemented yet.
 
 ## Exact next action
 
-Observe one final PR-specific `npm run verify` result on the synchronized M9 documentation head. If it
-passes and PR #12 remains mergeable, M9 is merge-ready but must not be merged unless a user request
-explicitly authorizes merge at that point. After M9 is merged, branch M10 from the resulting `main`
-head and implement progressively loaded, permissioned, independently tested skill packages without
-weakening M3 policy or allowing learned/community skills to self-promote.
+Delete the failed one-shot M10 documentation helper, observe one final PR-specific `npm run verify` on
+that clean synchronized head, and confirm PR #13 is non-draft/mergeable. If green, mark M10 `VERIFIED`,
+update PR evidence, and squash-merge with exact-head protection under the user's existing authorization.
+Then branch M11 from the resulting `main` and implement empirical adaptive routing/reasoning without
+weakening M3/M5/M6/M7/M8/M10 boundaries.
