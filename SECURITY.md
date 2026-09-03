@@ -1,14 +1,14 @@
 # Security model
 
 Status: design baseline plus implemented M1 provider-boundary, M3 tool-control, M5 verification, M6
-memory/context, and M7 specialist-coordination safeguards.
+memory/context, M7 specialist-coordination, and M8 durable mission/worker safeguards.
 Controls not explicitly identified as implemented remain future work.
 
 ## Protected assets
 
 - provider and integration credentials;
 - user repositories, documents, memory, artifacts, and personal data;
-- mission integrity, budgets, approvals, and audit history;
+- mission integrity, budgets, approvals, durable events, checkpoints, job state, and audit history;
 - execution hosts, network access, connected devices, and external accounts;
 - system-protected skills, policies, and release artifacts.
 
@@ -65,8 +65,8 @@ properties, missing required values, invalid types, and configured bound violati
 
 Side-effecting tools require non-empty idempotency keys. Calls sharing the same mission/task/tool/
 version/key are serialized before execution; a matching replay returns the prior result and a key
-reused with different input fails. Side-effecting handlers are single-attempt in M3 until a later
-worker layer can prove idempotent execution across timeout/crash boundaries.
+reused with different input fails. Side-effecting handlers are single-attempt in M3 until a worker
+boundary can prove idempotent execution across timeout/crash boundaries.
 
 Every handler attempt is bounded by runtime-owned timeout/cancellation and capability-call ceilings.
 Audit records contain mission/task/tool metadata, policy/result classification, attempt/timestamps,
@@ -79,9 +79,9 @@ command IDs. They do not accept arbitrary shell strings or network destinations.
 
 ## Execution and network
 
-Production sandbox/container execution is not implemented in M3. The current repository tools call
-injected workspace and quality-runner interfaces so the control boundary can be tested without host
-execution. Path normalization is defense in depth, not proof of canonical-root or symlink isolation.
+Production sandbox/container execution is not implemented. The current repository tools call injected
+workspace and quality-runner interfaces so the control boundary can be tested without host execution.
+Path normalization is defense in depth, not proof of canonical-root or symlink isolation.
 
 A later execution boundary must run generated commands in ephemeral, resource-limited workspaces with
 explicit filesystem roots, CPU/memory/time/output limits, canonical path checks, and destination-based
@@ -100,7 +100,7 @@ duplicated, or contradictory evidence fails closed.
 
 Adversarial review is a distinct non-mutating interface. Its verdict, findings, repair request, scope,
 and deterministic hash are validated before use; malformed output or reviewer failure becomes a
-blocking result. The M4 orchestrator performs a post-change scoped read and cannot transition to
+blocking result. The coding orchestrator performs a post-change scoped read and cannot transition to
 `COMPLETED` unless verification returns internally consistent `PASS` and `ACCEPT` results. Verdicts
 store concise evidence references and hashes rather than raw source, tool output, or hidden reasoning.
 
@@ -124,8 +124,8 @@ budgets fail closed, sensitive candidates bypass the compile cache, and memory m
 targeted cache invalidation.
 
 Session snapshot hashes detect accidental corruption and bind the snapshot to a mission/event version
-and raw-history reference. They are not signatures. Durable snapshot authentication, access control,
-encryption at rest, retention, and cross-process cache coherence remain unimplemented.
+and raw-history reference. They are not signatures. M8 durability does not automatically make M6
+memory durable; encryption at rest, retention, and cross-process cache coherence remain unimplemented.
 
 ## Implemented M7 specialist-coordination safeguards
 
@@ -146,9 +146,45 @@ injected runtime authority to attest at least one matching passing evidence refe
 reconciliation records the attested IDs. Reconciliation still cannot mark an M2 task verified or a
 mission complete; M5 remains the final claim/evidence completion authority.
 
-M7 locks, plan records, and workers are in memory and single-process. Hashes detect envelope tampering
-but are not signatures. Abort is cooperative, repository claims do not resolve symlinks, and no
-process/container/worktree, durable lease, cross-host fencing, or crash recovery is claimed.
+M7 repository/resource/state ownership remains in-memory and single-process. M8 adds a separate
+durable worker-job lease/fencing contract, but does not convert M7 logical ownership into a durable
+cross-host lock or symlink-safe repository isolation boundary.
+
+## Implemented M8 durable mission and worker safeguards
+
+`src/durable` is a trusted local persistence boundary over Node 24 built-in SQLite. It enables foreign
+keys, WAL, `synchronous=FULL`, a bounded busy timeout, strict tables, and an explicit schema version.
+Unknown newer schema versions fail closed. Database paths are trusted runtime configuration, not model
+output.
+
+Canonical M2 event batches are stored with mission identity, contiguous sequence/aggregate version,
+canonical UTC time, mission-scoped idempotency fingerprint, bounded canonical JSON, and SHA-256 data
+hash. Reopen validates identity, sequence, hash, and event shape rather than skipping corrupt rows.
+Checkpoint JSON is size-bounded and integrity checked. A checkpoint must match its metadata and
+reproduce from canonical mission events before it is accepted. Lower-level checkpoint integrity
+errors are normalized to the durable corruption error boundary.
+
+Durable jobs persist only bounded orchestration metadata and artifact references/hashes. Raw prompts,
+repository contents, credentials, raw worker exceptions, and raw lease tokens are not job metadata.
+Each claim creates an opaque random lease token but stores only its SHA-256 hash. Heartbeat and
+settlement require exact job/mission/task/worker scope, matching fencing generation/token, and an
+unexpired lease. A stale or superseded generation cannot settle after another worker reclaims work.
+
+Retries consume attempts and are bounded. Exhausted work becomes terminal `BLOCKED`. Pending/retry
+cancellation is terminal immediately; running work becomes `CANCELLING`, and cancellation defeats a
+late success proposal. The runner owns timeout, heartbeat, cancellation observation, and settlement;
+handlers receive only an immutable lease/job envelope and `AbortSignal`, not database, policy,
+credential, peer, or mission-completion authority.
+
+Lifecycle events are typed, hash-addressed, mission-scoped, and read by a strictly increasing cursor.
+Tampered lifecycle hashes fail closed. Reconnect/reopen tests prove cursor continuation without
+accepting stale settlement. The 32-job fixture proves bounded local recovery behavior without live
+external I/O.
+
+M8 guarantees neither exactly-once external effects nor distributed correctness. A handler may have
+performed an external side effect before losing its lease; side-effecting M3 tools must still use their
+own idempotency contracts. SQLite is a local single-runtime persistence target, not a hosted queue,
+leader-election system, multi-region service, or cross-host fencing authority.
 
 ## Prompt injection and durable learning
 
@@ -166,20 +202,25 @@ result, side-effect summary, verification, and timestamp. Do not persist private
 store concise decision records and evidence. Memory is namespaced, versioned, exportable, selectively
 deletable, and retention-aware.
 
+Durable job/event records use stable identifiers, typed status, reason codes, hashes, timestamps, and
+artifact references rather than raw prompts or worker exceptions. Lease bearer tokens are never stored
+in plaintext.
+
 ## Threats required in security tests
 
 - prompt injection requesting secrets or durable authority;
 - malicious tool arguments and malformed model JSON;
 - path traversal, symlink escape, and unsafe archive extraction;
 - SSRF, DNS rebinding, redirect bypass, and network exfiltration;
-- secrets in logs, errors, command lines, patches, or artifacts;
+- secrets in logs, errors, command lines, patches, artifacts, or durable job metadata;
 - replayed external writes and duplicated payments/messages/deployments;
-- confused-deputy access across user, tenant, mission, task, or device;
+- stale/superseded worker settlement after lease expiry or recovery;
+- confused-deputy access across user, tenant, mission, task, worker, or device;
 - compromised plugin/skill packages and dependency substitution;
 - privilege escalation through retries, repair loops, or fallback providers;
-- race conditions between cancellation, checkpointing, tools, and completion;
+- race conditions between cancellation, checkpointing, tools, leases, and completion;
 - budget bypass and denial-of-wallet;
-- recovery from tampered or incompatible checkpoints.
+- recovery from tampered/incompatible events, lifecycle rows, or checkpoints.
 
 ## Vulnerability reporting
 
