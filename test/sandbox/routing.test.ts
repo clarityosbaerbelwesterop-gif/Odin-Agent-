@@ -5,12 +5,14 @@ import {
   RoutedSandboxAllocator,
   type SandboxBackendAdapter,
   type SandboxBackendCreateRequest,
+  type SandboxBackendDestroyRequest,
   SandboxBackendRegistry,
   SandboxError,
 } from "../../src/sandbox/index.js";
 
 class RoutedBackend implements SandboxBackendAdapter {
   readonly requests: SandboxBackendCreateRequest[] = [];
+  readonly destroys: SandboxBackendDestroyRequest[] = [];
   readonly #sessionId: string;
 
   constructor(sessionId: string) {
@@ -20,6 +22,10 @@ class RoutedBackend implements SandboxBackendAdapter {
   async create(request: SandboxBackendCreateRequest) {
     this.requests.push(request);
     return { sessionId: this.#sessionId };
+  }
+
+  async destroy(request: SandboxBackendDestroyRequest): Promise<void> {
+    this.destroys.push(request);
   }
 }
 
