@@ -238,3 +238,77 @@ test("skill tool declarations never register handlers or mint execution authorit
     (error: unknown) => error instanceof ToolRuntimeError && error.category === "invalid_input",
   );
 });
+
+test("lifecycle history records promotion, supersession, rollback, verification, and revocation", () => {
+  const registry = new SkillRegistry();
+  const learned = registry.registerCandidate(learnedSkill());
+  registry.verify({
+    contentHash: learned.package.contentHash,
+    evidenceRefs: ["evidence:independent"],
+    name: learned.package.name,
+    observedAt: T1,
+    producerClass: "independent_verifier",
+    status: "PASS",
+    version: learned.package.version,
+  });
+  registry.activate({
+    actor: "trusted_runtime",
+    name: learned.package.name,
+    promotedAt: T2,
+    version: learned.package.version,
+  });
+
+  const learnedHistory = registry.history(learned.package.name, learned.package.version);
+  assert.deepEqual(
+    learnedHistory.map((event) => event.action),
+    ["REGISTERED", "VERIFIED", "ACTIVATED"],
+  );
+  assert.deepEqual(learnedHistory[1].evidenceRefs, ["evidence:independent"]);
+  assert.equal(learnedHistory[1].producerClass, "independent_verifier");
+  assert.throws(() => (learnedHistory[1].evidenceRefs as string[]).push("mutated"), TypeError);
+
+  registry.registerTrusted(projectSkill("1.0.0"));
+  registry.registerTrusted(projectSkill("2.0.0"));
+  registry.activate({
+    actor: "trusted_runtime",
+    name: "coding.safe_patch",
+    promotedAt: T1,
+    version: "1.0.0",
+  });
+  registry.activate({
+    actor: "trusted_runtime",
+    name: "coding.safe_patch",
+    promotedAt: T2,
+    version: "2.0.0",
+  });
+  registry.rollback({
+    actor: "user_approved",
+    name: "coding.safe_patch",
+    promotedAt: T3,
+    version: "1.0.0",
+  });
+  registry.revoke({
+    actor: "user_approved",
+    name: "coding.safe_patch",
+    revokedAt: T3,
+    version: "1.0.0",
+  });
+
+  assert.deepEqual(
+    registry.history("coding.safe_patch").map((event) => event.action),
+    [
+      "REGISTERED",
+      "REGISTERED",
+      "ACTIVATED",
+      "SUPERSEDED",
+      "ACTIVATED",
+      "SUPERSEDED",
+      "ROLLED_BACK",
+      "REVOKED",
+    ],
+  );
+  assert.throws(
+    () => registry.history(undefined, "1.0.0"),
+    (error: unknown) => error instanceof SkillError && error.code === "INVALID_INPUT",
+  );
+});
