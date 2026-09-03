@@ -1,0 +1,72 @@
+# M12-C — Observability, recovery evidence, and release gates
+
+Status: implementation in progress. Updated: 2026-09-03.
+
+## Objective
+
+Complete the no-cost portion of M12 without overstating infrastructure evidence. M12-C turns local
+hardening results into typed, integrity-checked, secret-safe evidence and fails closed when a release
+claim asks for evidence that was not actually produced.
+
+## Evidence classes
+
+M12-C distinguishes three ordered evidence levels:
+
+1. `local` — deterministic repository/CI/local-runtime proof;
+2. `integration` — proof from an explicitly available host/container/service integration;
+3. `live` — proof from explicitly authorized live provider/sandbox/production infrastructure.
+
+Higher-level claims must include all configured lower-level requirements. A `local` record can never be
+relabelled as `integration` or `live` merely because a release wants a stronger claim.
+
+## Structured observability
+
+- typed event kind, severity, reason code, canonical UTC timestamp, mission/task scope, and bounded
+  metadata;
+- deterministic SHA-256 event identity over canonical non-secret fields;
+- no raw credentials, full process environment, private chain-of-thought, or unbounded stdout/stderr;
+- dangerous metadata keys and obvious secret-bearing values fail closed rather than being silently logged;
+- deterministic bounded in-memory sink for local verification and future adapter substitution.
+
+## Release evidence and gate
+
+- immutable evidence records bind exact evidence level, producer, subject, status, timestamp, and
+  content hash;
+- release manifest binds exact commit SHA, configuration profile identity/hash, required evidence IDs,
+  test/evaluation suite identity/hash, and requested claim level;
+- manifest identity is canonical and deterministic;
+- release gate validates hashes, scope, freshness, required evidence kinds/statuses/levels, and exact
+  referenced evidence IDs;
+- missing, stale, foreign, failed, tampered, duplicated, or weaker-than-required evidence blocks;
+- release gate never performs deployment or external side effects.
+
+## Backup/recovery contract
+
+- backup manifests identify source adapter/schema, created timestamp, bounded artifact reference/hash,
+  and integrity metadata;
+- restore verification binds a backup manifest to an independently computed restored-state hash;
+- local backup/recovery evidence must not claim cloud redundancy, point-in-time recovery, or production
+  disaster recovery unless those capabilities are separately integrated and exercised.
+
+## Deterministic load/recovery proof
+
+Tests must cover bounded fixtures for:
+
+- cancellation/timeout/output pressure;
+- sandbox allocation replay, concurrent collapse, release replay, and released-session denial;
+- durable M8 reopen/lease recovery evidence references;
+- bounded observability capacity and deterministic event ordering;
+- tampered release/backup evidence;
+- a local release gate PASS and deliberate higher-level claim BLOCK.
+
+## Out of scope without separate authorization
+
+- live model-provider calls;
+- hosted sandbox calls or paid sandbox creation;
+- production deployment or migration;
+- public traffic/customer data;
+- billing changes;
+- claiming integration/live evidence from local fixtures.
+
+M12-C may finish the **local deterministic** M12 release-proof tranche. Full M12 remains
+`PARTIALLY_VERIFIED` until every live/infrastructure claim required by ROADMAP has matching evidence.
