@@ -1,6 +1,6 @@
 # M11 — Adaptive reasoning, routing, and efficiency
 
-Status: implementation verified; synchronized documentation and final PR CI pending. Updated: 2026-09-03.
+Status: VERIFIED. Updated: 2026-09-03.
 
 ## Objective
 
@@ -124,7 +124,7 @@ model-call budget. The effective model-call budget is itself capped by the expli
 - sensitive or stale-cache work is not cacheable;
 - offline eval fixture compares small/fast and stronger profiles without live provider calls.
 
-## Implementation evidence
+## Verification evidence
 
 GitHub Actions helper verification run `33784031658` passed on the implementation that became clean
 branch head `c70bf2eede8892ba34380d104cd73cefd9aacd2a` with **199 tests, 199 passes, 0 failures**.
@@ -137,8 +137,9 @@ later acceptance review found the missing explicit token ceiling before merge; t
 implemented and exposed a repair-budget ordering defect, which was fixed by reserving repair capacity
 before additional critique. No gate was weakened.
 
-A normal pull-request CI run on the synchronized human-authored documentation head is still required
-before M11 is marked fully `VERIFIED` and merged.
+Normal pull-request CI run `33784322602` passed after the human-authored implementation-evidence
+checkpoint. Fully synchronized Roadmap/Architecture/Security/Handover state then passed normal PR CI
+run `33784732544`. These runs verify the clean branch without relying on the temporary helper workflow.
 
 ## Out of scope
 
@@ -150,5 +151,6 @@ before M11 is marked fully `VERIFIED` and merged.
 - production scheduler/daemon, MCP, browser automation, deployment, or paid resources;
 - M12 process/container/worktree sandbox and live-provider release matrix.
 
-M11 becomes `VERIFIED` only after the routing/reasoning implementation, requirement-derived tests,
-synchronized architecture/security/roadmap/handover, and final pull-request CI all pass.
+M11 is `VERIFIED`: implementation, requirement-derived regressions, synchronized architecture/security/
+roadmap/handover, and normal pull-request CI have passed. Production/live-provider claims remain out of
+scope until separately authorized and exercised.
