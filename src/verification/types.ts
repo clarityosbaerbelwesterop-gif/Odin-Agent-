@@ -64,7 +64,9 @@ export type VerificationFindingCode =
   | "evidence_reused"
   | "evidence_self_authored"
   | "evidence_stale"
-  | "evidence_too_early";
+  | "evidence_too_early"
+  | "evidence_weak_provenance"
+  | "review_invalid";
 
 export interface VerificationFinding {
   readonly code: VerificationFindingCode;
@@ -91,6 +93,7 @@ export interface RepairRequest {
 
 export interface AdversarialReviewResult {
   readonly missionId: string;
+  readonly verificationResultHash: string;
   readonly verdict: ReviewVerdict;
   readonly findings: readonly VerificationFinding[];
   readonly repairRequest?: RepairRequest;
