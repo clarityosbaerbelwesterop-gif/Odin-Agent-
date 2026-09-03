@@ -1,0 +1,37 @@
+name: M12 session type fix
+
+on:
+  push:
+    branches:
+      - agent/m12-production-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Fix exact optional session expiry and remove helper
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('src/sandbox/backend.ts')
+          text = path.read_text()
+          old = '''  const identity = normalizeIdentity(value);\n  return Object.freeze({\n    allocationKey: identifier(value.allocationKey, "allocationKey", 64),\n    backendId: identifier(value.backendId, "backendId"),\n    backendKind: value.backendKind,\n    ...(value.expiresAt === undefined\n      ? {}\n      : { expiresAt: normalizeOptionalTimestamp(value.expiresAt) }),\n    isolation: value.isolation,\n'''
+          new = '''  const identity = normalizeIdentity(value);\n  const expiresAt =\n    value.expiresAt === undefined ? undefined : normalizeOptionalTimestamp(value.expiresAt);\n  return Object.freeze({\n    allocationKey: identifier(value.allocationKey, "allocationKey", 64),\n    backendId: identifier(value.backendId, "backendId"),\n    backendKind: value.backendKind,\n    ...(expiresAt === undefined ? {} : { expiresAt }),\n    isolation: value.isolation,\n'''
+          if old not in text:
+              raise SystemExit('target snippet not found')
+          path.write_text(text.replace(old, new, 1))
+          Path('.github/workflows/m12-session-typefix.yml').unlink()
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/sandbox/backend.ts .github/workflows/m12-session-typefix.yml
+          git commit -m "fix(m12): normalize optional session expiry"
+          git push
