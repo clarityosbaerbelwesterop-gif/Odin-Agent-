@@ -1,8 +1,3 @@
-export {
-  createBackupManifest,
-  createRestoreVerification,
-  verifyBackupRestore,
-} from "./backup.js";
 export type {
   BackupManifest,
   BackupManifestInput,
@@ -11,12 +6,10 @@ export type {
   RestoreVerificationInput,
 } from "./backup.js";
 export {
-  createReleaseEvidence,
-  createReleaseGatePolicy,
-  createReleaseManifest,
-  evaluateReleaseGate,
-  ReleaseProofError,
-} from "./proof.js";
+  createBackupManifest,
+  createRestoreVerification,
+  verifyBackupRestore,
+} from "./backup.js";
 export type {
   EvidenceLevel,
   EvidenceStatus,
@@ -29,4 +22,11 @@ export type {
   ReleaseManifest,
   ReleaseManifestInput,
   ReleaseRequirement,
+} from "./proof.js";
+export {
+  createReleaseEvidence,
+  createReleaseGatePolicy,
+  createReleaseManifest,
+  evaluateReleaseGate,
+  ReleaseProofError,
 } from "./proof.js";

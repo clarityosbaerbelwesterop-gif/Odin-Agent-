@@ -1,9 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  createReleaseGatePolicy,
-  createReleaseManifest,
-} from "../../src/release/index.js";
+import { createReleaseGatePolicy, createReleaseManifest } from "../../src/release/index.js";
 
 const HASH = "a".repeat(64);
 

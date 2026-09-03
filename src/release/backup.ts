@@ -33,14 +33,23 @@ export interface RestoreVerification extends RestoreVerificationInput {
 }
 
 export type RestoreDecision =
-  | { readonly status: "PASS"; readonly backupId: string; readonly manifestHash: string; readonly verificationHash: string }
+  | {
+      readonly status: "PASS";
+      readonly backupId: string;
+      readonly manifestHash: string;
+      readonly verificationHash: string;
+    }
   | { readonly status: "BLOCK"; readonly message: string };
 
 export function createBackupManifest(input: BackupManifestInput): BackupManifest {
   if (typeof input !== "object" || input === null) {
     throw new ReleaseProofError("INVALID", "Backup manifest must be an object.");
   }
-  if (!Number.isSafeInteger(input.schemaVersion) || input.schemaVersion < 1 || input.schemaVersion > 1_000_000) {
+  if (
+    !Number.isSafeInteger(input.schemaVersion) ||
+    input.schemaVersion < 1 ||
+    input.schemaVersion > 1_000_000
+  ) {
     throw new ReleaseProofError("INVALID", "Backup schema version is invalid.");
   }
   const normalized = Object.freeze({
@@ -78,16 +87,25 @@ export function verifyBackupRestore(
     const trustedManifest = normalizeManifest(manifest);
     const trustedVerification = normalizeVerification(verification);
     if (trustedManifest.backupId !== trustedVerification.backupId) {
-      throw new ReleaseProofError("FOREIGN_EVIDENCE", "Restore verification belongs to another backup.");
+      throw new ReleaseProofError(
+        "FOREIGN_EVIDENCE",
+        "Restore verification belongs to another backup.",
+      );
     }
     if (levelRank(trustedVerification.level) < levelRank(trustedManifest.level)) {
-      throw new ReleaseProofError("LEVEL_INSUFFICIENT", "Restore evidence level is weaker than the backup evidence level.");
+      throw new ReleaseProofError(
+        "LEVEL_INSUFFICIENT",
+        "Restore evidence level is weaker than the backup evidence level.",
+      );
     }
     if (Date.parse(trustedVerification.verifiedAt) < Date.parse(trustedManifest.createdAt)) {
       throw new ReleaseProofError("INVALID", "Restore verification predates the backup.");
     }
     if (trustedVerification.restoredStateHash !== trustedManifest.sourceStateHash) {
-      throw new ReleaseProofError("HASH_MISMATCH", "Restored state does not match the backed-up source state.");
+      throw new ReleaseProofError(
+        "HASH_MISMATCH",
+        "Restored state does not match the backed-up source state.",
+      );
     }
     return Object.freeze({
       backupId: trustedManifest.backupId,
@@ -135,7 +153,9 @@ function artifactReference(value: string): string {
 function stableStringify(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map((item) => stableStringify(item)).join(",")}]`;
   if (value !== null && typeof value === "object") {
-    const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) => left.localeCompare(right));
+    const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) =>
+      left.localeCompare(right),
+    );
     return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${stableStringify(item)}`).join(",")}}`;
   }
   return JSON.stringify(value);
@@ -165,7 +185,8 @@ function identifier(value: string, label: string): string {
 }
 
 function canonicalTimestamp(value: string, label: string): string {
-  if (typeof value !== "string") throw new ReleaseProofError("INVALID", `${label} must be a timestamp.`);
+  if (typeof value !== "string")
+    throw new ReleaseProofError("INVALID", `${label} must be a timestamp.`);
   const parsed = Date.parse(value);
   if (!Number.isFinite(parsed) || new Date(parsed).toISOString() !== value) {
     throw new ReleaseProofError("INVALID", `${label} must be canonical UTC.`);

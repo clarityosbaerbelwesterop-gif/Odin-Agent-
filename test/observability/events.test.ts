@@ -70,7 +70,10 @@ test("bounded event buffer retains deterministic newest insertion order and defe
   buffer.append({ ...BASE, reasonCode: "THIRD" });
 
   const events = buffer.list();
-  assert.deepEqual(events.map((event) => event.reasonCode), ["SECOND", "THIRD"]);
+  assert.deepEqual(
+    events.map((event) => event.reasonCode),
+    ["SECOND", "THIRD"],
+  );
   assert.equal(Object.isFrozen(events), true);
   assert.equal(Object.isFrozen(events[0]), true);
   assert.equal(Object.isFrozen(events[0]?.metadata), true);

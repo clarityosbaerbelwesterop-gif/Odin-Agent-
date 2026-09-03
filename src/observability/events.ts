@@ -5,8 +5,10 @@ const MAX_METADATA_TEXT = 512;
 const MAX_IDENTIFIER = 160;
 const MAX_REASON_CODE = 120;
 
-const FORBIDDEN_KEY = /(?:secret|token|password|authorization|credential|cookie|api[_-]?key|private[_-]?key|chain[_-]?of[_-]?thought|reasoning|prompt|stdout|stderr|environment|env)/iu;
-const FORBIDDEN_VALUE = /(?:\bBearer\s+\S+|\bsk-[A-Za-z0-9_-]{8,}|\bgh[pousr]_[A-Za-z0-9]{8,}|\bxox[baprs]-|-----BEGIN [A-Z ]*PRIVATE KEY-----)/u;
+const FORBIDDEN_KEY =
+  /(?:secret|token|password|authorization|credential|cookie|api[_-]?key|private[_-]?key|chain[_-]?of[_-]?thought|reasoning|prompt|stdout|stderr|environment|env)/iu;
+const FORBIDDEN_VALUE =
+  /(?:\bBearer\s+\S+|\bsk-[A-Za-z0-9_-]{8,}|\bgh[pousr]_[A-Za-z0-9]{8,}|\bxox[baprs]-|-----BEGIN [A-Z ]*PRIVATE KEY-----)/u;
 
 export type RuntimeEventSeverity = "info" | "warning" | "error";
 export type RuntimeEventKind =
@@ -118,7 +120,11 @@ function normalizeMetadata(
       throw new ObservabilityError("Runtime event metadata key is invalid or sensitive.");
     }
     if (typeof value === "string") {
-      if (value.length > MAX_METADATA_TEXT || value.includes("\u0000") || FORBIDDEN_VALUE.test(value)) {
+      if (
+        value.length > MAX_METADATA_TEXT ||
+        value.includes("\u0000") ||
+        FORBIDDEN_VALUE.test(value)
+      ) {
         throw new ObservabilityError("Runtime event metadata text is invalid or secret-like.");
       }
       normalized[key] = value;
@@ -180,7 +186,16 @@ function optionalIdentifier(value: string | undefined, label: string): string | 
 }
 
 function isKind(value: string): value is RuntimeEventKind {
-  return ["backup", "network", "process", "provider", "recovery", "release", "sandbox", "security"].includes(value);
+  return [
+    "backup",
+    "network",
+    "process",
+    "provider",
+    "recovery",
+    "release",
+    "sandbox",
+    "security",
+  ].includes(value);
 }
 
 function isSeverity(value: string): value is RuntimeEventSeverity {

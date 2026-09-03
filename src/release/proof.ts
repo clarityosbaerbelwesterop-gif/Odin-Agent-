@@ -101,7 +101,11 @@ export function createReleaseGatePolicy(input: ReleaseGatePolicyInput): ReleaseG
     throw new ReleaseProofError("INVALID", "Release gate policy must be an object.");
   }
   const policyId = identifier(input.policyId, "policyId");
-  if (!Number.isSafeInteger(input.maxEvidenceAgeMs) || input.maxEvidenceAgeMs < 1 || input.maxEvidenceAgeMs > MAX_AGE_MS) {
+  if (
+    !Number.isSafeInteger(input.maxEvidenceAgeMs) ||
+    input.maxEvidenceAgeMs < 1 ||
+    input.maxEvidenceAgeMs > MAX_AGE_MS
+  ) {
     throw new ReleaseProofError("INVALID", "maxEvidenceAgeMs is outside its bound.");
   }
   const requirements = Object.freeze({
@@ -157,7 +161,10 @@ export function evaluateReleaseGate(
       normalizedManifest.policyId !== normalizedPolicy.policyId ||
       normalizedManifest.policyHash !== normalizedPolicy.policyHash
     ) {
-      throw new ReleaseProofError("POLICY_MISMATCH", "Release manifest policy does not match the gate policy.");
+      throw new ReleaseProofError(
+        "POLICY_MISMATCH",
+        "Release manifest policy does not match the gate policy.",
+      );
     }
     const nowMs = Date.parse(canonicalTimestamp(now, "now"));
     const generatedMs = Date.parse(normalizedManifest.generatedAt);
@@ -165,7 +172,10 @@ export function evaluateReleaseGate(
       throw new ReleaseProofError("INVALID", "Release manifest cannot be generated in the future.");
     }
     if (!Array.isArray(evidence) || evidence.length > MAX_EVIDENCE) {
-      throw new ReleaseProofError("INVALID", "Release evidence collection is malformed or too large.");
+      throw new ReleaseProofError(
+        "INVALID",
+        "Release evidence collection is malformed or too large.",
+      );
     }
     const records = new Map<string, ReleaseEvidence>();
     for (const raw of evidence) {
@@ -174,16 +184,26 @@ export function evaluateReleaseGate(
         throw new ReleaseProofError("DUPLICATE_EVIDENCE", "Duplicate release evidence ID.");
       }
       if (!normalizedManifest.evidenceIds.includes(record.evidenceId)) {
-        throw new ReleaseProofError("FOREIGN_EVIDENCE", "Unreferenced evidence was supplied to the release gate.");
+        throw new ReleaseProofError(
+          "FOREIGN_EVIDENCE",
+          "Unreferenced evidence was supplied to the release gate.",
+        );
       }
       if (record.releaseId !== normalizedManifest.releaseId) {
-        throw new ReleaseProofError("FOREIGN_EVIDENCE", "Release evidence belongs to another release.");
+        throw new ReleaseProofError(
+          "FOREIGN_EVIDENCE",
+          "Release evidence belongs to another release.",
+        );
       }
       if (record.status !== "PASS") {
         throw new ReleaseProofError("FAILED_EVIDENCE", "Failed evidence blocks the release claim.");
       }
       const createdMs = Date.parse(record.createdAt);
-      if (createdMs > generatedMs || createdMs > nowMs || nowMs - createdMs > normalizedPolicy.maxEvidenceAgeMs) {
+      if (
+        createdMs > generatedMs ||
+        createdMs > nowMs ||
+        nowMs - createdMs > normalizedPolicy.maxEvidenceAgeMs
+      ) {
         throw new ReleaseProofError("STALE_EVIDENCE", "Release evidence is future-dated or stale.");
       }
       if (record.expiresAt !== undefined && Date.parse(record.expiresAt) <= nowMs) {
@@ -192,13 +212,18 @@ export function evaluateReleaseGate(
       records.set(record.evidenceId, record);
     }
     if (records.size !== normalizedManifest.evidenceIds.length) {
-      throw new ReleaseProofError("MISSING_EVIDENCE", "Manifest evidence references are incomplete.");
+      throw new ReleaseProofError(
+        "MISSING_EVIDENCE",
+        "Manifest evidence references are incomplete.",
+      );
     }
 
     const requirements = normalizedPolicy.requirements[normalizedManifest.claimLevel];
     for (const requirement of requirements) {
       const satisfied = [...records.values()].some(
-        (record) => record.kind === requirement.kind && levelRank(record.level) >= levelRank(requirement.minLevel),
+        (record) =>
+          record.kind === requirement.kind &&
+          levelRank(record.level) >= levelRank(requirement.minLevel),
       );
       if (!satisfied) {
         throw new ReleaseProofError(
@@ -235,7 +260,8 @@ function normalizeEvidenceInput(input: ReleaseEvidenceInput): ReleaseEvidenceInp
   if (typeof input !== "object" || input === null) {
     throw new ReleaseProofError("INVALID", "Release evidence must be an object.");
   }
-  const expiresAt = input.expiresAt === undefined ? undefined : canonicalTimestamp(input.expiresAt, "expiresAt");
+  const expiresAt =
+    input.expiresAt === undefined ? undefined : canonicalTimestamp(input.expiresAt, "expiresAt");
   const createdAt = canonicalTimestamp(input.createdAt, "createdAt");
   if (expiresAt !== undefined && Date.parse(expiresAt) <= Date.parse(createdAt)) {
     throw new ReleaseProofError("INVALID", "Release evidence expiry must follow creation time.");
@@ -257,7 +283,10 @@ function normalizeEvidence(input: ReleaseEvidence): ReleaseEvidence {
   const normalized = normalizeEvidenceInput(input);
   const evidenceHash = hash(input.evidenceHash, "evidenceHash");
   if (evidenceHash !== evidenceHashFor(normalized)) {
-    throw new ReleaseProofError("HASH_MISMATCH", "Release evidence hash does not match its content.");
+    throw new ReleaseProofError(
+      "HASH_MISMATCH",
+      "Release evidence hash does not match its content.",
+    );
   }
   return Object.freeze({ ...normalized, evidenceHash });
 }
@@ -293,7 +322,10 @@ function normalizeManifest(input: ReleaseManifest): ReleaseManifest {
   });
   const manifestHash = hash(input.manifestHash, "manifestHash");
   if (manifestHash !== sha256(stableStringify(normalized))) {
-    throw new ReleaseProofError("HASH_MISMATCH", "Release manifest hash does not match its content.");
+    throw new ReleaseProofError(
+      "HASH_MISMATCH",
+      "Release manifest hash does not match its content.",
+    );
   }
   return Object.freeze({ ...normalized, manifestHash });
 }
@@ -303,13 +335,19 @@ function normalizeRequirements(
   claimLevel: EvidenceLevel,
 ): readonly ReleaseRequirement[] {
   if (!Array.isArray(input) || input.length < 1 || input.length > MAX_REQUIREMENTS) {
-    throw new ReleaseProofError("INVALID", `Requirements for ${claimLevel} are missing or outside bounds.`);
+    throw new ReleaseProofError(
+      "INVALID",
+      `Requirements for ${claimLevel} are missing or outside bounds.`,
+    );
   }
   const normalized = input.map((requirement) => {
     if (typeof requirement !== "object" || requirement === null) {
       throw new ReleaseProofError("INVALID", "Release requirement must be an object.");
     }
-    return Object.freeze({ kind: identifier(requirement.kind, "requirement kind"), minLevel: level(requirement.minLevel) });
+    return Object.freeze({
+      kind: identifier(requirement.kind, "requirement kind"),
+      minLevel: level(requirement.minLevel),
+    });
   });
   normalized.sort((left, right) =>
     left.kind === right.kind
@@ -317,14 +355,23 @@ function normalizeRequirements(
       : left.kind.localeCompare(right.kind),
   );
   if (new Set(normalized.map((item) => item.kind)).size !== normalized.length) {
-    throw new ReleaseProofError("INVALID", "Release requirement kinds must be unique per claim level.");
+    throw new ReleaseProofError(
+      "INVALID",
+      "Release requirement kinds must be unique per claim level.",
+    );
   }
   return Object.freeze(normalized);
 }
 
-function assertLevelSpecificRequirement(requirements: readonly ReleaseRequirement[], claimLevel: EvidenceLevel): void {
+function assertLevelSpecificRequirement(
+  requirements: readonly ReleaseRequirement[],
+  claimLevel: EvidenceLevel,
+): void {
   if (!requirements.some((requirement) => requirement.minLevel === claimLevel)) {
-    throw new ReleaseProofError("INVALID", `Policy claim ${claimLevel} requires at least one ${claimLevel}-level requirement.`);
+    throw new ReleaseProofError(
+      "INVALID",
+      `Policy claim ${claimLevel} requires at least one ${claimLevel}-level requirement.`,
+    );
   }
 }
 
@@ -335,8 +382,14 @@ function assertRequirementSuperset(
 ): void {
   for (const requirement of lower) {
     const candidate = higher.find((item) => item.kind === requirement.kind);
-    if (candidate === undefined || levelRank(candidate.minLevel) < levelRank(requirement.minLevel)) {
-      throw new ReleaseProofError("INVALID", `${higherLevel} requirements must preserve all lower-level requirements.`);
+    if (
+      candidate === undefined ||
+      levelRank(candidate.minLevel) < levelRank(requirement.minLevel)
+    ) {
+      throw new ReleaseProofError(
+        "INVALID",
+        `${higherLevel} requirements must preserve all lower-level requirements.`,
+      );
     }
   }
 }
@@ -355,7 +408,9 @@ function normalizeEvidenceIds(input: readonly string[]): readonly string[] {
 function stableStringify(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map((item) => stableStringify(item)).join(",")}]`;
   if (value !== null && typeof value === "object") {
-    const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) => left.localeCompare(right));
+    const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) =>
+      left.localeCompare(right),
+    );
     return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${stableStringify(item)}`).join(",")}}`;
   }
   return JSON.stringify(value);
@@ -385,7 +440,8 @@ function identifier(value: string, label: string): string {
 }
 
 function canonicalTimestamp(value: string, label: string): string {
-  if (typeof value !== "string") throw new ReleaseProofError("INVALID", `${label} must be a timestamp.`);
+  if (typeof value !== "string")
+    throw new ReleaseProofError("INVALID", `${label} must be a timestamp.`);
   const parsed = Date.parse(value);
   if (!Number.isFinite(parsed) || new Date(parsed).toISOString() !== value) {
     throw new ReleaseProofError("INVALID", `${label} must be canonical UTC.`);

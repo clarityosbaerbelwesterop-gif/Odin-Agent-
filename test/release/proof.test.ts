@@ -4,10 +4,10 @@ import {
   createReleaseEvidence,
   createReleaseGatePolicy,
   createReleaseManifest,
-  evaluateReleaseGate,
-  ReleaseProofError,
   type EvidenceLevel,
+  evaluateReleaseGate,
   type ReleaseEvidenceInput,
+  ReleaseProofError,
 } from "../../src/release/index.js";
 
 const HASH_A = "a".repeat(64);
@@ -70,12 +70,7 @@ function manifest(claimLevel: EvidenceLevel, evidenceIds: readonly string[]) {
 test("local release claim passes only with hash-valid scoped fresh local evidence", () => {
   const local = evidence("ev-local", "repo.verify", "local");
   const release = manifest("local", [local.evidenceId]);
-  const decision = evaluateReleaseGate(
-    release,
-    [local],
-    policy(),
-    "2026-09-03T19:20:30.000Z",
-  );
+  const decision = evaluateReleaseGate(release, [local], policy(), "2026-09-03T19:20:30.000Z");
 
   assert.equal(decision.status, "PASS");
   if (decision.status === "PASS") {
