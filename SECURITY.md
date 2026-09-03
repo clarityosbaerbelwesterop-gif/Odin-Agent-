@@ -1,8 +1,8 @@
 # Security model
 
 Status: design baseline plus implemented M1 provider, M3 tool-control, M5 verification, M6 memory/context,
-M7 specialist coordination, M8 durable mission/worker, M9 client-protocol, and M10 skill-lifecycle
-safeguards. Controls not explicitly identified as implemented remain future work.
+M7 specialist coordination, M8 durable mission/worker, M9 client-protocol, M10 skill-lifecycle, and
+M11 adaptive-routing safeguards. Controls not explicitly identified as implemented remain future work.
 
 ## Protected assets
 
@@ -10,7 +10,7 @@ safeguards. Controls not explicitly identified as implemented remain future work
 - user repositories, documents, memory, artifacts, and personal data;
 - mission integrity, budgets, approvals, durable events, checkpoints, job state, and audit history;
 - execution hosts, network access, connected devices, and external accounts;
-- system-protected skills, policies, and release artifacts.
+- system-protected skills, policies, evaluation records, routing decisions, and release artifacts.
 
 ## Trust boundaries
 
@@ -159,6 +159,35 @@ than unsanitized HTML. It contains no live network transport, cookies, `localSto
 transport security, CSP/security headers, push notifications, device administration, offline writes,
 and native application security remain future work.
 
+## Implemented M11 routing and reasoning safeguards
+
+`src/routing` treats provider profiles, empirical evaluations, route requests, budgets, cache metadata,
+and reasoning evidence as validated runtime inputs. A route is selected only after capability checks,
+fresh independent evaluation evidence, and the effective quality floor are satisfied. Cost and latency
+are optimization criteria only among candidates that already meet the quality requirement.
+
+Evaluation records bind exact provider/model/profile version, task class, and reasoning effort where
+applicable. They are hash-addressed and timestamped. Model-, worker-, and runtime-authored
+self-evaluations cannot establish routing quality. Stale, future, duplicate, conflicting, malformed, or
+hash-tampered evaluation data fails closed rather than silently lowering quality.
+
+Risk and uncertainty can raise the effective quality floor but cannot lower the configured minimum.
+Unknown/mismatched pricing cannot bypass a cost ceiling. Reasoning is bounded by explicit branch,
+critique, repair, model-call, parallel-call, estimated-cost, and estimated-token ceilings. The token
+ceiling derives a stricter effective model-call ceiling; if one estimated call does not fit, execution
+is blocked. When bounded budget permits it, a repair slot is reserved before consuming every remaining
+call on additional critique.
+
+`AdaptiveReasoningController` accepts a result only with independent, non-contradictory PASS evidence.
+Model confidence, majority vote, or critique text cannot complete a task or manufacture M5 evidence.
+Escalation changes only the eligible model/effort route; it cannot mint M3 tool grants, M7 ownership,
+M10 skill promotion, credentials, or additional mission budget.
+
+Routing cache metadata binds request/context/evidence/model/profile/reasoning-policy identity and
+freshness. Sensitive work disables caching. Cache hits never bypass M5 evidence checks. M11's evaluation
+harness is offline and deterministic; no live provider benchmark, production traffic experiment, or
+paid resource is claimed.
+
 ## Prompt injection and skill security
 
 Every context item carries origin/trust metadata. Tool results and external content are data, not
@@ -200,10 +229,12 @@ persistence expands.
 - stale/superseded worker settlement after lease expiry or recovery;
 - stale/conflicting/replayed client controls and confused-deputy client capability scope;
 - compromised plugin/skill packages and dependency substitution;
+- forged, stale, future, self-authored, or tampered model-evaluation evidence;
+- quality-floor downgrade or budget bypass through routing, fallback, retry, critique, repair, or cache;
 - privilege escalation through retries, repair loops, fallback providers, or learned skills;
 - race conditions between cancellation, checkpointing, tools, leases, commands, and completion;
 - budget bypass and denial-of-wallet;
-- recovery from tampered/incompatible events, lifecycle rows, checkpoints, and client pages.
+- recovery from tampered/incompatible events, lifecycle rows, checkpoints, client pages, and routing data.
 
 ## Vulnerability reporting
 
