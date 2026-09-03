@@ -1,6 +1,6 @@
 # M10 — Progressive skill lifecycle and synthesis
 
-Status: implementation verified; synchronized documentation pending final PR CI. Updated: 2026-09-03.
+Status: `VERIFIED`. Updated: 2026-09-03.
 
 ## Objective
 
@@ -130,13 +130,18 @@ These mechanisms can substantially improve reliability, continuity, tool use, an
 small/fast models, but Odin must measure that improvement empirically rather than claiming model-level
 or AGI equivalence without evidence.
 
-## Implementation evidence
+## Verification evidence
 
 GitHub Actions run `33777800516` passed on implementation head
 `340d9dea9f3bc45f8185575cbc982a2e3d0fca25` with **172 tests, 172 passes, 0 failures**. Aggregate
 coverage was **89.84% lines, 76.97% branches, and 95.66% functions**; `src/skills/registry.ts` reached
 96.20% line coverage and `src/skills/synthesis.ts` 97.24%. Foundation validation, Biome, and strict
 TypeScript all passed.
+
+After documentation synchronization and removal of the failed one-shot helper, GitHub Actions run
+`33780349974` passed on clean synchronized head `8170401f33fc97bc537f6ffa3462c102394d03bc`.
+This final PR-specific run verified the same repository gates with the updated architecture/security/
+roadmap/handover state.
 
 The verified regressions cover compact/progressive discovery, malformed/oversized/conflicting package
 rejection, candidate/revoked load denial, exact hash verification, failed/self-authored evidence denial,
@@ -154,5 +159,5 @@ M3 execution authority.
 - autonomous background daemon/scheduler or messaging-channel integrations;
 - live provider calls, production deployment, paid resources, or production migration.
 
-M10 is `VERIFIED` only after this synchronized documentation state also receives green final
-pull-request CI and the merge is performed with exact-head protection.
+M10 is verified at the repository/CI contract boundary. Production sandboxing, public skill transport,
+live-provider behavior, and autonomous background runtime remain explicitly unclaimed.
