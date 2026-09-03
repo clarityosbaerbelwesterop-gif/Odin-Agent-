@@ -8,15 +8,15 @@ Updated: 2026-09-03.
 - `main` contains verified M0–M9 at M9 merge commit
   `0d47e31fec79b6341be2ced4b0d67df126eeabe4`.
 - Active branch: `agent/m10-skill-lifecycle`; Draft PR #13 targets `main`.
-- M10 implementation is green on head `340d9dea9f3bc45f8185575cbc982a2e3d0fca25` via GitHub Actions
-  run `33777800516`.
-- Roadmap, architecture, security, milestone contract, and handover are synchronized to the verified
-  M10 implementation. One final PR-specific CI result on the synchronized branch head is still required
-  before M10 can be marked fully `VERIFIED` and merged.
-- The user has explicitly authorized merge and continued implementation once the verified gate is
-  satisfied.
+- M10 implementation CI passed on `340d9dea9f3bc45f8185575cbc982a2e3d0fca25` via run
+  `33777800516` with 172/172 tests.
+- The clean synchronized documentation head `8170401f33fc97bc537f6ffa3462c102394d03bc` passed final
+  PR-specific CI run `33780349974` after the failed one-shot helper was removed.
+- M10 is repository/CI `VERIFIED`. One last CI run is expected on this evidence-only documentation
+  checkpoint; if it stays green and PR #13 remains mergeable, the user has already authorized an
+  exact-head squash merge and immediate continuation into M11.
 
-## M10 implemented capability
+## M10 verified capability
 
 M10 adds `src/skills` as a first-class capability-amplification boundary:
 
@@ -44,24 +44,24 @@ npm ci
 npm run verify
 ```
 
-GitHub Actions run `33777800516` passed on `340d9dea9f3bc45f8185575cbc982a2e3d0fca25` with **172/172
- tests**, **0 failures**, and aggregate coverage **89.84% lines / 76.97% branches / 95.66% functions**.
-The new skill modules were strongly exercised: registry 96.20% lines / 80.56% branches / 98.28%
-functions; synthesis 97.24% lines / 88.57% branches / 100% functions. Foundation validation, Biome,
-and strict TypeScript passed.
+GitHub Actions run `33777800516` passed with **172/172 tests**, **0 failures**, and aggregate coverage
+**89.84% lines / 76.97% branches / 95.66% functions**. The new skill modules were strongly exercised:
+registry 96.20% lines / 80.56% branches / 98.28% functions; synthesis 97.24% lines / 88.57% branches /
+100% functions. Foundation validation, Biome, and strict TypeScript passed.
 
-Regression coverage includes compact/progressive discovery, malformed/oversized/conflicting package
-rejection, candidate/revoked denial, exact content-hash verification, failed/self-authored evidence
-denial, trusted activation, supersession, rollback/revocation, immutable audit history, solved-task
-attestation, synthesis replay/conflict handling, and proof that skill tool declarations do not mint M3
-execution authority.
+Final synchronized repository CI run `33780349974` passed on
+`8170401f33fc97bc537f6ffa3462c102394d03bc`. Regression coverage includes compact/progressive
+discovery, malformed/oversized/conflicting package rejection, candidate/revoked denial, exact
+content-hash verification, failed/self-authored evidence denial, trusted activation, supersession,
+rollback/revocation, immutable audit history, solved-task attestation, synthesis replay/conflict
+handling, and proof that skill tool declarations do not mint M3 execution authority.
 
 ## AGI-bridge architecture mapping
 
 The expanded research direction is incorporated as capability amplification rather than an unsupported
 AGI claim. Existing milestones already provide major pieces: M4/M5 provide test/repair/independent
 verification; M6 provides scoped memory and context compilation; M7 provides bounded specialist
-decomposition; M8 provides durable background-ready mission state; M10 now converts verified solved
+decomposition; M8 provides durable background-ready mission state; M10 converts verified solved
 procedures into reusable candidate skills.
 
 Next, M11 should add empirical model routing, quality floors, caching/concurrency policy, bounded
@@ -111,8 +111,7 @@ or paid external resource was used for M10.
 
 ## Exact next action
 
-Delete the failed one-shot M10 documentation helper, observe one final PR-specific `npm run verify` on
-that clean synchronized head, and confirm PR #13 is non-draft/mergeable. If green, mark M10 `VERIFIED`,
-update PR evidence, and squash-merge with exact-head protection under the user's existing authorization.
-Then branch M11 from the resulting `main` and implement empirical adaptive routing/reasoning without
-weakening M3/M5/M6/M7/M8/M10 boundaries.
+Observe the PR-specific `npm run verify` result on this final evidence checkpoint. If green and PR #13
+remains mergeable, mark it ready for review and squash-merge with exact-head protection under the
+user's existing authorization. Then branch M11 from the resulting `main` and implement empirical
+adaptive routing/reasoning without weakening M3/M5/M6/M7/M8/M10 boundaries.
