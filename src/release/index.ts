@@ -30,3 +30,15 @@ export {
   evaluateReleaseGate,
   ReleaseProofError,
 } from "./proof.js";
+export type {
+  RecoveryEvidenceInput,
+  RecoveryProof,
+  RecoveryProofInput,
+  RecoveryScenarioKind,
+  RecoveryScenarioResult,
+  RecoveryScenarioStatus,
+} from "./recovery.js";
+export {
+  createRecoveryProof,
+  createRecoveryReleaseEvidence,
+} from "./recovery.js";
