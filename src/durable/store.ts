@@ -321,8 +321,13 @@ export class SqliteDurableStore implements EventStore<MissionEventData>, Durable
     ) {
       throw new DurableStoreCorruptionError("Checkpoint columns disagree with checkpoint JSON.");
     }
-    restoreMissionCheckpoint(parsed, missionId);
-    this.#assertCheckpointMatchesEvents(parsed);
+    try {
+      restoreMissionCheckpoint(parsed, missionId);
+      this.#assertCheckpointMatchesEvents(parsed);
+    } catch (error) {
+      if (error instanceof DurableStoreCorruptionError) throw error;
+      throw new DurableStoreCorruptionError("Checkpoint failed durable integrity validation.");
+    }
     return structuredClone(parsed);
   }
 
