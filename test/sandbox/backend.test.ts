@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   type SandboxBackendAdapter,
   type SandboxBackendCreateRequest,
+  type SandboxBackendDestroyRequest,
   type SandboxBackendRegistration,
   SandboxBackendRegistry,
   SandboxError,
@@ -10,6 +11,7 @@ import {
 
 class RecordingBackend implements SandboxBackendAdapter {
   readonly requests: SandboxBackendCreateRequest[] = [];
+  readonly destroys: SandboxBackendDestroyRequest[] = [];
   readonly #sessionId: string;
 
   constructor(sessionId: string) {
@@ -22,6 +24,25 @@ class RecordingBackend implements SandboxBackendAdapter {
       expiresAt: "2026-09-03T19:00:00.000Z",
       sessionId: this.#sessionId,
     };
+  }
+
+  async destroy(request: SandboxBackendDestroyRequest): Promise<void> {
+    this.destroys.push(request);
+  }
+}
+
+class DeferredBackend extends RecordingBackend {
+  readonly #gate: Promise<void>;
+
+  constructor(sessionId: string, gate: Promise<void>) {
+    super(sessionId);
+    this.#gate = gate;
+  }
+
+  override async create(request: SandboxBackendCreateRequest) {
+    const result = await super.create(request);
+    await this.#gate;
+    return result;
   }
 }
 
@@ -51,6 +72,7 @@ function allocation(
     provider: string;
     model: string;
     profileVersion: string;
+    timeoutMs: number;
   }> = {},
 ) {
   return {
@@ -60,7 +82,7 @@ function allocation(
     provider: overrides.provider ?? "openai",
     signal: new AbortController().signal,
     taskId: "task-sandbox",
-    timeoutMs: 60_000,
+    timeoutMs: overrides.timeoutMs ?? 60_000,
   };
 }
 
@@ -99,9 +121,11 @@ test("exact model profile selects its sandbox backend without exposing credentia
   assert.equal(session.backendId, "remote-a");
   assert.equal(session.backendKind, "remote_api");
   assert.equal(session.isolation, "provider_managed");
+  assert.equal(session.allocationKey.length, 64);
   assert.deepEqual(resolved, ["sandbox/key/openai/gpt-test"]);
   assert.equal(remote.requests.length, 1);
   assert.equal(remote.requests[0]?.credential, "sandbox-secret-value");
+  assert.equal(remote.requests[0]?.idempotencyKey, session.allocationKey);
   assert.equal(JSON.stringify(session).includes("sandbox-secret-value"), false);
   assert.equal(JSON.stringify(session).includes("sandbox/key"), false);
 });
@@ -278,4 +302,116 @@ test("sandbox selection identity is deterministic and does not depend on secret 
   const right = await second.allocate(allocation());
   assert.equal(left.selectionHash, right.selectionHash);
   assert.equal(left.selectionHash.length, 64);
+});
+
+test("exact allocation replay returns one session without a second credential or create call", async () => {
+  const backend = new RecordingBackend("stable-session");
+  let credentialCalls = 0;
+  const registry = new SandboxBackendRegistry(
+    [registration("remote-a", backend)],
+    [
+      {
+        backendId: "remote-a",
+        credentialRef: "sandbox/openai",
+        model: "gpt-test",
+        profileVersion: "profile-v1",
+        provider: "openai",
+      },
+    ],
+    () => {
+      credentialCalls += 1;
+      return "secret";
+    },
+  );
+
+  const first = await registry.allocate(allocation());
+  const replay = await registry.allocate(allocation());
+  assert.deepEqual(replay, first);
+  assert.equal(backend.requests.length, 1);
+  assert.equal(credentialCalls, 1);
+
+  await assert.rejects(
+    registry.allocate(allocation({ timeoutMs: 30_000 })),
+    (error: unknown) => error instanceof SandboxError && error.code === "SESSION_INVALID",
+  );
+});
+
+test("concurrent identical allocations collapse to one provider create operation", async () => {
+  let releaseGate: (() => void) | undefined;
+  const gate = new Promise<void>((resolve) => {
+    releaseGate = resolve;
+  });
+  const backend = new DeferredBackend("shared-session", gate);
+  const registry = new SandboxBackendRegistry(
+    [registration("remote-a", backend)],
+    [
+      {
+        backendId: "remote-a",
+        credentialRef: "sandbox/openai",
+        model: "gpt-test",
+        profileVersion: "profile-v1",
+        provider: "openai",
+      },
+    ],
+    () => "secret",
+  );
+
+  const first = registry.allocate(allocation());
+  const second = registry.allocate(allocation());
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(backend.requests.length, 1);
+  releaseGate?.();
+  const [left, right] = await Promise.all([first, second]);
+  assert.deepEqual(left, right);
+});
+
+test("remote cleanup is scoped, credentialed, idempotent, and prevents released-session reuse", async () => {
+  const backend = new RecordingBackend("cleanup-session");
+  let credentialCalls = 0;
+  const registry = new SandboxBackendRegistry(
+    [registration("remote-a", backend)],
+    [
+      {
+        backendId: "remote-a",
+        credentialRef: "sandbox/openai",
+        model: "gpt-test",
+        profileVersion: "profile-v1",
+        provider: "openai",
+      },
+    ],
+    () => {
+      credentialCalls += 1;
+      return "secret";
+    },
+  );
+  const session = await registry.allocate(allocation());
+
+  assert.equal(
+    await registry.release({
+      reason: "completed",
+      session,
+      signal: new AbortController().signal,
+    }),
+    "RELEASED",
+  );
+  assert.equal(backend.destroys.length, 1);
+  assert.equal(backend.destroys[0]?.credential, "secret");
+  assert.equal(backend.destroys[0]?.sessionId, "cleanup-session");
+  assert.equal(backend.destroys[0]?.idempotencyKey, `release:${session.allocationKey}`);
+  assert.equal(credentialCalls, 2);
+
+  assert.equal(
+    await registry.release({
+      reason: "completed",
+      session,
+      signal: new AbortController().signal,
+    }),
+    "REPLAYED",
+  );
+  assert.equal(backend.destroys.length, 1);
+  assert.equal(credentialCalls, 2);
+  await assert.rejects(
+    registry.allocate(allocation()),
+    (error: unknown) => error instanceof SandboxError && error.code === "SESSION_INVALID",
+  );
 });
