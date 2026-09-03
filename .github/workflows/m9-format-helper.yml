@@ -1,0 +1,34 @@
+name: M9 format helper
+
+on:
+  push:
+    branches:
+      - agent/m9-client-protocol
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx biome check --write src/client test/client
+      - name: Commit deterministic formatting
+        run: |
+          if git diff --quiet -- src/client test/client; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/client test/client
+          git commit -m "style(m9): apply Biome formatting"
+          git push origin HEAD:agent/m9-client-protocol
