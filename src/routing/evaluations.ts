@@ -1,3 +1,4 @@
+import type { ReasoningEffort } from "../providers/types.js";
 import {
   canonicalTimestamp,
   exactKeys,
@@ -16,6 +17,14 @@ import {
 } from "./types.js";
 
 const TASK_CLASSES = new Set<RoutingTaskClass>(["coding", "general", "planning", "research"]);
+const REASONING_EFFORTS = new Set<ReasoningEffort>([
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+]);
 const INDEPENDENT_PRODUCERS = new Set<EvaluationProducerClass>([
   "independent_eval",
   "project_eval",
@@ -67,6 +76,7 @@ export function evaluationContentHash(value: ModelEvaluationInput): string {
     profileVersion: value.profileVersion,
     provider: value.provider,
     qualityScoreBps: value.qualityScoreBps,
+    reasoningEffort: value.reasoningEffort,
     samples: value.samples,
     taskClass: value.taskClass,
   });
@@ -89,6 +99,7 @@ export function normalizeEvaluation(value: unknown): ModelEvaluation {
       "profileVersion",
       "provider",
       "qualityScoreBps",
+      "reasoningEffort",
       "samples",
       "taskClass",
     ],
@@ -118,6 +129,7 @@ function normalizeEvaluationInput(value: unknown): ModelEvaluationInput {
     "profileVersion",
     "provider",
     "qualityScoreBps",
+    "reasoningEffort",
     "samples",
     "taskClass",
   ] as const;
@@ -143,6 +155,8 @@ function normalizeEvaluationInput(value: unknown): ModelEvaluationInput {
   if (!TASK_CLASSES.has(taskClass)) {
     throw new RoutingError("EVALUATION_INVALID", "Evaluation task class is unsupported.");
   }
+
+  const reasoningEffort = normalizeReasoningEffort(object.reasoningEffort);
 
   return Object.freeze({
     id: identifier(object.id, "evaluation id"),
@@ -173,9 +187,18 @@ function normalizeEvaluationInput(value: unknown): ModelEvaluationInput {
       0,
       10_000,
     ),
+    reasoningEffort,
     samples: safeInteger(object.samples, "evaluation samples", 1, 1_000_000),
     taskClass,
   });
+}
+
+function normalizeReasoningEffort(value: unknown): ReasoningEffort | null {
+  if (value === null) return null;
+  if (typeof value !== "string" || !REASONING_EFFORTS.has(value as ReasoningEffort)) {
+    throw new RoutingError("EVALUATION_INVALID", "Evaluation reasoning effort is unsupported.");
+  }
+  return value as ReasoningEffort;
 }
 
 function evaluationSortKey(value: ModelEvaluation): string {
@@ -184,6 +207,7 @@ function evaluationSortKey(value: ModelEvaluation): string {
     value.model,
     value.profileVersion,
     value.taskClass,
+    value.reasoningEffort ?? "none",
     value.observedAt,
     value.id,
   ].join("\u0000");
