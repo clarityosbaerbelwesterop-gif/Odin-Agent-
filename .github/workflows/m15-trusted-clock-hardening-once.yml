@@ -1,0 +1,123 @@
+name: M15 trusted curation clock hardening once
+
+on:
+  push:
+    branches:
+      - agent/m15-curated-capability-pack
+    paths:
+      - .github/workflows/m15-trusted-clock-hardening-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  harden-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m15-curated-capability-pack
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Bind M15 freshness to trusted runtime clock
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          curator = Path('src/capability-packs/curator.ts')
+          text = curator.read_text()
+
+          def replace_once(source, old, new, label):
+              count = source.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected one match, got {count}')
+              return source.replace(old, new, 1)
+
+          text = replace_once(
+              text,
+              '  readonly #policy: CapabilityCurationPolicy;\n',
+              '  readonly #policy: CapabilityCurationPolicy;\n  readonly #clock: () => string;\n',
+              'clock field',
+          )
+          text = replace_once(
+              text,
+              '    policy: Partial<CapabilityCurationPolicy> = {},\n  ) {',
+              '    policy: Partial<CapabilityCurationPolicy> = {},\n    clock: () => string = () => new Date().toISOString(),\n  ) {',
+              'constructor clock parameter',
+          )
+          text = replace_once(
+              text,
+              '    this.#policy = normalizePolicy({ ...DEFAULT_POLICY, ...policy });\n',
+              '    this.#policy = normalizePolicy({ ...DEFAULT_POLICY, ...policy });\n    this.#clock = clock;\n',
+              'clock assignment',
+          )
+          text = replace_once(
+              text,
+              '    const request = normalizeRequest(value, this.#policy);\n',
+              '    const request = normalizeRequest(value, this.#policy);\n    const trustedObservedAt = canonicalTimestamp(this.#clock(), "curation runtime clock");\n    if (Date.parse(request.observedAt) > Date.parse(trustedObservedAt)) {\n      throw new CapabilityCurationError(\n        "INVALID_INPUT",\n        "Curation observedAt cannot be future-dated relative to the runtime clock.",\n      );\n    }\n',
+              'trusted timestamp validation',
+          )
+          text = replace_once(
+              text,
+              '    const evaluationRequest: CapabilityEvaluationRequest = Object.freeze({\n      ...request,\n      novelProcedureKeys,',
+              '    const evaluationRequest: CapabilityEvaluationRequest = Object.freeze({\n      ...request,\n      observedAt: trustedObservedAt,\n      novelProcedureKeys,',
+              'trusted evaluation request timestamp',
+          )
+          text = replace_once(
+              text,
+              '    validateAttestation(attestation, request, record.package.provenance.observedAt, this.#policy);',
+              '    validateAttestation(\n      attestation,\n      evaluationRequest,\n      record.package.provenance.observedAt,\n      this.#policy,\n    );',
+              'trusted attestation validation',
+          )
+          curator.write_text(text)
+
+          test_file = Path('test/capability-packs/curator.test.ts')
+          text = test_file.read_text()
+          occurrences = text.count('new CapabilityCurator(')
+          if occurrences < 5:
+              raise SystemExit(f'curator test constructor count unexpectedly low: {occurrences}')
+          text = text.replace('new CapabilityCurator(', 'makeCurator(')
+          marker = '''class FixtureAuthority {\n  calls = 0;\n  readonly #factory: (request: CapabilityEvaluationRequest) => unknown;\n\n  constructor(factory: (request: CapabilityEvaluationRequest) => unknown) {\n    this.#factory = factory;\n  }\n\n  async evaluate(request: CapabilityEvaluationRequest): Promise<unknown> {\n    this.calls += 1;\n    return this.#factory(request);\n  }\n}\n'''
+          helper = marker + '''\nfunction makeCurator(\n  skills: SkillRegistry,\n  authority: FixtureAuthority,\n  canonicalProcedureKeys: readonly string[],\n  policy: ConstructorParameters<typeof CapabilityCurator>[3] = {},\n) {\n  return new CapabilityCurator(\n    skills,\n    authority,\n    canonicalProcedureKeys,\n    policy,\n    () => T1,\n  );\n}\n'''
+          if text.count(marker) != 1:
+              raise SystemExit('FixtureAuthority marker mismatch')
+          text = text.replace(marker, helper, 1)
+          regression = '''\n\ntest("trusted clock prevents caller timestamps from rescuing stale evaluation evidence", async () => {\n  const skills = new SkillRegistry();\n  const candidate = registerCandidate(skills);\n  const authority = new FixtureAuthority((value) => attestation(value, { evaluatedAt: T0 }));\n  const curator = makeCurator(skills, authority, ["verification.evidence-binding"], {\n    maxEvidenceAgeMs: 1_000,\n  });\n\n  await assert.rejects(\n    () => curator.curate(request(candidate, { observedAt: T0 })),\n    (error: unknown) =>\n      error instanceof CapabilityCurationError && error.code === "EVALUATION_FAILED",\n  );\n  assert.equal(authority.calls, 1);\n  assert.equal(\n    skills.resolveForReview(candidate.package.name, candidate.package.version).lifecycle,\n    "CANDIDATE",\n  );\n\n  await assert.rejects(\n    () =>\n      curator.curate(\n        request(candidate, { observedAt: "2026-09-04T11:00:00.000Z" }),\n      ),\n    (error: unknown) =>\n      error instanceof CapabilityCurationError && error.code === "INVALID_INPUT",\n  );\n  assert.equal(authority.calls, 1);\n});\n'''
+          if 'trusted clock prevents caller timestamps' in text:
+              raise SystemExit('trusted-clock regression already present')
+          test_file.write_text(text.rstrip() + regression + '\n')
+
+          registry_test = Path('test/capability-packs/registry.test.ts')
+          text = registry_test.read_text()
+          occurrences = text.count('new CapabilityCurator(')
+          if occurrences < 2:
+              raise SystemExit(f'registry test constructor count unexpectedly low: {occurrences}')
+          text = text.replace('new CapabilityCurator(', 'makeCurator(')
+          marker = '''class PassingAuthority {\n  async evaluate(request: CapabilityEvaluationRequest): Promise<unknown> {'''
+          if text.count(marker) != 1:
+              raise SystemExit('PassingAuthority marker mismatch')
+          class_end = '''  }\n}\n\nasync function measuredSecuritySkill()'''
+          helper = '''  }\n}\n\nfunction makeCurator(\n  skills: SkillRegistry,\n  authority: PassingAuthority,\n  canonicalProcedureKeys: readonly string[],\n) {\n  return new CapabilityCurator(\n    skills,\n    authority,\n    canonicalProcedureKeys,\n    {},\n    () => T1,\n  );\n}\n\nasync function measuredSecuritySkill()'''
+          if text.count(class_end) != 1:
+              raise SystemExit('PassingAuthority class end mismatch')
+          text = text.replace(class_end, helper, 1)
+          registry_test.write_text(text)
+          PY
+      - name: Format changed TypeScript
+        run: npx biome check --write src/capability-packs/curator.ts test/capability-packs/curator.test.ts test/capability-packs/registry.test.ts
+      - name: Verify complete repository
+        run: npm run verify
+      - name: Remove helper and checkpoint verified hardening
+        run: |
+          git rm .github/workflows/m15-trusted-clock-hardening-once.yml
+          git add src/capability-packs/curator.ts test/capability-packs/curator.test.ts test/capability-packs/registry.test.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(m15): bind curation freshness to trusted runtime clock"
+          git push origin HEAD:agent/m15-curated-capability-pack
