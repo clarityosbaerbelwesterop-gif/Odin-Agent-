@@ -1,0 +1,39 @@
+name: M15 rerun-3 governance sync v2 once
+
+on:
+  push:
+    branches:
+      - agent/m15-kimi-rerun-3
+    paths:
+      - .github/workflows/m15-rerun3-governance-sync-v2-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m15-kimi-rerun-3
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Synchronize governance documents
+        run: node scripts/m15-rerun3-governance-sync.mjs
+      - name: Verify synchronized repository
+        run: npm run verify
+      - name: Commit verified governance sync
+        run: |
+          git rm .github/workflows/m15-rerun3-governance-sync-v2-once.yml scripts/m15-rerun3-governance-sync.mjs
+          git add HANDOVER.md ROADMAP.md ARCHITECTURE.md SECURITY.md docs/milestones/M15_CURATED_CAPABILITY_PACK.md docs/evals/M15_KIMI_CODING_AB_RERUN_3_V2_ANALYSIS.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "docs(m15): synchronize rerun-3 v2 evidence"
+          git push origin HEAD:agent/m15-kimi-rerun-3
