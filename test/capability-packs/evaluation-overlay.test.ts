@@ -34,7 +34,7 @@ test("evaluation overlay adds bounded lower-trust guidance without mutating cano
   const seen = base.requests[0];
   assert.ok(seen);
   assert.equal(seen.model, original.model);
-  assert.equal(seen.responseFormat, original.responseFormat);
+  assert.deepEqual(seen.responseFormat, original.responseFormat);
   assert.equal(seen.maxOutputTokens, original.maxOutputTokens);
   assert.equal(seen.messages.length, original.messages.length + 1);
   assert.deepEqual(seen.messages.slice(0, 2), original.messages);
