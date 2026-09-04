@@ -1,0 +1,46 @@
+name: M16 surgical grounding hardening once
+
+on:
+  push:
+    branches:
+      - agent/m16-surgical-grounding
+    paths:
+      - .github/workflows/m16-surgical-grounding-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  harden-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m16-surgical-grounding
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply surgical grounding patch
+        run: node scripts/m16-surgical-grounding-patch.mjs
+      - name: Format touched code and helper
+        run: npx biome check --write src/runtime/grounded-coding-provider.ts src/capability-packs/live-evidence.ts test/runtime/grounded-coding-provider.test.ts test/capability-packs/live-evidence.test.ts scripts/m16-surgical-grounding-patch.mjs
+      - name: Verify repository
+        run: npm run verify
+      - name: Build repository
+        run: npm run build
+      - name: Credential-free M16 dry suites
+        run: |
+          ODIN_M16_RESULT_PATH=/tmp/m16-output-v2-dry.json node scripts/live-m16-grounded-eval.mjs --dry-run --suite=output
+          ODIN_M16_RESULT_PATH=/tmp/m16-strength-v2-dry.json node scripts/live-m16-grounded-eval.mjs --dry-run --suite=strength
+      - name: Commit verified hardening
+        run: |
+          git rm -f .github/workflows/m16-surgical-grounding-once.yml scripts/m16-surgical-grounding-patch.mjs
+          git add src/runtime/grounded-coding-provider.ts src/capability-packs/live-evidence.ts test/runtime/grounded-coding-provider.test.ts test/capability-packs/live-evidence.test.ts docs/evals/M16_KIMI_GROUNDED_STRENGTH_RUN_5_ANALYSIS.md HANDOVER.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(m16): use surgical grounded coding edits"
+          git push origin HEAD:agent/m16-surgical-grounding
