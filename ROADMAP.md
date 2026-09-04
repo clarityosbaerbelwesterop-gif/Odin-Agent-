@@ -298,10 +298,14 @@ M18 and M19 are not implied complete.
 
 ## M18 — Token efficiency 2.0
 
-- [ ] Context deltas preserve M6 P0–P2 invariants and verification-critical evidence.
-- [ ] Source-bound semantic caching and compact hash-referenced tool results.
-- [ ] Evidence-gated early exit and M11 risk/budget-adaptive reasoning depth.
-- [ ] Held-out offline fixture evidence for at least 50% estimated-context reduction with verifier parity.
+- [x] Context deltas preserve M6 P0–P2 invariants and verification-critical evidence.
+- [x] Source-bound semantic caching and compact hash-referenced tool results.
+- [x] Evidence-gated early exit and M11 risk/budget-adaptive reasoning depth.
+- [x] Held-out offline fixture evidence for at least 50% estimated-context reduction with verifier parity.
+
+M18 local verification passed with 365/365 tests and all configured gates. Its deterministic three-case
+fixture measured 50 versus 5,589 estimated context tokens (99.10% lower) with identical verifier
+outcomes. This does not claim universal savings, provider-billed token reduction, or live-model quality.
 
 ## M19 — Multi-file coding
 
