@@ -96,7 +96,6 @@ const TERMINAL_MEASURED_FAILURE_CODES = new Set([
   "plan_structured_output_missing",
   "plan_target_outside_discovery",
   "provider_context_overflow",
-  "provider_malformed_response",
   "quality_failed_after_repair",
   "repair_expected_sha_mismatch",
   "repair_no_change",
