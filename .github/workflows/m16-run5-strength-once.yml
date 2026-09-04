@@ -1,0 +1,50 @@
+name: M16 authorized Kimi strength run 5 once
+
+on:
+  push:
+    branches:
+      - agent/m16-run5-strength
+    paths:
+      - .github/workflows/m16-run5-strength-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  run5-strength:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m16-run5-strength
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Verify repository before provider access
+        run: npm run verify
+      - name: Build repository before provider access
+        run: npm run build
+      - name: Credential-free strength dry run
+        run: ODIN_M16_RESULT_PATH=/tmp/m16-strength-dry.json node scripts/live-m16-grounded-eval.mjs --dry-run --suite=strength
+      - name: Authorized NVIDIA Kimi K3 strength evaluation
+        env:
+          NV_API_KEY: ${{ secrets.NV_API_KEY }}
+          ODIN_M16_RESULT_PATH: docs/evals/m16-kimi-grounded-strength-run-5.json
+        run: node scripts/live-m16-grounded-eval.mjs --suite=strength
+      - name: Validate sanitized immutable evidence
+        env:
+          NV_API_KEY: ${{ secrets.NV_API_KEY }}
+        run: node -e 'const fs=require("node:fs");const p="docs/evals/m16-kimi-grounded-strength-run-5.json";const r=JSON.parse(fs.readFileSync(p,"utf8"));if(r.provider!=="nvidia"||r.model!=="moonshotai/kimi-k3"||r.suite!=="strength")throw new Error("Unexpected live identity");if(!Array.isArray(r.results)||r.results.length!==4)throw new Error("Expected four strength cases");if(!Number.isSafeInteger(r.providerCalls)||r.providerCalls<1||r.providerCalls>16)throw new Error("Provider call count outside bound");const raw=JSON.stringify(r);if(process.env.NV_API_KEY&&raw.includes(process.env.NV_API_KEY))throw new Error("Credential leaked into evidence");if(/authorization|bearer|nvapi-|api[_-]?key/i.test(raw))throw new Error("Secret-like material in evidence");console.log(JSON.stringify({providerCalls:r.providerCalls,status:r.summary?.status,completePairs:r.summary?.completePairs,tokenMatchedPairs:r.summary?.tokenMatchedPairs}));'
+      - name: Preserve run-5 evidence and remove one-shot workflow
+        run: |
+          git rm .github/workflows/m16-run5-strength-once.yml
+          git add docs/evals/m16-kimi-grounded-strength-run-5.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "eval(m16): preserve authorized Kimi strength run 5"
+          git push origin HEAD:agent/m16-run5-strength
