@@ -135,6 +135,29 @@ test("automatic learning rejects obvious secret-like lesson content regardless o
     (error: unknown) =>
       error instanceof LearningError &&
       error.code === "DENIED" &&
-      /secret-like lesson content/u.test(error.message),
+      /secret-like persistent content/u.test(error.message),
   );
+});
+
+
+test("automatic learning rejects secret-like keys, tags, and source references", async () => {
+  const cases = [
+    { key: "sk-proj-abcdefghijk12345" },
+    { tags: ["repair", "ghp_abcdefghijk12345"] },
+    { sourceReference: "Bearer abcdefghijklmnop" },
+  ] as const;
+
+  for (const overrides of cases) {
+    const curator = new EvidenceLearningCurator(
+      new TamperingAuthority("key"),
+      new InMemoryMemoryStore(),
+    );
+    await assert.rejects(
+      () => curator.recordVerifiedLesson({ ...proposal(), ...overrides }),
+      (error: unknown) =>
+        error instanceof LearningError &&
+        error.code === "DENIED" &&
+        /secret-like persistent content/u.test(error.message),
+    );
+  }
 });

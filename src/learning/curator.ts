@@ -410,23 +410,30 @@ function normalizeProposal(value: unknown): LearningProposal {
       "Post-task learning cannot automatically persist sensitive or preference content.",
     );
   }
+  const key = normalizeKey(object.key);
   const lesson = boundedText(object.lesson, "lesson", MAX_LESSON_LENGTH);
-  if (containsObviousSecret(lesson)) {
+  const sourceReference = boundedText(
+    object.sourceReference,
+    "sourceReference",
+    MAX_REFERENCE_LENGTH,
+  );
+  const tags = normalizeTags(object.tags);
+  if ([key, lesson, sourceReference, ...tags].some(containsObviousSecret)) {
     throw new LearningError(
       "DENIED",
-      "Post-task learning rejects obvious secret-like lesson content.",
+      "Post-task learning rejects obvious secret-like persistent content.",
     );
   }
   return Object.freeze({
     idempotencyKey: identifier(object.idempotencyKey, "idempotencyKey"),
-    key: normalizeKey(object.key),
+    key,
     lesson,
     missionId: identifier(object.missionId, "missionId"),
     observedAt: canonicalTimestamp(object.observedAt, "observedAt"),
     projectId: identifier(object.projectId, "projectId"),
     sensitivity,
-    sourceReference: boundedText(object.sourceReference, "sourceReference", MAX_REFERENCE_LENGTH),
-    tags: Object.freeze(normalizeTags(object.tags)),
+    sourceReference,
+    tags: Object.freeze(tags),
     taskId: identifier(object.taskId, "taskId"),
     userId: identifier(object.userId, "userId"),
   });

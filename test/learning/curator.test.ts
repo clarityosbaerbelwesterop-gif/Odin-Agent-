@@ -24,7 +24,12 @@ function hash(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function identity(request: LearningAttestationRequest): string {
+function identity(
+  request: Pick<
+    LearningAttestationRequest,
+    "missionId" | "projectId" | "taskId" | "userId"
+  >,
+): string {
   return `${request.userId}:${request.projectId}:${request.missionId}:${request.taskId}`;
 }
 
