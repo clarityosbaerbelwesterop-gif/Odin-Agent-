@@ -239,6 +239,16 @@ Static findings cover prompt override, credential collection/exfiltration, downl
 
 Only `COMPLETE + ACCEPT` may become an M10 `community` candidate. M14 forces `requiredTools=[]` and cannot activate the skill, register M3 handlers, mint grants, expose credentials, change budgets/routing, or create M5 completion evidence. M10 independent verification/trusted promotion remains a separate authority boundary. Normal PR run `33858888408` passed 290/290 tests, Biome, strict TypeScript, and the secret-free Kimi dry smoke; aggregate coverage was 89.47% lines / 76.70% branches / 95.84% functions.
 
+### M15 — Curated capability packs and measured procedure intake
+
+`src/capability-packs` adds a lower-authority curation layer above M10. Candidate identity is bound to exact package hash, domain, bounded task classes, runtime-owned procedure keys, context ceilings, and a trusted runtime clock. Fully redundant procedures stop before evaluation. Unknown/self-declared procedure keys, stale/future/foreign evidence, and model/runtime/worker self-evaluation fail closed.
+
+Passing reports are deterministic and hash-addressed. They may produce M10 verification for the exact community candidate but never activation. Progressive packs require the same passing report evidence to match M10 lifecycle history and expose compact metadata only; full instructions still resolve through M10. Offline replay is proposal-only and receives no M3/M5/M6/M10 mutation authority.
+
+The live comparison harness is separate from curation authority. It compares the same Kimi K3 coding cases with and without an evaluation-only candidate overlay, caps provider calls, sanitizes evidence, and records failed/interrupted arms as explicit negative measurements instead of dropping them. This supports task-specific lift measurement; it does not turn an orchestration result into a model benchmark or AGI claim.
+
+Implementation verification helper run `33866236138` passed 319/319 tests with 89.81% line / 77.03% branch / 95.85% function coverage after trusted-clock, procedure-catalog, and A/B failure-evidence hardening. Final normal exact-head CI is still required before merge.
+
 ## Current module map
 
 ```text
@@ -261,6 +271,7 @@ src/
   release/       M12-C backup/recovery proof, release evidence/manifests, fail-closed gates
   learning/      M13 evidence-backed repeated learning, conflict curation, bounded nudges
   skill-intake/  M14 immutable community-skill intake, bounded risk/completeness quarantine
+  capability-packs/ M15 measured procedure curation, progressive packs, proposal-only replay
   security/      shared secret-text and future cross-cutting security primitives
   artifacts/     content-addressed artifact byte/storage layer later
   cli/           user-facing entry point later
@@ -274,7 +285,7 @@ provider path is verified, but hosted sandbox cleanup/isolation, broader live-mo
 service/auth/realtime transport, deployment, and production recovery remain separate proof.
 
 Local CI may never manufacture `integration` or `live` evidence. Any paid resource, deployment, or
-production/public traffic remains separately approval-gated. With M14 implementation verified, the next no-cost capability milestone after merge is M15: evaluate and deduplicate community procedures against Odin's canonical runtime on held-out fixtures, measure output lift/safety/context cost, and promote only measured winners through M10. M15 may propose progressively loaded capability packs but cannot turn external instructions into authority or self-promote them.
+production/public traffic remains separately approval-gated. M15's curation, progressive-pack, and proposal-only replay boundaries are implementation-verified and awaiting normal exact-head CI before merge. After merge, one user-authorized bounded Kimi K3 bare-model-vs-Odin A/B may record task-specific lift; only a passing exact-hash result may become measured M10 verification/pack evidence. Broader provider or public-benchmark claims require their own matched evaluations.
 
 ## Storage and deployment direction
 

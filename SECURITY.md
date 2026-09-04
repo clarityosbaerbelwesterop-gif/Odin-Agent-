@@ -292,6 +292,16 @@ Risk findings use bounded rule identifiers, severity, file/content hashes, and s
 
 Only `COMPLETE + ACCEPT` can be handed to M10 as a `community` candidate with `requiredTools=[]`. M14 cannot activate a skill, register M3 tools, mint grants/approvals, resolve credentials, change routing/budgets, or create completion evidence. M10 independent verification and trusted promotion remain mandatory. Normal PR CI `33858888408` passed 290/290 tests with Biome, strict TypeScript, and secret-free Kimi dry smoke; dedicated regressions cover malformed manifests and nested workflow surfaces.
 
+## Implemented M15 capability-curation safeguards
+
+M15 treats distilled procedures, evaluation output, curation requests, pack metadata, and replay inputs as untrusted data unless a trusted runtime boundary validates them. Curation binds the exact M10 community-candidate hash and lifecycle, one domain, bounded task classes, context ceilings, and runtime-owned procedure keys. A trusted runtime clock—not caller-supplied time—controls evaluation freshness; future caller timestamps and stale-evidence rescue attempts fail closed.
+
+Procedure novelty is not self-declared authority. Requested keys must belong to the canonical runtime procedure set or the runtime-owned additive catalog for the selected domain. Independent PASS evidence must cover every requested task class and preserve quality, safety, authority, token, and latency floors. M15 may verify the exact M10 candidate but never activate it.
+
+Capability packs accept only integrity-valid passing M15 reports whose candidate/domain/task-class identity matches an exact M10 VERIFIED/ACTIVE community member and whose M10 verification history carries the same evidence references at the same evaluation time. Compact pack discovery omits instructions; full resolution remains behind M10 lifecycle checks. Offline replay receives no mutation interface and can only emit bounded recommendations.
+
+The bounded live A/B runner keeps provider credentials in the control plane, caps calls, writes only sanitized evidence, and converts interrupted/failed arms into explicit failing measurements with conservative token accounting instead of allowing missing negative results to bias the comparison. Helper run `33866236138` verified these boundaries with 319/319 tests before checkpointing the hardened implementation.
+
 ## Prompt injection and untrusted-content security
 
 Every context item carries origin/trust metadata. Tool results and external content are data, not

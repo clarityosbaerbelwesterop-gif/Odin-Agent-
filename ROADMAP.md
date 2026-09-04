@@ -213,12 +213,16 @@ Research fixtures pinned for M14/M15: `ComposioHQ/awesome-claude-skills@be2a4069
 
 ## M15 — Curated capability pack and offline improvement evaluation
 
-- [ ] Deduplicate external procedures against canonical Odin M2/M4/M5/M7/M10/M11 behavior instead of stacking redundant prompts.
-- [ ] Evaluate candidate skills with deterministic held-out fixtures for quality, regressions, latency/context cost, authority safety, and task-class usefulness before trusted promotion.
-- [ ] Build progressively loaded domain packs for coding, research, security, data/documents, product/business, and marketing from winners only.
-- [ ] Adapt high-leverage coding discipline (explicit assumptions, simplicity, surgical edits, goal-driven verification) into Odin-owned policy/eval contracts rather than importing it as higher authority.
-- [ ] Add bounded offline sleep/replay proposals that can recommend memory/skill changes but cannot self-promote, rewrite system policy, or manufacture M5 evidence.
-- [ ] Measure output lift against the no-skill baseline and preserve M11 quality floors and token/cost ceilings.
+- [x] Runtime-owned procedure catalogs deduplicate candidate behavior against canonical Odin M2/M4/M5/M7/M10/M11 behavior before evaluation.
+- [x] Exact candidate name/version/content hash, domain, task classes, context bounds, trusted runtime time, and independent evidence are validated fail-closed.
+- [x] Paired held-out curation fixtures enforce quality floors, safety/authority PASS, token/latency ceilings, minimum average lift, deterministic report identity, and no M10 activation.
+- [x] Progressive capability-pack registry accepts only exact VERIFIED/ACTIVE community members whose M10 verification is bound to the same integrity-valid passing M15 evidence; discovery stays compact.
+- [x] Odin-owned coding, research, security, product/business, and marketing procedure drafts preserve existing M3/M5/M6/M10/M11 authorities; unproven data/documents remains absent.
+- [x] Bounded offline replay emits only KEEP/RETEST/COMPRESS/DEDUPLICATE/REVIEW proposals and has no skill, memory, tool, credential, budget, or completion mutation interface.
+- [x] Confirmed hardening regressions cover stale-evidence rescue, future caller timestamps, self-declared procedure novelty, forged/mismatched pack evidence, and fail-closed live A/B arm failures.
+- [ ] Record the first real post-merge bare-model-vs-Odin provider A/B evidence and populate a measured pack only if the candidate passes the same quality/safety/authority gates.
+
+Implementation verification helper run `33866236138` passed **319/319 tests**, Biome, strict TypeScript, and secret-free Kimi dry smoke after the final curation/A-B hardening. Aggregate coverage was **89.81% lines / 77.03% branches / 95.85% functions**. `capability-packs/curator` reached **95.48% / 81.05% / 97.22%**, registry **90.43% / 77.88% / 95.24%**, and replay **92.86% / 89.74% / 100%**. A normal synchronized exact-head PR CI remains required before merge. No distilled candidate is ACTIVE and no broad model-quality claim is made from contract tests.
 
 ## Post-MVP capability track
 
