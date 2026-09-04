@@ -1,0 +1,78 @@
+name: M13 attestation binding helper
+
+on:
+  push:
+    branches:
+      - agent/m13-evidence-learning
+    paths:
+      - .github/workflows/m13-binding-helper.yml
+
+permissions:
+  contents: write
+
+jobs:
+  bind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m13-evidence-learning
+
+      - name: Bind exact learning content to independent evidence
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          function replaceOnce(path, oldText, newText) {
+            const before = fs.readFileSync(path, 'utf8');
+            const count = before.split(oldText).length - 1;
+            if (count !== 1) throw new Error(`${path}: expected one anchor, found ${count}`);
+            fs.writeFileSync(path, before.replace(oldText, newText));
+          }
+
+          replaceOnce(
+            'src/learning/curator.ts',
+            `    const proposal = normalizeProposal(value);\n    const request: LearningAttestationRequest = {\n      missionId: proposal.missionId,\n      projectId: proposal.projectId,\n      taskId: proposal.taskId,\n      userId: proposal.userId,\n    };\n    const attestation = await this.#authority.attestVerifiedTask(request);\n    const verified = validateAttestation(attestation, request, proposal.observedAt);\n    const contentHash = sha256(proposal.lesson);`,
+            `    const proposal = normalizeProposal(value);\n    const contentHash = sha256(proposal.lesson);\n    const request: LearningAttestationRequest = {\n      learningKeyHash: sha256(proposal.key),\n      lessonContentHash: contentHash,\n      missionId: proposal.missionId,\n      projectId: proposal.projectId,\n      sensitivity: proposal.sensitivity,\n      taskId: proposal.taskId,\n      userId: proposal.userId,\n    };\n    const attestation = await this.#authority.attestVerifiedTask(request);\n    const verified = validateAttestation(attestation, request, proposal.observedAt);`,
+          );
+
+          replaceOnce(
+            'src/learning/curator.ts',
+            `    attestation.userId !== expected.userId ||\n    attestation.projectId !== expected.projectId ||\n    attestation.missionId !== expected.missionId ||\n    attestation.taskId !== expected.taskId ||\n    attestation.verdict !== "PASS"\n  ) {\n    throw new LearningError("DENIED", "Learning attestation scope or verdict did not match.");\n  }`,
+            `    attestation.userId !== expected.userId ||\n    attestation.projectId !== expected.projectId ||\n    attestation.missionId !== expected.missionId ||\n    attestation.taskId !== expected.taskId ||\n    attestation.learningKeyHash !== expected.learningKeyHash ||\n    attestation.lessonContentHash !== expected.lessonContentHash ||\n    attestation.sensitivity !== expected.sensitivity ||\n    attestation.verdict !== "PASS"\n  ) {\n    throw new LearningError(\n      "DENIED",\n      "Learning attestation scope, verdict, or exact content binding did not match.",\n    );\n  }\n  if (!isSha256(attestation.learningKeyHash) || !isSha256(attestation.lessonContentHash)) {\n    throw new LearningError("DENIED", "Learning attestation requires SHA-256 content bindings.");\n  }`,
+          );
+
+          replaceOnce(
+            'src/learning/curator.ts',
+            `    evidenceRefs: Object.freeze([...attestation.evidenceRefs]),\n    missionId: attestation.missionId,\n    taskId: attestation.taskId,\n    verificationResultHash: attestation.verificationResultHash,`,
+            `    evidenceRefs: Object.freeze([...attestation.evidenceRefs]),\n    learningKeyHash: attestation.learningKeyHash,\n    lessonContentHash: attestation.lessonContentHash,\n    missionId: attestation.missionId,\n    taskId: attestation.taskId,\n    verificationResultHash: attestation.verificationResultHash,`,
+          );
+
+          replaceOnce(
+            'src/learning/curator.ts',
+            `      evidenceRefs: [...support.evidenceRefs].sort(),\n      missionId: support.missionId,\n      taskId: support.taskId,\n      verificationResultHash: support.verificationResultHash,`,
+            `      evidenceRefs: [...support.evidenceRefs].sort(),\n      learningKeyHash: support.learningKeyHash,\n      lessonContentHash: support.lessonContentHash,\n      missionId: support.missionId,\n      taskId: support.taskId,\n      verificationResultHash: support.verificationResultHash,`,
+          );
+
+          replaceOnce(
+            'test/learning/curator.test.ts',
+            `    evaluatedAt,\n    evidenceRefs: [\`evidence:\${missionId}:\${taskId}\`],\n    missionId,\n    projectId: PROJECT,\n    taskId,\n    userId: USER,\n    verdict: "PASS",\n    verificationResultHash: hash(\`verification:\${missionId}:\${taskId}\`),`,
+            `    evaluatedAt,\n    evidenceRefs: [\`evidence:\${missionId}:\${taskId}\`],\n    learningKeyHash: hash("typescript repair workflow"),\n    lessonContentHash: hash(\n      "Inspect the smallest failing quality gate before proposing a repair.",\n    ),\n    missionId,\n    projectId: PROJECT,\n    sensitivity: "internal",\n    taskId,\n    userId: USER,\n    verdict: "PASS",\n    verificationResultHash: hash(\`verification:\${missionId}:\${taskId}\`),`,
+          );
+
+          replaceOnce(
+            'test/learning/curator.test.ts',
+            `  const proof = attestation(missionId, taskId, observedAt, {\n    projectId: input.projectId,\n    userId: input.userId,\n  });`,
+            `  const proof = attestation(missionId, taskId, observedAt, {\n    learningKeyHash: hash(input.key),\n    lessonContentHash: hash(input.lesson),\n    projectId: input.projectId,\n    sensitivity: input.sensitivity,\n    userId: input.userId,\n  });`,
+          );
+          NODE
+
+      - name: Remove helper and commit
+        run: |
+          rm .github/workflows/m13-binding-helper.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/learning/curator.ts test/learning/curator.test.ts .github/workflows/m13-binding-helper.yml
+          git commit -m "fix(m13): bind lessons to independent evidence"
+          git push
