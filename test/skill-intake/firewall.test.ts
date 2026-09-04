@@ -87,12 +87,10 @@ test("complete safe skill becomes only an M10 community candidate", async () => 
   assert.match(result.candidate.package.provenance.reference, /github:example\/skills@/u);
   assert.equal(resolver.calls, 1);
   assert.deepEqual(tools.listSummaries(), []);
+  const candidate = result.candidate;
+  assert.ok(candidate);
   assert.throws(
-    () =>
-      skills.resolve(
-        result.candidate?.package.name ?? "missing",
-        result.candidate?.package.version,
-      ),
+    () => skills.resolve(candidate.package.name, candidate.package.version),
     (error: unknown) => error instanceof SkillError && error.code === "DENIED",
   );
 });
