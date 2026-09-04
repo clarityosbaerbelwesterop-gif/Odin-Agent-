@@ -173,3 +173,13 @@ green before merge.
 A live capability candidate still requires complete matched provider evidence that satisfies the normal
 M15 quality, safety, authority, token, and latency gates. Incomplete evidence cannot promote a candidate.
 A new live provider rerun requires separate user authorization.
+
+## Third authorized Kimi comparison — v2
+
+Run `33884808665` exercised the three matched coding cases with NVIDIA `moonshotai/kimi-k3` under `m15-kimi-coding-ab-v2`. All preflight gates passed and the live step used 10/12 maximum provider calls. The immutable raw result initially reports INCONCLUSIVE because that runner version marked all thrown errors incomplete.
+
+Review identified an evidence-semantics defect: deterministic terminal task failures were being conflated with interrupted/ambiguous measurements. The repaired contract counts a narrow runtime-owned set of terminal failures as complete negative evidence while keeping transient/ambiguous provider categories incomplete. It does not classify generic `provider_malformed_response` as terminal because that category can represent transport or response-shape ambiguity.
+
+Applied to preserved rerun-3 diagnostics, the defensible result is **PARTIAL** with 2/3 complete pairs. `retry-429-surgical` and `safe-trim-existing-api` are quality 0 vs 0 with 0 bps candidate lift; `canonical-user-id` remains incomplete due to candidate `provider_malformed_response`. Thus `odin-coding-discipline@m15v1` remains unverified/unactivated from live evidence.
+
+A deterministic exact-fixture control then passed all three cases first-pass through Odin M4 tools/quality and M5 verification. Normal PR CI `33888060837` passed 336/336 tests with aggregate coverage 89.99% lines / 77.41% branches / 95.89% functions. The immediate bottleneck is therefore live Kimi/provider plan/repair reliability, not fixture solvability. A fourth live comparison requires new explicit authorization.

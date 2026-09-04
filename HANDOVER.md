@@ -58,3 +58,11 @@ Additional design reference: `NVIDIA/SkillSpector` fail-closed completeness/reso
 - Models/workers/skills/replay cannot mint credentials, capabilities, approval, budgets, quality evidence, trusted policy, or lifecycle promotion.
 - External skills are discovery/candidate inputs only; Odin-owned distilled procedures must still pass M15 held-out evaluation before trusted registration/use.
 - No secrets in commits/logs/artifacts. The consumed rerun authorization does not cover another live provider action.
+
+## M15 rerun-3 v2 evidence update — 2026-09-04
+
+Third authorized NVIDIA/Kimi K3 live run `33884808665` completed under `m15-kimi-coding-ab-v2` after repository verify, build, and credential-free dry-run gates passed. It used 10/12 maximum provider calls. The immutable raw artifact remains `docs/evals/m15-kimi-coding-ab-rerun-3-v2.json` and its separate interpretation is `docs/evals/M15_KIMI_CODING_AB_RERUN_3_V2_ANALYSIS.md`.
+
+Post-run review found that the old wrapper marked every thrown task failure incomplete. The hardened semantics distinguish ambiguous/infrastructure interruption from deterministic terminal task failure. Applied conservatively to the preserved diagnostics, rerun 3 is **PARTIAL**: two matched pairs are complete terminal failures at quality 0 vs 0 / lift 0, while `canonical-user-id` stays incomplete because the candidate ended in ambiguous `provider_malformed_response`. No M10 verification, activation, capability-pack inclusion, public benchmark claim, or AGI/Astra/Fable claim follows.
+
+An offline exact-fixture control proves the three coding fixtures themselves are solvable through the same Odin M4 repository/quality path and M5 completion authority when supplied one valid structured plan. Normal PR CI `33888060837` passed 336/336 tests, Biome, strict TypeScript, and secret-free Kimi dry smoke; aggregate coverage was 89.99% lines / 77.41% branches / 95.89% functions. This shifts the next engineering priority toward live Kimi/provider structured-output and plan/repair reliability, not weaker quality gates or more candidate prompt text. PR #23 remains merge-approval-gated and no fourth live provider run is authorized.
