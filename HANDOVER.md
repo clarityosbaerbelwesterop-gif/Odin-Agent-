@@ -6,10 +6,9 @@ Updated: 2026-09-04.
 
 - Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).
 - `main` contains verified M0–M12; active work is M13 on `agent/m13-evidence-learning`, Draft PR #18.
-- M13 implementation head after replay/maintenance hardening: `6165114201d151240125ec890b3560b631f6502b`.
-- Implementation verification run `33852005166`: 272/272 tests, Biome PASS, strict TypeScript PASS, dry Kimi smoke PASS, 89.42% line / 76.50% branch / 95.67% function coverage.
-- No temporary M13 helper workflow remains after the implementation commit. Documentation is synchronized before the final normal exact-head PR CI.
-- M12 remains partially verified for hosted-sandbox/public-production claims; do not spend money, create paid resources, deploy production, or repeat live-provider calls without explicit authorization.
+- M13 corrected implementation verification run `33852005166`: 272/272 tests, Biome PASS, strict TypeScript PASS, dry Kimi smoke PASS, 89.42% line / 76.50% branch / 95.67% function coverage.
+- Final exact-head verification run `33855048506` passed on `f494075efbfcc24717bbc061d2af9858b960f116` after synchronized milestone evidence. No temporary M13 helper workflow remains. PR #18 is merge-ready under the user's standing merge approval.
+- M12 remains partially verified for hosted-sandbox/public-production claims; do not spend money, create paid resources, deploy production, or repeat live-provider calls without explicit authorization. The user has explicitly authorized one additional bounded Kimi K3 comparison run after the curated skill work is actually integrated.
 
 ## M13 capability
 
@@ -27,14 +26,17 @@ Five user-supplied repositories were reviewed as immutable research snapshots, n
 - `anthropics/claude-plugins-official@1dd995193ba20bba51ca6c681aa8d3398dbd80a2` — official marketplace reference with repository/path/ref/commit SHA and explicit skill subsets, while warning users not to assume third-party plugins are safe.
 - `coreyhaines31/marketingskills@5cd4a7eae3a9a7b5d2aceb0613f7d1f7c4b65968` — strong domain workflows for product context, CRO, copy, SEO/AEO, pricing, launch, analytics, sales and recurring marketing loops; shared product context and disagreement/council patterns map well to M6/M7/M11.
 
+Additional security research: `NVIDIA/SkillSpector` uses bounded multi-stage scanning and explicitly distinguishes static/partial analysis from a full clean result. Odin will adapt the fail-closed ideas, not install or copy the scanner as a dependency.
+
 No third-party code from these repositories was executed or copied into Odin during this review.
 
 ## Next milestones
 
-1. Obtain final normal exact-head `npm run verify` for synchronized M13 PR #18, update evidence status, then squash-merge under the user's standing merge approval.
+1. Squash-merge verified PR #18 exactly at `f494075efbfcc24717bbc061d2af9858b960f116` under the user's standing merge approval.
 2. Create fresh M14 branch from merged `main`: **Skill Intake Firewall**. Discover broadly, resolve mutable refs to exact commits, scan bounded manifests/scripts/hooks/MCP/config content without executing it, emit explicit completeness/risk findings, quarantine partial scans, and hand only fully analyzed community candidates to M10.
 3. M15: **Curated Capability Pack + offline improvement evaluation**. Deduplicate candidate procedures against Odin's canonical runtime, evaluate output lift/safety/context cost on held-out fixtures, then promote only measured winners through M10. Add bounded offline sleep/replay proposals that cannot self-promote.
-4. Keep future scheduler/triggers/background missions and permissioned MCP/Agent-Skills adapters as separate no-cost milestones before public production deployment.
+4. After M15 winners are integrated, run one separately bounded NVIDIA/Kimi K3 A/B comparison workflow using the existing repository secret and sanitized evidence only. Do not infer broad model superiority from one fixture.
+5. Keep future scheduler/triggers/background missions and permissioned MCP/Agent-Skills adapters as separate no-cost milestones before public production deployment.
 
 ## Standing boundaries
 
