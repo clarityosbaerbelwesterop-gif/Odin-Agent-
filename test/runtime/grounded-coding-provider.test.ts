@@ -1,16 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { MissionDomainError } from "../../src/mission/runtime.js";
+import type { ModelRequest } from "../../src/providers/types.js";
 import {
   CODING_PLAN_SCHEMA,
   CODING_REPAIR_SCHEMA,
   planPrompt,
-  repairPrompt,
   type RepositoryDiscovery,
   type RepositoryFileEvidence,
+  repairPrompt,
 } from "../../src/runtime/coding-contract.js";
 import { GroundedCodingProvider } from "../../src/runtime/grounded-coding-provider.js";
-import type { ModelRequest } from "../../src/providers/types.js";
 import { modelResponse, ScriptedProvider } from "./coding-fixtures.js";
 
 const OBJECTIVE = "Canonicalize selectUserId using the existing helper.";
@@ -66,6 +66,19 @@ function planRequest(repository: RepositoryDiscovery): ModelRequest {
   };
 }
 
+function responseFormatName(request: ModelRequest | undefined): string | undefined {
+  return request?.responseFormat?.type === "json_schema" ? request.responseFormat.name : undefined;
+}
+
+function requestText(request: ModelRequest | undefined): string {
+  if (request === undefined) return "";
+  return request.messages
+    .flatMap((message) => (message.role === "tool" ? [] : message.content))
+    .filter((part) => part.type === "text")
+    .map((part) => (part.type === "text" ? part.text : ""))
+    .join("\n");
+}
+
 test("grounded planning removes model-owned SHA/task metadata and rebinds trusted values", async () => {
   const inner = new ScriptedProvider([
     modelResponse(
@@ -83,16 +96,12 @@ test("grounded planning removes model-owned SHA/task metadata and rebinds truste
   const response = await provider.generate(request);
   assert.equal(inner.requests.length, 1);
   const sent = inner.requests[0];
-  assert.equal(sent?.responseFormat?.name, "odin_grounded_coding_plan_v1");
+  assert.equal(responseFormatName(sent), "odin_grounded_coding_plan_v1");
   assert.ok((sent?.maxOutputTokens ?? 10_000) < 3_072);
-  const sentText = sent?.messages
-    .flatMap((message) => message.content)
-    .filter((part) => part.type === "text")
-    .map((part) => (part.type === "text" ? part.text : ""))
-    .join("\n");
-  assert.equal(sentText?.includes(TARGET_SHA), false);
-  assert.equal(sentText?.includes("packageJson"), false);
-  assert.equal(sentText?.includes("expectedSha"), false);
+  const sentText = requestText(sent);
+  assert.equal(sentText.includes(TARGET_SHA), false);
+  assert.equal(sentText.includes("packageJson"), false);
+  assert.equal(sentText.includes("expectedSha"), false);
 
   const output = response.structuredOutput as Record<string, unknown>;
   const change = output.change as Record<string, unknown>;
@@ -105,7 +114,7 @@ test("grounded planning removes model-owned SHA/task metadata and rebinds truste
   assert.deepEqual(task.definitionOfDone, [OBJECTIVE]);
   assert.equal(task.priority, 10);
   assert.match(String(task.id), /^change-[a-f0-9]{20}$/u);
-  assert.equal(request.responseFormat?.name, "odin_m4_coding_plan");
+  assert.equal(responseFormatName(request), "odin_m4_coding_plan");
 });
 
 test("grounded repair asks only for replacement content and restores runtime path plus SHA", async () => {
@@ -149,14 +158,10 @@ test("grounded repair asks only for replacement content and restores runtime pat
 
   const response = await provider.generate(request);
   const sent = inner.requests[0];
-  assert.equal(sent?.responseFormat?.name, "odin_grounded_coding_repair_v1");
-  const sentText = sent?.messages
-    .flatMap((message) => message.content)
-    .filter((part) => part.type === "text")
-    .map((part) => (part.type === "text" ? part.text : ""))
-    .join("\n");
-  assert.equal(sentText?.includes(TARGET_SHA), false);
-  assert.equal(sentText?.includes("failureSignature"), false);
+  assert.equal(responseFormatName(sent), "odin_grounded_coding_repair_v1");
+  const sentText = requestText(sent);
+  assert.equal(sentText.includes(TARGET_SHA), false);
+  assert.equal(sentText.includes("failureSignature"), false);
   assert.deepEqual(response.structuredOutput, {
     content: FIXED_CONTENT,
     expectedSha: TARGET_SHA,
