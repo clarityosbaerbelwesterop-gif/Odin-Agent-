@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import type { SkillPackage, SkillRecord } from "../skills/types.js";
+import type { SkillLifecycleEvent, SkillPackage, SkillRecord } from "../skills/types.js";
+import { hasValidCapabilityCurationReportHash } from "./report-integrity.js";
 import type { CapabilityCurationReport, CapabilityDomain } from "./types.js";
 
 export interface CapabilityPackMemberInput {
@@ -42,6 +43,7 @@ export interface CapabilityPackSummary {
 }
 
 export interface CapabilityPackSkillRegistry {
+  history(name?: string, version?: string): readonly SkillLifecycleEvent[];
   resolve(name: string, version: string): SkillPackage;
   resolveForReview(name: string, version: string): SkillRecord;
 }
@@ -96,10 +98,10 @@ export class CapabilityPackRegistry {
       invalid("Trusted curation report collection is malformed.");
     }
     for (const report of trustedReports) {
-      if (report.decision !== "PASS" || report.reportHash !== curationReportHash(report)) {
+      if (!isSemanticallyValidPassingReport(report)) {
         throw new CapabilityPackError(
           "DENIED",
-          "Capability packs accept only hash-valid passing trusted curation reports.",
+          "Capability packs accept only integrity-valid passing M15 curation reports.",
         );
       }
       const existing = this.#reports.get(report.reportHash);
@@ -147,10 +149,22 @@ export class CapabilityPackRegistry {
       if (record.package.contentHash !== member.contentHash) {
         throw new CapabilityPackError("CONFLICT", "Pack member content hash does not match M10.");
       }
+      if (record.package.trustClass !== "community") {
+        throw new CapabilityPackError(
+          "DENIED",
+          "M15 measured capability packs accept community candidates only.",
+        );
+      }
       if (record.lifecycle !== "VERIFIED" && record.lifecycle !== "ACTIVE") {
         throw new CapabilityPackError(
           "DENIED",
           "Pack members must already be M10 VERIFIED or ACTIVE.",
+        );
+      }
+      if (!hasMatchingMeasuredVerification(this.#skills, member, report)) {
+        throw new CapabilityPackError(
+          "DENIED",
+          "Pack member M10 verification is not bound to the same M15 measurement evidence.",
         );
       }
 
@@ -239,6 +253,52 @@ export class CapabilityPackRegistry {
   }
 }
 
+function hasMatchingMeasuredVerification(
+  skills: CapabilityPackSkillRegistry,
+  member: CapabilityPackMemberInput,
+  report: CapabilityCurationReport,
+): boolean {
+  if (report.evaluatedAt === null) return false;
+  const expectedEvidence = [...report.evidenceRefs].sort();
+  return skills.history(member.name, member.version).some(
+    (event) =>
+      event.action === "VERIFIED" &&
+      event.contentHash === member.contentHash &&
+      event.to === "VERIFIED" &&
+      event.occurredAt === report.evaluatedAt &&
+      event.producerClass !== null &&
+      equalStrings([...event.evidenceRefs].sort(), expectedEvidence),
+  );
+}
+
+function isSemanticallyValidPassingReport(report: CapabilityCurationReport): boolean {
+  if (
+    report.decision !== "PASS" ||
+    report.evaluatedAt === null ||
+    report.cases.length === 0 ||
+    report.evidenceRefs.length === 0 ||
+    report.novelProcedureKeys.length === 0 ||
+    report.reasons.length !== 0 ||
+    !hasValidCapabilityCurationReportHash(report)
+  ) {
+    return false;
+  }
+  if (report.cases.some((entry) => !entry.passed)) return false;
+  if (report.totalLiftBps !== report.cases.reduce((sum, entry) => sum + entry.liftBps, 0)) {
+    return false;
+  }
+  const caseEvidence = uniqueSorted(report.cases.map((entry) => entry.evidenceRef));
+  if (!equalStrings(caseEvidence, [...report.evidenceRefs].sort())) return false;
+  const reportClasses = new Set(report.taskClasses);
+  const caseClasses = new Set(report.cases.map((entry) => entry.taskClass));
+  return (
+    reportClasses.size === report.taskClasses.length &&
+    report.taskClasses.length > 0 &&
+    [...reportClasses].every((taskClass) => caseClasses.has(taskClass)) &&
+    [...caseClasses].every((taskClass) => reportClasses.has(taskClass))
+  );
+}
+
 function normalizePackInput(value: unknown, limits: CapabilityPackLimits): CapabilityPackInput {
   const object = objectValue(value, "capability pack");
   exactKeys(object, ["domain", "id", "members", "version"], "capability pack");
@@ -283,24 +343,6 @@ function normalizeMember(value: unknown): CapabilityPackMemberInput {
   });
 }
 
-function curationReportHash(report: CapabilityCurationReport): string {
-  const body = {
-    candidate: report.candidate,
-    candidateContextBytes: report.candidateContextBytes,
-    cases: report.cases,
-    decision: report.decision,
-    domain: report.domain,
-    evaluatedAt: report.evaluatedAt,
-    evidenceRefs: report.evidenceRefs,
-    novelProcedureKeys: report.novelProcedureKeys,
-    procedureKeys: report.procedureKeys,
-    reasons: report.reasons,
-    taskClasses: report.taskClasses,
-    totalLiftBps: report.totalLiftBps,
-  };
-  return stableHash(body);
-}
-
 function normalizeLimits(value: CapabilityPackLimits): CapabilityPackLimits {
   return Object.freeze({
     maxContextBytes: safeInteger(value.maxContextBytes, "pack maxContextBytes", 1, 1_048_576),
@@ -315,6 +357,14 @@ function normalizedIdentifiers(value: unknown, label: string, maximum: number): 
   const result = value.map((entry) => identifier(entry, label)).sort();
   if (new Set(result).size !== result.length) invalid(`${label} collection contains duplicates.`);
   return Object.freeze(result);
+}
+
+function uniqueSorted(values: readonly string[]): readonly string[] {
+  return [...new Set(values)].sort();
+}
+
+function equalStrings(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function sha256(value: unknown, label: string): string {
