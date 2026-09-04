@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createLiveAbExecutionProfile,
+  createLiveProviderCallCounter,
   M15_KIMI_CODING_AB_PROFILE,
 } from "../../src/capability-packs/live-profile.js";
 
@@ -67,4 +68,25 @@ test("live profile rejects unsafe ceilings and malformed identity", () => {
     () => createLiveAbExecutionProfile({ ...valid, temperature: Number.NaN }),
     TypeError,
   );
+});
+
+test("live provider call counter charges every attempted call and blocks the next one", () => {
+  const counter = createLiveProviderCallCounter(2);
+
+  assert.equal(counter.limit, 2);
+  assert.equal(counter.value, 0);
+  assert.equal(counter.consume(), 1);
+  assert.equal(counter.value, 1);
+  assert.equal(counter.consume(), 2);
+  assert.equal(counter.value, 2);
+  assert.throws(() => counter.consume(), RangeError);
+  assert.equal(counter.value, 2);
+  assert.equal(Object.isFrozen(counter), true);
+});
+
+test("live provider call counter rejects malformed ceilings", () => {
+  assert.throws(() => createLiveProviderCallCounter(0), TypeError);
+  assert.throws(() => createLiveProviderCallCounter(-1), TypeError);
+  assert.throws(() => createLiveProviderCallCounter(1.5), TypeError);
+  assert.throws(() => createLiveProviderCallCounter(Number.MAX_SAFE_INTEGER + 1), TypeError);
 });
