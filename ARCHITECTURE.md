@@ -251,6 +251,8 @@ Implementation verification helper run `33866236138` passed 319/319 tests with 8
 
 Authorized post-merge run `33870210502` attempted three matched NVIDIA Kimi K3 coding cases with ten provider calls. Every baseline and candidate arm was incomplete, leaving zero complete matched pairs. The raw sanitized evidence is therefore INCONCLUSIVE and cannot establish candidate lift, pack eligibility, model superiority, or AGI-level capability. Post-run evidence semantics treat zero complete pairs as INCONCLUSIVE rather than numeric zero lift and expose only bounded non-secret failure categories.
 
+Second authorized run `33879714040` used nine calls and again produced zero complete pairs. Bounded diagnostics localize every failure to `provider_timeout`: candidate-overlay arms timed out on their first model call before mutation, while baseline arms completed planning, produced a non-accepting mutation, and timed out on the second repair call. This exposed a harness defect because the v1 provider timeout and candidate latency acceptance ceiling were both 180000 ms. A runtime-owned v2 execution profile now binds measurement timeout separately from acceptance (240000 vs 180000 ms), requires at least 30000 ms measurement headroom, binds `high` reasoning and temperature 1, and includes the profile version in live evidence identity. Offline run `33882837781` verified this profile with 329/329 tests and a credential-free A/B dry run; it made no live provider request.
+
 ## Current module map
 
 ```text
@@ -287,7 +289,7 @@ provider path is verified, but hosted sandbox cleanup/isolation, broader live-mo
 service/auth/realtime transport, deployment, and production recovery remain separate proof.
 
 Local CI may never manufacture `integration` or `live` evidence. Any paid resource, deployment, or
-production/public traffic remains separately approval-gated. M15's curation, progressive-pack, and proposal-only replay boundaries are merged and verified. The first authorized post-merge Kimi K3 comparison attempt is preserved as INCONCLUSIVE because no matched arm pair completed; it creates no M10 verification or pack evidence. Another live provider run requires separate user authorization, and broader provider or public-benchmark claims require their own complete matched evaluations.
+production/public traffic remains separately approval-gated. M15's curation, progressive-pack, and proposal-only replay boundaries are merged and verified. Both authorized post-merge Kimi K3 comparison attempts are preserved as INCONCLUSIVE because no matched arm pair completed; neither creates M10 verification or pack evidence. The v2 measurement profile is offline-verified but not live-verified. A third live provider run requires new explicit user authorization, and broader provider or public-benchmark claims require their own complete matched evaluations.
 
 ## Storage and deployment direction
 

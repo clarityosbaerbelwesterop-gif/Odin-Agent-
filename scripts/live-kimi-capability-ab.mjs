@@ -3,7 +3,9 @@ import { writeFile } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
 import {
   CandidateEvaluationProvider,
+  createLiveProviderCallCounter,
   M15_DISTILLED_CAPABILITY_DRAFTS,
+  M15_KIMI_CODING_AB_PROFILE,
 } from "../dist/src/capability-packs/index.js";
 import {
   classifyLiveFailure,
@@ -23,10 +25,23 @@ import { ToolRuntime } from "../dist/src/tools/runtime.js";
 import { IndependentVerificationEngine } from "../dist/src/verification/engine.js";
 import { FixtureWorkspace } from "../dist/test/runtime/coding-fixtures.js";
 
-const MODEL = "moonshotai/kimi-k3";
+const PROFILE = M15_KIMI_CODING_AB_PROFILE;
+const MODEL = PROFILE.model;
 const RESULT_PATH = process.env.ODIN_M15_AB_RESULT_PATH ?? "m15-kimi-coding-ab.json";
-const MAX_PROVIDER_CALLS = 12;
-const MAX_CALLS_PER_ARM_CASE = 2;
+const MAX_PROVIDER_CALLS = PROFILE.maxProviderCalls;
+const MAX_CALLS_PER_ARM_CASE = PROFILE.maxCallsPerArmCase;
+
+function executionProfileEvidence() {
+  return {
+    acceptanceLatencyMs: PROFILE.acceptanceLatencyMs,
+    maxCallsPerArmCase: PROFILE.maxCallsPerArmCase,
+    maxProviderCalls: PROFILE.maxProviderCalls,
+    profileVersion: PROFILE.profileVersion,
+    providerTimeoutMs: PROFILE.providerTimeoutMs,
+    reasoningEffort: PROFILE.reasoningEffort,
+    temperature: PROFILE.temperature,
+  };
+}
 
 const CASES = Object.freeze([
   Object.freeze({
@@ -278,6 +293,7 @@ async function main() {
       },
       caseIds: CASES.map((entry) => entry.id),
       configured: true,
+      executionProfile: executionProfileEvidence(),
       maxProviderCalls: MAX_PROVIDER_CALLS,
       model: MODEL,
       provider: "nvidia",
@@ -294,7 +310,7 @@ async function main() {
   }
   const registry = capabilityRegistry(observedAt);
   registry.resolve("nvidia", MODEL);
-  const callCounter = { value: 0 };
+  const callCounter = createLiveProviderCallCounter(MAX_PROVIDER_CALLS);
   const rawProvider = new NvidiaProvider({
     capabilities: registry,
     credential: ({ model, provider }) => {
@@ -303,7 +319,7 @@ async function main() {
       }
       return key;
     },
-    defaultTimeoutMs: 180_000,
+    defaultTimeoutMs: PROFILE.providerTimeoutMs,
     reasoningParameter: "reasoning_effort",
   });
   const baseProvider = {
@@ -311,12 +327,19 @@ async function main() {
     callCounter,
     capabilities: (model) => rawProvider.capabilities(model),
     generate: async (request, options) => {
-      callCounter.value += 1;
-      if (callCounter.value > MAX_PROVIDER_CALLS) throw new Error("M15 A/B call ceiling exceeded.");
-      return rawProvider.generate({ ...request, reasoningEffort: "max", temperature: 1 }, options);
+      callCounter.consume();
+      return rawProvider.generate(
+        { ...request, reasoningEffort: PROFILE.reasoningEffort, temperature: PROFILE.temperature },
+        options,
+      );
     },
-    stream: (request, options) =>
-      rawProvider.stream({ ...request, reasoningEffort: "max", temperature: 1 }, options),
+    stream: (request, options) => {
+      callCounter.consume();
+      return rawProvider.stream(
+        { ...request, reasoningEffort: PROFILE.reasoningEffort, temperature: PROFILE.temperature },
+        options,
+      );
+    },
   };
 
   const cases = [];
@@ -351,13 +374,14 @@ async function main() {
         verification: candidateRun.verification,
       },
       caseId: caseSpec.id,
+      executionProfileVersion: PROFILE.profileVersion,
     };
     cases.push({
       baseline: measured(baseline),
       candidate: measured(candidateRun),
       evidenceRef: `m15:kimi:${caseSpec.id}:${stableHash(evidencePayload).slice(0, 32)}`,
       id: caseSpec.id,
-      maxCandidateLatencyMs: 180_000,
+      maxCandidateLatencyMs: PROFILE.acceptanceLatencyMs,
       maxCandidateTokens: 8_000,
       requiredQualityBps: 8_500,
       taskClass: "coding-change",
@@ -413,6 +437,7 @@ async function main() {
   const sanitized = {
     attestation,
     candidateSources: draft.sourceRefs,
+    executionProfile: executionProfileEvidence(),
     model: MODEL,
     provider: "nvidia",
     providerCalls: callCounter.value,

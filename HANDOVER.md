@@ -5,13 +5,17 @@ Updated: 2026-09-04.
 ## Current state
 
 - Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).
-- `main` contains verified M0–M15 at merge commit `30bcab22f6129925b704fff0d024ca40e472b06c`.
-- Active work: PR #21 on `agent/m15-kimi-postmerge-evidence`, preserving and interpreting the authorized post-merge Kimi K3 A/B evidence and hardening future live-comparison diagnostics.
-- Authorized post-merge live run `33870210502` completed its workflow with **10/12** maximum provider calls across three matched coding cases. All six baseline/candidate arms recorded `measurementComplete=false`, so there are **0 complete matched pairs** and the result is **INCONCLUSIVE**, not measured zero lift.
-- Raw sanitized evidence remains in `docs/evals/m15-kimi-coding-ab.json` at commit `42f9f28`; interpretation is recorded separately in `docs/evals/M15_KIMI_CODING_AB_ANALYSIS.md` so the historical evidence is not rewritten after the fact.
-- No M15 coding candidate is promoted or activated from that run. No Kimi/Astra/Fable/AGI capability claim follows from incomplete task-specific evidence.
-- PR #21 adds deterministic `MEASURED`/`PARTIAL`/`INCONCLUSIVE` summary semantics plus bounded secret-safe live failure codes. Helper run `33878406947` passed **325/325 tests**, Biome, strict TypeScript, secret-free Kimi dry smoke, and **89.87% / 77.08% / 95.87%** aggregate line/branch/function coverage. Exact-head normal PR CI `33878909210` passed on `382e44d4170c5e2c3c74b922172dc6e366d26caa` before this documentation-only authorization checkpoint.
-- The user explicitly authorized **merging PR #21 and running one second bounded NVIDIA/Kimi K3 matched A/B comparison** on 2026-09-04. The rerun must use the corrected harness, same provider/model/task-class identity, the existing `NV_API_KEY` GitHub Actions secret boundary, and the existing 12-call hard ceiling. This approval does not authorize broader benchmark sweeps, paid hosted sandboxes, production deployment, or candidate activation.
+- `main` contains verified M0–M15 plus PR #21 post-run evidence hardening at merge commit `02d80898cd10416c0198007280aca7447bbb7573`.
+- Active work: `agent/m15-kimi-rerun-2`, preserving the second authorized Kimi K3 A/B evidence and hardening the live measurement profile before any future provider run.
+- Second authorized live run `33879714040` completed successfully at the workflow level and used **9/12** maximum provider calls across the same three matched coding cases. All three matched pairs remain incomplete, so the result is **INCONCLUSIVE** with null quality/lift.
+- Every arm ended with bounded diagnostic `ProviderError / provider_timeout`. Candidate arms used one call, timed out at about 180 seconds, and made no target mutation. Baseline arms used two calls, mutated the target after planning, failed deterministic acceptance, and timed out during repair.
+- Raw sanitized rerun evidence is preserved at `docs/evals/m15-kimi-coding-ab-rerun-2.json`; interpretation is recorded in `docs/evals/M15_KIMI_CODING_AB_RERUN_2_ANALYSIS.md`. No M10 verification, pack population, activation, public benchmark claim, or AGI/model-superiority claim follows from either incomplete run.
+- Review found a measurement-design defect: v1 used the same 180000 ms value for provider timeout and candidate latency acceptance, making a slow arm unmeasurable at the latency boundary. Offline hardening separates measurement timeout from acceptance in a versioned runtime-owned profile.
+- Verified profile `m15-kimi-coding-ab-v2`: acceptance latency 180000 ms, provider measurement timeout 240000 ms, minimum 30000 ms headroom, 2 calls per arm, 12 total calls, `high` reasoning, temperature 1. Evidence identity includes the profile version and sanitized output exposes bounded profile metadata.
+- One-shot profile hardening run `33882837781` passed **329/329 tests**, Biome, strict TypeScript, build, secret-free Kimi dry smoke, and a credential-free A/B dry profile; aggregate coverage **89.92% lines / 77.25% branches / 95.88% functions**. No live provider request occurred in this hardening run.
+- Adversarial diff review found that the A/B wrapper charged `generate()` but not `stream()` against the total provider-call budget. Run `33883857442` verified a shared fail-closed call counter for both paths with **331/331 tests**, aggregate coverage **89.95% lines / 77.30% branches / 95.89% functions**, `live-profile` coverage **96.97% / 95.83% / 100%**, build, and credential-free A/B dry-run PASS. No live provider request occurred.
+- The automatic exact-head CI created by the bot-authored hardening commit was `action_required` with no jobs, so this factual handover checkpoint is intentionally user-authored to trigger the required normal PR CI rather than treating helper CI as a substitute.
+- The previous authorization for one second Kimi live rerun has been consumed. A third live provider comparison requires new explicit user authorization. PR merge also remains separately approval-gated.
 - M12 remains partially verified for hosted-sandbox/public-production claims. No production deployment, paid resource, migration, billing change, or public traffic is authorized by this work.
 
 ## M14 capability
@@ -36,15 +40,16 @@ Seven pinned source repositories remain immutable discovery/research inputs, not
 
 Additional design reference: `NVIDIA/SkillSpector` fail-closed completeness/resource-bound ideas; no dependency or copied scanner code.
 
-## M15 post-merge evidence and repair plan
+## M15 current evidence and next gate
 
-1. Preserve the raw authorized run `33870210502` unchanged and classify its result correctly from recorded evidence: zero complete matched pairs means `INCONCLUSIVE`.
-2. Harden future live evidence so incomplete arms cannot produce a false numeric zero-lift conclusion; emit only bounded non-secret diagnostic codes for failures.
-3. Keep the hardening behind normal PR `npm run verify`; helper verification is supporting evidence, never a substitute for exact-head PR CI.
-4. Keep ROADMAP/ARCHITECTURE/SECURITY/M15 milestone/HANDOVER synchronized with the observed run and its inconclusive interpretation.
-5. Do not promote or activate `odin-coding-discipline` from incomplete evidence.
-6. User approval now permits exactly one corrected rerun after PR #21 merges. Use the same NVIDIA `moonshotai/kimi-k3`, same coding task class, same matched baseline/candidate protocol, existing secret boundary, and configured provider-call ceiling. Preserve the new result separately and classify it only from complete matched evidence.
-7. Use the same matched A/B protocol for other provider/model identities later only under separately authorized live-provider scope. Architectural reliability gains may transfer across models; measured lift magnitude must be re-established per model/profile/task class.
+1. Preserve both raw live attempts unchanged. Run `33870210502` and rerun `33879714040` each have zero complete matched pairs and remain `INCONCLUSIVE`.
+2. Keep `odin-coding-discipline` unverified/unactivated from live evidence until a complete matched comparison passes normal M15 quality, safety, authority, token, and latency gates.
+3. Keep execution-profile identity part of future evidence; v1 incomplete results must not be numerically combined with v2 results.
+4. Use `m15-kimi-coding-ab-v2` for any future explicitly authorized Kimi comparison: 180000 ms acceptance, 240000 ms measurement timeout, `high` reasoning, 12-call hard ceiling shared by generate/stream.
+5. Obtain a normal exact-head PR `npm run verify` on the current user-authored head. Helper runs are supporting evidence, not a merge substitute.
+6. Do not merge the current PR without explicit merge authorization.
+7. Do not issue a third live provider request without new explicit user authorization. If approved later, preserve the result separately and classify it only from complete matched evidence.
+8. Re-establish measured lift separately for every provider/model/profile/task class; architectural reliability mechanisms may transfer, numeric lift does not.
 
 ## Standing boundaries
 
@@ -52,4 +57,4 @@ Additional design reference: `NVIDIA/SkillSpector` fail-closed completeness/reso
 - M3 remains execution/capability authority; M5 remains completion/evidence authority; M10 remains skill promotion authority; M11 quality floors remain monotonic.
 - Models/workers/skills/replay cannot mint credentials, capabilities, approval, budgets, quality evidence, trusted policy, or lifecycle promotion.
 - External skills are discovery/candidate inputs only; Odin-owned distilled procedures must still pass M15 held-out evaluation before trusted registration/use.
-- No secrets in commits/logs/artifacts. The current live approval covers one bounded Kimi K3 rerun only.
+- No secrets in commits/logs/artifacts. The consumed rerun authorization does not cover another live provider action.
