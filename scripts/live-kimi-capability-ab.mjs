@@ -86,8 +86,8 @@ const CASES = Object.freeze([
 ]);
 
 class CaseQualityRunner {
-  readonly #workspace;
-  readonly #caseSpec;
+  #workspace;
+  #caseSpec;
 
   constructor(workspace, caseSpec) {
     this.#workspace = workspace;
@@ -129,7 +129,7 @@ function capabilityRegistry(observedAt) {
       provenance: {
         kind: "provider",
         observedAt,
-        reference: "https://docs.api.nvidia.com/nim/reference/moonshotai-kimi-k3-infer",
+        reference: "https://docs.api.nvidia.com/nim/reference/moonshotai/kimi-k3-infer",
       },
       version: "nvidia-build-2026-09-04",
     },
@@ -326,8 +326,18 @@ async function main() {
       requiredQualityBps: 8_500,
       taskClass: "coding-change",
       sanitized: {
-        baseline: { ...evidencePayload.baseline, latencyMs: baseline.latencyMs, providerCalls: baseline.providerCalls, totalTokens: measured(baseline).totalTokens },
-        candidate: { ...evidencePayload.candidate, latencyMs: candidateRun.latencyMs, providerCalls: candidateRun.providerCalls, totalTokens: measured(candidateRun).totalTokens },
+        baseline: {
+          ...evidencePayload.baseline,
+          latencyMs: baseline.latencyMs,
+          providerCalls: baseline.providerCalls,
+          totalTokens: measured(baseline).totalTokens,
+        },
+        candidate: {
+          ...evidencePayload.candidate,
+          latencyMs: candidateRun.latencyMs,
+          providerCalls: candidateRun.providerCalls,
+          totalTokens: measured(candidateRun).totalTokens,
+        },
       },
     });
   }
