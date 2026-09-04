@@ -5,9 +5,9 @@ Updated: 2026-09-04.
 ## Current state
 
 - Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).
-- `main` contains verified M0–M12; active work is M13 on `agent/m13-evidence-learning`, Draft PR #18.
+- `main` contains verified M0–M12; active work is M13 on `agent/m13-evidence-learning`, PR #18.
 - M13 corrected implementation verification run `33852005166`: 272/272 tests, Biome PASS, strict TypeScript PASS, dry Kimi smoke PASS, 89.42% line / 76.50% branch / 95.67% function coverage.
-- Final exact-head verification run `33855048506` passed on `f494075efbfcc24717bbc061d2af9858b960f116` after synchronized milestone evidence. No temporary M13 helper workflow remains. PR #18 is merge-ready under the user's standing merge approval.
+- Final exact-head verification run `33855541802` passed on `24f490a54fb61005e74c8789eed0c77a222d49e8` after synchronized milestone and handover evidence. No temporary M13 helper workflow remains. PR #18 is merge-ready under the user's standing merge approval.
 - M12 remains partially verified for hosted-sandbox/public-production claims; do not spend money, create paid resources, deploy production, or repeat live-provider calls without explicit authorization. The user has explicitly authorized one additional bounded Kimi K3 comparison run after the curated skill work is actually integrated.
 
 ## M13 capability
@@ -32,7 +32,7 @@ No third-party code from these repositories was executed or copied into Odin dur
 
 ## Next milestones
 
-1. Squash-merge verified PR #18 exactly at `f494075efbfcc24717bbc061d2af9858b960f116` under the user's standing merge approval.
+1. Squash-merge verified PR #18 exactly at `24f490a54fb61005e74c8789eed0c77a222d49e8` under the user's standing merge approval.
 2. Create fresh M14 branch from merged `main`: **Skill Intake Firewall**. Discover broadly, resolve mutable refs to exact commits, scan bounded manifests/scripts/hooks/MCP/config content without executing it, emit explicit completeness/risk findings, quarantine partial scans, and hand only fully analyzed community candidates to M10.
 3. M15: **Curated Capability Pack + offline improvement evaluation**. Deduplicate candidate procedures against Odin's canonical runtime, evaluate output lift/safety/context cost on held-out fixtures, then promote only measured winners through M10. Add bounded offline sleep/replay proposals that cannot self-promote.
 4. After M15 winners are integrated, run one separately bounded NVIDIA/Kimi K3 A/B comparison workflow using the existing repository secret and sanitized evidence only. Do not infer broad model superiority from one fixture.
