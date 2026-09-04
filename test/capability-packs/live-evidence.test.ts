@@ -145,14 +145,6 @@ test("terminal model outcomes remain measurable while infrastructure interruptio
     classifyLiveFailure(new BudgetExceededError("outputTokens")),
     classifyLiveFailure(
       new ProviderError({
-        category: "malformed_response",
-        message: "opaque provider response detail",
-        provider: "fixture",
-        retryable: false,
-      }),
-    ),
-    classifyLiveFailure(
-      new ProviderError({
         category: "context_overflow",
         message: "opaque context detail",
         provider: "fixture",
@@ -168,6 +160,7 @@ test("terminal model outcomes remain measurable while infrastructure interruptio
     "aborted",
     "authentication",
     "invalid_request",
+    "malformed_response",
     "network",
     "permission",
     "quota",
@@ -205,6 +198,36 @@ test("terminal model outcomes remain measurable while infrastructure interruptio
     isTerminalLiveMeasurementFailure({ errorClass: "MissionDomainError", errorCode: "" }),
     false,
   );
+});
+
+test("rerun-3 terminal diagnostics yield partial zero-lift evidence without upgrading ambiguity", () => {
+  const terminal = (errorClass: string, errorCode: string) =>
+    arm(isTerminalLiveMeasurementFailure({ errorClass, errorCode }), 0);
+  const summary = summarizeLiveComparisons([
+    {
+      baseline: terminal("MissionDomainError", "quality_failed_after_repair"),
+      candidate: terminal("ProviderError", "provider_malformed_response"),
+    },
+    {
+      baseline: terminal("MissionDomainError", "quality_failed_after_repair"),
+      candidate: terminal("MissionDomainError", "plan_expected_sha_mismatch"),
+    },
+    {
+      baseline: terminal("MissionDomainError", "quality_failed_after_repair"),
+      candidate: terminal("MissionDomainError", "repair_no_change"),
+    },
+  ]);
+
+  assert.deepEqual(summary, {
+    averageLiftBps: 0,
+    baselineQualityBps: 0,
+    candidateQualityBps: 0,
+    cases: 3,
+    completePairs: 2,
+    incompletePairs: 1,
+    status: "PARTIAL",
+    totalLiftBps: 0,
+  });
 });
 
 test("unknown categories and malformed error classes fail into bounded buckets", () => {
