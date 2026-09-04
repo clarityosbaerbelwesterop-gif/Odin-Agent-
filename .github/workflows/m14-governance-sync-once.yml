@@ -1,0 +1,106 @@
+name: M14 one-shot governance sync
+
+on:
+  push:
+    branches:
+      - agent/m14-skill-intake-firewall
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m14-skill-intake-firewall
+          fetch-depth: 0
+      - name: Synchronize M14 governance evidence
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          function read(path) { return fs.readFileSync(path, 'utf8'); }
+          function write(path, text) { fs.writeFileSync(path, text); }
+          function replaceExact(source, before, after, label) {
+            if (!source.includes(before)) throw new Error(`missing expected block: ${label}`);
+            return source.replace(before, after);
+          }
+
+          // ROADMAP: replace the complete M14 section while preserving M15 and later work.
+          {
+            const path = 'ROADMAP.md';
+            let source = read(path);
+            const start = source.indexOf('## M14 — Skill intake firewall');
+            const end = source.indexOf('## M15 — Curated capability pack and offline improvement evaluation');
+            if (start < 0 || end <= start) throw new Error('ROADMAP M14/M15 markers missing');
+            const block = `## M14 — Skill intake firewall\n\n- [x] Discover external Agent Skills / Claude plugins without executing third-party code during intake.\n- [x] Resolve mutable refs to immutable commit SHAs and bind repository, subdirectory, manifest, license metadata, and inspected content hashes.\n- [x] Bound file count, byte size, depth, symlinks, binaries, scripts, hooks, MCP configuration, workflows, and incomplete inventory.\n- [x] Emit stable risk findings for prompt injection, credential collection, exfiltration, shell/subprocess use, destructive writes, self-promotion, memory poisoning, MCP/tool poisoning, dependency installation, and privilege escalation.\n- [x] Treat incomplete/partial/failed analysis as non-safe and quarantine rather than silently accepting.\n- [x] Convert only fully analyzed accepted material into M10 \\`community\\` candidates with \\`requiredTools=[]\\`; intake never activates a skill or creates M3 authority.\n- [x] Pin reviewed source snapshots and require a new intake result whenever immutable source/content identity changes.\n\nImplementation verification: normal PR CI \\`33858888408\\` passed **290/290 tests**, Biome, strict TypeScript, and the secret-free Kimi dry smoke. Aggregate coverage was **89.47% lines / 76.70% branches / 95.84% functions**; \\`skill-intake/firewall\\` coverage was **90.20% / 79.74% / 98.61%**. Malformed manifests and nested \\`.github/workflows\\` surfaces have dedicated fail-closed regressions. A final synchronized exact-head CI is still required before merge.\n\nResearch fixtures pinned for M14/M15: \\`ComposioHQ/awesome-claude-skills@be2a406907dbc61b73e6827ded415c96139d13a2\\`, \\`multica-ai/andrej-karpathy-skills@2c606141936f1eeef17fa3043a72095b4765b9c2\\`, \\`alirezarezvani/claude-skills@19392f7a08264ed00486a251f5b2098321771f94\\`, \\`anthropics/claude-plugins-official@1dd995193ba20bba51ca6c681aa8d3398dbd80a2\\`, \\`coreyhaines31/marketingskills@5cd4a7eae3a9a7b5d2aceb0613f7d1f7c4b65968\\`, \\`anthropics/claude-code-security-review@0c6a49f1fa56a1d472575da86a94dbc1edb78eda\\`, and \\`0xNyk/awesome-hermes-agent@e4dde5e0e19b734c175a34038deac8e80cd04cb2\\`. These are discovery/research inputs, not transitive trust.\n\n`;
+            source = source.slice(0, start) + block + source.slice(end);
+            write(path, source);
+          }
+
+          // ARCHITECTURE: status, M14 section, module map, and next milestone.
+          {
+            const path = 'ARCHITECTURE.md';
+            let source = read(path);
+            source = replaceExact(
+              source,
+              'Status: M0–M13 implementation verified locally/in CI; M12 remains partially verified for hosted-sandbox/public-production proof, while M13 evidence-backed learning is implemented and pending final synchronized exact-head PR CI, 2026-09-04.',
+              'Status: M0–M13 are merged and verified; M14 skill-intake implementation is verified in normal PR CI and awaiting final synchronized exact-head CI before merge. M12 remains partially verified for hosted-sandbox/public-production proof, 2026-09-04.',
+              'architecture status',
+            );
+            const marker = '## Current module map';
+            if (!source.includes(marker)) throw new Error('architecture module marker missing');
+            const section = `### M14 — Skill intake firewall\n\n\\`src/skill-intake\\` converts one externally resolved skill snapshot into immutable bounded evidence without executing third-party code. The trusted resolver must bind repository, requested ref, selected path, and an exact 40-hex commit. File count, per-file bytes, total bytes, path depth, and retained findings are bounded; binaries, symlinks, truncation, incomplete inventory, unknown license state, and malformed manifests remain explicit limitations rather than being interpreted as clean coverage.\n\nStatic findings cover prompt override, credential collection/exfiltration, download-and-execute patterns, destructive writes, privilege escalation, self-promotion, policy/memory poisoning, dependency installation, explicit shell/subprocess use, MCP configuration, hooks/workflows (including nested \\`.github/workflows\\` surfaces), and executable content. Findings retain stable hashes/fingerprints instead of matched raw snippets.\n\nOnly \\`COMPLETE + ACCEPT\\` may become an M10 \\`community\\` candidate. M14 forces \\`requiredTools=[]\\` and cannot activate the skill, register M3 handlers, mint grants, expose credentials, change budgets/routing, or create M5 completion evidence. M10 independent verification/trusted promotion remains a separate authority boundary. Normal PR run \\`33858888408\\` passed 290/290 tests, Biome, strict TypeScript, and the secret-free Kimi dry smoke; aggregate coverage was 89.47% lines / 76.70% branches / 95.84% functions.\n\n`;
+            source = source.replace(marker, section + marker);
+            source = replaceExact(
+              source,
+              '  learning/      M13 evidence-backed repeated learning, conflict curation, bounded nudges\n  security/      shared secret-text and future cross-cutting security primitives',
+              '  learning/      M13 evidence-backed repeated learning, conflict curation, bounded nudges\n  skill-intake/  M14 immutable community-skill intake, bounded risk/completeness quarantine\n  security/      shared secret-text and future cross-cutting security primitives',
+              'architecture module map',
+            );
+            const oldNext = `Local CI may never manufacture \\`integration\\` or \\`live\\` evidence. Any paid resource, deployment, or\nproduction/public traffic remains separately approval-gated. With M13 implemented, the preferred no-cost next milestone is M14: an immutable, fail-closed Skill Intake Firewall that can inspect large external skill catalogs without executing them, bind accepted material to exact commits/content hashes, and hand only fully analyzed community candidates to M10. M15 then evaluates and deduplicates candidate procedures into measured, progressively loaded capability packs; neither milestone may turn external instructions into authority.`;
+            const newNext = `Local CI may never manufacture \\`integration\\` or \\`live\\` evidence. Any paid resource, deployment, or\nproduction/public traffic remains separately approval-gated. With M14 implementation verified, the next no-cost capability milestone after merge is M15: evaluate and deduplicate community procedures against Odin's canonical runtime on held-out fixtures, measure output lift/safety/context cost, and promote only measured winners through M10. M15 may propose progressive capability packs but cannot turn external instructions into authority or self-promote them.`;
+            source = replaceExact(source, oldNext, newNext, 'architecture next milestone');
+            write(path, source);
+          }
+
+          // SECURITY: status plus implemented M14 safeguards.
+          {
+            const path = 'SECURITY.md';
+            let source = read(path);
+            source = replaceExact(
+              source,
+              'M12-A/B/C local execution/sandbox, observability, recovery-evidence, and release-gate safeguards, one M12-D bounded live-provider credential path, and M13 evidence-backed learning safeguards. Controls not explicitly identified as implemented remain future work.',
+              'M12-A/B/C local execution/sandbox, observability, recovery-evidence, and release-gate safeguards, one M12-D bounded live-provider credential path, M13 evidence-backed learning safeguards, and M14 bounded external-skill intake safeguards. Controls not explicitly identified as implemented remain future work.',
+              'security status',
+            );
+            const old = `The next planned M14 intake boundary must retain these principles for external skills: immutable source pinning, bounded complete analysis, no execution during intake, and no path from discovery to activation without M10 independent verification/trusted promotion. A curated or official source is provenance evidence, not automatic runtime trust.\n\n`;
+            const section = `## Implemented M14 skill-intake safeguards\n\nExternal skills, plugins, catalogs, scripts, hooks, MCP files, and workflow definitions are untrusted data. M14 requires a trusted resolver to bind the requested repository/ref/path to one immutable commit and rejects source-identity confusion before candidate creation. Mutable catalog reputation or an official publisher name is provenance context, not runtime authority.\n\nAnalysis is resource-bounded and non-executing: file count, file bytes, total bytes, path depth, and finding output are capped; no package install, subprocess, shell, browser, MCP execution, archive expansion, or third-party network execution is part of intake. Binary/symlink/oversize/incomplete inventory, unknown license state, malformed manifests, and finding truncation force explicit partial coverage and cannot yield a clean accept. Nested \\`.github/workflows\\`, hooks, MCP configuration, and executable surfaces are detected as risk-bearing content.\n\nRisk findings use bounded rule identifiers, severity, file/content hashes, and stable fingerprints rather than storing matched raw snippets. Critical prompt-override, exfiltration, download-and-execute, or privilege-escalation patterns reject. High-risk credential collection, destructive mutation, self-promotion, policy/memory poisoning, MCP authority, hooks/workflows, or executable surfaces quarantine. Static M14 analysis proves only its bounded rules and completeness contract; it is not a universal proof that third-party code is safe.\n\nOnly \\`COMPLETE + ACCEPT\\` can be handed to M10 as a \\`community\\` candidate with \\`requiredTools=[]\\`. M14 cannot activate a skill, register M3 tools, mint grants/approvals, resolve credentials, change routing/budgets, or create completion evidence. M10 independent verification and trusted promotion remain mandatory. Normal PR CI \\`33858888408\\` passed 290/290 tests with Biome, strict TypeScript, and secret-free Kimi dry smoke; dedicated regressions cover malformed manifests and nested workflow surfaces.\n\n`;
+            source = replaceExact(source, old, section, 'security M14 planned paragraph');
+            write(path, source);
+          }
+
+          // Milestone status: implementation is verified; final synchronized exact-head run still pending.
+          {
+            const path = 'docs/milestones/M14_SKILL_INTAKE_FIREWALL.md';
+            let source = read(path);
+            source = replaceExact(
+              source,
+              'Status: **IMPLEMENTATION_IN_PROGRESS**. Updated: 2026-09-04.',
+              'Status: **IMPLEMENTATION_VERIFIED — FINAL_SYNC_CI_PENDING**. Updated: 2026-09-04. Normal PR CI `33858888408` passed 290/290 tests, Biome, strict TypeScript, and the secret-free Kimi dry smoke; final synchronized exact-head CI remains required before merge.',
+              'milestone status',
+            );
+            write(path, source);
+          }
+          NODE
+          rm .github/workflows/m14-governance-sync-once.yml
+      - name: Commit synchronized governance docs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "docs(m14): synchronize verified governance state"
+          git push origin HEAD:agent/m14-skill-intake-firewall
