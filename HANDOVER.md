@@ -7,6 +7,7 @@ Updated: 2026-09-04.
 - Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).
 - `main` contains verified M0–M13 at `1a8ac95b757ad6ef44a03dadd0f1071ee4c7547d`.
 - Active work: M14 **Skill Intake Firewall** on `agent/m14-skill-intake-firewall`, Draft PR #19.
+- The user explicitly authorized merging PR #19 once its required exact-head CI is green and continuing immediately into M15.
 - M14 now implements immutable source identity, bounded static inventory/analysis, explicit COMPLETE/PARTIAL plus ACCEPT/QUARANTINE/REJECT decisions, hash-only findings, M10 community-candidate handoff, and no third-party execution.
 - Adversarial coverage now includes exfiltration, privilege escalation, policy/memory poisoning, hooks, shell procedures, symlinks, byte/file ceilings, path escape/duplicates, malformed manifests, and nested `.github/workflows` surfaces.
 - Two review-found implementation gaps were hardened before verification: malformed manifest values now become explicit partial quarantine instead of escaping as parser errors, and nested workflow surfaces inside a selected skill are detected.
