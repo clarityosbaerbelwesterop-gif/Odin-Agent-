@@ -12,7 +12,9 @@ Updated: 2026-09-04.
 - Raw sanitized rerun evidence is preserved at `docs/evals/m15-kimi-coding-ab-rerun-2.json`; interpretation is recorded in `docs/evals/M15_KIMI_CODING_AB_RERUN_2_ANALYSIS.md`. No M10 verification, pack population, activation, public benchmark claim, or AGI/model-superiority claim follows from either incomplete run.
 - Review found a measurement-design defect: v1 used the same 180000 ms value for provider timeout and candidate latency acceptance, making a slow arm unmeasurable at the latency boundary. Offline hardening separates measurement timeout from acceptance in a versioned runtime-owned profile.
 - Verified profile `m15-kimi-coding-ab-v2`: acceptance latency 180000 ms, provider measurement timeout 240000 ms, minimum 30000 ms headroom, 2 calls per arm, 12 total calls, `high` reasoning, temperature 1. Evidence identity includes the profile version and sanitized output exposes bounded profile metadata.
-- One-shot hardening run `33882837781` passed **329/329 tests**, Biome, strict TypeScript, build, secret-free Kimi dry smoke, and a credential-free A/B dry profile; aggregate coverage **89.92% lines / 77.25% branches / 95.88% functions**. No live provider request occurred in this hardening run.
+- One-shot profile hardening run `33882837781` passed **329/329 tests**, Biome, strict TypeScript, build, secret-free Kimi dry smoke, and a credential-free A/B dry profile; aggregate coverage **89.92% lines / 77.25% branches / 95.88% functions**. No live provider request occurred in this hardening run.
+- Adversarial diff review found that the A/B wrapper charged `generate()` but not `stream()` against the total provider-call budget. Run `33883857442` verified a shared fail-closed call counter for both paths with **331/331 tests**, aggregate coverage **89.95% lines / 77.30% branches / 95.89% functions**, `live-profile` coverage **96.97% / 95.83% / 100%**, build, and credential-free A/B dry-run PASS. No live provider request occurred.
+- The automatic exact-head CI created by the bot-authored hardening commit was `action_required` with no jobs, so this factual handover checkpoint is intentionally user-authored to trigger the required normal PR CI rather than treating helper CI as a substitute.
 - The previous authorization for one second Kimi live rerun has been consumed. A third live provider comparison requires new explicit user authorization. PR merge also remains separately approval-gated.
 - M12 remains partially verified for hosted-sandbox/public-production claims. No production deployment, paid resource, migration, billing change, or public traffic is authorized by this work.
 
@@ -43,8 +45,8 @@ Additional design reference: `NVIDIA/SkillSpector` fail-closed completeness/reso
 1. Preserve both raw live attempts unchanged. Run `33870210502` and rerun `33879714040` each have zero complete matched pairs and remain `INCONCLUSIVE`.
 2. Keep `odin-coding-discipline` unverified/unactivated from live evidence until a complete matched comparison passes normal M15 quality, safety, authority, token, and latency gates.
 3. Keep execution-profile identity part of future evidence; v1 incomplete results must not be numerically combined with v2 results.
-4. Use `m15-kimi-coding-ab-v2` for any future explicitly authorized Kimi comparison: 180000 ms acceptance, 240000 ms measurement timeout, `high` reasoning, 12-call hard ceiling.
-5. Obtain a normal exact-head PR `npm run verify` on the current synchronized branch. Helper runs are supporting evidence, not a merge substitute.
+4. Use `m15-kimi-coding-ab-v2` for any future explicitly authorized Kimi comparison: 180000 ms acceptance, 240000 ms measurement timeout, `high` reasoning, 12-call hard ceiling shared by generate/stream.
+5. Obtain a normal exact-head PR `npm run verify` on the current user-authored head. Helper runs are supporting evidence, not a merge substitute.
 6. Do not merge the current PR without explicit merge authorization.
 7. Do not issue a third live provider request without new explicit user authorization. If approved later, preserve the result separately and classify it only from complete matched evidence.
 8. Re-establish measured lift separately for every provider/model/profile/task class; architectural reliability mechanisms may transfer, numeric lift does not.
