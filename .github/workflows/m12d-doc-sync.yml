@@ -1,0 +1,83 @@
+name: M12-D one-shot evidence documentation sync
+
+on:
+  push:
+    branches: [agent/m12d-kimi-live-smoke]
+    paths: [.github/workflows/m12d-doc-sync.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m12d-kimi-live-smoke
+          fetch-depth: 0
+      - name: Synchronize M12-D live evidence
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          function replaceExact(path, oldText, newText) {
+            const value = fs.readFileSync(path, 'utf8');
+            if (!value.includes(oldText)) throw new Error(`Missing anchor in ${path}: ${oldText.slice(0, 100)}`);
+            fs.writeFileSync(path, value.replace(oldText, newText));
+          }
+
+          replaceExact(
+            'ROADMAP.md',
+            'Status: **PARTIALLY_VERIFIED**. Local deterministic M12-A/B/C hardening and release-proof controls are\nverified; live provider/sandbox and public-production infrastructure proof remains deliberately open.',
+            'Status: **PARTIALLY_VERIFIED**. Local deterministic M12-A/B/C hardening is verified and one bounded\nNVIDIA/Kimi K3 provider path is live-verified; hosted-sandbox and public-production proof remain open.',
+          );
+          replaceExact(
+            'ROADMAP.md',
+            '- [ ] Live provider/sandbox smoke and evaluation matrix against explicitly authorized credentials/resources.',
+            '- [x] One bounded real NVIDIA `moonshotai/kimi-k3` coding mission through Odin M1/M2/M3/M4/M5: run\n  `33837291528`, score 100/100, first pass, one provider call, 632 input / 222 output tokens, M5 PASS.\n- [ ] Hosted-sandbox live smoke and broader live-provider evaluation matrix against separately authorized resources.',
+          );
+          replaceExact(
+            'ROADMAP.md',
+            'M12-A/B/C prove local deterministic enforcement, a provider-neutral remote-sandbox lifecycle contract,\nsecret-safe observability, deterministic recovery/backup evidence, and fail-closed release-claim levels.\nThey do **not** prove Docker/Kubernetes/VM isolation, a specific hosted sandbox API, transport-level DNS\npinning, live-provider compatibility, deployment, production auth, cloud backup guarantees, or public traffic.',
+            'M12-A/B/C prove local deterministic enforcement, a provider-neutral remote-sandbox lifecycle contract,\nsecret-safe observability, deterministic recovery/backup evidence, and fail-closed release-claim levels.\nM12-D additionally proves one real NVIDIA/Kimi K3 provider path on a bounded coding fixture. It does\n**not** prove Docker/Kubernetes/VM isolation, a hosted sandbox API, broad live-model superiority,\ndeployment, production auth, cloud backup guarantees, or public traffic.',
+          );
+
+          replaceExact(
+            'ARCHITECTURE.md',
+            'Status: M12-A/B/C local execution, sandbox lifecycle, observability, recovery evidence, and release gates verified locally; full M12 remains partially verified pending authorized live/infrastructure proof, 2026-09-04.',
+            'Status: M12-A/B/C local hardening plus one M12-D NVIDIA/Kimi K3 live-provider path verified; full M12 remains partially verified pending hosted-sandbox/public-production proof, 2026-09-04.',
+          );
+          replaceExact(
+            'ARCHITECTURE.md',
+            'M12 extends the credential resolver with exact\nprovider/model context. Tests use injected transports; live-provider end-to-end compatibility is not yet claimed.',
+            'M12 extends the credential resolver with exact\nprovider/model context. Injected-transport tests remain the broad compatibility base; M12-D separately proves\none bounded real NVIDIA/Kimi K3 end-to-end provider path, not universal live-provider compatibility.',
+          );
+          replaceExact(
+            'ARCHITECTURE.md',
+            'line / 76.24% branch / 95.64% function coverage.\n\n## Current module map',
+            'line / 76.24% branch / 95.64% function coverage.\n\n### M12-D — Bounded live-provider evidence\n\nA dedicated live runner reuses the existing M4 coding fixture but replaces the scripted model boundary\nwith the real `NvidiaProvider` and `moonshotai/kimi-k3`. Repository secret resolution remains in the\ncontrol plane and is restricted to the exact provider/model identity. The live workflow first reruns\nall deterministic gates, caps the model path at two calls, persists only sanitized evidence, and is\nmanual-only after the evidence run.\n\nLive run `33837291528` completed the mission first pass with one provider call, 632 input / 222 output\ntokens, 22.4 s latency, seven Odin tool calls, deterministic `verify` exit 0, and M5 PASS for a 100/100\nsmoke score. This proves one live provider integration, not a hosted sandbox, broad benchmark, model\nsuperiority, or AGI.\n\n## Current module map',
+          );
+          replaceExact(
+            'ARCHITECTURE.md',
+            'The remaining M12 path is evidence escalation, not local claim inflation: run an explicitly authorized\nlive provider/sandbox smoke matrix through the existing provider/runtime boundaries, then bind those\nobservations into `integration` or `live` release evidence. Public service/auth/realtime transport and\ndeployment hardening remain separate production work.\n\nLocal CI may never manufacture `integration` or `live` evidence. Any paid resource, deployment, or\nproduction/public traffic remains separately approval-gated.',
+            'The remaining M12 path is now hosted-sandbox and production evidence escalation. One real Kimi K3\nprovider path is verified, but hosted sandbox cleanup/isolation, broader live-model comparison, public\nservice/auth/realtime transport, deployment, and production recovery remain separate proof.\n\nLocal CI may never manufacture `integration` or `live` evidence. Any paid resource, deployment, or\nproduction/public traffic remains separately approval-gated. The preferred no-cost next milestone is\nM13 evidence-backed post-task learning and memory curation behind M5/M6/M10 authority boundaries.',
+          );
+
+          replaceExact(
+            'SECURITY.md',
+            'and M12-A/B/C local execution/sandbox, observability, recovery-evidence, and release-gate safeguards. Controls not explicitly identified as implemented remain future work.',
+            'and M12-A/B/C local execution/sandbox, observability, recovery-evidence, and release-gate safeguards, plus one M12-D bounded live-provider credential path. Controls not explicitly identified as implemented remain future work.',
+          );
+          replaceExact(
+            'SECURITY.md',
+            'explicitly passes `local` and blocks `integration`/`live` when only local evidence exists.\n\n## Prompt injection and untrusted-content security',
+            'explicitly passes `local` and blocks `integration`/`live` when only local evidence exists.\n\n## Implemented M12-D live-provider safeguards\n\nThe M12-D runner resolves `NV_API_KEY` only inside GitHub Actions and only after exact\n`nvidia + moonshotai/kimi-k3` credential context checks. The key is not part of prompts, fixture state,\nresult JSON, committed files, or persisted reasoning. The workflow reruns deterministic repository\ngates before any live request and caps the coding mission at two provider calls.\n\nRun `33837291528` used one provider call and completed first pass with deterministic quality and M5 PASS.\nThe uploaded artifact is intentionally sanitized and the live workflow was changed to manual-only after\nthe evidence run. This proves the credential/provider boundary for one task; it does not authorize or\nprove hosted sandbox access, customer data, public production traffic, repeated benchmark sweeps, or\nother provider credentials.\n\n## Prompt injection and untrusted-content security',
+          );
+          NODE
+          rm .github/workflows/m12d-doc-sync.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ROADMAP.md ARCHITECTURE.md SECURITY.md .github/workflows/m12d-doc-sync.yml
+          git diff --cached --check
+          git commit -m "docs(m12d): synchronize live-provider evidence"
+          git push origin HEAD:agent/m12d-kimi-live-smoke
