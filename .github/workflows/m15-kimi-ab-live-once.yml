@@ -1,9 +1,9 @@
-name: M15 authorized Kimi coding A/B once
+name: M15 authorized post-merge Kimi coding A/B once
 
 on:
   push:
     branches:
-      - agent/m15-curated-capability-pack
+      - agent/m15-kimi-postmerge-evidence
     paths:
       - .github/workflows/m15-kimi-ab-live-once.yml
 
@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: agent/m15-curated-capability-pack
+          ref: agent/m15-kimi-postmerge-evidence
           fetch-depth: 0
       - uses: actions/setup-node@v5
         with:
@@ -63,4 +63,4 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "test(m15): record sanitized Kimi coding A/B evidence"
-          git push origin HEAD:agent/m15-curated-capability-pack
+          git push origin HEAD:agent/m15-kimi-postmerge-evidence
