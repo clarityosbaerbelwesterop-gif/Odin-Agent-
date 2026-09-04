@@ -25,10 +25,7 @@ function hash(value: string): string {
 }
 
 function identity(
-  request: Pick<
-    LearningAttestationRequest,
-    "missionId" | "projectId" | "taskId" | "userId"
-  >,
+  request: Pick<LearningAttestationRequest, "missionId" | "projectId" | "taskId" | "userId">,
 ): string {
   return `${request.userId}:${request.projectId}:${request.missionId}:${request.taskId}`;
 }

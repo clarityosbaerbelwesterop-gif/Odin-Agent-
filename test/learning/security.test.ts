@@ -139,7 +139,6 @@ test("automatic learning rejects obvious secret-like lesson content regardless o
   );
 });
 
-
 test("automatic learning rejects secret-like keys, tags, and source references", async () => {
   const cases = [
     { key: "sk-proj-abcdefghijk12345" },
