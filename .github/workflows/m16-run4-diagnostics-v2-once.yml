@@ -27,7 +27,7 @@ jobs:
       - name: Apply diagnostics patch
         run: node scripts/m16-run4-diagnostics-patch.mjs
       - name: Format touched code
-        run: npx biome check --write src/capability-packs/live-evidence.ts src/runtime/grounded-coding-provider.ts test/capability-packs/live-evidence.test.ts test/runtime/grounded-coding-provider.test.ts scripts/live-m16-grounded-eval.mjs
+        run: npx biome check --write src/capability-packs/live-evidence.ts src/runtime/grounded-coding-provider.ts test/capability-packs/live-evidence.test.ts test/runtime/grounded-coding-provider.test.ts scripts/live-m16-grounded-eval.mjs scripts/m16-run4-diagnostics-patch.mjs
       - name: Verify repository
         run: npm run verify
       - name: Build repository
