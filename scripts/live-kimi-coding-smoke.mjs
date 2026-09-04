@@ -2,10 +2,7 @@ import { writeFile } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
 import { InMemoryEventStore } from "../dist/src/events/store.js";
 import { MissionRuntime } from "../dist/src/mission/runtime.js";
-import {
-  CapabilityRegistry,
-  makeCapabilities,
-} from "../dist/src/providers/capabilities.js";
+import { CapabilityRegistry, makeCapabilities } from "../dist/src/providers/capabilities.js";
 import { isProviderError } from "../dist/src/providers/errors.js";
 import { NvidiaProvider } from "../dist/src/providers/nvidia.js";
 import { CodingOrchestrator } from "../dist/src/runtime/coding.js";
