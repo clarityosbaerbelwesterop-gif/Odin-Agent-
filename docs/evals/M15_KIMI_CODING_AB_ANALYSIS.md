@@ -58,3 +58,10 @@ The post-run hardening on this branch adds two deterministic protections for fut
 
 These changes are deterministic and make no provider request. A new Kimi K3 live rerun is a separate
 external action and remains unperformed by this correction.
+
+## Verification state
+
+One-shot governance/verification run `33878406947` synchronized ROADMAP, ARCHITECTURE, SECURITY, the
+M15 milestone, and HANDOVER after the corrective code was added. Its repository verification step
+passed before the helper files were removed and the synchronized checkpoint was pushed. A normal
+pull-request CI on the resulting exact head remains the final verification gate for PR #21.
