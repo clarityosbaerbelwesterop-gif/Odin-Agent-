@@ -1,0 +1,184 @@
+{
+  "evaluatedAt": "2026-09-04T16:38:30.177Z",
+  "executionProfile": {
+    "acceptanceLatencyMs": 180000,
+    "maxCallsPerArmCase": 2,
+    "maxProviderCalls": 12,
+    "profileVersion": "m16-grounded-live-v1",
+    "providerTimeoutMs": 240000,
+    "reasoningEffort": "high",
+    "temperature": 1
+  },
+  "model": "moonshotai/kimi-k3",
+  "provider": "nvidia",
+  "providerCalls": 11,
+  "results": [
+    {
+      "baseline": {
+        "changedFiles": [],
+        "completed": false,
+        "errorClass": "MissionDomainError",
+        "errorCode": "quality_failed_after_repair",
+        "finalContentHash": "283c10a5a8720e1b8e97a7df4a24c3b9c4e7d737158b563eb6c27832fb4e4408",
+        "firstPass": false,
+        "latencyMs": 416673,
+        "measurementComplete": true,
+        "mutationObserved": true,
+        "qualityBps": 0,
+        "repaired": false,
+        "usage": {
+          "attemptedCalls": 2,
+          "complete": true,
+          "inputTokens": 1104,
+          "missingUsageCalls": 0,
+          "outputTokens": 2355,
+          "successfulCalls": 2,
+          "totalTokens": 3459
+        },
+        "verification": "FAIL"
+      },
+      "id": "canonical-user-id",
+      "optimized": {
+        "changedFiles": [],
+        "completed": false,
+        "errorClass": "MissionDomainError",
+        "errorCode": "mission_domain_unknown",
+        "finalContentHash": "fc001ea52105affc39e995d52cee190b8bc864a0edd99e3f0d33f4bff8635520",
+        "firstPass": false,
+        "latencyMs": 126694,
+        "measurementComplete": false,
+        "mutationObserved": true,
+        "qualityBps": 0,
+        "repaired": false,
+        "usage": {
+          "attemptedCalls": 2,
+          "complete": true,
+          "inputTokens": 729,
+          "missingUsageCalls": 0,
+          "outputTokens": 672,
+          "successfulCalls": 2,
+          "totalTokens": 1401
+        },
+        "verification": "FAIL"
+      }
+    },
+    {
+      "baseline": {
+        "changedFiles": [],
+        "completed": false,
+        "errorClass": "MissionDomainError",
+        "errorCode": "quality_failed_after_repair",
+        "finalContentHash": "88c599a265898f1b0436908576ae6c62a114416481cea489469a766f6db8e627",
+        "firstPass": false,
+        "latencyMs": 221669,
+        "measurementComplete": true,
+        "mutationObserved": true,
+        "qualityBps": 0,
+        "repaired": false,
+        "usage": {
+          "attemptedCalls": 2,
+          "complete": true,
+          "inputTokens": 1019,
+          "missingUsageCalls": 0,
+          "outputTokens": 1796,
+          "successfulCalls": 2,
+          "totalTokens": 2815
+        },
+        "verification": "FAIL"
+      },
+      "id": "retry-429-surgical",
+      "optimized": {
+        "changedFiles": [],
+        "completed": false,
+        "errorClass": "MissionDomainError",
+        "errorCode": "quality_failed_after_repair",
+        "finalContentHash": "85b3585046cfdc626045e74febf02f0e3c3f3465061d1e664cc5cfed520dc9eb",
+        "firstPass": false,
+        "latencyMs": 47205,
+        "measurementComplete": true,
+        "mutationObserved": true,
+        "qualityBps": 0,
+        "repaired": false,
+        "usage": {
+          "attemptedCalls": 2,
+          "complete": true,
+          "inputTokens": 704,
+          "missingUsageCalls": 0,
+          "outputTokens": 256,
+          "successfulCalls": 2,
+          "totalTokens": 960
+        },
+        "verification": "FAIL"
+      }
+    },
+    {
+      "baseline": {
+        "changedFiles": [],
+        "completed": false,
+        "errorClass": "MissionDomainError",
+        "errorCode": "plan_expected_sha_mismatch",
+        "finalContentHash": "e121cf062070d85af8f6f7e08b30e63e22d4c65de3cdbf7d2fb64113bc54d1a4",
+        "firstPass": false,
+        "latencyMs": 56299,
+        "measurementComplete": true,
+        "mutationObserved": false,
+        "qualityBps": 0,
+        "repaired": false,
+        "usage": {
+          "attemptedCalls": 1,
+          "complete": true,
+          "inputTokens": 682,
+          "missingUsageCalls": 0,
+          "outputTokens": 419,
+          "successfulCalls": 1,
+          "totalTokens": 1101
+        },
+        "verification": "FAIL"
+      },
+      "id": "safe-trim-existing-api",
+      "optimized": {
+        "changedFiles": [],
+        "completed": false,
+        "errorClass": "MissionDomainError",
+        "errorCode": "quality_failed_after_repair",
+        "finalContentHash": "18361bfefbb70eb322e2f5fdf33700160e528d35b0308677e3894b1441d326b7",
+        "firstPass": false,
+        "latencyMs": 127776,
+        "measurementComplete": true,
+        "mutationObserved": true,
+        "qualityBps": 0,
+        "repaired": false,
+        "usage": {
+          "attemptedCalls": 2,
+          "complete": true,
+          "inputTokens": 718,
+          "missingUsageCalls": 0,
+          "outputTokens": 518,
+          "successfulCalls": 2,
+          "totalTokens": 1236
+        },
+        "verification": "FAIL"
+      }
+    }
+  ],
+  "suite": "output",
+  "summary": {
+    "baselineCompleted": 0,
+    "baselineFirstPass": 0,
+    "candidateCompleted": 0,
+    "candidateFirstPass": 0,
+    "completePairs": 2,
+    "qualityLiftBps": 0,
+    "status": "PARTIAL",
+    "tokenMatchedPairs": 2,
+    "tokenReductionBps": 4392,
+    "totalBaselineCalls": 3,
+    "totalBaselineLatencyMs": 277968,
+    "totalBaselineTokens": 3916,
+    "totalOptimizedCalls": 4,
+    "totalOptimizedLatencyMs": 174981,
+    "totalOptimizedTokens": 2196,
+    "callReductionBps": -3333,
+    "latencyReductionBps": 3705
+  }
+}
