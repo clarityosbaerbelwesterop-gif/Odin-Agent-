@@ -99,9 +99,6 @@ jobs:
           if occurrences < 2:
               raise SystemExit(f'registry test constructor count unexpectedly low: {occurrences}')
           text = text.replace('new CapabilityCurator(', 'makeCurator(')
-          marker = '''class PassingAuthority {\n  async evaluate(request: CapabilityEvaluationRequest): Promise<unknown> {'''
-          if text.count(marker) != 1:
-              raise SystemExit('PassingAuthority marker mismatch')
           class_end = '''  }\n}\n\nasync function measuredSecuritySkill()'''
           helper = '''  }\n}\n\nfunction makeCurator(\n  skills: SkillRegistry,\n  authority: PassingAuthority,\n  canonicalProcedureKeys: readonly string[],\n) {\n  return new CapabilityCurator(\n    skills,\n    authority,\n    canonicalProcedureKeys,\n    {},\n    () => T1,\n  );\n}\n\nasync function measuredSecuritySkill()'''
           if text.count(class_end) != 1:
@@ -109,14 +106,14 @@ jobs:
           text = text.replace(class_end, helper, 1)
           registry_test.write_text(text)
           PY
-      - name: Format changed TypeScript
-        run: npx biome check --write src/capability-packs/curator.ts test/capability-packs/curator.test.ts test/capability-packs/registry.test.ts
+      - name: Format changed M15 surface
+        run: npx biome check --write src/capability-packs/curator.ts test/capability-packs/curator.test.ts test/capability-packs/registry.test.ts scripts/live-kimi-capability-ab.mjs
       - name: Verify complete repository
         run: npm run verify
       - name: Remove helper and checkpoint verified hardening
         run: |
           git rm .github/workflows/m15-trusted-clock-hardening-once.yml
-          git add src/capability-packs/curator.ts test/capability-packs/curator.test.ts test/capability-packs/registry.test.ts
+          git add src/capability-packs/curator.ts test/capability-packs/curator.test.ts test/capability-packs/registry.test.ts scripts/live-kimi-capability-ab.mjs
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "fix(m15): bind curation freshness to trusted runtime clock"
