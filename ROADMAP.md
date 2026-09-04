@@ -199,15 +199,17 @@ M13 makes successful verified work compound without converting memory into autho
 
 ## M14 — Skill intake firewall
 
-- [ ] Discover external Agent Skills / Claude plugins without executing third-party code during intake.
-- [ ] Resolve mutable refs to immutable commit SHAs and bind repository, subdirectory, subset, manifest, license metadata, and content hashes.
-- [ ] Bound file count, byte size, depth, symlinks, binaries, scripts, hooks, MCP configuration, workflows, and nested references.
-- [ ] Emit stable risk findings for prompt injection, credential collection, exfiltration, shell/subprocess use, destructive writes, self-promotion, memory poisoning, MCP/tool poisoning, dependency installation, and privilege escalation.
-- [ ] Treat incomplete/partial/failed analysis as non-safe and quarantine rather than silently accepting.
-- [ ] Convert only fully analyzed accepted material into M10 `community` candidates; intake may never activate a skill or create M3 authority.
-- [ ] Pin reviewed source snapshots and require a new intake result whenever upstream content changes.
+- [x] Discover external Agent Skills / Claude plugins without executing third-party code during intake.
+- [x] Resolve mutable refs to immutable commit SHAs and bind repository, subdirectory, manifest, license metadata, and inspected content hashes.
+- [x] Bound file count, byte size, depth, symlinks, binaries, scripts, hooks, MCP configuration, workflows, and incomplete inventory.
+- [x] Emit stable risk findings for prompt injection, credential collection, exfiltration, shell/subprocess use, destructive writes, self-promotion, memory poisoning, MCP/tool poisoning, dependency installation, and privilege escalation.
+- [x] Treat incomplete/partial/failed analysis as non-safe and quarantine rather than silently accepting.
+- [x] Convert only fully analyzed accepted material into M10 `community` candidates with `requiredTools=[]`; intake never activates a skill or creates M3 authority.
+- [x] Pin reviewed source snapshots and require a new intake result whenever immutable source/content identity changes.
 
-Research fixtures reviewed for M14: `ComposioHQ/awesome-claude-skills@be2a406907dbc61b73e6827ded415c96139d13a2`, `multica-ai/andrej-karpathy-skills@2c606141936f1eeef17fa3043a72095b4765b9c2`, `alirezarezvani/claude-skills@19392f7a08264ed00486a251f5b2098321771f94`, `anthropics/claude-plugins-official@1dd995193ba20bba51ca6c681aa8d3398dbd80a2`, and `coreyhaines31/marketingskills@5cd4a7eae3a9a7b5d2aceb0613f7d1f7c4b65968`.
+Implementation verification: normal PR CI `33858888408` passed **290/290 tests**, Biome, strict TypeScript, and the secret-free Kimi dry smoke. Aggregate coverage was **89.47% lines / 76.70% branches / 95.84% functions**; `skill-intake/firewall` coverage was **90.20% / 79.74% / 98.61%**. Malformed manifests and nested `.github/workflows` surfaces have dedicated fail-closed regressions. A final synchronized exact-head CI is still required before merge.
+
+Research fixtures pinned for M14/M15: `ComposioHQ/awesome-claude-skills@be2a406907dbc61b73e6827ded415c96139d13a2`, `multica-ai/andrej-karpathy-skills@2c606141936f1eeef17fa3043a72095b4765b9c2`, `alirezarezvani/claude-skills@19392f7a08264ed00486a251f5b2098321771f94`, `anthropics/claude-plugins-official@1dd995193ba20bba51ca6c681aa8d3398dbd80a2`, `coreyhaines31/marketingskills@5cd4a7eae3a9a7b5d2aceb0613f7d1f7c4b65968`, `anthropics/claude-code-security-review@0c6a49f1fa56a1d472575da86a94dbc1edb78eda`, and `0xNyk/awesome-hermes-agent@e4dde5e0e19b734c175a34038deac8e80cd04cb2`. These are discovery/research inputs, not transitive trust.
 
 ## M15 — Curated capability pack and offline improvement evaluation
 
