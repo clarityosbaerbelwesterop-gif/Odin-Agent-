@@ -1,0 +1,39 @@
+name: M14 one-shot workflow path hardening
+
+on:
+  push:
+    branches:
+      - agent/m14-skill-intake-firewall
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m14-skill-intake-firewall
+          fetch-depth: 0
+      - name: Harden nested workflow detection
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'src/skill-intake/firewall.ts';
+          let source = fs.readFileSync(path, 'utf8');
+          const before = '    lowerPath.startsWith(".github/workflows/") ||\n    lowerPath.includes("/hooks/") ||';
+          const after = '    lowerPath.startsWith(".github/workflows/") ||\n    lowerPath.includes("/.github/workflows/") ||\n    lowerPath.includes("/hooks/") ||';
+          if (!source.includes(before)) throw new Error('expected workflow predicate not found');
+          source = source.replace(before, after);
+          fs.writeFileSync(path, source);
+          NODE
+          rm .github/workflows/m14-workflow-path-once.yml
+      - name: Commit hardening
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(m14): detect nested workflow surfaces"
+          git push origin HEAD:agent/m14-skill-intake-firewall
