@@ -126,10 +126,7 @@ for (const caseSpec of CASES) {
       audit,
       () => FIXED_NOW,
     );
-    const mission = new MissionRuntime(
-      new InMemoryEventStore<MissionEventData>(),
-      () => FIXED_NOW,
-    );
+    const mission = new MissionRuntime(new InMemoryEventStore<MissionEventData>(), () => FIXED_NOW);
     const taskId = `change-${caseSpec.id}`;
     const provider = new ScriptedProvider([
       modelResponse(
