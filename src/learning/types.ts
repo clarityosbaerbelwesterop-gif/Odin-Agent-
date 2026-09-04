@@ -9,9 +9,15 @@ export interface LearningScope {
   readonly projectId: string;
 }
 
-export interface LearningAttestationRequest extends LearningScope {
+export interface LearningTaskScope extends LearningScope {
   readonly missionId: string;
   readonly taskId: string;
+}
+
+export interface LearningAttestationRequest extends LearningTaskScope {
+  readonly learningKeyHash: string;
+  readonly lessonContentHash: string;
+  readonly sensitivity: Extract<MemorySensitivity, "internal" | "public">;
 }
 
 export interface VerifiedLearningAttestation extends LearningAttestationRequest {
@@ -27,7 +33,7 @@ export interface LearningEvidenceAuthority {
   ): Promise<VerifiedLearningAttestation | null>;
 }
 
-export interface LearningProposal extends LearningAttestationRequest {
+export interface LearningProposal extends LearningTaskScope {
   readonly idempotencyKey: string;
   readonly key: string;
   readonly lesson: string;
@@ -42,6 +48,8 @@ export interface LearningSupport {
   readonly taskId: string;
   readonly evaluatedAt: string;
   readonly verificationResultHash: string;
+  readonly learningKeyHash: string;
+  readonly lessonContentHash: string;
   readonly evidenceRefs: readonly string[];
 }
 
