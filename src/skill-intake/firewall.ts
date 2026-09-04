@@ -375,7 +375,7 @@ function analyzeSnapshot(
   if (manifestContent === undefined) {
     limitations.push("SKILL_MANIFEST_UNINSPECTED");
   } else {
-    parsedManifest = parseManifest(manifestContent);
+    parsedManifest = safeParseManifest(manifestContent);
     if (parsedManifest === null) {
       limitations.push("SKILL_MANIFEST_INVALID");
     } else if (parsedManifest.instructionBytes > MAX_INSTRUCTION_BYTES) {
@@ -693,6 +693,20 @@ function normalizeLimitations(value: unknown): string[] {
       boundedPrintable(entry, `limitations[${index}]`, MAX_LIMITATION_LENGTH),
     ),
   );
+}
+
+function safeParseManifest(content: string): ParsedManifest | null {
+  try {
+    return parseManifest(content);
+  } catch (error) {
+    if (
+      error instanceof SkillIntakeError &&
+      (error.code === "INCOMPLETE" || error.code === "INVALID_INPUT")
+    ) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 function parseManifest(content: string): ParsedManifest | null {
