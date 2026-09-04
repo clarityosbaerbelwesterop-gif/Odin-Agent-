@@ -1,0 +1,53 @@
+name: M16 surgical live profile v2 once
+
+on:
+  push:
+    branches:
+      - agent/m16-live-profile-v2
+    paths:
+      - .github/workflows/m16-live-profile-v2-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify-profile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m16-live-profile-v2
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Version surgical live evidence identity
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const path = 'scripts/live-m16-grounded-eval.mjs';
+          let source = fs.readFileSync(path, 'utf8');
+          const from = 'profileVersion: "m16-grounded-live-v1",';
+          const to = 'profileVersion: "m16-grounded-surgical-live-v2",';
+          if (!source.includes(from)) throw new Error('Legacy M16 profile identity anchor missing.');
+          source = source.replace(from, to);
+          fs.writeFileSync(path, source);
+          NODE
+      - run: npx biome check --write scripts/live-m16-grounded-eval.mjs
+      - run: npm run verify
+      - run: npm run build
+      - name: Credential-free dry suites
+        run: |
+          ODIN_M16_RESULT_PATH=/tmp/m16-output-v2.json node scripts/live-m16-grounded-eval.mjs --dry-run --suite=output
+          ODIN_M16_RESULT_PATH=/tmp/m16-strength-v2.json node scripts/live-m16-grounded-eval.mjs --dry-run --suite=strength
+      - name: Commit verified profile identity
+        run: |
+          git rm .github/workflows/m16-live-profile-v2-once.yml
+          git add scripts/live-m16-grounded-eval.mjs
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "eval(m16): version surgical grounded live profile"
+          git push origin HEAD:agent/m16-live-profile-v2
