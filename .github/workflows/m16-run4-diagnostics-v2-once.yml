@@ -38,7 +38,8 @@ jobs:
           ODIN_M16_RESULT_PATH=/tmp/m16-strength-dry.json node scripts/live-m16-grounded-eval.mjs --dry-run --suite=strength
       - name: Commit verified diagnostics
         run: |
-          git rm .github/workflows/m16-run4-diagnostics-v2-once.yml scripts/m16-run4-diagnostics-patch.mjs
+          git rm .github/workflows/m16-run4-diagnostics-v2-once.yml
+          git rm -f scripts/m16-run4-diagnostics-patch.mjs
           git add src/capability-packs/live-evidence.ts src/runtime/grounded-coding-provider.ts test/capability-packs/live-evidence.test.ts test/runtime/grounded-coding-provider.test.ts scripts/live-m16-grounded-eval.mjs docs/evals/M16_KIMI_GROUNDED_OUTPUT_RUN_4_ANALYSIS.md HANDOVER.md
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
