@@ -66,15 +66,18 @@ export class EvidenceLearningCurator {
 
   async recordVerifiedLesson(value: unknown): Promise<LearningRecordResult> {
     const proposal = normalizeProposal(value);
+    const contentHash = sha256(proposal.lesson);
     const request: LearningAttestationRequest = {
+      learningKeyHash: sha256(proposal.key),
+      lessonContentHash: contentHash,
       missionId: proposal.missionId,
       projectId: proposal.projectId,
+      sensitivity: proposal.sensitivity,
       taskId: proposal.taskId,
       userId: proposal.userId,
     };
     const attestation = await this.#authority.attestVerifiedTask(request);
     const verified = validateAttestation(attestation, request, proposal.observedAt);
-    const contentHash = sha256(proposal.lesson);
     const recordId = learningId(proposal, contentHash);
     const supportIdentity = `${proposal.missionId}\u0000${proposal.taskId}`;
     const replayKey = `${proposal.userId}\u0000${proposal.projectId}\u0000${supportIdentity}\u0000${proposal.idempotencyKey}`;
@@ -414,9 +417,18 @@ function validateAttestation(
     attestation.projectId !== expected.projectId ||
     attestation.missionId !== expected.missionId ||
     attestation.taskId !== expected.taskId ||
+    attestation.learningKeyHash !== expected.learningKeyHash ||
+    attestation.lessonContentHash !== expected.lessonContentHash ||
+    attestation.sensitivity !== expected.sensitivity ||
     attestation.verdict !== "PASS"
   ) {
-    throw new LearningError("DENIED", "Learning attestation scope or verdict did not match.");
+    throw new LearningError(
+      "DENIED",
+      "Learning attestation scope, verdict, or exact content binding did not match.",
+    );
+  }
+  if (!isSha256(attestation.learningKeyHash) || !isSha256(attestation.lessonContentHash)) {
+    throw new LearningError("DENIED", "Learning attestation requires SHA-256 content bindings.");
   }
   assertCanonicalTimestamp(attestation.evaluatedAt, "attestation.evaluatedAt");
   if (Date.parse(attestation.evaluatedAt) < Date.parse(observedAt)) {
@@ -445,6 +457,8 @@ function supportFromAttestation(attestation: VerifiedLearningAttestation): Learn
   return Object.freeze({
     evaluatedAt: attestation.evaluatedAt,
     evidenceRefs: Object.freeze([...attestation.evidenceRefs]),
+    learningKeyHash: attestation.learningKeyHash,
+    lessonContentHash: attestation.lessonContentHash,
     missionId: attestation.missionId,
     taskId: attestation.taskId,
     verificationResultHash: attestation.verificationResultHash,
@@ -519,6 +533,8 @@ function evidenceDigest(supports: readonly LearningSupport[]): string {
     [...supports].sort(compareSupport).map((support) => ({
       evaluatedAt: support.evaluatedAt,
       evidenceRefs: [...support.evidenceRefs].sort(),
+      learningKeyHash: support.learningKeyHash,
+      lessonContentHash: support.lessonContentHash,
       missionId: support.missionId,
       taskId: support.taskId,
       verificationResultHash: support.verificationResultHash,

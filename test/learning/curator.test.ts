@@ -56,8 +56,13 @@ function attestation(
   return {
     evaluatedAt,
     evidenceRefs: [`evidence:${missionId}:${taskId}`],
+    learningKeyHash: hash("typescript repair workflow"),
+    lessonContentHash: hash(
+      "Inspect the smallest failing quality gate before proposing a repair.",
+    ),
     missionId,
     projectId: PROJECT,
+    sensitivity: "internal",
     taskId,
     userId: USER,
     verdict: "PASS",
@@ -98,7 +103,10 @@ async function addSupport(
 ): Promise<LearningRecordResult> {
   const input = proposal(missionId, taskId, observedAt, overrides);
   const proof = attestation(missionId, taskId, observedAt, {
+    learningKeyHash: hash(input.key),
+    lessonContentHash: hash(input.lesson),
     projectId: input.projectId,
+    sensitivity: input.sensitivity,
     userId: input.userId,
   });
   authority.set(proof);
