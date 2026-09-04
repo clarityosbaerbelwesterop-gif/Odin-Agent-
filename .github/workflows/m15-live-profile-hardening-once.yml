@@ -1,0 +1,96 @@
+name: M15 live profile hardening once
+
+on:
+  push:
+    branches:
+      - agent/m15-kimi-rerun-2
+    paths:
+      - .github/workflows/m15-live-profile-hardening-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m15-kimi-rerun-2
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Bind A/B harness to versioned execution profile
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const path = 'scripts/live-kimi-capability-ab.mjs';
+          let text = fs.readFileSync(path, 'utf8');
+          function replaceOnce(from, to) {
+            const first = text.indexOf(from);
+            if (first < 0 || text.indexOf(from, first + from.length) >= 0) {
+              throw new Error(`Expected exactly one match for: ${from.slice(0, 80)}`);
+            }
+            text = text.replace(from, to);
+          }
+          replaceOnce(
+            'import {\n  CandidateEvaluationProvider,\n  M15_DISTILLED_CAPABILITY_DRAFTS,\n} from "../dist/src/capability-packs/index.js";',
+            'import {\n  CandidateEvaluationProvider,\n  M15_DISTILLED_CAPABILITY_DRAFTS,\n  M15_KIMI_CODING_AB_PROFILE,\n} from "../dist/src/capability-packs/index.js";',
+          );
+          replaceOnce(
+            'const MODEL = "moonshotai/kimi-k3";\nconst RESULT_PATH = process.env.ODIN_M15_AB_RESULT_PATH ?? "m15-kimi-coding-ab.json";\nconst MAX_PROVIDER_CALLS = 12;\nconst MAX_CALLS_PER_ARM_CASE = 2;',
+            'const PROFILE = M15_KIMI_CODING_AB_PROFILE;\nconst MODEL = PROFILE.model;\nconst RESULT_PATH = process.env.ODIN_M15_AB_RESULT_PATH ?? "m15-kimi-coding-ab.json";\nconst MAX_PROVIDER_CALLS = PROFILE.maxProviderCalls;\nconst MAX_CALLS_PER_ARM_CASE = PROFILE.maxCallsPerArmCase;\n\nfunction executionProfileEvidence() {\n  return {\n    acceptanceLatencyMs: PROFILE.acceptanceLatencyMs,\n    maxCallsPerArmCase: PROFILE.maxCallsPerArmCase,\n    maxProviderCalls: PROFILE.maxProviderCalls,\n    profileVersion: PROFILE.profileVersion,\n    providerTimeoutMs: PROFILE.providerTimeoutMs,\n    reasoningEffort: PROFILE.reasoningEffort,\n    temperature: PROFILE.temperature,\n  };\n}',
+          );
+          replaceOnce('    defaultTimeoutMs: 180_000,', '    defaultTimeoutMs: PROFILE.providerTimeoutMs,');
+          const reasoningOld = 'reasoningEffort: "max", temperature: 1';
+          const reasoningNew = 'reasoningEffort: PROFILE.reasoningEffort, temperature: PROFILE.temperature';
+          const reasoningMatches = text.split(reasoningOld).length - 1;
+          if (reasoningMatches !== 2) throw new Error(`Expected two reasoning matches, got ${reasoningMatches}`);
+          text = text.replaceAll(reasoningOld, reasoningNew);
+          replaceOnce('      maxCandidateLatencyMs: 180_000,', '      maxCandidateLatencyMs: PROFILE.acceptanceLatencyMs,');
+          replaceOnce(
+            '      caseId: caseSpec.id,\n    };',
+            '      caseId: caseSpec.id,\n      executionProfileVersion: PROFILE.profileVersion,\n    };',
+          );
+          replaceOnce(
+            '      configured: true,\n      maxProviderCalls: MAX_PROVIDER_CALLS,',
+            '      configured: true,\n      executionProfile: executionProfileEvidence(),\n      maxProviderCalls: MAX_PROVIDER_CALLS,',
+          );
+          replaceOnce(
+            '    candidateSources: draft.sourceRefs,\n    model: MODEL,',
+            '    candidateSources: draft.sourceRefs,\n    executionProfile: executionProfileEvidence(),\n    model: MODEL,',
+          );
+          fs.writeFileSync(path, text);
+          NODE
+      - name: Format changed sources
+        run: npx biome check --write scripts/live-kimi-capability-ab.mjs src/capability-packs/live-profile.ts src/capability-packs/index.ts test/capability-packs/live-profile.test.ts
+      - name: Verify repository
+        run: npm run verify
+      - name: Build and prove credential-free A/B dry profile
+        run: |
+          npm run build
+          ODIN_M15_AB_RESULT_PATH=m15-profile-dry.json node scripts/live-kimi-capability-ab.mjs --dry-run
+          node - <<'NODE'
+          const result = require('./m15-profile-dry.json');
+          if (!result.configured || result.secretPresent !== false) process.exit(1);
+          if (!result.executionProfile || result.executionProfile.profileVersion !== 'm15-kimi-coding-ab-v2') process.exit(1);
+          if (result.executionProfile.reasoningEffort !== 'high') process.exit(1);
+          if (result.executionProfile.acceptanceLatencyMs !== 180000) process.exit(1);
+          if (result.executionProfile.providerTimeoutMs !== 240000) process.exit(1);
+          if (result.executionProfile.providerTimeoutMs <= result.executionProfile.acceptanceLatencyMs) process.exit(1);
+          if (result.maxProviderCalls !== 12 || result.model !== 'moonshotai/kimi-k3' || result.provider !== 'nvidia') process.exit(1);
+          NODE
+          rm m15-profile-dry.json
+      - name: Remove helper and commit verified hardening
+        run: |
+          git rm .github/workflows/m15-live-profile-hardening-once.yml
+          git add scripts/live-kimi-capability-ab.mjs src/capability-packs/live-profile.ts src/capability-packs/index.ts test/capability-packs/live-profile.test.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(m15): make Kimi live comparison latency measurable"
+          git push origin HEAD:agent/m15-kimi-rerun-2
