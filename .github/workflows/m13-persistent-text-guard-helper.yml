@@ -1,0 +1,59 @@
+name: M13 persistent learning guard helper
+
+on:
+  push:
+    branches:
+      - agent/m13-evidence-learning
+    paths:
+      - .github/workflows/m13-persistent-text-guard-helper.yml
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/m13-evidence-learning
+          fetch-depth: 0
+      - name: Fix strict test identity and guard persistent learning text
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          const testPath = 'test/learning/curator.test.ts';
+          let test = fs.readFileSync(testPath, 'utf8');
+          const oldIdentity = 'function identity(request: LearningAttestationRequest): string {\n  return `${request.userId}:${request.projectId}:${request.missionId}:${request.taskId}`;\n}';
+          const newIdentity = 'function identity(\n  request: Pick<\n    LearningAttestationRequest,\n    "missionId" | "projectId" | "taskId" | "userId"\n  >,\n): string {\n  return `${request.userId}:${request.projectId}:${request.missionId}:${request.taskId}`;\n}';
+          if (!test.includes(oldIdentity)) throw new Error('Expected identity helper was not found.');
+          test = test.replace(oldIdentity, newIdentity);
+          fs.writeFileSync(testPath, test);
+
+          const curatorPath = 'src/learning/curator.ts';
+          let curator = fs.readFileSync(curatorPath, 'utf8');
+          const oldProposal = `  const lesson = boundedText(object.lesson, "lesson", MAX_LESSON_LENGTH);\n  if (containsObviousSecret(lesson)) {\n    throw new LearningError(\n      "DENIED",\n      "Post-task learning rejects obvious secret-like lesson content.",\n    );\n  }\n  return Object.freeze({\n    idempotencyKey: identifier(object.idempotencyKey, "idempotencyKey"),\n    key: normalizeKey(object.key),\n    lesson,\n    missionId: identifier(object.missionId, "missionId"),\n    observedAt: canonicalTimestamp(object.observedAt, "observedAt"),\n    projectId: identifier(object.projectId, "projectId"),\n    sensitivity,\n    sourceReference: boundedText(object.sourceReference, "sourceReference", MAX_REFERENCE_LENGTH),\n    tags: Object.freeze(normalizeTags(object.tags)),\n    taskId: identifier(object.taskId, "taskId"),\n    userId: identifier(object.userId, "userId"),\n  });`;
+          const newProposal = `  const key = normalizeKey(object.key);\n  const lesson = boundedText(object.lesson, "lesson", MAX_LESSON_LENGTH);\n  const sourceReference = boundedText(\n    object.sourceReference,\n    "sourceReference",\n    MAX_REFERENCE_LENGTH,\n  );\n  const tags = normalizeTags(object.tags);\n  if ([key, lesson, sourceReference, ...tags].some(containsObviousSecret)) {\n    throw new LearningError(\n      "DENIED",\n      "Post-task learning rejects obvious secret-like persistent content.",\n    );\n  }\n  return Object.freeze({\n    idempotencyKey: identifier(object.idempotencyKey, "idempotencyKey"),\n    key,\n    lesson,\n    missionId: identifier(object.missionId, "missionId"),\n    observedAt: canonicalTimestamp(object.observedAt, "observedAt"),\n    projectId: identifier(object.projectId, "projectId"),\n    sensitivity,\n    sourceReference,\n    tags: Object.freeze(tags),\n    taskId: identifier(object.taskId, "taskId"),\n    userId: identifier(object.userId, "userId"),\n  });`;
+          if (!curator.includes(oldProposal)) throw new Error('Expected proposal normalization block was not found.');
+          curator = curator.replace(oldProposal, newProposal);
+          fs.writeFileSync(curatorPath, curator);
+
+          const securityPath = 'test/learning/security.test.ts';
+          let security = fs.readFileSync(securityPath, 'utf8');
+          security = security.replace(
+            '/secret-like lesson content/u.test(error.message)',
+            '/secret-like persistent content/u.test(error.message)',
+          );
+          security += `\n\ntest("automatic learning rejects secret-like keys, tags, and source references", async () => {\n  const cases = [\n    { key: "sk-proj-abcdefghijk12345" },\n    { tags: ["repair", "ghp_abcdefghijk12345"] },\n    { sourceReference: "Bearer abcdefghijklmnop" },\n  ] as const;\n\n  for (const overrides of cases) {\n    const curator = new EvidenceLearningCurator(\n      new TamperingAuthority("key"),\n      new InMemoryMemoryStore(),\n    );\n    await assert.rejects(\n      () => curator.recordVerifiedLesson({ ...proposal(), ...overrides }),\n      (error: unknown) =>\n        error instanceof LearningError &&\n        error.code === "DENIED" &&\n        /secret-like persistent content/u.test(error.message),\n    );\n  }\n});\n`;
+          fs.writeFileSync(securityPath, security);
+          NODE
+      - name: Remove helper and commit
+        run: |
+          rm .github/workflows/m13-persistent-text-guard-helper.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/learning/curator.ts test/learning/curator.test.ts test/learning/security.test.ts .github/workflows/m13-persistent-text-guard-helper.yml
+          git commit -m "fix(m13): harden persistent learning text"
+          git push origin HEAD:agent/m13-evidence-learning
