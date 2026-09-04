@@ -35,6 +35,20 @@
       "commitSha": "5cd4a7eae3a9a7b5d2aceb0613f7d1f7c4b65968",
       "role": "domain-library",
       "licenseHint": "MIT"
+    },
+    {
+      "repository": "anthropics/claude-code-security-review",
+      "defaultRef": "main",
+      "commitSha": "0c6a49f1fa56a1d472575da86a94dbc1edb78eda",
+      "role": "security-reference",
+      "licenseHint": "MIT"
+    },
+    {
+      "repository": "0xNyk/awesome-hermes-agent",
+      "defaultRef": "main",
+      "commitSha": "e4dde5e0e19b734c175a34038deac8e80cd04cb2",
+      "role": "ecosystem-catalog",
+      "licenseHint": "CC-BY-4.0"
     }
   ]
 }
