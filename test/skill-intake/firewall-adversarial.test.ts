@@ -97,9 +97,7 @@ test("policy-memory poisoning and bundled hooks quarantine the skill", async () 
 
   assert.equal(result.report.decision, "QUARANTINE");
   assert.equal(result.candidate, undefined);
-  assert.ok(
-    result.report.findings.some((finding) => finding.ruleId === "MEMORY_POLICY_POISONING"),
-  );
+  assert.ok(result.report.findings.some((finding) => finding.ruleId === "MEMORY_POLICY_POISONING"));
   assert.ok(result.report.findings.some((finding) => finding.ruleId === "HOOK_WORKFLOW"));
 });
 
