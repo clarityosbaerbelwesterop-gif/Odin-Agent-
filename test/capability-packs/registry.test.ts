@@ -152,10 +152,18 @@ test("pack rejects missing forged failed or foreign curation evidence", async ()
 
 test("M10 lifecycle and exact content hash remain pack authority boundary", async () => {
   const measured = await measuredSecuritySkill();
+  const source = measured.candidate.package;
   const candidateSkills = new SkillRegistry();
   const candidate = candidateSkills.registerCandidate({
-    ...measured.candidate.package,
-    contentHash: undefined,
+    instructions: source.instructions,
+    name: source.name,
+    provenance: source.provenance,
+    requiredTools: source.requiredTools,
+    summary: source.summary,
+    tags: source.tags,
+    testRefs: source.testRefs,
+    trustClass: source.trustClass,
+    version: source.version,
   });
   const packs = new CapabilityPackRegistry(candidateSkills, [measured.report]);
 
@@ -173,7 +181,7 @@ test("M10 lifecycle and exact content hash remain pack authority boundary", asyn
           },
         ],
       }),
-    (error: unknown) => error instanceof CapabilityPackError,
+    (error: unknown) => error instanceof CapabilityPackError && error.code === "DENIED",
   );
 
   const verifiedPacks = new CapabilityPackRegistry(measured.skills, [measured.report]);
@@ -236,7 +244,11 @@ test("pack identity is deterministic across member order", async () => {
     trustClass: "community",
     version: "gdef456abc123",
   });
-  const curator = new CapabilityCurator(skills, new PassingAuthority(), ["verification.evidence-binding"]);
+  const curator = new CapabilityCurator(
+    skills,
+    new PassingAuthority(),
+    ["verification.evidence-binding"],
+  );
   const second = await curator.curate({
     candidate: {
       contentHash: secondCandidate.package.contentHash,
