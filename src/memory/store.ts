@@ -38,6 +38,7 @@ const SOURCE_CLASSES = new Set<MemorySourceClass>([
   "model_summary",
   "repository",
   "tool",
+  "verified_learning",
 ]);
 
 interface IdempotencyRecord {
