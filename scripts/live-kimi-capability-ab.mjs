@@ -34,7 +34,7 @@ const CASES = Object.freeze([
       "README.md": "Identity values must be canonicalized consistently across the repository.",
       "package.json": JSON.stringify({ name: "m15-kimi-case-identity", private: true }),
       "src/identity.ts":
-        'export function canonicalizeId(value: string): string {\n  return value.trim().toLowerCase();\n}\n',
+        "export function canonicalizeId(value: string): string {\n  return value.trim().toLowerCase();\n}\n",
       "src/user.ts":
         'import { canonicalizeId } from "./identity.js";\n\nexport function selectUserId(value: string): string {\n  return value;\n}\n',
     }),
@@ -47,7 +47,8 @@ const CASES = Object.freeze([
   }),
   Object.freeze({
     id: "retry-429-surgical",
-    objective: "Repair shouldRetry so HTTP 429 is retryable without changing retryDelayMs or the API.",
+    objective:
+      "Repair shouldRetry so HTTP 429 is retryable without changing retryDelayMs or the API.",
     targetPath: "src/retry.ts",
     files: Object.freeze({
       "README.md": "Retry policy treats throttling and transient server failures as retryable.",
@@ -74,7 +75,7 @@ const CASES = Object.freeze([
       "src/label.ts":
         'import { safeTrim } from "./text.js";\n\nexport function parseLabel(value: string): string {\n  return value;\n}\n',
       "src/text.ts":
-        "export function safeTrim(value: string): string {\n  return value.trim();\n}\n\nexport function collapseWhitespace(value: string): string {\n  return value.replace(/\\s+/g, \" \" ).trim();\n}\n",
+        'export function safeTrim(value: string): string {\n  return value.trim();\n}\n\nexport function collapseWhitespace(value: string): string {\n  return value.replace(/\\s+/g, " " ).trim();\n}\n',
     }),
     expected:
       'import { safeTrim } from "./text.js";\n\nexport function parseLabel(value: string): string {\n  return safeTrim(value);\n}\n',
@@ -190,34 +191,55 @@ async function runArm({ arm, baseProvider, caseSpec, candidate, observedAt }) {
   });
   const started = performance.now();
   const beforeCalls = baseProvider.callCounter.value;
-  const result = await coding.start({
-    budgetLimits: {
-      attempts: 40,
-      costMicros: 0,
-      inputTokens: 40_000,
-      outputTokens: 20_000,
-      toolCalls: 40,
-    },
-    missionId: `m15-kimi-${arm}-${caseSpec.id}-${Date.now()}`,
-    objective: caseSpec.objective,
-  });
-  const latencyMs = Math.round(performance.now() - started);
-  if (result.status !== "completed") throw new Error("A/B fixture unexpectedly interrupted.");
-  const calls = baseProvider.callCounter.value - beforeCalls;
-  if (calls > MAX_CALLS_PER_ARM_CASE) throw new Error("Per-arm provider-call ceiling exceeded.");
-  const finalContent = workspace.content(caseSpec.targetPath);
-  const run = {
-    changedFiles: result.report.changedFiles,
-    completed: result.report.state === "COMPLETED",
-    finalContent,
-    firstPass: result.report.quality.firstFailureSignature === null,
-    latencyMs,
-    modelUsage: result.report.modelUsage,
-    providerCalls: calls,
-    repaired: result.report.quality.firstFailureSignature !== null,
-    verification: result.report.verification.outcome,
-  };
-  return { ...run, qualityBps: scoreCase(caseSpec, run) };
+  try {
+    const result = await coding.start({
+      budgetLimits: {
+        attempts: 40,
+        costMicros: 0,
+        inputTokens: 40_000,
+        outputTokens: 20_000,
+        toolCalls: 40,
+      },
+      missionId: `m15-kimi-${arm}-${caseSpec.id}-${Date.now()}`,
+      objective: caseSpec.objective,
+    });
+    const latencyMs = Math.round(performance.now() - started);
+    if (result.status !== "completed") throw new Error("A/B fixture unexpectedly interrupted.");
+    const calls = baseProvider.callCounter.value - beforeCalls;
+    if (calls > MAX_CALLS_PER_ARM_CASE) throw new Error("Per-arm provider-call ceiling exceeded.");
+    const finalContent = workspace.content(caseSpec.targetPath);
+    const run = {
+      changedFiles: result.report.changedFiles,
+      completed: result.report.state === "COMPLETED",
+      errorClass: null,
+      finalContent,
+      firstPass: result.report.quality.firstFailureSignature === null,
+      latencyMs,
+      measurementComplete: true,
+      modelUsage: result.report.modelUsage,
+      providerCalls: calls,
+      repaired: result.report.quality.firstFailureSignature !== null,
+      verification: result.report.verification.outcome,
+    };
+    return { ...run, qualityBps: scoreCase(caseSpec, run) };
+  } catch (error) {
+    const latencyMs = Math.round(performance.now() - started);
+    const calls = baseProvider.callCounter.value - beforeCalls;
+    const run = {
+      changedFiles: [],
+      completed: false,
+      errorClass: error instanceof Error ? error.name : "UnknownError",
+      finalContent: workspace.content(caseSpec.targetPath),
+      firstPass: false,
+      latencyMs,
+      measurementComplete: false,
+      modelUsage: { inputTokens: 0, outputTokens: 0 },
+      providerCalls: calls,
+      repaired: false,
+      verification: "FAIL",
+    };
+    return { ...run, qualityBps: 0 };
+  }
 }
 
 function measured(run) {
@@ -226,7 +248,9 @@ function measured(run) {
     latencyMs: run.latencyMs,
     qualityBps: run.qualityBps,
     safety: run.completed && run.verification === "PASS" ? "PASS" : "FAIL",
-    totalTokens: run.modelUsage.inputTokens + run.modelUsage.outputTokens,
+    totalTokens: run.measurementComplete
+      ? run.modelUsage.inputTokens + run.modelUsage.outputTokens
+      : 10_000_000,
   };
 }
 
@@ -236,7 +260,11 @@ async function main() {
   const { draft, package: candidate } = codingDraft();
   if (dryRun) {
     const result = {
-      candidate: { contentHash: candidate.contentHash, name: candidate.name, version: candidate.version },
+      candidate: {
+        contentHash: candidate.contentHash,
+        name: candidate.name,
+        version: candidate.version,
+      },
       caseIds: CASES.map((entry) => entry.id),
       configured: true,
       maxProviderCalls: MAX_PROVIDER_CALLS,
@@ -274,10 +302,7 @@ async function main() {
     generate: async (request, options) => {
       callCounter.value += 1;
       if (callCounter.value > MAX_PROVIDER_CALLS) throw new Error("M15 A/B call ceiling exceeded.");
-      return rawProvider.generate(
-        { ...request, reasoningEffort: "max", temperature: 1 },
-        options,
-      );
+      return rawProvider.generate({ ...request, reasoningEffort: "max", temperature: 1 }, options);
     },
     stream: (request, options) =>
       rawProvider.stream({ ...request, reasoningEffort: "max", temperature: 1 }, options),
@@ -328,13 +353,17 @@ async function main() {
       sanitized: {
         baseline: {
           ...evidencePayload.baseline,
+          errorClass: baseline.errorClass,
           latencyMs: baseline.latencyMs,
+          measurementComplete: baseline.measurementComplete,
           providerCalls: baseline.providerCalls,
           totalTokens: measured(baseline).totalTokens,
         },
         candidate: {
           ...evidencePayload.candidate,
+          errorClass: candidateRun.errorClass,
           latencyMs: candidateRun.latencyMs,
+          measurementComplete: candidateRun.measurementComplete,
           providerCalls: candidateRun.providerCalls,
           totalTokens: measured(candidateRun).totalTokens,
         },
@@ -344,7 +373,11 @@ async function main() {
 
   const attestationCases = cases.map(({ sanitized: _sanitized, ...entry }) => entry);
   const attestation = {
-    candidate: { contentHash: candidate.contentHash, name: candidate.name, version: candidate.version },
+    candidate: {
+      contentHash: candidate.contentHash,
+      name: candidate.name,
+      version: candidate.version,
+    },
     cases: attestationCases,
     domain: "coding",
     evaluatedAt: observedAt,

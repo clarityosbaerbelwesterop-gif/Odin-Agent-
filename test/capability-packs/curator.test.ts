@@ -24,6 +24,15 @@ class FixtureAuthority {
   }
 }
 
+function makeCurator(
+  skills: SkillRegistry,
+  authority: FixtureAuthority,
+  canonicalProcedureKeys: readonly string[],
+  policy: ConstructorParameters<typeof CapabilityCurator>[3] = {},
+) {
+  return new CapabilityCurator(skills, authority, canonicalProcedureKeys, policy, () => T1);
+}
+
 function registerCandidate(skills: SkillRegistry, overrides: Record<string, unknown> = {}) {
   return skills.registerCandidate({
     instructions:
@@ -112,7 +121,7 @@ test("novel independently passing candidate becomes VERIFIED but never ACTIVE", 
   const skills = new SkillRegistry();
   const candidate = registerCandidate(skills);
   const authority = new FixtureAuthority((value) => attestation(value));
-  const curator = new CapabilityCurator(skills, authority, ["verification.evidence-binding"]);
+  const curator = makeCurator(skills, authority, ["verification.evidence-binding"]);
 
   const result = await curator.curate(request(candidate));
 
@@ -137,7 +146,7 @@ test("fully redundant procedure stops before evaluation and keeps candidate unpr
   const skills = new SkillRegistry();
   const candidate = registerCandidate(skills);
   const authority = new FixtureAuthority((value) => attestation(value));
-  const curator = new CapabilityCurator(skills, authority, [
+  const curator = makeCurator(skills, authority, [
     "research.falsifiable-hypotheses",
     "verification.evidence-binding",
   ]);
@@ -180,7 +189,7 @@ test("quality safety authority token and latency regressions never verify", asyn
         ),
       };
     });
-    const curator = new CapabilityCurator(skills, authority, ["verification.evidence-binding"]);
+    const curator = makeCurator(skills, authority, ["verification.evidence-binding"]);
 
     const result = await curator.curate(request(candidate));
 
@@ -210,7 +219,7 @@ test("average lift floor is monotonic and cannot be offset by lower cost", async
       })),
     };
   });
-  const curator = new CapabilityCurator(skills, authority, ["verification.evidence-binding"], {
+  const curator = makeCurator(skills, authority, ["verification.evidence-binding"], {
     minAverageLiftBps: 100,
   });
 
@@ -238,7 +247,7 @@ test("foreign stale and self-authored evaluation evidence fails closed", async (
   for (const factory of cases) {
     const skills = new SkillRegistry();
     const candidate = registerCandidate(skills);
-    const curator = new CapabilityCurator(skills, new FixtureAuthority(factory), [
+    const curator = makeCurator(skills, new FixtureAuthority(factory), [
       "verification.evidence-binding",
     ]);
 
@@ -258,7 +267,7 @@ test("candidate hash mismatch and non-community lifecycle are denied before eval
   const skills = new SkillRegistry();
   const candidate = registerCandidate(skills);
   const authority = new FixtureAuthority((value) => attestation(value));
-  const curator = new CapabilityCurator(skills, authority, ["verification.evidence-binding"]);
+  const curator = makeCurator(skills, authority, ["verification.evidence-binding"]);
 
   await assert.rejects(
     () =>
@@ -284,7 +293,7 @@ test("candidate hash mismatch and non-community lifecycle are denied before eval
     version: "v1",
   });
   const trustedAuthority = new FixtureAuthority((value) => attestation(value));
-  const trustedCurator = new CapabilityCurator(projectSkills, trustedAuthority, [
+  const trustedCurator = makeCurator(projectSkills, trustedAuthority, [
     "verification.evidence-binding",
   ]);
   await assert.rejects(
@@ -310,7 +319,7 @@ test("case ordering cannot change curation report identity", async () => {
       const result = attestation(value) as { cases: readonly unknown[]; [key: string]: unknown };
       return { ...result, cases: reverse ? [...result.cases].reverse() : result.cases };
     });
-    const curator = new CapabilityCurator(skills, authority, ["verification.evidence-binding"]);
+    const curator = makeCurator(skills, authority, ["verification.evidence-binding"]);
     return curator.curate(request(candidate));
   };
 
@@ -336,7 +345,7 @@ test("malformed duplicate and incomplete held-out cases fail closed", async () =
   for (const factory of factories) {
     const skills = new SkillRegistry();
     const candidate = registerCandidate(skills);
-    const curator = new CapabilityCurator(skills, new FixtureAuthority(factory), [
+    const curator = makeCurator(skills, new FixtureAuthority(factory), [
       "verification.evidence-binding",
     ]);
     await assert.rejects(
@@ -350,7 +359,7 @@ test("context ceiling blocks evaluation without converting size pressure into tr
   const skills = new SkillRegistry();
   const candidate = registerCandidate(skills, { instructions: "A".repeat(512) });
   const authority = new FixtureAuthority((value) => attestation(value));
-  const curator = new CapabilityCurator(skills, authority, ["verification.evidence-binding"], {
+  const curator = makeCurator(skills, authority, ["verification.evidence-binding"], {
     maxContextBytes: 128,
   });
 
@@ -358,6 +367,54 @@ test("context ceiling blocks evaluation without converting size pressure into tr
 
   assert.equal(result.report.decision, "FAIL");
   assert.deepEqual(result.report.reasons, ["CONTEXT_LIMIT"]);
+  assert.equal(authority.calls, 0);
+  assert.equal(
+    skills.resolveForReview(candidate.package.name, candidate.package.version).lifecycle,
+    "CANDIDATE",
+  );
+});
+
+test("trusted clock prevents caller timestamps from rescuing stale evaluation evidence", async () => {
+  const skills = new SkillRegistry();
+  const candidate = registerCandidate(skills);
+  const authority = new FixtureAuthority((value) => attestation(value, { evaluatedAt: T0 }));
+  const curator = makeCurator(skills, authority, ["verification.evidence-binding"], {
+    maxEvidenceAgeMs: 1_000,
+  });
+
+  await assert.rejects(
+    () => curator.curate(request(candidate, { observedAt: T0 })),
+    (error: unknown) =>
+      error instanceof CapabilityCurationError && error.code === "EVALUATION_FAILED",
+  );
+  assert.equal(authority.calls, 1);
+  assert.equal(
+    skills.resolveForReview(candidate.package.name, candidate.package.version).lifecycle,
+    "CANDIDATE",
+  );
+
+  await assert.rejects(
+    () => curator.curate(request(candidate, { observedAt: "2026-09-04T11:00:00.000Z" })),
+    (error: unknown) => error instanceof CapabilityCurationError && error.code === "INVALID_INPUT",
+  );
+  assert.equal(authority.calls, 1);
+});
+
+test("candidate cannot invent novel procedure keys outside the runtime-owned domain catalog", async () => {
+  const skills = new SkillRegistry();
+  const candidate = registerCandidate(skills);
+  const authority = new FixtureAuthority((value) => attestation(value));
+  const curator = makeCurator(skills, authority, ["verification.evidence-binding"]);
+
+  await assert.rejects(
+    () =>
+      curator.curate(
+        request(candidate, {
+          procedureKeys: ["research.falsifiable-hypotheses", "research.self-declared-novelty"],
+        }),
+      ),
+    (error: unknown) => error instanceof CapabilityCurationError && error.code === "DENIED",
+  );
   assert.equal(authority.calls, 0);
   assert.equal(
     skills.resolveForReview(candidate.package.name, candidate.package.version).lifecycle,

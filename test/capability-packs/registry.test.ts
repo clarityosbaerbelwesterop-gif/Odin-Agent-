@@ -46,6 +46,14 @@ class PassingAuthority {
   }
 }
 
+function makeCurator(
+  skills: SkillRegistry,
+  authority: PassingAuthority,
+  canonicalProcedureKeys: readonly string[],
+) {
+  return new CapabilityCurator(skills, authority, canonicalProcedureKeys, {}, () => T1);
+}
+
 async function measuredSecuritySkill() {
   const skills = new SkillRegistry();
   const candidate = skills.registerCandidate({
@@ -64,9 +72,7 @@ async function measuredSecuritySkill() {
     trustClass: "community",
     version: "gabc123def456",
   });
-  const curator = new CapabilityCurator(skills, new PassingAuthority(), [
-    "verification.evidence-binding",
-  ]);
+  const curator = makeCurator(skills, new PassingAuthority(), ["verification.evidence-binding"]);
   const result = await curator.curate({
     candidate: {
       contentHash: candidate.package.contentHash,
@@ -239,9 +245,7 @@ test("pack identity is deterministic across member order", async () => {
     trustClass: "community",
     version: "gdef456abc123",
   });
-  const curator = new CapabilityCurator(skills, new PassingAuthority(), [
-    "verification.evidence-binding",
-  ]);
+  const curator = makeCurator(skills, new PassingAuthority(), ["verification.evidence-binding"]);
   const second = await curator.curate({
     candidate: {
       contentHash: secondCandidate.package.contentHash,

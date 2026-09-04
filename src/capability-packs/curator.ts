@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { SkillVerificationProducer } from "../skills/types.js";
+import { M15_ADDITIVE_PROCEDURE_KEYS } from "./procedures.js";
 import {
   type CapabilityCandidateRef,
   type CapabilityCurationCaseResult,
@@ -47,16 +48,19 @@ export class CapabilityCurator {
   readonly #authority: CapabilityEvaluationAuthority;
   readonly #canonicalProcedureKeys: ReadonlySet<string>;
   readonly #policy: CapabilityCurationPolicy;
+  readonly #clock: () => string;
 
   constructor(
     registry: CapabilitySkillRegistry,
     authority: CapabilityEvaluationAuthority,
     canonicalProcedureKeys: readonly string[],
     policy: Partial<CapabilityCurationPolicy> = {},
+    clock: () => string = () => new Date().toISOString(),
   ) {
     this.#registry = registry;
     this.#authority = authority;
     this.#policy = normalizePolicy({ ...DEFAULT_POLICY, ...policy });
+    this.#clock = clock;
     this.#canonicalProcedureKeys = new Set(
       normalizedIdentifiers(canonicalProcedureKeys, "canonical procedure key", 256),
     );
@@ -64,6 +68,23 @@ export class CapabilityCurator {
 
   async curate(value: unknown): Promise<CapabilityCurationResult> {
     const request = normalizeRequest(value, this.#policy);
+    const trustedObservedAt = canonicalTimestamp(this.#clock(), "curation runtime clock");
+    if (Date.parse(request.observedAt) > Date.parse(trustedObservedAt)) {
+      throw new CapabilityCurationError(
+        "INVALID_INPUT",
+        "Curation observedAt cannot be future-dated relative to the runtime clock.",
+      );
+    }
+    const allowedProcedureKeys = new Set<string>([
+      ...this.#canonicalProcedureKeys,
+      ...M15_ADDITIVE_PROCEDURE_KEYS[request.domain],
+    ]);
+    if (request.procedureKeys.some((key) => !allowedProcedureKeys.has(key))) {
+      throw new CapabilityCurationError(
+        "DENIED",
+        "Curation procedure keys must come from the runtime-owned domain catalog.",
+      );
+    }
     const record = this.#registry.resolveForReview(
       request.candidate.name,
       request.candidate.version,
@@ -127,6 +148,7 @@ export class CapabilityCurator {
 
     const evaluationRequest: CapabilityEvaluationRequest = Object.freeze({
       ...request,
+      observedAt: trustedObservedAt,
       novelProcedureKeys,
       package: record.package,
     });
@@ -134,7 +156,12 @@ export class CapabilityCurator {
       await this.#authority.evaluate(evaluationRequest),
       this.#policy.maxCases,
     );
-    validateAttestation(attestation, request, record.package.provenance.observedAt, this.#policy);
+    validateAttestation(
+      attestation,
+      evaluationRequest,
+      record.package.provenance.observedAt,
+      this.#policy,
+    );
 
     const reasons: string[] = [];
     let totalLiftBps = 0;
