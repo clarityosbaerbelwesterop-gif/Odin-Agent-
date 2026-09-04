@@ -5,13 +5,15 @@ Updated: 2026-09-04.
 ## Current state
 
 - Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).
-- `main` contains verified M0–M15 at merge commit `30bcab22f6129925b704fff0d024ca40e472b06c`.
-- Active work: PR #21 on `agent/m15-kimi-postmerge-evidence`, preserving and interpreting the authorized post-merge Kimi K3 A/B evidence and hardening future live-comparison diagnostics.
-- Authorized post-merge live run `33870210502` completed its workflow with **10/12** maximum provider calls across three matched coding cases. All six baseline/candidate arms recorded `measurementComplete=false`, so there are **0 complete matched pairs** and the result is **INCONCLUSIVE**, not measured zero lift.
-- Raw sanitized evidence remains in `docs/evals/m15-kimi-coding-ab.json` at commit `42f9f28`; interpretation is recorded separately in `docs/evals/M15_KIMI_CODING_AB_ANALYSIS.md` so the historical evidence is not rewritten after the fact.
-- No M15 coding candidate is promoted or activated from that run. No Kimi/Astra/Fable/AGI capability claim follows from incomplete task-specific evidence.
-- PR #21 adds deterministic `MEASURED`/`PARTIAL`/`INCONCLUSIVE` summary semantics plus bounded secret-safe live failure codes. Helper run `33878406947` passed **325/325 tests**, Biome, strict TypeScript, secret-free Kimi dry smoke, and **89.87% / 77.08% / 95.87%** aggregate line/branch/function coverage. Exact-head normal PR CI `33878909210` passed on `382e44d4170c5e2c3c74b922172dc6e366d26caa` before this documentation-only authorization checkpoint.
-- The user explicitly authorized **merging PR #21 and running one second bounded NVIDIA/Kimi K3 matched A/B comparison** on 2026-09-04. The rerun must use the corrected harness, same provider/model/task-class identity, the existing `NV_API_KEY` GitHub Actions secret boundary, and the existing 12-call hard ceiling. This approval does not authorize broader benchmark sweeps, paid hosted sandboxes, production deployment, or candidate activation.
+- `main` contains verified M0–M15 plus PR #21 post-run evidence hardening at merge commit `02d80898cd10416c0198007280aca7447bbb7573`.
+- Active work: `agent/m15-kimi-rerun-2`, preserving the second authorized Kimi K3 A/B evidence and hardening the live measurement profile before any future provider run.
+- Second authorized live run `33879714040` completed successfully at the workflow level and used **9/12** maximum provider calls across the same three matched coding cases. All three matched pairs remain incomplete, so the result is **INCONCLUSIVE** with null quality/lift.
+- Every arm ended with bounded diagnostic `ProviderError / provider_timeout`. Candidate arms used one call, timed out at about 180 seconds, and made no target mutation. Baseline arms used two calls, mutated the target after planning, failed deterministic acceptance, and timed out during repair.
+- Raw sanitized rerun evidence is preserved at `docs/evals/m15-kimi-coding-ab-rerun-2.json`; interpretation is recorded in `docs/evals/M15_KIMI_CODING_AB_RERUN_2_ANALYSIS.md`. No M10 verification, pack population, activation, public benchmark claim, or AGI/model-superiority claim follows from either incomplete run.
+- Review found a measurement-design defect: v1 used the same 180000 ms value for provider timeout and candidate latency acceptance, making a slow arm unmeasurable at the latency boundary. Offline hardening separates measurement timeout from acceptance in a versioned runtime-owned profile.
+- Verified profile `m15-kimi-coding-ab-v2`: acceptance latency 180000 ms, provider measurement timeout 240000 ms, minimum 30000 ms headroom, 2 calls per arm, 12 total calls, `high` reasoning, temperature 1. Evidence identity includes the profile version and sanitized output exposes bounded profile metadata.
+- One-shot hardening run `33882837781` passed **329/329 tests**, Biome, strict TypeScript, build, secret-free Kimi dry smoke, and a credential-free A/B dry profile; aggregate coverage **89.92% lines / 77.25% branches / 95.88% functions**. No live provider request occurred in this hardening run.
+- The previous authorization for one second Kimi live rerun has been consumed. A third live provider comparison requires new explicit user authorization. PR merge also remains separately approval-gated.
 - M12 remains partially verified for hosted-sandbox/public-production claims. No production deployment, paid resource, migration, billing change, or public traffic is authorized by this work.
 
 ## M14 capability

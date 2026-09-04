@@ -152,11 +152,17 @@ This verifies the M15 curation/pack/replay mechanism. It does **not** claim that
 
 ## Post-merge Kimi evidence
 
-Authorized run `33870210502` attempted three matched NVIDIA `moonshotai/kimi-k3` coding cases and used ten provider calls. The workflow itself completed and committed sanitized evidence, but all six baseline/candidate arms recorded `measurementComplete=false`. There are therefore zero complete matched pairs and no defensible quality delta.
+Authorized run `33870210502` attempted three matched NVIDIA `moonshotai/kimi-k3` coding cases and used ten provider calls. All six baseline/candidate arms were incomplete, so the evidence is **INCONCLUSIVE** with zero complete pairs and no defensible quality delta. Historical raw evidence remains at `docs/evals/m15-kimi-coding-ab.json`; its separate interpretation prevents a numeric zero from being mistaken for measured zero lift.
 
-The historical raw file is preserved at `docs/evals/m15-kimi-coding-ab.json`. Its original numeric zero summary is not a measured zero-lift result; the evidence state is **INCONCLUSIVE**. The interpretation is recorded separately in `docs/evals/M15_KIMI_CODING_AB_ANALYSIS.md`. No M10 verification, pack population, activation, or model-superiority claim may be based on this run.
+Second authorized run `33879714040` repeated the same three matched cases after the fail-closed evidence-semantics repair. It used nine provider calls and again produced zero complete pairs, therefore **INCONCLUSIVE** with null baseline quality, candidate quality, and lift. The sanitized result is preserved at `docs/evals/m15-kimi-coding-ab-rerun-2.json`, with analysis in `docs/evals/M15_KIMI_CODING_AB_RERUN_2_ANALYSIS.md`.
 
-Post-run hardening in PR #21 changes future summary semantics so zero complete pairs produce `INCONCLUSIVE` with null quality/lift fields and adds bounded non-secret failure codes. Those changes are a separate verification item and do not retroactively rewrite the raw live evidence.
+All six rerun-2 arms ended with `ProviderError / provider_timeout`. Candidate arms used one call, reached about 180 seconds, and had no target mutation. Baseline arms used two calls, had already mutated the target after planning, did not match deterministic expected content, and timed out during bounded repair. This localizes the failure position without inventing a model-quality result.
+
+Review found a live-measurement defect: v1 used 180000 ms for both provider timeout and candidate latency acceptance. A run exceeding the acceptance ceiling could therefore be aborted before it became a complete latency FAIL. The offline repair introduces versioned profile `m15-kimi-coding-ab-v2`: 180000 ms acceptance, 240000 ms provider measurement timeout, at least 30000 ms required headroom, 2 calls per arm, 12 total calls, `high` reasoning, temperature 1. Profile identity is included in evidence and sanitized metadata.
+
+One-shot offline hardening run `33882837781` passed **329/329 tests**, Biome, strict TypeScript, build, secret-free Kimi dry smoke, and credential-free A/B dry-run assertions. Aggregate coverage was **89.92% lines / 77.25% branches / 95.88% functions**; the new live-profile module reached **91.84% / 88.89% / 100%**. It made no live provider request.
+
+Neither live attempt verifies `odin-coding-discipline`, populates a pack, activates a skill, changes public Kimi benchmark scores, or supports an AGI/Astra/Fable superiority claim. A third live comparison requires new explicit user authorization.
 
 ## Acceptance gate
 
