@@ -3,6 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
 import {
   CandidateEvaluationProvider,
+  createLiveProviderCallCounter,
   M15_DISTILLED_CAPABILITY_DRAFTS,
   M15_KIMI_CODING_AB_PROFILE,
 } from "../dist/src/capability-packs/index.js";
@@ -309,7 +310,7 @@ async function main() {
   }
   const registry = capabilityRegistry(observedAt);
   registry.resolve("nvidia", MODEL);
-  const callCounter = { value: 0 };
+  const callCounter = createLiveProviderCallCounter(MAX_PROVIDER_CALLS);
   const rawProvider = new NvidiaProvider({
     capabilities: registry,
     credential: ({ model, provider }) => {
@@ -326,18 +327,19 @@ async function main() {
     callCounter,
     capabilities: (model) => rawProvider.capabilities(model),
     generate: async (request, options) => {
-      callCounter.value += 1;
-      if (callCounter.value > MAX_PROVIDER_CALLS) throw new Error("M15 A/B call ceiling exceeded.");
+      callCounter.consume();
       return rawProvider.generate(
         { ...request, reasoningEffort: PROFILE.reasoningEffort, temperature: PROFILE.temperature },
         options,
       );
     },
-    stream: (request, options) =>
-      rawProvider.stream(
+    stream: (request, options) => {
+      callCounter.consume();
+      return rawProvider.stream(
         { ...request, reasoningEffort: PROFILE.reasoningEffort, temperature: PROFILE.temperature },
         options,
-      ),
+      );
+    },
   };
 
   const cases = [];
