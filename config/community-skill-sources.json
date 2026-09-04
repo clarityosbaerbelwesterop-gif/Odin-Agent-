@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "repository": "ComposioHQ/awesome-claude-skills",
+      "defaultRef": "master",
+      "commitSha": "be2a406907dbc61b73e6827ded415c96139d13a2",
+      "role": "catalog",
+      "licenseHint": "Apache-2.0"
+    },
+    {
+      "repository": "multica-ai/andrej-karpathy-skills",
+      "defaultRef": "main",
+      "commitSha": "2c606141936f1eeef17fa3043a72095b4765b9c2",
+      "role": "policy-source",
+      "licenseHint": "MIT"
+    },
+    {
+      "repository": "alirezarezvani/claude-skills",
+      "defaultRef": "main",
+      "commitSha": "19392f7a08264ed00486a251f5b2098321771f94",
+      "role": "skill-library",
+      "licenseHint": "MIT"
+    },
+    {
+      "repository": "anthropics/claude-plugins-official",
+      "defaultRef": "main",
+      "commitSha": "1dd995193ba20bba51ca6c681aa8d3398dbd80a2",
+      "role": "plugin-marketplace",
+      "licenseHint": "per-plugin"
+    },
+    {
+      "repository": "coreyhaines31/marketingskills",
+      "defaultRef": "main",
+      "commitSha": "5cd4a7eae3a9a7b5d2aceb0613f7d1f7c4b65968",
+      "role": "domain-library",
+      "licenseHint": "MIT"
+    },
+    {
+      "repository": "anthropics/claude-code-security-review",
+      "defaultRef": "main",
+      "commitSha": "0c6a49f1fa56a1d472575da86a94dbc1edb78eda",
+      "role": "security-reference",
+      "licenseHint": "MIT"
+    },
+    {
+      "repository": "0xNyk/awesome-hermes-agent",
+      "defaultRef": "main",
+      "commitSha": "e4dde5e0e19b734c175a34038deac8e80cd04cb2",
+      "role": "ecosystem-catalog",
+      "licenseHint": "CC-BY-4.0"
+    }
+  ]
+}
