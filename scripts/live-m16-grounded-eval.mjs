@@ -573,7 +573,7 @@ async function main() {
       acceptanceLatencyMs: PROFILE.acceptanceLatencyMs,
       maxCallsPerArmCase: MAX_CALLS_PER_ARM_CASE,
       maxProviderCalls,
-      profileVersion: "m16-grounded-live-v1",
+      profileVersion: "m16-grounded-surgical-live-v2",
       providerTimeoutMs: PROFILE.providerTimeoutMs,
       reasoningEffort: PROFILE.reasoningEffort,
       temperature: PROFILE.temperature,
