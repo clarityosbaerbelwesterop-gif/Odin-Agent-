@@ -1,5 +1,6 @@
 export * from "./curator.js";
 export * from "./distilled.js";
+export * from "./evaluation-overlay.js";
 export * from "./procedures.js";
 export * from "./registry.js";
 export * from "./replay.js";
