@@ -18,4 +18,6 @@ The new telemetry makes the next defect concrete. Two grounded repair calls ende
 
 M16 v2 converts the model-facing plan and repair contract to a **surgical exact-edit protocol**: model output selects a trusted path and returns one verbatim `oldText` plus replacement `newText`. Odin requires exactly one match in trusted current content, rejects missing/ambiguous/no-op edits, then expands the bounded edit into the existing full-file M4 contract while binding SHA/task metadata itself. Quality and M5 gates remain unchanged.
 
+Offline hardening workflow `33903431815` passed full `npm run verify`, build, and credential-free dry runs of both M16 suites before the verified v2 implementation was committed. Normal pull-request CI remains the final merge gate.
+
 A further live comparison is valid only after v2 passes deterministic tests, full verify/build/dry-run, normal PR CI, and merge. Numeric lift remains specific to Kimi K3 / this profile / these task suites.
