@@ -1,4 +1,5 @@
 name: M15 Kimi A/B dry verify once
+# rerun after structural-clone assertion fix
 
 on:
   push:
