@@ -109,6 +109,10 @@ export interface CapabilityCurationResult {
   readonly verified?: SkillRecord;
 }
 
+export interface CapabilityCurationReader {
+  getReport(reportHash: string): CapabilityCurationReport | undefined;
+}
+
 export type CapabilityCurationErrorCode =
   | "CONFLICT"
   | "DENIED"
