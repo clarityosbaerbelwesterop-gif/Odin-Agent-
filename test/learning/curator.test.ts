@@ -159,7 +159,9 @@ test("duplicate task support cannot inflate confidence and exact replay is idemp
   const input = proposal("mission-1", "task-1");
 
   const first = await curator.recordVerifiedLesson(input);
+  authority.attestations.clear();
   const replay = await curator.recordVerifiedLesson(input);
+  authority.set(attestation("mission-1", "task-1"));
   const duplicateTask = await curator.recordVerifiedLesson({
     ...input,
     idempotencyKey: "different-idempotency-key",
@@ -205,7 +207,7 @@ test("missing, foreign, non-PASS, stale, and malformed evidence are denied", asy
   );
   await assert.rejects(
     () => curator.recordVerifiedLesson(foreign),
-    /scope or verdict did not match/u,
+    /scope, verdict, or exact content binding did not match/u,
   );
 
   const failed = {
@@ -215,7 +217,7 @@ test("missing, foreign, non-PASS, stale, and malformed evidence are denied", asy
   authority.attestations.set(identity(proposal("failed", "task")), failed);
   await assert.rejects(
     () => curator.recordVerifiedLesson(proposal("failed", "task")),
-    /scope or verdict did not match/u,
+    /scope, verdict, or exact content binding did not match/u,
   );
 
   authority.set(attestation("stale", "task", BASE));

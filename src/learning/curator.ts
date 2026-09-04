@@ -50,6 +50,7 @@ interface MutableLearningRecord extends LearningScope {
 
 interface ReplayRecord {
   readonly fingerprint: string;
+  readonly proposalFingerprint: string;
   readonly recordId: string;
   readonly supportIdentity: string;
 }
@@ -68,6 +69,24 @@ export class EvidenceLearningCurator {
   async recordVerifiedLesson(value: unknown): Promise<LearningRecordResult> {
     const proposal = normalizeProposal(value);
     const contentHash = sha256(proposal.lesson);
+    const proposalFingerprint = stableHash(proposal);
+    const replaySupportIdentity = `${proposal.missionId}\u0000${proposal.taskId}`;
+    const replayKeyBeforeEvidence = `${proposal.userId}\u0000${proposal.projectId}\u0000${replaySupportIdentity}\u0000${proposal.idempotencyKey}`;
+    const replayBeforeEvidence = this.#replays.get(replayKeyBeforeEvidence);
+    if (replayBeforeEvidence !== undefined) {
+      if (replayBeforeEvidence.proposalFingerprint !== proposalFingerprint) {
+        throw new LearningError(
+          "CONFLICT",
+          "Learning idempotency replay conflicts with prior input.",
+        );
+      }
+      const replayedRecord = this.#records.get(replayBeforeEvidence.recordId);
+      if (replayedRecord === undefined) {
+        throw new LearningError("CONFLICT", "Learning replay points to missing state.");
+      }
+      return { record: cloneRecord(replayedRecord), replayed: true, supportAdded: false };
+    }
+
     const request: LearningAttestationRequest = {
       learningKeyHash: sha256(proposal.key),
       lessonContentHash: contentHash,
@@ -166,7 +185,12 @@ export class EvidenceLearningCurator {
     }
 
     this.#recomputeGroup(groupKey(record));
-    this.#replays.set(replayKey, { fingerprint, recordId, supportIdentity });
+    this.#replays.set(replayKey, {
+      fingerprint,
+      proposalFingerprint,
+      recordId,
+      supportIdentity,
+    });
     return { record: cloneRecord(record), replayed: false, supportAdded };
   }
 
@@ -309,7 +333,11 @@ export class EvidenceLearningCurator {
           "Maintenance time cannot predate learning evidence.",
         );
       }
-      if (record.status !== "ESTABLISHED" && ageDays >= request.archiveAfterDays) {
+      if (
+        record.status !== "ESTABLISHED" &&
+        record.supports.length < ESTABLISHMENT_SUPPORT &&
+        ageDays >= request.archiveAfterDays
+      ) {
         record.status = "ARCHIVED";
         record.tier = "COLD";
         record.archivedAt = request.evaluatedAt;
