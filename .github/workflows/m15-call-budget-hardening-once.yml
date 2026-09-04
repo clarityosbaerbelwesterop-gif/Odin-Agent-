@@ -1,0 +1,76 @@
+name: M15 live call budget hardening once
+
+on:
+  push:
+    branches:
+      - agent/m15-kimi-rerun-2
+    paths:
+      - .github/workflows/m15-call-budget-hardening-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m15-kimi-rerun-2
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Bind generate and stream to one live call counter
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const path = 'scripts/live-kimi-capability-ab.mjs';
+          let text = fs.readFileSync(path, 'utf8');
+          function replaceOnce(from, to) {
+            const first = text.indexOf(from);
+            if (first < 0 || text.indexOf(from, first + from.length) >= 0) {
+              throw new Error(`Expected exactly one match: ${from.slice(0, 100)}`);
+            }
+            text = text.replace(from, to);
+          }
+          replaceOnce(
+            '  CandidateEvaluationProvider,\n  M15_DISTILLED_CAPABILITY_DRAFTS,\n  M15_KIMI_CODING_AB_PROFILE,',
+            '  CandidateEvaluationProvider,\n  createLiveProviderCallCounter,\n  M15_DISTILLED_CAPABILITY_DRAFTS,\n  M15_KIMI_CODING_AB_PROFILE,',
+          );
+          replaceOnce(
+            '  const callCounter = { value: 0 };',
+            '  const callCounter = createLiveProviderCallCounter(MAX_PROVIDER_CALLS);',
+          );
+          replaceOnce(
+            '    generate: async (request, options) => {\n      callCounter.value += 1;\n      if (callCounter.value > MAX_PROVIDER_CALLS) throw new Error("M15 A/B call ceiling exceeded.");\n      return rawProvider.generate(',
+            '    generate: async (request, options) => {\n      callCounter.consume();\n      return rawProvider.generate(',
+          );
+          replaceOnce(
+            '    stream: (request, options) =>\n      rawProvider.stream(\n        { ...request, reasoningEffort: PROFILE.reasoningEffort, temperature: PROFILE.temperature },\n        options,\n      ),',
+            '    stream: (request, options) => {\n      callCounter.consume();\n      return rawProvider.stream(\n        { ...request, reasoningEffort: PROFILE.reasoningEffort, temperature: PROFILE.temperature },\n        options,\n      );\n    },',
+          );
+          fs.writeFileSync(path, text);
+          NODE
+      - name: Format touched sources
+        run: npx biome check --write scripts/live-kimi-capability-ab.mjs src/capability-packs/live-profile.ts test/capability-packs/live-profile.test.ts
+      - name: Verify repository
+        run: npm run verify
+      - name: Build and prove credential-free A/B profile
+        run: |
+          npm run build
+          ODIN_M15_AB_RESULT_PATH=m15-call-budget-dry.json node scripts/live-kimi-capability-ab.mjs --dry-run
+          node -e 'const x=require("./m15-call-budget-dry.json"); if(!x.configured || x.secretPresent !== false || x.maxProviderCalls !== 12) process.exit(1)'
+          rm m15-call-budget-dry.json
+      - name: Remove helper and commit verified call-budget hardening
+        run: |
+          git rm .github/workflows/m15-call-budget-hardening-once.yml
+          git add scripts/live-kimi-capability-ab.mjs src/capability-packs/live-profile.ts test/capability-packs/live-profile.test.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(m15): charge streaming calls against live provider budget"
+          git push origin HEAD:agent/m15-kimi-rerun-2
