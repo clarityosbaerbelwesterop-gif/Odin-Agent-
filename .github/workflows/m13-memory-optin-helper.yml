@@ -1,0 +1,42 @@
+name: M13 learned-memory retrieval guard
+
+on:
+  push:
+    branches:
+      - agent/m13-evidence-learning
+    paths:
+      - .github/workflows/m13-memory-optin-helper.yml
+
+permissions:
+  contents: write
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m13-evidence-learning
+
+      - name: Require explicit opt-in for verified-learning retrieval
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'src/memory/store.ts';
+          const before = fs.readFileSync(path, 'utf8');
+          const oldText = `      if (!wantedKinds.has(record.kind)) continue;\n      if (record.kind === "working" && record.scope.missionId !== query.missionId) continue;`;
+          const newText = `      if (!wantedKinds.has(record.kind)) continue;\n      if (\n        record.provenance.sourceClass === "verified_learning" &&\n        !wantedTags.has("m13-learning")\n      ) {\n        continue;\n      }\n      if (record.kind === "working" && record.scope.missionId !== query.missionId) continue;`;
+          const count = before.split(oldText).length - 1;
+          if (count !== 1) throw new Error(`Expected one retrieval anchor, found ${count}`);
+          fs.writeFileSync(path, before.replace(oldText, newText));
+          NODE
+
+      - name: Remove helper and commit
+        run: |
+          rm .github/workflows/m13-memory-optin-helper.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/memory/store.ts .github/workflows/m13-memory-optin-helper.yml
+          git commit -m "fix(m13): require opt-in for learned memory retrieval"
+          git push
