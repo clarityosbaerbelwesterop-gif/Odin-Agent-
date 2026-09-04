@@ -254,17 +254,23 @@ function scoreCase(caseSpec, run) {
 function createUsageMeter(rawProvider, callCounter) {
   const state = {
     attemptedCalls: 0,
+    cachedInputTokens: 0,
+    finishReasons: Object.create(null),
     inputTokens: 0,
     missingUsageCalls: 0,
     outputTokens: 0,
+    reasoningOutputTokens: 0,
     successfulCalls: 0,
     totalTokens: 0,
   };
-  const addUsage = (usage) => {
+  const addUsage = (usage, finishReason) => {
     state.successfulCalls += 1;
+    state.cachedInputTokens += usage.cachedInputTokens ?? 0;
     state.inputTokens += usage.inputTokens;
     state.outputTokens += usage.outputTokens;
+    state.reasoningOutputTokens += usage.reasoningOutputTokens ?? 0;
     state.totalTokens += usage.totalTokens;
+    state.finishReasons[finishReason] = (state.finishReasons[finishReason] ?? 0) + 1;
   };
   return {
     id: rawProvider.id,
@@ -281,7 +287,7 @@ function createUsageMeter(rawProvider, callCounter) {
           },
           options,
         );
-        addUsage(response.usage);
+        addUsage(response.usage, response.finishReason);
         return response;
       } catch (error) {
         state.missingUsageCalls += 1;
@@ -302,7 +308,7 @@ function createUsageMeter(rawProvider, callCounter) {
           options,
         )) {
           if (event.type === "completed") {
-            addUsage(event.response.usage);
+            addUsage(event.response.usage, event.response.finishReason);
             completed = true;
           }
           yield event;
@@ -311,17 +317,28 @@ function createUsageMeter(rawProvider, callCounter) {
         if (!completed) state.missingUsageCalls += 1;
       }
     },
-    usageSnapshot: () => ({ ...state }),
+    usageSnapshot: () => ({ ...state, finishReasons: { ...state.finishReasons } }),
   };
 }
 
 function usageDelta(before, after) {
+  const finishReasons = {};
+  for (const reason of new Set([
+    ...Object.keys(before.finishReasons),
+    ...Object.keys(after.finishReasons),
+  ])) {
+    const difference = (after.finishReasons[reason] ?? 0) - (before.finishReasons[reason] ?? 0);
+    if (difference > 0) finishReasons[reason] = difference;
+  }
   return {
     attemptedCalls: after.attemptedCalls - before.attemptedCalls,
+    cachedInputTokens: after.cachedInputTokens - before.cachedInputTokens,
     complete: after.missingUsageCalls === before.missingUsageCalls,
+    finishReasons,
     inputTokens: after.inputTokens - before.inputTokens,
     missingUsageCalls: after.missingUsageCalls - before.missingUsageCalls,
     outputTokens: after.outputTokens - before.outputTokens,
+    reasoningOutputTokens: after.reasoningOutputTokens - before.reasoningOutputTokens,
     successfulCalls: after.successfulCalls - before.successfulCalls,
     totalTokens: after.totalTokens - before.totalTokens,
   };
@@ -380,6 +397,8 @@ async function runArm({ arm, meteredProvider, caseSpec, observedAt }) {
       errorClass: null,
       errorCode: null,
       finalContent,
+      acceptedFinalContent: caseSpec.accepts(finalContent),
+      exactFinalContent: finalContent === caseSpec.expected,
       firstPass: result.report.quality.firstFailureSignature === null,
       latencyMs,
       measurementComplete: true,
@@ -400,6 +419,8 @@ async function runArm({ arm, meteredProvider, caseSpec, observedAt }) {
       errorClass: diagnostic.errorClass,
       errorCode: diagnostic.errorCode,
       finalContent,
+      acceptedFinalContent: caseSpec.accepts(finalContent),
+      exactFinalContent: finalContent === caseSpec.expected,
       firstPass: false,
       latencyMs,
       measurementComplete: isTerminalLiveMeasurementFailure(diagnostic),
@@ -414,10 +435,12 @@ async function runArm({ arm, meteredProvider, caseSpec, observedAt }) {
 
 function sanitizeRun(run) {
   return {
+    acceptedFinalContent: run.acceptedFinalContent,
     changedFiles: run.changedFiles,
     completed: run.completed,
     errorClass: run.errorClass,
     errorCode: run.errorCode,
+    exactFinalContent: run.exactFinalContent,
     finalContentHash: stableHash(run.finalContent),
     firstPass: run.firstPass,
     latencyMs: run.latencyMs,

@@ -257,3 +257,40 @@ test("unknown categories and malformed error classes fail into bounded buckets",
     errorCode: "unclassified_error",
   });
 });
+
+test("run-4 grounded contract failures remain terminal measured evidence", () => {
+  const messages = [
+    ["Grounded coding plan is not a JSON object.", "grounded_plan_structured_output_missing"],
+    ["Grounded coding plan failed schema validation.", "grounded_plan_schema_invalid"],
+    ["Grounded coding change is not an object.", "grounded_plan_change_invalid"],
+    ["Grounded coding path is invalid.", "grounded_plan_path_invalid"],
+    ["Grounded coding content is invalid.", "grounded_plan_content_invalid"],
+    ["Grounded coding quality command is invalid.", "grounded_plan_quality_command_invalid"],
+    [
+      "Grounded coding provider selected a path outside trusted discovery.",
+      "grounded_plan_target_outside_discovery",
+    ],
+    [
+      "Grounded coding provider selected an unregistered quality command.",
+      "grounded_plan_quality_command_unknown",
+    ],
+    ["Grounded coding repair is not a JSON object.", "grounded_repair_structured_output_missing"],
+    ["Grounded coding repair failed schema validation.", "grounded_repair_schema_invalid"],
+    ["Grounded coding repair content is invalid.", "grounded_repair_content_invalid"],
+  ] as const;
+
+  for (const [message, errorCode] of messages) {
+    const diagnostic = classifyLiveFailure(new MissionDomainError(message));
+    assert.deepEqual(diagnostic, { errorClass: "MissionDomainError", errorCode });
+    assert.equal(isTerminalLiveMeasurementFailure(diagnostic), true, errorCode);
+  }
+
+  const internalBindingFailure = classifyLiveFailure(
+    new MissionDomainError("Grounded coding user payload is not valid JSON."),
+  );
+  assert.deepEqual(internalBindingFailure, {
+    errorClass: "MissionDomainError",
+    errorCode: "mission_domain_unknown",
+  });
+  assert.equal(isTerminalLiveMeasurementFailure(internalBindingFailure), false);
+});
