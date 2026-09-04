@@ -135,13 +135,9 @@ test("budget verification and non-error failures have stable categories", () => 
 test("terminal model outcomes remain measurable while infrastructure interruptions stay incomplete", () => {
   const terminal = [
     classifyLiveFailure(
-      new MissionDomainError(
-        "Model plan expectedSha does not match discovered repository state.",
-      ),
+      new MissionDomainError("Model plan expectedSha does not match discovered repository state."),
     ),
-    classifyLiveFailure(
-      new MissionDomainError("Repair proposal does not change the target file."),
-    ),
+    classifyLiveFailure(new MissionDomainError("Repair proposal does not change the target file.")),
     classifyLiveFailure(
       new MissionDomainError("Required quality gate is still failing after the bounded repair."),
     ),
