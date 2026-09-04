@@ -3,4 +3,5 @@ export * from "./distilled.js";
 export * from "./procedures.js";
 export * from "./registry.js";
 export * from "./replay.js";
+export * from "./report-integrity.js";
 export * from "./types.js";
