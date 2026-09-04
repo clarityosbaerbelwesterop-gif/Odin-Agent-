@@ -36,20 +36,24 @@ them. Model confidence is not verification evidence.
 
 Goal: replace ad-hoc retries with deterministic failure classification and evidence-bound recovery.
 
-- [ ] Normalize provider, tool, planning, execution, verification, persistence, sandbox, budget, policy,
+- [x] Normalize provider, tool, planning, execution, verification, persistence, sandbox, budget, policy,
   and cancellation failures into bounded categories.
-- [ ] Select targeted retry, context reduction, alternate planning, rollback, verifier/model escalation,
+- [x] Select targeted retry, context reduction, alternate planning, rollback, verifier/model escalation,
   checkpoint-and-block, or cancellation stop from typed evidence and remaining budgets.
-- [ ] Track failure signatures, attempted strategies, and outcomes so repeated no-progress strategies
+- [x] Track failure signatures, attempted strategies, and outcomes so repeated no-progress strategies
   cannot loop indefinitely.
-- [ ] Deny retry after unknown/non-idempotent external effects; require explicit rollback evidence before
+- [x] Deny retry after unknown/non-idempotent external effects; require explicit rollback evidence before
   continuing after reversible writes.
-- [ ] Integrate the controller into the coding path instead of leaving it as an isolated helper.
-- [ ] Cover timeout, rate limit, malformed output, context overflow, invalid plan, quality failure,
+- [x] Integrate the controller into the coding path instead of leaving it as an isolated helper.
+- [x] Cover timeout, rate limit, malformed output, context overflow, invalid plan, quality failure,
   contradictory verification, budget exhaustion, cancellation, tampering, and repeated-failure tests.
 
 Exit gate: deterministic recovery decisions survive serialization/replay; at least one coding-path
 integration test proves a classified failure reaches the permitted next action; all repository gates pass.
+
+M17 local evidence: `npm run verify` passed with 357/357 tests, 90.43% line / 77.60% branch /
+95.91% function coverage, Biome, strict TypeScript, and credential-free Kimi dry smoke. Pull-request CI
+remains required before the combined package can merge.
 
 ## M18 — Token efficiency 2.0
 
