@@ -36,7 +36,7 @@ M13 is informed by public patterns reviewed on 2026-09-04, without copying or ex
 6. Model/worker/runtime self-claims do not count as learning support unless an injected M5-backed authority
    returns a matching PASS attestation.
 7. Durable user preferences still require explicit-user provenance; M13 never infers them from behavior.
-8. Automatic learning rejects obvious secret-like lesson content before evidence lookup or persistence;
+8. Automatic learning rejects obvious secret-like persistent content before evidence lookup or storage;
    the model-provided sensitivity label is not accepted as sufficient proof that content is safe to retain.
 
 ## Learning contract
@@ -58,8 +58,9 @@ Support is counted only once per distinct mission/task pair. Replaying the exact
 conflicting replay fails closed.
 
 A shared secret-text primitive, also consumed by M12 observability, rejects obvious Bearer/API-key,
-GitHub-token, Slack-token, and private-key patterns before a lesson can enter the learning authority. This
-is a fail-closed guard for obvious credentials, not a claim of complete DLP or semantic secret detection.
+GitHub-token, Slack-token, and private-key patterns before persistent learning text enters the learning
+authority. The guard covers the normalized semantic key, lesson, source reference, and tags. This is a
+fail-closed guard for obvious credentials, not a claim of complete DLP or semantic secret detection.
 
 ### Promotion threshold
 
@@ -108,7 +109,8 @@ Maintenance is deterministic:
 
 - missing/foreign/FAIL/tampered learning attestation fails closed;
 - exact key/lesson hash mismatch fails even when the task verdict is PASS;
-- obvious secret-like lesson content is rejected regardless of a model-provided `internal` label;
+- obvious secret-like lesson, key, tag, or source-reference content is rejected regardless of a
+  model-provided `internal` label;
 - the shared secret detector retains M12 observability rejection behavior;
 - duplicate task support cannot inflate confidence;
 - idempotency conflict fails closed;
