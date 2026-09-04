@@ -1,0 +1,81 @@
+name: M13 replay maintenance fix
+
+on:
+  push:
+    branches:
+      - agent/m13-evidence-learning
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m13-evidence-learning
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Apply M13 corrections
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          curator_path = Path('src/learning/curator.ts')
+          curator = curator_path.read_text()
+
+          old = 'interface ReplayRecord {\n  readonly fingerprint: string;\n  readonly recordId: string;\n  readonly supportIdentity: string;\n}'
+          new = 'interface ReplayRecord {\n  readonly fingerprint: string;\n  readonly proposalFingerprint: string;\n  readonly recordId: string;\n  readonly supportIdentity: string;\n}'
+          if old not in curator:
+              raise SystemExit('ReplayRecord anchor missing')
+          curator = curator.replace(old, new, 1)
+
+          anchor = '    const contentHash = sha256(proposal.lesson);\n    const request: LearningAttestationRequest = {'
+          insertion = '    const contentHash = sha256(proposal.lesson);\n    const proposalFingerprint = stableHash(proposal);\n    const replaySupportIdentity = `${proposal.missionId}\\u0000${proposal.taskId}`;\n    const replayKeyBeforeEvidence = `${proposal.userId}\\u0000${proposal.projectId}\\u0000${replaySupportIdentity}\\u0000${proposal.idempotencyKey}`;\n    const replayBeforeEvidence = this.#replays.get(replayKeyBeforeEvidence);\n    if (replayBeforeEvidence !== undefined) {\n      if (replayBeforeEvidence.proposalFingerprint !== proposalFingerprint) {\n        throw new LearningError(\n          "CONFLICT",\n          "Learning idempotency replay conflicts with prior input.",\n        );\n      }\n      const replayedRecord = this.#records.get(replayBeforeEvidence.recordId);\n      if (replayedRecord === undefined) {\n        throw new LearningError("CONFLICT", "Learning replay points to missing state.");\n      }\n      return { record: cloneRecord(replayedRecord), replayed: true, supportAdded: false };\n    }\n\n    const request: LearningAttestationRequest = {'
+          if anchor not in curator:
+              raise SystemExit('recordVerifiedLesson anchor missing')
+          curator = curator.replace(anchor, insertion, 1)
+
+          old_set = '    this.#replays.set(replayKey, { fingerprint, recordId, supportIdentity });'
+          new_set = '    this.#replays.set(replayKey, {\n      fingerprint,\n      proposalFingerprint,\n      recordId,\n      supportIdentity,\n    });'
+          if old_set not in curator:
+              raise SystemExit('replay set anchor missing')
+          curator = curator.replace(old_set, new_set, 1)
+
+          old_archive = '      if (record.status !== "ESTABLISHED" && ageDays >= request.archiveAfterDays) {'
+          new_archive = '      if (\n        record.status !== "ESTABLISHED" &&\n        record.supports.length < ESTABLISHMENT_SUPPORT &&\n        ageDays >= request.archiveAfterDays\n      ) {'
+          if old_archive not in curator:
+              raise SystemExit('maintenance anchor missing')
+          curator = curator.replace(old_archive, new_archive, 1)
+          curator_path.write_text(curator)
+
+          test_path = Path('test/learning/curator.test.ts')
+          tests = test_path.read_text()
+          tests = tests.replace('/scope or verdict did not match/u', '/scope, verdict, or exact content binding did not match/u')
+          replay_anchor = '  const first = await curator.recordVerifiedLesson(input);\n  const replay = await curator.recordVerifiedLesson(input);\n  const duplicateTask = await curator.recordVerifiedLesson({'
+          replay_replacement = '  const first = await curator.recordVerifiedLesson(input);\n  authority.attestations.clear();\n  const replay = await curator.recordVerifiedLesson(input);\n  authority.set(attestation("mission-1", "task-1"));\n  const duplicateTask = await curator.recordVerifiedLesson({'
+          if replay_anchor not in tests:
+              raise SystemExit('replay test anchor missing')
+          tests = tests.replace(replay_anchor, replay_replacement, 1)
+          test_path.write_text(tests)
+          PY
+      - name: Verify corrected M13
+        run: |
+          npm ci
+          npm run quality
+          npm run typecheck
+          npm test
+          npm run smoke:kimi:dry
+      - name: Remove helper and commit
+        run: |
+          rm .github/workflows/m13-replay-maintenance-fix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/learning/curator.ts test/learning/curator.test.ts .github/workflows/m13-replay-maintenance-fix.yml
+          git commit -m 'fix(m13): harden replay and maintenance semantics'
+          git push origin HEAD:agent/m13-evidence-learning
