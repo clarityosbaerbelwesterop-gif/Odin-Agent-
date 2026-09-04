@@ -1,6 +1,6 @@
 # M15 — Curated capability pack and offline improvement evaluation
 
-Status: **VERIFIED_AWAITING_FINAL_EXACT_HEAD_CI**. Updated: 2026-09-04.
+Status: **VERIFIED**. Updated: 2026-09-04.
 
 ## Objective
 
@@ -144,17 +144,26 @@ activate, register tools, or create evidence.
 
 Final hardening helper run `33866236138` passed 319/319 tests plus Biome, strict TypeScript, and the secret-free Kimi dry smoke before checkpointing commit `075c46d301c53521cdb10e713d57d3f45386c244`. Aggregate coverage was 89.81% lines / 77.03% branches / 95.85% functions; curator coverage was 95.48% / 81.05% / 97.22%, pack registry 90.43% / 77.88% / 95.24%, and replay 92.86% / 89.74% / 100%.
 
-Review-found hardening now makes evaluation freshness depend on a trusted runtime clock, denies procedure keys outside the runtime-owned canonical/additive domain catalogs, binds pack membership to the same M15 evidence that established M10 verification, and records interrupted live A/B arms as conservative explicit failures rather than dropping negative evidence.
+Review-found hardening makes evaluation freshness depend on a trusted runtime clock, denies procedure keys outside the runtime-owned canonical/additive domain catalogs, binds pack membership to the same M15 evidence that established M10 verification, and records interrupted live A/B arms as conservative explicit failures rather than dropping negative evidence.
 
-This verifies the M15 curation/pack/replay mechanism. It does **not** claim that any distilled candidate is already ACTIVE, that an unmeasured domain pack is populated, that Kimi K3 or another model gained a specific public-benchmark score, or that Odin is AGI/ASI. The first real provider lift measurement remains a separately bounded post-merge A/B step under the user's current authorization.
+Normal exact-head PR CI `33870080147` passed before PR #20 was merged. PR #20 was then squash-merged into `main` as `30bcab22f6129925b704fff0d024ca40e472b06c`, satisfying the M15 acceptance gate.
+
+This verifies the M15 curation/pack/replay mechanism. It does **not** claim that any distilled candidate is ACTIVE, that an unmeasured domain pack is populated, that Kimi K3 or another model gained a specific public-benchmark score, or that Odin is AGI/ASI.
+
+## Post-merge Kimi evidence
+
+Authorized run `33870210502` attempted three matched NVIDIA `moonshotai/kimi-k3` coding cases and used ten provider calls. The workflow itself completed and committed sanitized evidence, but all six baseline/candidate arms recorded `measurementComplete=false`. There are therefore zero complete matched pairs and no defensible quality delta.
+
+The historical raw file is preserved at `docs/evals/m15-kimi-coding-ab.json`. Its original numeric zero summary is not a measured zero-lift result; the evidence state is **INCONCLUSIVE**. The interpretation is recorded separately in `docs/evals/M15_KIMI_CODING_AB_ANALYSIS.md`. No M10 verification, pack population, activation, or model-superiority claim may be based on this run.
+
+Post-run hardening in PR #21 changes future summary semantics so zero complete pairs produce `INCONCLUSIVE` with null quality/lift fields and adds bounded non-secret failure codes. Those changes are a separate verification item and do not retroactively rewrite the raw live evidence.
 
 ## Acceptance gate
 
-M15 is VERIFIED only when the curation/evaluation contract, progressive pack boundary, offline replay,
-held-out regressions, synchronized ROADMAP/ARCHITECTURE/SECURITY/HANDOVER, and normal exact-head
-`npm run verify` are green in GitHub Actions.
+M15 itself is VERIFIED: the curation/evaluation contract, progressive pack boundary, offline replay,
+held-out regressions, synchronized governance documents, and normal exact-head `npm run verify` were
+green before merge.
 
-Only after measured M15 winners are integrated and verified should the user-authorized bounded
-NVIDIA/Kimi K3 A/B comparison run. That live comparison must use the existing control-plane secret
-boundary and sanitized evidence, and one fixture must not be generalized into universal model
-superiority.
+A live capability candidate still requires complete matched provider evidence that satisfies the normal
+M15 quality, safety, authority, token, and latency gates. Incomplete evidence cannot promote a candidate.
+A new live provider rerun requires separate user authorization.
