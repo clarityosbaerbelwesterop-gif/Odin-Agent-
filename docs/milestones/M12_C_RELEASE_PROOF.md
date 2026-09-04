@@ -68,7 +68,7 @@ Tests must cover bounded fixtures for:
 - billing changes;
 - claiming integration/live evidence from local fixtures.
 
-M12-C may finish the **local deterministic** M12 release-proof tranche. Full M12 remains
+M12-C finishes the **local deterministic** M12 release-proof tranche. Full M12 remains
 `PARTIALLY_VERIFIED` until every live/infrastructure claim required by ROADMAP has matching evidence.
 
 ## Verified repository evidence
@@ -78,5 +78,6 @@ M12-C may finish the **local deterministic** M12 release-proof tranche. Full M12
 - Aggregate coverage: 89.29% lines, 76.24% branches, 95.64% functions.
 - The end-to-end local release fixture passes `local` using repository verify + recovery + restore evidence and deliberately blocks `integration` and `live` without stronger evidence.
 - The sandbox load fixture proves concurrent create collapse and single remote destroy; conflicting concurrent release reasons fail closed.
+- One-shot documentation synchronization run `33836629270` completed successfully and removed its helper workflow in the same commit.
 
-A final synchronized-documentation CI run is still required before PR #16 is merge-ready.
+A final normal PR-specific `npm run verify` on this synchronized human-authored head is the remaining merge gate for PR #16.
