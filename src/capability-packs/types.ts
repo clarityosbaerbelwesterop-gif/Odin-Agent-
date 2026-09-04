@@ -98,6 +98,7 @@ export interface CapabilityCurationReport {
   readonly evidenceRefs: readonly string[];
   readonly novelProcedureKeys: readonly string[];
   readonly procedureKeys: readonly string[];
+  readonly reasons: readonly string[];
   readonly reportHash: string;
   readonly taskClasses: readonly string[];
   readonly totalLiftBps: number;
