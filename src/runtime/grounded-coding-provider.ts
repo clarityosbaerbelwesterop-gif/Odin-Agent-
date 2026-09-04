@@ -4,6 +4,7 @@ import type {
   CapabilityProfile,
   JsonObject,
   JsonValue,
+  ModelMessage,
   ModelProvider,
   ModelRequest,
   ModelResponse,
@@ -99,7 +100,7 @@ export class GroundedCodingProvider implements ModelProvider {
 }
 
 function prepareGroundedRequest(request: ModelRequest): PreparedRequest | null {
-  const name = request.responseFormat?.name;
+  const name = responseFormatName(request);
   if (name === PLAN_RESPONSE_NAME) return preparePlanRequest(request);
   if (name === REPAIR_RESPONSE_NAME) return prepareRepairRequest(request);
   return null;
@@ -160,7 +161,10 @@ function prepareRepairRequest(request: ModelRequest): PreparedRequest {
   });
   const compactRequest: ModelRequest = {
     ...request,
-    maxOutputTokens: compactOutputBudget(request.maxOutputTokens, binding.currentFile.content.length),
+    maxOutputTokens: compactOutputBudget(
+      request.maxOutputTokens,
+      binding.currentFile.content.length,
+    ),
     messages: [
       {
         content: [
@@ -187,7 +191,10 @@ function prepareRepairRequest(request: ModelRequest): PreparedRequest {
 }
 
 function expandPlanResponse(response: ModelResponse, binding: PlanBinding): ModelResponse {
-  const output = jsonObject(response.structuredOutput, "Grounded coding plan is not a JSON object.");
+  const output = jsonObject(
+    response.structuredOutput,
+    "Grounded coding plan is not a JSON object.",
+  );
   validateToolInput(GROUNDED_CODING_PLAN_SCHEMA, output);
   const change = jsonObject(output.change, "Grounded coding change is not an object.");
   const path = stringValue(change.path, "Grounded coding path is invalid.");
@@ -198,10 +205,14 @@ function expandPlanResponse(response: ModelResponse, binding: PlanBinding): Mode
   );
   const file = binding.files.get(path);
   if (file === undefined) {
-    throw new MissionDomainError("Grounded coding provider selected a path outside trusted discovery.");
+    throw new MissionDomainError(
+      "Grounded coding provider selected a path outside trusted discovery.",
+    );
   }
   if (!binding.qualityCommandIds.includes(qualityCommandId)) {
-    throw new MissionDomainError("Grounded coding provider selected an unregistered quality command.");
+    throw new MissionDomainError(
+      "Grounded coding provider selected an unregistered quality command.",
+    );
   }
   const taskId = `change-${shortHash(`${binding.objective}\u0000${path}`, 20)}`;
   return {
@@ -221,7 +232,10 @@ function expandPlanResponse(response: ModelResponse, binding: PlanBinding): Mode
 }
 
 function expandRepairResponse(response: ModelResponse, binding: RepairBinding): ModelResponse {
-  const output = jsonObject(response.structuredOutput, "Grounded coding repair is not a JSON object.");
+  const output = jsonObject(
+    response.structuredOutput,
+    "Grounded coding repair is not a JSON object.",
+  );
   validateToolInput(GROUNDED_CODING_REPAIR_SCHEMA, output);
   return {
     ...response,
@@ -251,7 +265,8 @@ function parsePlanBinding(payload: JsonObject): PlanBinding {
     const path = stringValue(file.path, "Grounded plan repository path is invalid.");
     const sha = stringValue(file.sha, "Grounded plan repository SHA is invalid.");
     const content = stringValue(file.content, "Grounded plan repository content is invalid.");
-    if (files.has(path)) throw new MissionDomainError("Grounded plan repository path is duplicated.");
+    if (files.has(path))
+      throw new MissionDomainError("Grounded plan repository path is duplicated.");
     files.set(path, { content, sha });
   }
   return { files, objective, qualityCommandIds };
@@ -265,7 +280,10 @@ function parseRepairBinding(payload: JsonObject): RepairBinding {
       path: stringValue(currentFile.path, "Grounded repair path is invalid."),
       sha: stringValue(currentFile.sha, "Grounded repair SHA is invalid."),
     },
-    failureEvidence: stringValue(payload.failureEvidence, "Grounded repair failure evidence is invalid."),
+    failureEvidence: stringValue(
+      payload.failureEvidence,
+      "Grounded repair failure evidence is invalid.",
+    ),
     objective: stringValue(payload.objective, "Grounded repair objective is invalid."),
     qualityCommandId: stringValue(
       payload.qualityCommandId,
@@ -275,8 +293,16 @@ function parseRepairBinding(payload: JsonObject): RepairBinding {
 }
 
 function parseLastUserJson(request: ModelRequest): JsonObject {
-  const user = [...request.messages].reverse().find((message) => message.role === "user");
-  if (user === undefined) throw new MissionDomainError("Grounded coding request has no user payload.");
+  let user: Extract<ModelMessage, { readonly role: "user" }> | undefined;
+  for (let index = request.messages.length - 1; index >= 0; index -= 1) {
+    const message = request.messages[index];
+    if (message?.role === "user") {
+      user = message;
+      break;
+    }
+  }
+  if (user === undefined)
+    throw new MissionDomainError("Grounded coding request has no user payload.");
   const text = user.content
     .filter((part) => part.type === "text")
     .map((part) => (part.type === "text" ? part.text : ""))
@@ -289,6 +315,10 @@ function parseLastUserJson(request: ModelRequest): JsonObject {
   }
 }
 
+function responseFormatName(request: ModelRequest): string | undefined {
+  return request.responseFormat?.type === "json_schema" ? request.responseFormat.name : undefined;
+}
+
 function compactOutputBudget(original: number | undefined, fileChars: number): number {
   const estimated = Math.ceil(fileChars / 3) + 256;
   const ceiling = Math.min(original ?? MAX_COMPACT_OUTPUT_TOKENS, MAX_COMPACT_OUTPUT_TOKENS);
@@ -299,7 +329,7 @@ function jsonObject(value: JsonValue | undefined, message: string): JsonObject {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new MissionDomainError(message);
   }
-  return value;
+  return value as JsonObject;
 }
 
 function stringValue(value: JsonValue | undefined, message: string): string {
