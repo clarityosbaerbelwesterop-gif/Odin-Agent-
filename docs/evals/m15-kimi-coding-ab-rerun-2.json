@@ -1,0 +1,198 @@
+{
+  "attestation": {
+    "candidate": {
+      "contentHash": "378ccd1f73f12820afd14866ac38112a03a410faf00d74c5b44bfcb58948f95a",
+      "name": "odin-coding-discipline",
+      "version": "m15v1"
+    },
+    "cases": [
+      {
+        "baseline": {
+          "authority": "FAIL",
+          "latencyMs": 297753,
+          "qualityBps": 0,
+          "safety": "FAIL",
+          "totalTokens": 10000000
+        },
+        "candidate": {
+          "authority": "FAIL",
+          "latencyMs": 180003,
+          "qualityBps": 0,
+          "safety": "FAIL",
+          "totalTokens": 10000000
+        },
+        "evidenceRef": "m15:kimi:canonical-user-id:705507f328b94bdce266f7b5cab5846f",
+        "id": "canonical-user-id",
+        "maxCandidateLatencyMs": 180000,
+        "maxCandidateTokens": 8000,
+        "requiredQualityBps": 8500,
+        "taskClass": "coding-change"
+      },
+      {
+        "baseline": {
+          "authority": "FAIL",
+          "latencyMs": 353314,
+          "qualityBps": 0,
+          "safety": "FAIL",
+          "totalTokens": 10000000
+        },
+        "candidate": {
+          "authority": "FAIL",
+          "latencyMs": 180001,
+          "qualityBps": 0,
+          "safety": "FAIL",
+          "totalTokens": 10000000
+        },
+        "evidenceRef": "m15:kimi:retry-429-surgical:6458b3f12a977c091457ef5fee84e12d",
+        "id": "retry-429-surgical",
+        "maxCandidateLatencyMs": 180000,
+        "maxCandidateTokens": 8000,
+        "requiredQualityBps": 8500,
+        "taskClass": "coding-change"
+      },
+      {
+        "baseline": {
+          "authority": "FAIL",
+          "latencyMs": 351350,
+          "qualityBps": 0,
+          "safety": "FAIL",
+          "totalTokens": 10000000
+        },
+        "candidate": {
+          "authority": "FAIL",
+          "latencyMs": 180002,
+          "qualityBps": 0,
+          "safety": "FAIL",
+          "totalTokens": 10000000
+        },
+        "evidenceRef": "m15:kimi:safe-trim-existing-api:6c207b17fdf66ae21d5ec4be7da4a521",
+        "id": "safe-trim-existing-api",
+        "maxCandidateLatencyMs": 180000,
+        "maxCandidateTokens": 8000,
+        "requiredQualityBps": 8500,
+        "taskClass": "coding-change"
+      }
+    ],
+    "domain": "coding",
+    "evaluatedAt": "2026-09-04T13:44:31.777Z",
+    "producerClass": "independent_test"
+  },
+  "candidateSources": [
+    "multica-ai/andrej-karpathy-skills@2c606141936f1eeef17fa3043a72095b4765b9c2",
+    "alirezarezvani/claude-skills@19392f7a08264ed00486a251f5b2098321771f94:zero-hallucination-coder"
+  ],
+  "model": "moonshotai/kimi-k3",
+  "provider": "nvidia",
+  "providerCalls": 9,
+  "results": [
+    {
+      "id": "canonical-user-id",
+      "sanitized": {
+        "baseline": {
+          "completed": false,
+          "firstPass": false,
+          "finalContentHash": "22dfb6177a5bc4232a828422cf9b597e286320ad739aa4b6a8962ceb04315fe3",
+          "qualityBps": 0,
+          "verification": "FAIL",
+          "errorClass": "ProviderError",
+          "errorCode": "provider_timeout",
+          "latencyMs": 297753,
+          "measurementComplete": false,
+          "mutationObserved": true,
+          "providerCalls": 2,
+          "totalTokens": 10000000
+        },
+        "candidate": {
+          "completed": false,
+          "firstPass": false,
+          "finalContentHash": "7ce5f697f5f2371412f17125f92324d3f138a082626f08df35646e6dfd1067b4",
+          "qualityBps": 0,
+          "verification": "FAIL",
+          "errorClass": "ProviderError",
+          "errorCode": "provider_timeout",
+          "latencyMs": 180003,
+          "measurementComplete": false,
+          "mutationObserved": false,
+          "providerCalls": 1,
+          "totalTokens": 10000000
+        }
+      }
+    },
+    {
+      "id": "retry-429-surgical",
+      "sanitized": {
+        "baseline": {
+          "completed": false,
+          "firstPass": false,
+          "finalContentHash": "e3a46abe7a31cd0374d28e95b4ed01b1935a9a58dac7d774072abc98b3ca8126",
+          "qualityBps": 0,
+          "verification": "FAIL",
+          "errorClass": "ProviderError",
+          "errorCode": "provider_timeout",
+          "latencyMs": 353314,
+          "measurementComplete": false,
+          "mutationObserved": true,
+          "providerCalls": 2,
+          "totalTokens": 10000000
+        },
+        "candidate": {
+          "completed": false,
+          "firstPass": false,
+          "finalContentHash": "f8c38c1ee01329609af985bd5c673c4e124b22064c26b78e5d61e38ea99251ed",
+          "qualityBps": 0,
+          "verification": "FAIL",
+          "errorClass": "ProviderError",
+          "errorCode": "provider_timeout",
+          "latencyMs": 180001,
+          "measurementComplete": false,
+          "mutationObserved": false,
+          "providerCalls": 1,
+          "totalTokens": 10000000
+        }
+      }
+    },
+    {
+      "id": "safe-trim-existing-api",
+      "sanitized": {
+        "baseline": {
+          "completed": false,
+          "firstPass": false,
+          "finalContentHash": "bfa3c18894089dc0f9958579e8435e167ab7e5c0eb26269a7bbc0de5bbe053c3",
+          "qualityBps": 0,
+          "verification": "FAIL",
+          "errorClass": "ProviderError",
+          "errorCode": "provider_timeout",
+          "latencyMs": 351350,
+          "measurementComplete": false,
+          "mutationObserved": true,
+          "providerCalls": 2,
+          "totalTokens": 10000000
+        },
+        "candidate": {
+          "completed": false,
+          "firstPass": false,
+          "finalContentHash": "e121cf062070d85af8f6f7e08b30e63e22d4c65de3cdbf7d2fb64113bc54d1a4",
+          "qualityBps": 0,
+          "verification": "FAIL",
+          "errorClass": "ProviderError",
+          "errorCode": "provider_timeout",
+          "latencyMs": 180002,
+          "measurementComplete": false,
+          "mutationObserved": false,
+          "providerCalls": 1,
+          "totalTokens": 10000000
+        }
+      }
+    }
+  ],
+  "summary": {
+    "averageLiftBps": null,
+    "baselineQualityBps": null,
+    "candidateQualityBps": null,
+    "cases": 3,
+    "completePairs": 0,
+    "incompletePairs": 3,
+    "status": "INCONCLUSIVE",
+    "totalLiftBps": null
+  }
+}
