@@ -59,20 +59,25 @@ remains required before the combined package can merge.
 
 Goal: reduce unnecessary model context and output while preserving the same acceptance requirements.
 
-- [ ] Compile context deltas from stable prefix identity, current task inputs, source hashes, prior
+- [x] Compile context deltas from stable prefix identity, current task inputs, source hashes, prior
   observations, and M6 priority rules.
-- [ ] Add source-bound semantic cache entries that invalidate on content, scope, policy, model profile,
+- [x] Add source-bound semantic cache entries that invalidate on content, scope, policy, model profile,
   or verification-requirement changes.
-- [ ] Compact tool results into bounded typed summaries while retaining hashes/references to full evidence.
-- [ ] Stop reasoning early only when the required independent evidence already satisfies the task's
+- [x] Compact tool results into bounded typed summaries while retaining hashes/references to full evidence.
+- [x] Stop reasoning early only when the required independent evidence already satisfies the task's
   definition of done.
-- [ ] Select reasoning depth from task risk, ambiguity, failure history, and remaining budget through M11.
-- [ ] Add an offline paired evaluation that reports estimated-token deltas and acceptance parity; record
+- [x] Select reasoning depth from task risk, ambiguity, failure history, and remaining budget through M11.
+- [x] Add an offline paired evaluation that reports estimated-token deltas and acceptance parity; record
   measured fixture results without generalizing them to all tasks or providers.
 
 Exit gate: a deterministic held-out fixture suite demonstrates at least 50% fewer estimated context tokens
 than its declared baseline with identical verifier outcomes, and all cache/staleness/security regressions
 pass. This is a fixture-bound result, not a universal savings claim.
+
+M18 local evidence: `npm run verify` passed with 365/365 tests and 90.40% line / 77.70% branch /
+95.88% function coverage. The three-case deterministic delta fixture used 50 versus 5,589 estimated
+tokens (99.10% lower) with identical PASS/REPAIR_REQUIRED/BLOCK outcomes. The figure is fixture-bound
+and does not represent billed provider tokens or universal savings.
 
 ## M19 — Multi-file coding
 
