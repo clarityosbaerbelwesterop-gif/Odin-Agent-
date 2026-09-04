@@ -220,9 +220,10 @@ Research fixtures pinned for M14/M15: `ComposioHQ/awesome-claude-skills@be2a4069
 - [x] Odin-owned coding, research, security, product/business, and marketing procedure drafts preserve existing M3/M5/M6/M10/M11 authorities; unproven data/documents remains absent.
 - [x] Bounded offline replay emits only KEEP/RETEST/COMPRESS/DEDUPLICATE/REVIEW proposals and has no skill, memory, tool, credential, budget, or completion mutation interface.
 - [x] Confirmed hardening regressions cover stale-evidence rescue, future caller timestamps, self-declared procedure novelty, forged/mismatched pack evidence, and fail-closed live A/B arm failures.
-- [ ] Record the first real post-merge bare-model-vs-Odin provider A/B evidence and populate a measured pack only if the candidate passes the same quality/safety/authority gates.
+- [x] Attempt the first bounded post-merge Kimi K3 baseline-vs-candidate provider A/B and preserve its sanitized evidence; run `33870210502` used 10/12 provider calls but produced zero complete matched pairs, so the result is INCONCLUSIVE.
+- [ ] Obtain complete matched provider evidence before populating any measured coding pack; only an exact candidate that passes the normal quality/safety/authority/token/latency gates may enter the pack.
 
-Implementation verification helper run `33866236138` passed **319/319 tests**, Biome, strict TypeScript, and secret-free Kimi dry smoke after the final curation/A-B hardening. Aggregate coverage was **89.81% lines / 77.03% branches / 95.85% functions**. `capability-packs/curator` reached **95.48% / 81.05% / 97.22%**, registry **90.43% / 77.88% / 95.24%**, and replay **92.86% / 89.74% / 100%**. A normal synchronized exact-head PR CI remains required before merge. No distilled candidate is ACTIVE and no broad model-quality claim is made from contract tests.
+Implementation verification helper run `33866236138` passed **319/319 tests**, Biome, strict TypeScript, and secret-free Kimi dry smoke after the final curation/A-B hardening. Aggregate coverage was **89.81% lines / 77.03% branches / 95.85% functions**. `capability-packs/curator` reached **95.48% / 81.05% / 97.22%**, registry **90.43% / 77.88% / 95.24%**, and replay **92.86% / 89.74% / 100%**. Normal exact-head PR CI `33870080147` passed and PR #20 was merged into `main` as `30bcab22f6129925b704fff0d024ca40e472b06c`. The post-merge run does not verify a coding winner: all six arms were incomplete, no distilled candidate is ACTIVE, and no broad model-quality claim is made.
 
 ## Post-MVP capability track
 

@@ -5,6 +5,10 @@ import {
   CandidateEvaluationProvider,
   M15_DISTILLED_CAPABILITY_DRAFTS,
 } from "../dist/src/capability-packs/index.js";
+import {
+  classifyLiveFailure,
+  summarizeLiveComparisons,
+} from "../dist/src/capability-packs/live-evidence.js";
 import { InMemoryEventStore } from "../dist/src/events/store.js";
 import { MissionRuntime } from "../dist/src/mission/runtime.js";
 import { CapabilityRegistry, makeCapabilities } from "../dist/src/providers/capabilities.js";
@@ -160,6 +164,7 @@ function scoreCase(caseSpec, run) {
 
 async function runArm({ arm, baseProvider, caseSpec, candidate, observedAt }) {
   const workspace = new FixtureWorkspace(caseSpec.files);
+  const initialContent = workspace.content(caseSpec.targetPath);
   const quality = new CaseQualityRunner(workspace, caseSpec);
   const audit = new InMemoryToolAuditSink();
   const policy = new InMemoryCapabilityPolicy();
@@ -212,11 +217,13 @@ async function runArm({ arm, baseProvider, caseSpec, candidate, observedAt }) {
       changedFiles: result.report.changedFiles,
       completed: result.report.state === "COMPLETED",
       errorClass: null,
+      errorCode: null,
       finalContent,
       firstPass: result.report.quality.firstFailureSignature === null,
       latencyMs,
       measurementComplete: true,
       modelUsage: result.report.modelUsage,
+      mutationObserved: finalContent !== initialContent,
       providerCalls: calls,
       repaired: result.report.quality.firstFailureSignature !== null,
       verification: result.report.verification.outcome,
@@ -225,15 +232,19 @@ async function runArm({ arm, baseProvider, caseSpec, candidate, observedAt }) {
   } catch (error) {
     const latencyMs = Math.round(performance.now() - started);
     const calls = baseProvider.callCounter.value - beforeCalls;
+    const finalContent = workspace.content(caseSpec.targetPath);
+    const diagnostic = classifyLiveFailure(error);
     const run = {
       changedFiles: [],
       completed: false,
-      errorClass: error instanceof Error ? error.name : "UnknownError",
-      finalContent: workspace.content(caseSpec.targetPath),
+      errorClass: diagnostic.errorClass,
+      errorCode: diagnostic.errorCode,
+      finalContent,
       firstPass: false,
       latencyMs,
       measurementComplete: false,
       modelUsage: { inputTokens: 0, outputTokens: 0 },
+      mutationObserved: finalContent !== initialContent,
       providerCalls: calls,
       repaired: false,
       verification: "FAIL",
@@ -354,16 +365,20 @@ async function main() {
         baseline: {
           ...evidencePayload.baseline,
           errorClass: baseline.errorClass,
+          errorCode: baseline.errorCode,
           latencyMs: baseline.latencyMs,
           measurementComplete: baseline.measurementComplete,
+          mutationObserved: baseline.mutationObserved,
           providerCalls: baseline.providerCalls,
           totalTokens: measured(baseline).totalTokens,
         },
         candidate: {
           ...evidencePayload.candidate,
           errorClass: candidateRun.errorClass,
+          errorCode: candidateRun.errorCode,
           latencyMs: candidateRun.latencyMs,
           measurementComplete: candidateRun.measurementComplete,
+          mutationObserved: candidateRun.mutationObserved,
           providerCalls: candidateRun.providerCalls,
           totalTokens: measured(candidateRun).totalTokens,
         },
@@ -383,9 +398,17 @@ async function main() {
     evaluatedAt: observedAt,
     producerClass: "independent_test",
   };
-  const totalLiftBps = attestationCases.reduce(
-    (sum, entry) => sum + entry.candidate.qualityBps - entry.baseline.qualityBps,
-    0,
+  const summary = summarizeLiveComparisons(
+    cases.map((entry) => ({
+      baseline: {
+        measurementComplete: entry.sanitized.baseline.measurementComplete,
+        qualityBps: entry.baseline.qualityBps,
+      },
+      candidate: {
+        measurementComplete: entry.sanitized.candidate.measurementComplete,
+        qualityBps: entry.candidate.qualityBps,
+      },
+    })),
   );
   const sanitized = {
     attestation,
@@ -394,19 +417,7 @@ async function main() {
     provider: "nvidia",
     providerCalls: callCounter.value,
     results: cases.map((entry) => ({ id: entry.id, sanitized: entry.sanitized })),
-    summary: {
-      averageLiftBps: Math.round(totalLiftBps / attestationCases.length),
-      candidateQualityBps: Math.round(
-        attestationCases.reduce((sum, entry) => sum + entry.candidate.qualityBps, 0) /
-          attestationCases.length,
-      ),
-      baselineQualityBps: Math.round(
-        attestationCases.reduce((sum, entry) => sum + entry.baseline.qualityBps, 0) /
-          attestationCases.length,
-      ),
-      cases: attestationCases.length,
-      totalLiftBps,
-    },
+    summary,
   };
   await writeFile(RESULT_PATH, `${JSON.stringify(sanitized, null, 2)}\n`, "utf8");
   console.log(JSON.stringify(sanitized.summary));
