@@ -186,3 +186,18 @@ test("file-count truncation cannot produce a clean report", async () => {
   assert.ok(report.limitations.includes("SOURCE_INVENTORY_INCOMPLETE"));
   assert.ok(report.limitations.includes("SKILL_MANIFEST_UNINSPECTED"));
 });
+
+test("malformed manifest is explicit partial quarantine instead of an unhandled intake error", async () => {
+  const malformed = SAFE_SKILL.replace("name: reviewed", "name: invalid skill name");
+  const firewall = new SkillIntakeFirewall(
+    new FixtureResolver(snapshot(malformed)),
+    new SkillRegistry(),
+  );
+
+  const report = await firewall.inspect(request());
+
+  assert.equal(report.completeness, "PARTIAL");
+  assert.equal(report.decision, "QUARANTINE");
+  assert.equal(report.manifest, null);
+  assert.ok(report.limitations.includes("SKILL_MANIFEST_INVALID"));
+});
