@@ -287,10 +287,14 @@ has fewer remaining milestones. Every milestone keeps its own exit gate inside t
 
 ## M17 — Reliability engine
 
-- [ ] Deterministic failure classification from typed evidence.
-- [ ] Targeted retry, alternate plan, rollback, verifier/model escalation, checkpoint, and stop policies.
-- [ ] Serializable anti-loop history prevents repeated no-progress strategies.
-- [ ] Coding-path integration and requirement-derived failure/recovery tests.
+- [x] Deterministic failure classification from typed evidence.
+- [x] Targeted retry, alternate plan, rollback, verifier/model escalation, checkpoint, and stop policies.
+- [x] Serializable anti-loop history prevents repeated no-progress strategies.
+- [x] Coding-path integration and requirement-derived failure/recovery tests.
+
+M17 local verification passed with 357/357 tests, Biome, strict TypeScript, credential-free Kimi dry
+smoke, and 90.43% line / 77.60% branch / 95.91% function coverage. Exact-head PR CI remains open;
+M18 and M19 are not implied complete.
 
 ## M18 — Token efficiency 2.0
 
