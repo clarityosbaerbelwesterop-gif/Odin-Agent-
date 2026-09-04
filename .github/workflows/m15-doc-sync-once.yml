@@ -33,7 +33,7 @@ jobs:
         run: npm run verify
       - name: Checkpoint synchronized governance
         run: |
-          git rm .github/workflows/m15-doc-sync-once.yml scripts/sync-m15-docs.mjs
+          git rm -f .github/workflows/m15-doc-sync-once.yml scripts/sync-m15-docs.mjs
           git add ROADMAP.md ARCHITECTURE.md SECURITY.md HANDOVER.md docs/milestones/M15_CURATED_CAPABILITY_PACK.md
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
