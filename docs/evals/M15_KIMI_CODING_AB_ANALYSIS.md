@@ -44,6 +44,16 @@ measurement completeness, verification state, and content hashes. It does not co
 errors or private reasoning, so those historical failures cannot be assigned a more specific root cause
 without a separately authorized diagnostic rerun or independently available evidence.
 
+A deterministic comparison of the stored final-content hashes against the exact fixture inputs narrows
+the execution position without inventing an error cause:
+
+- `canonical-user-id` candidate and `safe-trim-existing-api` candidate ended with the exact original
+  target-file hash, so no repository mutation occurred in those two arms;
+- both baselines and both arms of `retry-429-surgical` ended with a non-original target-file hash, so a
+  repository mutation occurred before those arms failed;
+- none of these facts identifies which specific plan, repair, verification, or provider condition
+  caused termination. Raw exception text was deliberately not persisted.
+
 The result does show that the comparison harness preserved fail-closed behavior: incomplete arms were
 not allowed to become PASS evidence, and no candidate was promoted.
 
@@ -63,5 +73,9 @@ external action and remains unperformed by this correction.
 
 One-shot governance/verification run `33878406947` synchronized ROADMAP, ARCHITECTURE, SECURITY, the
 M15 milestone, and HANDOVER after the corrective code was added. Its repository verification step
-passed before the helper files were removed and the synchronized checkpoint was pushed. A normal
-pull-request CI on the resulting exact head remains the final verification gate for PR #21.
+passed **325/325 tests**, Biome, strict TypeScript, and the secret-free Kimi dry smoke. Aggregate
+coverage was **89.87% lines / 77.08% branches / 95.87% functions**; the new
+`capability-packs/live-evidence` module reached **95.65% / 80.00% / 100%**.
+
+PR #21 is merge-eligible only when normal pull-request CI is green on its exact current head. No helper
+run or prior-head result substitutes for that gate.
