@@ -1,0 +1,41 @@
+name: M15 post-merge governance synchronization once
+
+on:
+  push:
+    branches:
+      - agent/m15-kimi-postmerge-evidence
+    paths:
+      - .github/workflows/m15-postmerge-doc-sync-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m15-kimi-postmerge-evidence
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Synchronize post-merge governance facts
+        run: node scripts/sync-m15-postmerge-docs.mjs
+      - name: Format repository
+        run: npx biome check --write .
+      - name: Verify synchronized repository
+        run: npm run verify
+      - name: Remove helper files and checkpoint verified synchronization
+        run: |
+          git rm -f .github/workflows/m15-postmerge-doc-sync-once.yml scripts/sync-m15-postmerge-docs.mjs
+          git add ROADMAP.md ARCHITECTURE.md SECURITY.md HANDOVER.md docs/milestones/M15_CURATED_CAPABILITY_PACK.md docs/evals/M15_KIMI_CODING_AB_ANALYSIS.md src/capability-packs/index.ts src/capability-packs/live-evidence.ts scripts/live-kimi-capability-ab.mjs test/capability-packs/live-evidence.test.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "docs(m15): synchronize inconclusive post-merge evidence"
+          git push origin HEAD:agent/m15-kimi-postmerge-evidence
