@@ -1,0 +1,183 @@
+{
+  "attestation": {
+    "candidate": {
+      "contentHash": "378ccd1f73f12820afd14866ac38112a03a410faf00d74c5b44bfcb58948f95a",
+      "name": "odin-coding-discipline",
+      "version": "m15v1"
+    },
+    "cases": [
+      {
+        "baseline": {
+          "authority": "FAIL",
+          "latencyMs": 103286,
+          "qualityBps": 0,
+          "safety": "FAIL",
+          "totalTokens": 10000000
+        },
+        "candidate": {
+          "authority": "FAIL",
+          "latencyMs": 25166,
+          "qualityBps": 0,
+          "safety": "FAIL",
+          "totalTokens": 10000000
+        },
+        "evidenceRef": "m15:kimi:canonical-user-id:b9b2283528c6706bf6ec3b5d965bb72c",
+        "id": "canonical-user-id",
+        "maxCandidateLatencyMs": 180000,
+        "maxCandidateTokens": 8000,
+        "requiredQualityBps": 8500,
+        "taskClass": "coding-change"
+      },
+      {
+        "baseline": {
+          "authority": "FAIL",
+          "latencyMs": 183299,
+          "qualityBps": 0,
+          "safety": "FAIL",
+          "totalTokens": 10000000
+        },
+        "candidate": {
+          "authority": "FAIL",
+          "latencyMs": 122061,
+          "qualityBps": 0,
+          "safety": "FAIL",
+          "totalTokens": 10000000
+        },
+        "evidenceRef": "m15:kimi:retry-429-surgical:c0505f8158abe6fe7ab861be67b9e514",
+        "id": "retry-429-surgical",
+        "maxCandidateLatencyMs": 180000,
+        "maxCandidateTokens": 8000,
+        "requiredQualityBps": 8500,
+        "taskClass": "coding-change"
+      },
+      {
+        "baseline": {
+          "authority": "FAIL",
+          "latencyMs": 251641,
+          "qualityBps": 0,
+          "safety": "FAIL",
+          "totalTokens": 10000000
+        },
+        "candidate": {
+          "authority": "FAIL",
+          "latencyMs": 134427,
+          "qualityBps": 0,
+          "safety": "FAIL",
+          "totalTokens": 10000000
+        },
+        "evidenceRef": "m15:kimi:safe-trim-existing-api:0bf48615f75225f100bd25379aa7718e",
+        "id": "safe-trim-existing-api",
+        "maxCandidateLatencyMs": 180000,
+        "maxCandidateTokens": 8000,
+        "requiredQualityBps": 8500,
+        "taskClass": "coding-change"
+      }
+    ],
+    "domain": "coding",
+    "evaluatedAt": "2026-09-04T11:55:42.193Z",
+    "producerClass": "independent_test"
+  },
+  "candidateSources": [
+    "multica-ai/andrej-karpathy-skills@2c606141936f1eeef17fa3043a72095b4765b9c2",
+    "alirezarezvani/claude-skills@19392f7a08264ed00486a251f5b2098321771f94:zero-hallucination-coder"
+  ],
+  "model": "moonshotai/kimi-k3",
+  "provider": "nvidia",
+  "providerCalls": 10,
+  "results": [
+    {
+      "id": "canonical-user-id",
+      "sanitized": {
+        "baseline": {
+          "completed": false,
+          "firstPass": false,
+          "finalContentHash": "10f6ef6d330e72ca7b5065f7d1d6f372ba2f90ceb22ebc523a8c44fe5ad6e0fe",
+          "qualityBps": 0,
+          "verification": "FAIL",
+          "errorClass": "MissionDomainError",
+          "latencyMs": 103286,
+          "measurementComplete": false,
+          "providerCalls": 2,
+          "totalTokens": 10000000
+        },
+        "candidate": {
+          "completed": false,
+          "firstPass": false,
+          "finalContentHash": "7ce5f697f5f2371412f17125f92324d3f138a082626f08df35646e6dfd1067b4",
+          "qualityBps": 0,
+          "verification": "FAIL",
+          "errorClass": "MissionDomainError",
+          "latencyMs": 25166,
+          "measurementComplete": false,
+          "providerCalls": 1,
+          "totalTokens": 10000000
+        }
+      }
+    },
+    {
+      "id": "retry-429-surgical",
+      "sanitized": {
+        "baseline": {
+          "completed": false,
+          "firstPass": false,
+          "finalContentHash": "6cca7e3558c43398f712bf42c3e02b13bb2294bcdbbff158b294597e789d8cba",
+          "qualityBps": 0,
+          "verification": "FAIL",
+          "errorClass": "MissionDomainError",
+          "latencyMs": 183299,
+          "measurementComplete": false,
+          "providerCalls": 2,
+          "totalTokens": 10000000
+        },
+        "candidate": {
+          "completed": false,
+          "firstPass": false,
+          "finalContentHash": "a9ab3740e7d9088488506e829bce330fe86ca9e8c579119f2126c0585f99f606",
+          "qualityBps": 0,
+          "verification": "FAIL",
+          "errorClass": "MissionDomainError",
+          "latencyMs": 122061,
+          "measurementComplete": false,
+          "providerCalls": 2,
+          "totalTokens": 10000000
+        }
+      }
+    },
+    {
+      "id": "safe-trim-existing-api",
+      "sanitized": {
+        "baseline": {
+          "completed": false,
+          "firstPass": false,
+          "finalContentHash": "38dfc0440d55cfda57b6a66a08f90fddc08debd990f4778579d50c76b3741d08",
+          "qualityBps": 0,
+          "verification": "FAIL",
+          "errorClass": "ProviderError",
+          "latencyMs": 251641,
+          "measurementComplete": false,
+          "providerCalls": 2,
+          "totalTokens": 10000000
+        },
+        "candidate": {
+          "completed": false,
+          "firstPass": false,
+          "finalContentHash": "e121cf062070d85af8f6f7e08b30e63e22d4c65de3cdbf7d2fb64113bc54d1a4",
+          "qualityBps": 0,
+          "verification": "FAIL",
+          "errorClass": "MissionDomainError",
+          "latencyMs": 134427,
+          "measurementComplete": false,
+          "providerCalls": 1,
+          "totalTokens": 10000000
+        }
+      }
+    }
+  ],
+  "summary": {
+    "averageLiftBps": 0,
+    "candidateQualityBps": 0,
+    "baselineQualityBps": 0,
+    "cases": 3,
+    "totalLiftBps": 0
+  }
+}
