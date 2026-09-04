@@ -152,8 +152,8 @@ provider benchmark results or permit model self-confidence to become independent
 
 ## M12 — Production hardening and release proof
 
-Status: **PARTIALLY_VERIFIED**. Local deterministic M12-A/B/C hardening and release-proof controls are
-verified; live provider/sandbox and public-production infrastructure proof remains deliberately open.
+Status: **PARTIALLY_VERIFIED**. Local deterministic M12-A/B/C hardening is verified and one bounded
+NVIDIA/Kimi K3 provider path is live-verified; hosted-sandbox and public-production proof remain open.
 
 - [x] Canonical workspace boundary rejects traversal, absolute-path ambiguity, root-prefix confusion,
   and symlink escapes for read/write/cwd resolution.
@@ -173,13 +173,16 @@ verified; live provider/sandbox and public-production infrastructure proof remai
   89.29% lines, 76.24% branches, and 95.64% functions.
 - [x] Local verify + recovery + restore evidence can pass only the `local` release gate; the same evidence
   is explicitly proven insufficient for `integration` and `live` claims.
-- [ ] Live provider/sandbox smoke and evaluation matrix against explicitly authorized credentials/resources.
+- [x] One bounded real NVIDIA `moonshotai/kimi-k3` coding mission through Odin M1/M2/M3/M4/M5: run
+  `33837291528`, score 100/100, first pass, one provider call, 632 input / 222 output tokens, M5 PASS.
+- [ ] Hosted-sandbox live smoke and broader live-provider evaluation matrix against separately authorized resources.
 - [ ] Public-service authentication/realtime transport and deployment hardening after local boundaries remain intact.
 
 M12-A/B/C prove local deterministic enforcement, a provider-neutral remote-sandbox lifecycle contract,
 secret-safe observability, deterministic recovery/backup evidence, and fail-closed release-claim levels.
-They do **not** prove Docker/Kubernetes/VM isolation, a specific hosted sandbox API, transport-level DNS
-pinning, live-provider compatibility, deployment, production auth, cloud backup guarantees, or public traffic.
+M12-D additionally proves one real NVIDIA/Kimi K3 provider path on a bounded coding fixture. It does
+**not** prove Docker/Kubernetes/VM isolation, a hosted sandbox API, broad live-model superiority,
+deployment, production auth, cloud backup guarantees, or public traffic.
 
 ## Post-MVP capability track
 

@@ -1,6 +1,6 @@
 # Odin architecture
 
-Status: M12-A/B/C local execution, sandbox lifecycle, observability, recovery evidence, and release gates verified locally; full M12 remains partially verified pending authorized live/infrastructure proof, 2026-09-04.
+Status: M12-A/B/C local hardening plus one M12-D NVIDIA/Kimi K3 live-provider path verified; full M12 remains partially verified pending hosted-sandbox/public-production proof, 2026-09-04.
 
 ## Repository finding
 
@@ -95,7 +95,8 @@ chaining, monotonic delivered events, scope, and event hashes rather than requir
 `src/providers` normalizes requests, responses, streaming, usage, tool calls, structured output, and
 typed errors across OpenAI, Anthropic, OpenRouter, NVIDIA, and explicit compatible endpoints. Unknown
 capabilities fail before credentials resolve. M12 extends the credential resolver with exact
-provider/model context. Tests use injected transports; live-provider end-to-end compatibility is not yet claimed.
+provider/model context. Injected-transport tests remain the broad compatibility base; M12-D separately proves
+one bounded real NVIDIA/Kimi K3 end-to-end provider path, not universal live-provider compatibility.
 
 ### M2 — Mission runtime
 
@@ -208,6 +209,19 @@ proves that repository verify + recovery + restore evidence can unlock only a lo
 relabelled into integration/live proof. Normal PR run `33796268313` passed 258/258 tests with 89.29%
 line / 76.24% branch / 95.64% function coverage.
 
+### M12-D — Bounded live-provider evidence
+
+A dedicated live runner reuses the existing M4 coding fixture but replaces the scripted model boundary
+with the real `NvidiaProvider` and `moonshotai/kimi-k3`. Repository secret resolution remains in the
+control plane and is restricted to the exact provider/model identity. The live workflow first reruns
+all deterministic gates, caps the model path at two calls, persists only sanitized evidence, and is
+manual-only after the evidence run.
+
+Live run `33837291528` completed the mission first pass with one provider call, 632 input / 222 output
+tokens, 22.4 s latency, seven Odin tool calls, deterministic `verify` exit 0, and M5 PASS for a 100/100
+smoke score. This proves one live provider integration, not a hosted sandbox, broad benchmark, model
+superiority, or AGI.
+
 ## Current module map
 
 ```text
@@ -235,13 +249,13 @@ web/             M9 responsive static reference client
 
 ## Next architecture milestone
 
-The remaining M12 path is evidence escalation, not local claim inflation: run an explicitly authorized
-live provider/sandbox smoke matrix through the existing provider/runtime boundaries, then bind those
-observations into `integration` or `live` release evidence. Public service/auth/realtime transport and
-deployment hardening remain separate production work.
+The remaining M12 path is now hosted-sandbox and production evidence escalation. One real Kimi K3
+provider path is verified, but hosted sandbox cleanup/isolation, broader live-model comparison, public
+service/auth/realtime transport, deployment, and production recovery remain separate proof.
 
 Local CI may never manufacture `integration` or `live` evidence. Any paid resource, deployment, or
-production/public traffic remains separately approval-gated.
+production/public traffic remains separately approval-gated. The preferred no-cost next milestone is
+M13 evidence-backed post-task learning and memory curation behind M5/M6/M10 authority boundaries.
 
 ## Storage and deployment direction
 

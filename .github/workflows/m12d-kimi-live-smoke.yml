@@ -1,0 +1,49 @@
+name: M12-D Kimi K3 live smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: m12d-kimi-live-smoke
+  cancel-in-progress: false
+
+jobs:
+  live-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Re-run deterministic repository gate
+        run: npm run verify
+      - name: Build live runner dependencies
+        run: npm run build
+      - name: Require configured NVIDIA secret
+        env:
+          NV_API_KEY: ${{ secrets.NV_API_KEY }}
+        run: |
+          if [ -z "${NV_API_KEY:-}" ]; then
+            echo "::error::NV_API_KEY repository secret is missing"
+            exit 1
+          fi
+      - name: Execute one bounded Odin Kimi K3 mission
+        env:
+          NV_API_KEY: ${{ secrets.NV_API_KEY }}
+          ODIN_LIVE_RESULT_PATH: m12d-kimi-k3-live-result.json
+        run: node scripts/live-kimi-coding-smoke.mjs
+      - name: Upload sanitized evidence
+        if: always() && hashFiles('m12d-kimi-k3-live-result.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: m12d-kimi-k3-live-result
+          path: m12d-kimi-k3-live-result.json
+          if-no-files-found: error
+          retention-days: 14
