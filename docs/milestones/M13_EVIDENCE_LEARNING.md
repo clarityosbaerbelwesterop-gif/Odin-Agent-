@@ -1,9 +1,8 @@
 # M13 — Evidence-backed post-task learning and memory curation
 
-Status: **IMPLEMENTATION_COMPLETE_PENDING_CI**. Updated: 2026-09-04.
+Status: **IMPLEMENTATION_VERIFIED_PENDING_FINAL_PR_CI**. Updated: 2026-09-04.
 
-Implementation code checkpoint before the normal exact-head gate: `cd080b625004009eca322eea1af4c8f728648622`.
-The one-shot formatter completed successfully and removed itself; no temporary M13 helper workflow remains.
+Implementation evidence: helper run `33852005166` passed quality, strict TypeScript, 272/272 tests, and the dry Kimi smoke on corrected head `6165114201d151240125ec890b3560b631f6502b`. Aggregate coverage was 89.42% lines / 76.50% branches / 95.67% functions; `learning/curator` was 91.83% / 80.23% / 96.15%, and the shared secret detector remained 100% / 100% / 100%. The helper removed itself before committing.
 
 ## Objective
 
@@ -102,7 +101,7 @@ No hidden reasoning is stored.
 Maintenance is deterministic:
 
 - inactive records may cool from HOT/WARM to COLD after a configured age;
-- unsupported stale candidates may be archived after a longer configured age;
+- unsupported stale candidates or conflicts below the three-support establishment threshold may be archived after a longer configured age; strongly supported conflicted records remain available for deterministic re-establishment if weaker conflicts are archived;
 - established M6 memory is never silently deleted by M13;
 - archiving a stale conflicting candidate may allow a sufficiently supported remaining lesson to become
   established on the next deterministic recomputation;
@@ -116,7 +115,7 @@ Maintenance is deterministic:
   model-provided `internal` label;
 - the shared secret detector retains M12 observability rejection behavior;
 - duplicate task support cannot inflate confidence;
-- idempotency conflict fails closed;
+- exact idempotency replay returns prior state without requiring fresh evidence lookup, while changed input under the same replay key fails closed before evidence lookup;
 - three distinct verified tasks are required before semantic-memory commit;
 - conflicting lessons under one key block promotion/nudging;
 - cross-user/project records are never retrieved or combined;

@@ -1,6 +1,6 @@
 # Odin architecture
 
-Status: M12-A/B/C local hardening plus one M12-D NVIDIA/Kimi K3 live-provider path verified; full M12 remains partially verified pending hosted-sandbox/public-production proof, 2026-09-04.
+Status: M0–M13 implementation verified locally/in CI; M12 remains partially verified for hosted-sandbox/public-production proof, while M13 evidence-backed learning is implemented and pending final synchronized exact-head PR CI, 2026-09-04.
 
 ## Repository finding
 
@@ -27,6 +27,7 @@ system has been prematurely split into microservices.
 14. Skill instructions are reusable procedure, never authority. Learned/community skills require exact provenance, independent verification, and trusted promotion before normal runtime loading.
 15. Adaptive reasoning is runtime policy, not model authority: route, branch, critique, repair, escalation, cost, call, concurrency, and token ceilings remain runtime-owned and independently verifiable.
 16. Sandbox/provider selection is runtime policy: a routed model identity may select a configured sandbox backend, but models cannot choose a stronger sandbox scope or receive its raw credentials.
+17. Learned experience is lower-authority data: only independently verified, hash-bound repeated outcomes may become established M13 learning, and learned memory never mints execution, completion, skill-promotion, budget, routing, credential, or user-preference authority.
 
 ## Logical architecture
 
@@ -222,6 +223,14 @@ tokens, 22.4 s latency, seven Odin tool calls, deterministic `verify` exit 0, an
 smoke score. This proves one live provider integration, not a hosted sandbox, broad benchmark, model
 superiority, or AGI.
 
+### M13 — Evidence-backed post-task learning
+
+`src/learning` converts repeated independently verified task outcomes into scoped learning records with exact semantic-key and lesson-content hashes. Three distinct mission/task supports are required for establishment; competing content under the same user/project/key is conflicted and cannot become a nudge or memory entry. Exact replay is resolved before requesting fresh evidence, while a second replay check after the asynchronous authority call preserves race safety.
+
+Established, non-conflicted learning may enter M6 only as `verified_learning` semantic memory. Broad semantic retrieval deliberately excludes it unless the caller explicitly asks for the `m13-learning` tag. M13 maintenance may cool stale records and archive under-supported stale conflicts, allowing a sufficiently supported surviving lesson to re-establish without deleting already committed M6 memory.
+
+The shared `src/security/secret-text.ts` primitive is used by both observability and learning intake to reject obvious credential patterns. M13 cannot register tools, grant capabilities, promote skills, infer durable user preferences, change routing quality floors, increase budgets, or mark a task complete. Run `33852005166` verified 272/272 tests after the replay/maintenance hardening.
+
 ## Current module map
 
 ```text
@@ -242,6 +251,8 @@ src/
   sandbox/       M12 canonical workspace, bounded process/network policy, backend lifecycle/routing
   observability/ M12-C secret-safe bounded runtime events
   release/       M12-C backup/recovery proof, release evidence/manifests, fail-closed gates
+  learning/      M13 evidence-backed repeated learning, conflict curation, bounded nudges
+  security/      shared secret-text and future cross-cutting security primitives
   artifacts/     content-addressed artifact byte/storage layer later
   cli/           user-facing entry point later
 web/             M9 responsive static reference client
@@ -254,8 +265,7 @@ provider path is verified, but hosted sandbox cleanup/isolation, broader live-mo
 service/auth/realtime transport, deployment, and production recovery remain separate proof.
 
 Local CI may never manufacture `integration` or `live` evidence. Any paid resource, deployment, or
-production/public traffic remains separately approval-gated. The preferred no-cost next milestone is
-M13 evidence-backed post-task learning and memory curation behind M5/M6/M10 authority boundaries.
+production/public traffic remains separately approval-gated. With M13 implemented, the preferred no-cost next milestone is M14: an immutable, fail-closed Skill Intake Firewall that can inspect large external skill catalogs without executing them, bind accepted material to exact commits/content hashes, and hand only fully analyzed community candidates to M10. M15 then evaluates and deduplicates candidate procedures into measured, progressively loaded capability packs; neither milestone may turn external instructions into authority.
 
 ## Storage and deployment direction
 

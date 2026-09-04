@@ -184,10 +184,43 @@ M12-D additionally proves one real NVIDIA/Kimi K3 provider path on a bounded cod
 **not** prove Docker/Kubernetes/VM isolation, a hosted sandbox API, broad live-model superiority,
 deployment, production auth, cloud backup guarantees, or public traffic.
 
+## M13 — Evidence-backed post-task learning and memory curation
+
+- [x] Exact M5-backed learning attestations bind user/project/mission/task, semantic-key hash, lesson hash, sensitivity, verification-result hash, and evidence references.
+- [x] One or two distinct verified tasks remain tentative; three distinct verified tasks are required before a lesson becomes established.
+- [x] Conflicting lessons under one scoped key block nudging and M6 promotion until deterministic maintenance resolves the conflict.
+- [x] Established learning enters M6 only as lower-authority `verified_learning` semantic memory and remains invisible to broad retrieval without explicit `m13-learning` opt-in.
+- [x] Exact replay is idempotent without a fresh evidence lookup; changed replay input fails closed before evidence lookup and the post-await replay check still protects races.
+- [x] Obvious credential-like content is rejected across semantic keys, lessons, tags, and source references via the shared M12/M13 secret-text primitive.
+- [x] M13 cannot mint M3 tools/capabilities, promote M10 skills, infer durable user preferences, raise budgets, alter routing floors, or mark tasks complete.
+- [x] Corrected implementation verification: run `33852005166`, 272/272 tests, 89.42% line / 76.50% branch / 95.67% function coverage.
+
+M13 makes successful verified work compound without converting memory into authority. It is capability amplification, not evidence of AGI/ASI or permission for recursive self-modification.
+
+## M14 — Skill intake firewall
+
+- [ ] Discover external Agent Skills / Claude plugins without executing third-party code during intake.
+- [ ] Resolve mutable refs to immutable commit SHAs and bind repository, subdirectory, subset, manifest, license metadata, and content hashes.
+- [ ] Bound file count, byte size, depth, symlinks, binaries, scripts, hooks, MCP configuration, workflows, and nested references.
+- [ ] Emit stable risk findings for prompt injection, credential collection, exfiltration, shell/subprocess use, destructive writes, self-promotion, memory poisoning, MCP/tool poisoning, dependency installation, and privilege escalation.
+- [ ] Treat incomplete/partial/failed analysis as non-safe and quarantine rather than silently accepting.
+- [ ] Convert only fully analyzed accepted material into M10 `community` candidates; intake may never activate a skill or create M3 authority.
+- [ ] Pin reviewed source snapshots and require a new intake result whenever upstream content changes.
+
+Research fixtures reviewed for M14: `ComposioHQ/awesome-claude-skills@be2a406907dbc61b73e6827ded415c96139d13a2`, `multica-ai/andrej-karpathy-skills@2c606141936f1eeef17fa3043a72095b4765b9c2`, `alirezarezvani/claude-skills@19392f7a08264ed00486a251f5b2098321771f94`, `anthropics/claude-plugins-official@1dd995193ba20bba51ca6c681aa8d3398dbd80a2`, and `coreyhaines31/marketingskills@5cd4a7eae3a9a7b5d2aceb0613f7d1f7c4b65968`.
+
+## M15 — Curated capability pack and offline improvement evaluation
+
+- [ ] Deduplicate external procedures against canonical Odin M2/M4/M5/M7/M10/M11 behavior instead of stacking redundant prompts.
+- [ ] Evaluate candidate skills with deterministic held-out fixtures for quality, regressions, latency/context cost, authority safety, and task-class usefulness before trusted promotion.
+- [ ] Build progressively loaded domain packs for coding, research, security, data/documents, product/business, and marketing from winners only.
+- [ ] Adapt high-leverage coding discipline (explicit assumptions, simplicity, surgical edits, goal-driven verification) into Odin-owned policy/eval contracts rather than importing it as higher authority.
+- [ ] Add bounded offline sleep/replay proposals that can recommend memory/skill changes but cannot self-promote, rewrite system policy, or manufacture M5 evidence.
+- [ ] Measure output lift against the no-skill baseline and preserve M11 quality floors and token/cost ceilings.
+
 ## Post-MVP capability track
 
 - [ ] Production hybrid memory retrieval/retention (lexical/FTS plus optional vector retrieval) behind M6 scope and privacy rules.
-- [ ] Post-task learning curation, memory compression/pruning, and evidence-backed self-nudging.
 - [ ] Event-driven background mission service, scheduler/triggers, and resumable automation.
 - [ ] Permissioned MCP/Agent-Skills-style adapters and omnichannel clients behind the same capability model.
 

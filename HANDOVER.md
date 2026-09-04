@@ -5,90 +5,41 @@ Updated: 2026-09-04.
 ## Current state
 
 - Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).
-- `main` contains verified M0–M11 plus merged M12-A/B/C at squash merge
-  `c15277162620596f0bead037d26bcf4e08872c88`.
-- Active branch: `agent/m12d-kimi-live-smoke`; Draft PR #17 targets `main`.
-- M12-D has one successful real NVIDIA/Kimi K3 provider mission using repository secret `NV_API_KEY`.
-- Live run `33837291528` completed successfully on head
-  `8965a1252be12c6da5df485804c4b1580394be96`.
-- Sanitized live result: **100/100**, first pass, no repair, one provider call, 22.4 s latency,
-  632 input / 222 output tokens, 7 Odin tool calls, deterministic quality exit 0, M5 `PASS`.
-- The live workflow was immediately changed to `workflow_dispatch`; future live calls require an explicit
-  manual trigger instead of another branch push.
-- M12 remains **PARTIALLY_VERIFIED**: the Kimi provider path is now live-verified for one bounded coding
-  task, while hosted-sandbox live proof, a broader model matrix, public-service auth/realtime transport,
-  deployment, and production recovery remain open.
+- `main` contains verified M0–M12; active work is M13 on `agent/m13-evidence-learning`, Draft PR #18.
+- M13 implementation head after replay/maintenance hardening: `6165114201d151240125ec890b3560b631f6502b`.
+- Implementation verification run `33852005166`: 272/272 tests, Biome PASS, strict TypeScript PASS, dry Kimi smoke PASS, 89.42% line / 76.50% branch / 95.67% function coverage.
+- No temporary M13 helper workflow remains after the implementation commit. Documentation is synchronized before the final normal exact-head PR CI.
+- M12 remains partially verified for hosted-sandbox/public-production claims; do not spend money, create paid resources, deploy production, or repeat live-provider calls without explicit authorization.
 
-## M12-C verified local capability
+## M13 capability
 
-- bounded structured observability with deterministic event identity and pre-log secret-like metadata rejection;
-- immutable hash-bound release evidence and deterministic manifests;
-- monotonic `local` / `integration` / `live` evidence levels that cannot be upgraded by relabelling;
-- fail-closed release gates for missing/stale/foreign/failed/tampered/duplicate/unreferenced/weak evidence;
-- backup manifests and restore verification bound to exact source/restored state hashes;
-- deterministic five-scenario recovery proof and conversion to scoped release evidence;
-- local release proof passes only `local` and deliberately blocks stronger claims without stronger evidence;
-- concurrent sandbox release race fixed: identical releases collapse to one remote destroy, conflicting
-  release reasons fail closed.
+M13 turns repeated independently verified task outcomes into lower-authority learning without letting a model manufacture trust. Exact learning key/content hashes and M5-backed evidence are required; three distinct verified task identities establish a lesson. Conflicting lessons block nudges and memory promotion. Exact replay is idempotent without fresh evidence lookup, changed replay input fails closed, and asynchronous replay races remain checked.
 
-## M12-D verified live-provider capability
+Established learning may commit to M6 semantic memory only with `verified_learning` provenance. General semantic retrieval hides it unless `m13-learning` is explicitly requested. Secret-like values are rejected across the lesson, semantic key, tags, and source references. M13 never creates M3 execution authority, M5 completion, M10 activation, credentials, budget, routing-floor changes, or inferred durable preferences.
 
-The bounded Kimi mission exercised the real provider path while keeping repository/tool/verification
-controls in Odin:
+## External capability research for M14/M15
 
-- exact provider/model: `nvidia` / `moonshotai/kimi-k3`;
-- `temperature: 1`, `reasoning_effort: max`;
-- strict structured plan accepted by the live endpoint;
-- M3 repository discovery and scoped patch authority retained by runtime;
-- M2 mission reached `COMPLETED`;
-- fixture `verify` passed first pass;
-- M5 independent verification returned `PASS`;
-- final target became `export function add(a: number, b: number): number { return a + b; }`;
-- provider-call ceiling was two; only one call was consumed;
-- the sanitized artifact contains no credential or model reasoning content;
-- live artifact digest:
-  `sha256:1f919a3a42a568fd1688c78331ed3998388b8a9bfec48fbb7501e072b65588b2`;
-- M5 result hash:
-  `98bd0b921fd446ca46254a55575222e1147da8982f7e39b16422f51125440fe6`.
+Five user-supplied repositories were reviewed as immutable research snapshots, not installed or executed:
 
-This is strong evidence for Odin's capability-amplification design, but it is one simple coding fixture.
-It does not prove superiority over GPT-6 Astra/Fable 5.1 and does not establish AGI.
+- `ComposioHQ/awesome-claude-skills@be2a406907dbc61b73e6827ded415c96139d13a2` — broad community discovery catalog and MCP/action examples; useful for breadth/stress testing, never transitive trust.
+- `multica-ai/andrej-karpathy-skills@2c606141936f1eeef17fa3043a72095b4765b9c2` — coding discipline: surface assumptions, prefer simplicity, make surgical edits, define verifiable success. Adapt into Odin-owned policy/evals rather than higher-authority external instructions.
+- `alirezarezvani/claude-skills@19392f7a08264ed00486a251f5b2098321771f94` — hundreds of skills plus scripts/hooks, self-improving memory, agent harness, research, security, business and marketing. High-value M14 stress corpus with a large executable/supply-chain surface.
+- `anthropics/claude-plugins-official@1dd995193ba20bba51ca6c681aa8d3398dbd80a2` — official marketplace reference with repository/path/ref/commit SHA and explicit skill subsets, while warning users not to assume third-party plugins are safe.
+- `coreyhaines31/marketingskills@5cd4a7eae3a9a7b5d2aceb0613f7d1f7c4b65968` — strong domain workflows for product context, CRO, copy, SEO/AEO, pricing, launch, analytics, sales and recurring marketing loops; shared product context and disagreement/council patterns map well to M6/M7/M11.
 
-## Boundaries retained
+No third-party code from these repositories was executed or copied into Odin during this review.
 
-- M3 remains execution/capability authority; M5 remains completion authority.
-- M6 memory is still an in-memory contract; M7 ownership is logical single-process coordination.
-- M8 durability is local SQLite and does not imply distributed exactly-once effects.
-- M9 is a local client protocol/reference shell, not production auth/realtime transport.
-- M10 learned/community skills cannot self-promote.
-- M11 offline evaluation remains the broad routing evidence harness; one M12-D live task is not a broad benchmark.
-- M12 host-process execution is not kernel/container isolation; network policy is not transport-level
-  DNS pinning; provider-neutral sandbox contracts are not proof of a hosted sandbox implementation.
-- No public production service, hosted-sandbox live test, production migration, billing change, or customer
-  traffic was exercised.
+## Next milestones
 
-## Verified evidence history
+1. Obtain final normal exact-head `npm run verify` for synchronized M13 PR #18, update evidence status, then squash-merge under the user's standing merge approval.
+2. Create fresh M14 branch from merged `main`: **Skill Intake Firewall**. Discover broadly, resolve mutable refs to exact commits, scan bounded manifests/scripts/hooks/MCP/config content without executing it, emit explicit completeness/risk findings, quarantine partial scans, and hand only fully analyzed community candidates to M10.
+3. M15: **Curated Capability Pack + offline improvement evaluation**. Deduplicate candidate procedures against Odin's canonical runtime, evaluate output lift/safety/context cost on held-out fixtures, then promote only measured winners through M10. Add bounded offline sleep/replay proposals that cannot self-promote.
+4. Keep future scheduler/triggers/background missions and permissioned MCP/Agent-Skills adapters as separate no-cost milestones before public production deployment.
 
-- M10 implementation run `33777800516`, 172/172; squash merge
-  `bfc76b57a3531f5b6824fa3a3c285c5a55fd13d0`.
-- M11 final squash merge `bd9c42a2c07918aed140aebcd0d0d59082a71678`; exact-head CI recorded in merge message.
-- M12-A/B normal PR run `33794095989`: 237/237; squash merge
-  `144e1115196c56e550a5b1da10973fe135d23276`.
-- M12-C normal PR run `33796268313`: 258/258, 89.29% line / 76.24% branch / 95.64% function coverage;
-  final exact-head CI `33836671582`; squash merge `c15277162620596f0bead037d26bcf4e08872c88`.
-- M12-D secret-free runner CI `33837231690`: success, 258/258 tests plus `smoke:kimi:dry`.
-- M12-D live NVIDIA/Kimi run `33837291528`: success, sanitized score 100/100 and M5 PASS.
+## Standing boundaries
 
-## Exact next action
-
-1. Synchronize ROADMAP/ARCHITECTURE/SECURITY with M12-D live-provider evidence.
-2. Obtain a final normal PR-specific `npm run verify` on the exact manual-only workflow/docs head.
-3. Mark PR #17 ready and squash-merge with exact-head protection under the user's standing merge approval.
-4. Keep M12 `PARTIALLY_VERIFIED`; do not create hosted sandbox or production resources without separate
-   authorization.
-5. Continue the no-cost capability track as a new milestone from fresh `main`. Preferred next tranche:
-   **M13 evidence-backed post-task learning and memory curation** — bounded post-task candidate extraction,
-   compression/pruning, confidence/provenance rules, and self-nudging that cannot self-promote skills,
-   mint tool authority, or bypass M5 evidence.
-6. After M13, continue background scheduler/triggers and permissioned MCP/Agent-Skills adapters as separate
-   no-cost milestones before any public production deployment.
+- Repository evidence overrides documentation and memory; CI green is required before merge.
+- M3 remains execution/capability authority; M5 remains completion/evidence authority; M10 remains skill promotion authority.
+- Models/workers/skills/memory cannot mint credentials, capabilities, approval, budgets, quality evidence, or trusted policy.
+- External skill catalogs are discovery inputs only until exact-source analysis and M10 lifecycle requirements succeed.
+- No secrets in commits/logs/artifacts, no paid/live infrastructure actions without explicit user approval.
