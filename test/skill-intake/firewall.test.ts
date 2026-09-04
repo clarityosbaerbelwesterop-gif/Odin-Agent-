@@ -88,13 +88,20 @@ test("complete safe skill becomes only an M10 community candidate", async () => 
   assert.equal(resolver.calls, 1);
   assert.deepEqual(tools.listSummaries(), []);
   assert.throws(
-    () => skills.resolve(result.candidate?.package.name ?? "missing", result.candidate?.package.version),
+    () =>
+      skills.resolve(
+        result.candidate?.package.name ?? "missing",
+        result.candidate?.package.version,
+      ),
     (error: unknown) => error instanceof SkillError && error.code === "DENIED",
   );
 });
 
 test("report identity is deterministic across snapshot file ordering", async () => {
-  const guide = textFile(`${SKILL_PATH}/references/guide.md`, "Prefer current repository evidence.\n");
+  const guide = textFile(
+    `${SKILL_PATH}/references/guide.md`,
+    "Prefer current repository evidence.\n",
+  );
   const manifest = textFile(`${SKILL_PATH}/SKILL.md`, SAFE_SKILL);
   const first = new SkillIntakeFirewall(
     new FixtureResolver(snapshot({}, SAFE_SKILL, [manifest, guide])),
@@ -244,7 +251,10 @@ test("new immutable source commit and content produce new report and candidate v
   const secondResult = await second.intake(request());
 
   assert.notEqual(firstResult.report.reportHash, secondResult.report.reportHash);
-  assert.notEqual(firstResult.candidate?.package.contentHash, secondResult.candidate?.package.contentHash);
+  assert.notEqual(
+    firstResult.candidate?.package.contentHash,
+    secondResult.candidate?.package.contentHash,
+  );
   assert.equal(firstResult.candidate?.package.version, `g${COMMIT_A.slice(0, 12)}`);
   assert.equal(secondResult.candidate?.package.version, `g${COMMIT_B.slice(0, 12)}`);
 });

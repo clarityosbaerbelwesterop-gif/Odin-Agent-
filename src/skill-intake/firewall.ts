@@ -12,7 +12,6 @@ import {
   type SkillIntakeResult,
   type SkillIntakeSeverity,
   type SkillRiskRuleId,
-  type SkillSnapshotFile,
   type SkillSourceLicense,
   type SkillSourceResolver,
 } from "./types.js";
@@ -146,7 +145,8 @@ const LINE_RULES: readonly LineRule[] = Object.freeze([
   },
   {
     id: "DESTRUCTIVE_WRITE",
-    message: "Instruction text contains a destructive filesystem, repository, or database operation.",
+    message:
+      "Instruction text contains a destructive filesystem, repository, or database operation.",
     severity: "HIGH",
     matches: (line) => {
       const text = line.toLowerCase();
@@ -165,9 +165,14 @@ const LINE_RULES: readonly LineRule[] = Object.freeze([
     severity: "HIGH",
     matches: (line) => {
       const text = line.toLowerCase();
-      const secret = ["api key", "api_key", "access token", "auth token", "password", "secret key"].some(
-        (phrase) => text.includes(phrase),
-      );
+      const secret = [
+        "api key",
+        "api_key",
+        "access token",
+        "auth token",
+        "password",
+        "secret key",
+      ].some((phrase) => text.includes(phrase));
       const action = ["paste", "enter", "provide", "export", "collect", "supply", "set "].some(
         (phrase) => text.includes(phrase),
       );
@@ -176,7 +181,8 @@ const LINE_RULES: readonly LineRule[] = Object.freeze([
   },
   {
     id: "SELF_PROMOTION",
-    message: "Instruction text attempts to install, activate, or promote itself into trusted behavior.",
+    message:
+      "Instruction text attempts to install, activate, or promote itself into trusted behavior.",
     severity: "HIGH",
     matches: (line) => {
       const text = line.toLowerCase();
@@ -194,13 +200,18 @@ const LINE_RULES: readonly LineRule[] = Object.freeze([
   },
   {
     id: "MEMORY_POLICY_POISONING",
-    message: "Instruction text attempts to persist into agent policy or durable instruction memory.",
+    message:
+      "Instruction text attempts to persist into agent policy or durable instruction memory.",
     severity: "HIGH",
     matches: (line) => {
       const text = line.toLowerCase();
-      const target = ["claude.md", "agents.md", "system prompt", "developer prompt", "agent memory"].some(
-        (phrase) => text.includes(phrase),
-      );
+      const target = [
+        "claude.md",
+        "agents.md",
+        "system prompt",
+        "developer prompt",
+        "agent memory",
+      ].some((phrase) => text.includes(phrase));
       const action = ["write", "append", "persist", "store", "remember", "overwrite"].some((word) =>
         text.includes(word),
       );
@@ -347,7 +358,11 @@ function analyzeSnapshot(
     analyzedFiles += 1;
     inspectedText.set(file.path, file.content);
     fileEvidence.push(
-      Object.freeze({ contentHash: sha256(file.content), path: file.path, sizeBytes: file.sizeBytes }),
+      Object.freeze({
+        contentHash: sha256(file.content),
+        path: file.path,
+        sizeBytes: file.sizeBytes,
+      }),
     );
     scanFile(file, findings, fingerprintSet, findingState, limits.maxFindings);
   }
@@ -518,12 +533,21 @@ function decisionFor(
 }
 
 function normalizeRequest(value: unknown): SkillIntakeRequest {
-  const object = exactObject(value, ["observedAt", "ref", "repository", "skillPath"], "intake request");
+  const object = exactObject(
+    value,
+    ["observedAt", "ref", "repository", "skillPath"],
+    "intake request",
+  );
   return Object.freeze({
     observedAt: canonicalTimestamp(object.observedAt, "observedAt"),
     ref: gitRef(object.ref),
     repository: repositoryName(object.repository),
-    skillPath: relativePath(object.skillPath, "skillPath", true, DEFAULT_SKILL_INTAKE_LIMITS.maxDepth),
+    skillPath: relativePath(
+      object.skillPath,
+      "skillPath",
+      true,
+      DEFAULT_SKILL_INTAKE_LIMITS.maxDepth,
+    ),
   });
 }
 
@@ -551,7 +575,10 @@ function normalizeSnapshot(
   const ref = gitRef(object.ref);
   const skillPath = relativePath(object.skillPath, "snapshot.skillPath", true, limits.maxDepth);
   if (repository !== request.repository || ref !== request.ref || skillPath !== request.skillPath) {
-    throw new SkillIntakeError("CONFLICT", "Resolved source identity does not match the intake request.");
+    throw new SkillIntakeError(
+      "CONFLICT",
+      "Resolved source identity does not match the intake request.",
+    );
   }
   const commitSha = commitHash(object.commitSha);
   if (typeof object.inventoryComplete !== "boolean") {
@@ -607,11 +634,17 @@ function normalizeFile(value: unknown, skillPath: string, maxDepth: number): Nor
   }
   if (object.kind === "text") {
     if (typeof object.content !== "string" || object.target !== undefined) {
-      throw new SkillIntakeError("INVALID_INPUT", "Text snapshot files require content and no target.");
+      throw new SkillIntakeError(
+        "INVALID_INPUT",
+        "Text snapshot files require content and no target.",
+      );
     }
     const sizeBytes = Buffer.byteLength(object.content, "utf8");
     if (object.byteLength !== undefined && object.byteLength !== sizeBytes) {
-      throw new SkillIntakeError("CONFLICT", "Text snapshot byteLength conflicts with exact content.");
+      throw new SkillIntakeError(
+        "CONFLICT",
+        "Text snapshot byteLength conflicts with exact content.",
+      );
     }
     return Object.freeze({ content: object.content, kind: "text", path, sizeBytes });
   }
@@ -622,13 +655,19 @@ function normalizeFile(value: unknown, skillPath: string, maxDepth: number): Nor
       !Number.isSafeInteger(object.byteLength) ||
       (object.byteLength as number) < 0
     ) {
-      throw new SkillIntakeError("INVALID_INPUT", "Binary snapshot files require only a byteLength.");
+      throw new SkillIntakeError(
+        "INVALID_INPUT",
+        "Binary snapshot files require only a byteLength.",
+      );
     }
     return Object.freeze({ kind: "binary", path, sizeBytes: object.byteLength as number });
   }
   if (object.kind === "symlink") {
     if (object.content !== undefined || typeof object.target !== "string") {
-      throw new SkillIntakeError("INVALID_INPUT", "Symlink snapshot files require a target and no content.");
+      throw new SkillIntakeError(
+        "INVALID_INPUT",
+        "Symlink snapshot files require a target and no content.",
+      );
     }
     boundedPrintable(object.target, "symlink target", MAX_PATH_LENGTH);
     return Object.freeze({ kind: "symlink", path, sizeBytes: 0 });
@@ -650,7 +689,9 @@ function normalizeLimitations(value: unknown): string[] {
     throw new SkillIntakeError("INVALID_INPUT", "Source limitations exceed the allowed bound.");
   }
   return uniqueSorted(
-    value.map((entry, index) => boundedPrintable(entry, `limitations[${index}]`, MAX_LIMITATION_LENGTH)),
+    value.map((entry, index) =>
+      boundedPrintable(entry, `limitations[${index}]`, MAX_LIMITATION_LENGTH),
+    ),
   );
 }
 
@@ -665,8 +706,15 @@ function parseManifest(content: string): ParsedManifest | null {
   const description = frontmatterScalar(header, "description");
   if (name === null || description === null) return null;
   const normalizedName = manifestName(name);
-  const normalizedDescription = boundedPrintable(description, "manifest description", MAX_DESCRIPTION_LENGTH);
-  const body = lines.slice(closeIndex + 1).join("\n").trim();
+  const normalizedDescription = boundedPrintable(
+    description,
+    "manifest description",
+    MAX_DESCRIPTION_LENGTH,
+  );
+  const body = lines
+    .slice(closeIndex + 1)
+    .join("\n")
+    .trim();
   if (body.length === 0) return null;
   const instructionBytes = Buffer.byteLength(body, "utf8");
   return Object.freeze({
@@ -770,7 +818,10 @@ function communityReference(report: SkillIntakeReport): string {
 function manifestName(value: string): string {
   const name = boundedPrintable(value, "manifest name", 128).trim();
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/u.test(name)) {
-    throw new SkillIntakeError("INCOMPLETE", "Manifest name is not a bounded Agent-Skills identifier.");
+    throw new SkillIntakeError(
+      "INCOMPLETE",
+      "Manifest name is not a bounded Agent-Skills identifier.",
+    );
   }
   return name;
 }
@@ -798,7 +849,10 @@ function normalizeLimits(value: SkillIntakeLimits): SkillIntakeLimits {
 function repositoryName(value: unknown): string {
   const repository = boundedPrintable(value, "repository", MAX_REPOSITORY_LENGTH);
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u.test(repository)) {
-    throw new SkillIntakeError("INVALID_INPUT", "repository must be an owner/name GitHub identifier.");
+    throw new SkillIntakeError(
+      "INVALID_INPUT",
+      "repository must be an owner/name GitHub identifier.",
+    );
   }
   return repository;
 }
@@ -819,17 +873,15 @@ function gitRef(value: unknown): string {
 function commitHash(value: unknown): string {
   const commitSha = boundedPrintable(value, "commitSha", 40);
   if (!/^[a-f0-9]{40}$/u.test(commitSha)) {
-    throw new SkillIntakeError("INVALID_INPUT", "Resolved source must use an exact 40-hex commit SHA.");
+    throw new SkillIntakeError(
+      "INVALID_INPUT",
+      "Resolved source must use an exact 40-hex commit SHA.",
+    );
   }
   return commitSha;
 }
 
-function relativePath(
-  value: unknown,
-  label: string,
-  allowRoot: boolean,
-  maxDepth: number,
-): string {
+function relativePath(value: unknown, label: string, allowRoot: boolean, maxDepth: number): string {
   const path = boundedPrintable(value, label, MAX_PATH_LENGTH);
   if (allowRoot && path === ".") return path;
   if (
