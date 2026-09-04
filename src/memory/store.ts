@@ -38,6 +38,7 @@ const SOURCE_CLASSES = new Set<MemorySourceClass>([
   "model_summary",
   "repository",
   "tool",
+  "verified_learning",
 ]);
 
 interface IdempotencyRecord {
@@ -191,6 +192,12 @@ export class InMemoryMemoryStore implements MemoryStore, MemoryReader {
         continue;
       }
       if (!wantedKinds.has(record.kind)) continue;
+      if (
+        record.provenance.sourceClass === "verified_learning" &&
+        !wantedTags.has("m13-learning")
+      ) {
+        continue;
+      }
       if (record.kind === "working" && record.scope.missionId !== query.missionId) continue;
       if (record.expiresAt !== undefined && Date.parse(record.expiresAt) <= evaluatedAt) continue;
 

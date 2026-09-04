@@ -2,7 +2,7 @@
 
 Status: implemented M1 provider, M3 tool-control, M5 verification, M6 memory/context, M7 specialist
 coordination, M8 durable mission/worker, M9 client-protocol, M10 skill-lifecycle, M11 adaptive-routing,
-and M12-A/B/C local execution/sandbox, observability, recovery-evidence, and release-gate safeguards, plus one M12-D bounded live-provider credential path. Controls not explicitly identified as implemented remain future work.
+M12-A/B/C local execution/sandbox, observability, recovery-evidence, and release-gate safeguards, one M12-D bounded live-provider credential path, and M13 evidence-backed learning safeguards. Controls not explicitly identified as implemented remain future work.
 
 ## Protected assets
 
@@ -272,6 +272,18 @@ the evidence run. This proves the credential/provider boundary for one task; it 
 prove hosted sandbox access, customer data, public production traffic, repeated benchmark sweeps, or
 other provider credentials.
 
+## Implemented M13 learning safeguards
+
+`src/learning` treats every proposed lesson as untrusted data. Before evidence lookup or persistence, proposal shape/scope/bounds are validated and obvious credential-like content is rejected across semantic key, lesson, source reference, and tags. The model-provided sensitivity label is never sufficient evidence that content is safe.
+
+A learning attestation must be an exact independently backed PASS bound to user, project, mission, task, semantic-key SHA-256, lesson SHA-256, sensitivity, verification-result SHA-256, and non-empty evidence references. One task can count only once. Exact idempotent replay returns prior state without requiring a new attestation; changed input under the same replay key fails closed before evidence lookup, and the existing post-await replay check prevents asynchronous races from bypassing the replay contract.
+
+Three distinct verified mission/task pairs are required before a lesson becomes `ESTABLISHED`. Competing active content under the same scoped key forces `CONFLICTED`; conflicted records cannot be emitted as nudges or written to M6. Maintenance may archive stale conflicts only below the establishment-support threshold, then deterministically re-evaluate the surviving group. It never silently deletes established M6 memory.
+
+M13-created M6 memory has `verified_learning` provenance and remains lower authority: broad semantic retrieval excludes it unless `m13-learning` is explicitly requested. M13 cannot create M3 handlers/grants, mark M2/M5 work complete, activate M10 skills, resolve credentials, change M11 quality floors, increase budgets, or infer durable user preferences.
+
+The next planned M14 intake boundary must retain these principles for external skills: immutable source pinning, bounded complete analysis, no execution during intake, and no path from discovery to activation without M10 independent verification/trusted promotion. A curated or official source is provenance evidence, not automatic runtime trust.
+
 ## Prompt injection and untrusted-content security
 
 Every context item carries origin/trust metadata. Tool results and external content are data, not
@@ -299,7 +311,8 @@ persistence expands.
 - replayed external writes and duplicated payments/messages/deployments/sandbox allocations;
 - stale/superseded worker settlement after lease expiry or recovery;
 - stale/conflicting/replayed client controls and confused-deputy client capability scope;
-- compromised plugin/skill packages and dependency substitution;
+- compromised plugin/skill packages, mutable upstream refs, transitive catalog trust, incomplete scans, and dependency substitution;
+- forged, replayed, hash-mismatched, secret-bearing, cross-scope, or conflicting post-task learning evidence;
 - forged, stale, future, self-authored, or tampered model-evaluation evidence;
 - sandbox binding confusion between provider/model/profile identities;
 - cleanup failure, replay, or released-session resurrection;
