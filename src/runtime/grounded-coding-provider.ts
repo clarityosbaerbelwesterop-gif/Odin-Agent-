@@ -195,7 +195,11 @@ function expandPlanResponse(response: ModelResponse, binding: PlanBinding): Mode
     response.structuredOutput,
     "Grounded coding plan is not a JSON object.",
   );
-  validateToolInput(GROUNDED_CODING_PLAN_SCHEMA, output);
+  try {
+    validateToolInput(GROUNDED_CODING_PLAN_SCHEMA, output);
+  } catch {
+    throw new MissionDomainError("Grounded coding plan failed schema validation.");
+  }
   const change = jsonObject(output.change, "Grounded coding change is not an object.");
   const path = stringValue(change.path, "Grounded coding path is invalid.");
   const content = stringValue(change.content, "Grounded coding content is invalid.");
@@ -236,7 +240,11 @@ function expandRepairResponse(response: ModelResponse, binding: RepairBinding): 
     response.structuredOutput,
     "Grounded coding repair is not a JSON object.",
   );
-  validateToolInput(GROUNDED_CODING_REPAIR_SCHEMA, output);
+  try {
+    validateToolInput(GROUNDED_CODING_REPAIR_SCHEMA, output);
+  } catch {
+    throw new MissionDomainError("Grounded coding repair failed schema validation.");
+  }
   return {
     ...response,
     structuredOutput: {

@@ -194,3 +194,15 @@ test("non-M4 requests pass through unchanged", async () => {
   await provider.generate(request);
   assert.deepEqual(inner.requests[0], request);
 });
+
+test("grounded provider normalizes model schema violations into a bounded contract failure", async () => {
+  const inner = new ScriptedProvider([
+    modelResponse({ change: { path: "src/user.ts" }, qualityCommandId: "verify" }, 10, 5),
+  ]);
+  const provider = new GroundedCodingProvider(inner);
+  await assert.rejects(provider.generate(planRequest(discovery())), (error: unknown) => {
+    assert.ok(error instanceof MissionDomainError);
+    assert.equal(error.message, "Grounded coding plan failed schema validation.");
+    return true;
+  });
+});
