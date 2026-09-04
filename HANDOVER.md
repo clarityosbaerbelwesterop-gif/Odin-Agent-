@@ -12,9 +12,9 @@ Updated: 2026-09-04.
 - Two review-found implementation gaps were hardened before verification: malformed manifest values now become explicit partial quarantine instead of escaping as parser errors, and nested workflow surfaces inside a selected skill are detected.
 - Strict TypeScript exposed one test-only narrowing defect in the initial M14 suite; the assertion was made type-safe without weakening the denied-lifecycle expectation.
 - Normal PR CI `33858888408` is the verified M14 implementation baseline: **290/290 tests**, Biome PASS, strict TypeScript PASS, secret-free Kimi dry smoke PASS, aggregate coverage **89.47% lines / 76.70% branches / 95.84% functions**, and `skill-intake/firewall` coverage **90.20% / 79.74% / 98.61%**.
-- Governance synchronization is now being applied to ROADMAP/ARCHITECTURE/SECURITY/M14 milestone; one final normal exact-head CI is required before PR #19 can be called merge-ready.
+- ROADMAP/ARCHITECTURE/SECURITY/M14 milestone/HANDOVER are synchronized to the verified implementation evidence; this synchronized head must pass one final normal exact-head CI before merge.
 - M12 remains partially verified for hosted-sandbox/public-production claims. Do not spend money, create paid resources, deploy production, or repeat live-provider calls without explicit authorization.
-- One additional bounded Kimi K3 A/B comparison remains planned only after M15 curated capability winners are actually integrated.
+- One additional bounded NVIDIA/Kimi K3 A/B comparison is user-authorized after M15 curated capability winners are integrated; it remains intentionally deferred until then.
 
 ## M14 capability candidate
 
@@ -42,10 +42,10 @@ No third-party code from these sources was executed during M14 research/intake w
 
 ## Next milestones
 
-1. Complete governance synchronization and obtain one normal exact-head `npm run verify` on the synchronized M14 branch; fix any real failure without weakening a gate.
-2. If that exact-head run is green, update PR #19 evidence/verification state and mark it ready for review while keeping it unmerged until merge is explicitly authorized in the current request context.
-3. After M14 is explicitly authorized and merged, create a fresh M15 branch: **Curated Capability Pack + offline improvement evaluation**. Deduplicate candidate procedures against Odin's canonical runtime, evaluate quality/safety/context-cost lift on held-out fixtures, and promote only measured winners through M10.
-4. After M15 winners are integrated, run the separately bounded NVIDIA/Kimi K3 A/B comparison using sanitized evidence only. Do not infer broad model superiority from one fixture.
+1. Obtain one normal exact-head `npm run verify` on this synchronized M14 branch; fix any real failure without weakening a gate.
+2. If that run is green, mark PR #19 ready and merge it under the user's explicit current merge authorization.
+3. Create a fresh M15 branch from merged `main`: **Curated Capability Pack + offline improvement evaluation**. Deduplicate candidate procedures against Odin's canonical runtime, evaluate quality/safety/context-cost lift on held-out fixtures, and promote only measured winners through M10.
+4. After M15 winners are integrated and verified, run the already user-authorized bounded NVIDIA/Kimi K3 A/B comparison using sanitized evidence only. Do not infer broad model superiority from one fixture.
 5. Keep scheduler/triggers/background missions and permissioned MCP/Agent-Skills adapters as separate no-cost milestones before any public production deployment.
 
 ## Standing boundaries

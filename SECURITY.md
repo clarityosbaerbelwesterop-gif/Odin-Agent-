@@ -2,7 +2,7 @@
 
 Status: implemented M1 provider, M3 tool-control, M5 verification, M6 memory/context, M7 specialist
 coordination, M8 durable mission/worker, M9 client-protocol, M10 skill-lifecycle, M11 adaptive-routing,
-M12-A/B/C local execution/sandbox, observability, recovery-evidence, and release-gate safeguards, one M12-D bounded live-provider credential path, and M13 evidence-backed learning safeguards. Controls not explicitly identified as implemented remain future work.
+M12-A/B/C local execution/sandbox, observability, recovery-evidence, and release-gate safeguards, one M12-D bounded live-provider credential path, M13 evidence-backed learning safeguards, and M14 bounded external-skill intake safeguards. Controls not explicitly identified as implemented remain future work.
 
 ## Protected assets
 
@@ -282,7 +282,15 @@ Three distinct verified mission/task pairs are required before a lesson becomes 
 
 M13-created M6 memory has `verified_learning` provenance and remains lower authority: broad semantic retrieval excludes it unless `m13-learning` is explicitly requested. M13 cannot create M3 handlers/grants, mark M2/M5 work complete, activate M10 skills, resolve credentials, change M11 quality floors, increase budgets, or infer durable user preferences.
 
-The next planned M14 intake boundary must retain these principles for external skills: immutable source pinning, bounded complete analysis, no execution during intake, and no path from discovery to activation without M10 independent verification/trusted promotion. A curated or official source is provenance evidence, not automatic runtime trust.
+## Implemented M14 skill-intake safeguards
+
+External skills, plugins, catalogs, scripts, hooks, MCP files, and workflow definitions are untrusted data. M14 requires a trusted resolver to bind the requested repository/ref/path to one immutable commit and rejects source-identity confusion before candidate creation. Mutable catalog reputation or an official publisher name is provenance context, not runtime authority.
+
+Analysis is resource-bounded and non-executing: file count, file bytes, total bytes, path depth, and finding output are capped; no package install, subprocess, shell, browser, MCP execution, archive expansion, or third-party network execution is part of intake. Binary/symlink/oversize/incomplete inventory, unknown license state, malformed manifests, and finding truncation force explicit partial coverage and cannot yield a clean accept. Nested `.github/workflows`, hooks, MCP configuration, and executable surfaces are detected as risk-bearing content.
+
+Risk findings use bounded rule identifiers, severity, file/content hashes, and stable fingerprints rather than storing matched raw snippets. Critical prompt-override, exfiltration, download-and-execute, or privilege-escalation patterns reject. High-risk credential collection, destructive mutation, self-promotion, policy/memory poisoning, MCP authority, hooks/workflows, or executable surfaces quarantine. Static M14 analysis proves only its bounded rules and completeness contract; it is not a universal proof that third-party code is safe.
+
+Only `COMPLETE + ACCEPT` can be handed to M10 as a `community` candidate with `requiredTools=[]`. M14 cannot activate a skill, register M3 tools, mint grants/approvals, resolve credentials, change routing/budgets, or create completion evidence. M10 independent verification and trusted promotion remain mandatory. Normal PR CI `33858888408` passed 290/290 tests with Biome, strict TypeScript, and secret-free Kimi dry smoke; dedicated regressions cover malformed manifests and nested workflow surfaces.
 
 ## Prompt injection and untrusted-content security
 

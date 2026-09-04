@@ -1,6 +1,6 @@
 # M14 — Skill intake firewall
 
-Status: **IMPLEMENTATION_IN_PROGRESS**. Updated: 2026-09-04.
+Status: **IMPLEMENTATION_VERIFIED — FINAL_SYNC_CI_PENDING**. Updated: 2026-09-04. Normal PR CI `33858888408` passed 290/290 tests, Biome, strict TypeScript, and the secret-free Kimi dry smoke; this synchronized exact head must still pass normal PR CI before merge.
 
 ## Objective
 

@@ -1,6 +1,6 @@
 # Odin architecture
 
-Status: M0–M13 implementation verified locally/in CI; M12 remains partially verified for hosted-sandbox/public-production proof, while M13 evidence-backed learning is implemented and pending final synchronized exact-head PR CI, 2026-09-04.
+Status: M0–M13 are merged and verified; M14 skill-intake implementation is verified in normal PR CI and this synchronized head is awaiting its final exact-head CI before merge. M12 remains partially verified for hosted-sandbox/public-production proof, 2026-09-04.
 
 ## Repository finding
 
@@ -231,6 +231,14 @@ Established, non-conflicted learning may enter M6 only as `verified_learning` se
 
 The shared `src/security/secret-text.ts` primitive is used by both observability and learning intake to reject obvious credential patterns. M13 cannot register tools, grant capabilities, promote skills, infer durable user preferences, change routing quality floors, increase budgets, or mark a task complete. Run `33852005166` verified 272/272 tests after the replay/maintenance hardening.
 
+### M14 — Skill intake firewall
+
+`src/skill-intake` converts one externally resolved skill snapshot into immutable bounded evidence without executing third-party code. The trusted resolver must bind repository, requested ref, selected path, and an exact 40-hex commit. File count, per-file bytes, total bytes, path depth, and retained findings are bounded; binaries, symlinks, truncation, incomplete inventory, unknown license state, and malformed manifests remain explicit limitations rather than being interpreted as clean coverage.
+
+Static findings cover prompt override, credential collection/exfiltration, download-and-execute patterns, destructive writes, privilege escalation, self-promotion, policy/memory poisoning, dependency installation, explicit shell/subprocess use, MCP configuration, hooks/workflows including nested `.github/workflows` surfaces, and executable content. Findings retain stable hashes/fingerprints instead of matched raw snippets.
+
+Only `COMPLETE + ACCEPT` may become an M10 `community` candidate. M14 forces `requiredTools=[]` and cannot activate the skill, register M3 handlers, mint grants, expose credentials, change budgets/routing, or create M5 completion evidence. M10 independent verification/trusted promotion remains a separate authority boundary. Normal PR run `33858888408` passed 290/290 tests, Biome, strict TypeScript, and the secret-free Kimi dry smoke; aggregate coverage was 89.47% lines / 76.70% branches / 95.84% functions.
+
 ## Current module map
 
 ```text
@@ -252,6 +260,7 @@ src/
   observability/ M12-C secret-safe bounded runtime events
   release/       M12-C backup/recovery proof, release evidence/manifests, fail-closed gates
   learning/      M13 evidence-backed repeated learning, conflict curation, bounded nudges
+  skill-intake/  M14 immutable community-skill intake, bounded risk/completeness quarantine
   security/      shared secret-text and future cross-cutting security primitives
   artifacts/     content-addressed artifact byte/storage layer later
   cli/           user-facing entry point later
@@ -265,7 +274,7 @@ provider path is verified, but hosted sandbox cleanup/isolation, broader live-mo
 service/auth/realtime transport, deployment, and production recovery remain separate proof.
 
 Local CI may never manufacture `integration` or `live` evidence. Any paid resource, deployment, or
-production/public traffic remains separately approval-gated. With M13 implemented, the preferred no-cost next milestone is M14: an immutable, fail-closed Skill Intake Firewall that can inspect large external skill catalogs without executing them, bind accepted material to exact commits/content hashes, and hand only fully analyzed community candidates to M10. M15 then evaluates and deduplicates candidate procedures into measured, progressively loaded capability packs; neither milestone may turn external instructions into authority.
+production/public traffic remains separately approval-gated. With M14 implementation verified, the next no-cost capability milestone after merge is M15: evaluate and deduplicate community procedures against Odin's canonical runtime on held-out fixtures, measure output lift/safety/context cost, and promote only measured winners through M10. M15 may propose progressively loaded capability packs but cannot turn external instructions into authority or self-promote them.
 
 ## Storage and deployment direction
 
