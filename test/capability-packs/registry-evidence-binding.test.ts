@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  capabilityCurationReportHash,
   type CapabilityCurationReport,
   CapabilityPackError,
   CapabilityPackRegistry,
+  capabilityCurationReportHash,
 } from "../../src/capability-packs/index.js";
 import { SkillRegistry } from "../../src/skills/index.js";
 

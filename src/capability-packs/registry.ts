@@ -260,15 +260,17 @@ function hasMatchingMeasuredVerification(
 ): boolean {
   if (report.evaluatedAt === null) return false;
   const expectedEvidence = [...report.evidenceRefs].sort();
-  return skills.history(member.name, member.version).some(
-    (event) =>
-      event.action === "VERIFIED" &&
-      event.contentHash === member.contentHash &&
-      event.to === "VERIFIED" &&
-      event.occurredAt === report.evaluatedAt &&
-      event.producerClass !== null &&
-      equalStrings([...event.evidenceRefs].sort(), expectedEvidence),
-  );
+  return skills
+    .history(member.name, member.version)
+    .some(
+      (event) =>
+        event.action === "VERIFIED" &&
+        event.contentHash === member.contentHash &&
+        event.to === "VERIFIED" &&
+        event.occurredAt === report.evaluatedAt &&
+        event.producerClass !== null &&
+        equalStrings([...event.evidenceRefs].sort(), expectedEvidence),
+    );
 }
 
 function isSemanticallyValidPassingReport(report: CapabilityCurationReport): boolean {

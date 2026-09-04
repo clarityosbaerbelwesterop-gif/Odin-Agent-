@@ -10,8 +10,7 @@ export interface DistilledCapabilityDraft {
 }
 
 const OBSERVED_AT = "2026-09-04T10:00:00.000Z";
-const KARPATHY_REF =
-  "multica-ai/andrej-karpathy-skills@2c606141936f1eeef17fa3043a72095b4765b9c2";
+const KARPATHY_REF = "multica-ai/andrej-karpathy-skills@2c606141936f1eeef17fa3043a72095b4765b9c2";
 const ZERO_HALLUCINATION_REF =
   "alirezarezvani/claude-skills@19392f7a08264ed00486a251f5b2098321771f94:zero-hallucination-coder";
 const DEEP_RESEARCH_REF =
