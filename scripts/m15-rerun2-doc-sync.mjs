@@ -1,0 +1,109 @@
+import fs from "node:fs";
+
+function replaceSection(path, startHeading, endHeading, replacement) {
+  let text = fs.readFileSync(path, "utf8");
+  const start = text.indexOf(startHeading);
+  const end = text.indexOf(endHeading, start + startHeading.length);
+  if (start < 0 || end < 0 || end <= start) {
+    throw new Error(`Section markers missing in ${path}`);
+  }
+  text = `${text.slice(0, start)}${replacement.trimEnd()}\n\n${text.slice(end)}`;
+  fs.writeFileSync(path, text);
+}
+
+function replaceOnce(path, from, to) {
+  let text = fs.readFileSync(path, "utf8");
+  const first = text.indexOf(from);
+  if (first < 0 || text.indexOf(from, first + from.length) >= 0) {
+    throw new Error(`Expected one match in ${path}: ${from.slice(0, 100)}`);
+  }
+  text = text.replace(from, to);
+  fs.writeFileSync(path, text);
+}
+
+replaceSection(
+  "HANDOVER.md",
+  "## Current state",
+  "## M14 capability",
+  `## Current state
+
+- Repository: \`clarityosbaerbelwesterop-gif/Odin-Agent-\` (private).
+- \`main\` contains verified M0–M15 plus PR #21 post-run evidence hardening at merge commit \`02d80898cd10416c0198007280aca7447bbb7573\`.
+- Active work: \`agent/m15-kimi-rerun-2\`, preserving the second authorized Kimi K3 A/B evidence and hardening the live measurement profile before any future provider run.
+- Second authorized live run \`33879714040\` completed successfully at the workflow level and used **9/12** maximum provider calls across the same three matched coding cases. All three matched pairs remain incomplete, so the result is **INCONCLUSIVE** with null quality/lift.
+- Every arm ended with bounded diagnostic \`ProviderError / provider_timeout\`. Candidate arms used one call, timed out at about 180 seconds, and made no target mutation. Baseline arms used two calls, mutated the target after planning, failed deterministic acceptance, and timed out during repair.
+- Raw sanitized rerun evidence is preserved at \`docs/evals/m15-kimi-coding-ab-rerun-2.json\`; interpretation is recorded in \`docs/evals/M15_KIMI_CODING_AB_RERUN_2_ANALYSIS.md\`. No M10 verification, pack population, activation, public benchmark claim, or AGI/model-superiority claim follows from either incomplete run.
+- Review found a measurement-design defect: v1 used the same 180000 ms value for provider timeout and candidate latency acceptance, making a slow arm unmeasurable at the latency boundary. Offline hardening separates measurement timeout from acceptance in a versioned runtime-owned profile.
+- Verified profile \`m15-kimi-coding-ab-v2\`: acceptance latency 180000 ms, provider measurement timeout 240000 ms, minimum 30000 ms headroom, 2 calls per arm, 12 total calls, \`high\` reasoning, temperature 1. Evidence identity includes the profile version and sanitized output exposes bounded profile metadata.
+- One-shot hardening run \`33882837781\` passed **329/329 tests**, Biome, strict TypeScript, build, secret-free Kimi dry smoke, and a credential-free A/B dry profile; aggregate coverage **89.92% lines / 77.25% branches / 95.88% functions**. No live provider request occurred in this hardening run.
+- The previous authorization for one second Kimi live rerun has been consumed. A third live provider comparison requires new explicit user authorization. PR merge also remains separately approval-gated.
+- M12 remains partially verified for hosted-sandbox/public-production claims. No production deployment, paid resource, migration, billing change, or public traffic is authorized by this work.`,
+);
+
+replaceSection(
+  "ROADMAP.md",
+  "## M15 — Curated capability pack and offline improvement evaluation",
+  "## Post-MVP capability track",
+  `## M15 — Curated capability pack and offline improvement evaluation
+
+- [x] Runtime-owned procedure catalogs deduplicate candidate behavior against canonical Odin M2/M4/M5/M7/M10/M11 behavior before evaluation.
+- [x] Exact candidate name/version/content hash, domain, task classes, context bounds, trusted runtime time, and independent evidence are validated fail-closed.
+- [x] Paired held-out curation fixtures enforce quality floors, safety/authority PASS, token/latency ceilings, minimum average lift, deterministic report identity, and no M10 activation.
+- [x] Progressive capability-pack registry accepts only exact VERIFIED/ACTIVE community members whose M10 verification is bound to the same integrity-valid passing M15 evidence; discovery stays compact.
+- [x] Odin-owned coding, research, security, product/business, and marketing procedure drafts preserve existing M3/M5/M6/M10/M11 authorities; unproven data/documents remains absent.
+- [x] Bounded offline replay emits only KEEP/RETEST/COMPRESS/DEDUPLICATE/REVIEW proposals and has no skill, memory, tool, credential, budget, or completion mutation interface.
+- [x] Confirmed hardening regressions cover stale-evidence rescue, future caller timestamps, self-declared procedure novelty, forged/mismatched pack evidence, and fail-closed live A/B arm failures.
+- [x] First bounded post-merge Kimi K3 comparison \`33870210502\` preserved 10/12 calls but zero complete matched pairs; result INCONCLUSIVE.
+- [x] Second authorized comparison \`33879714040\` preserved 9/12 calls and bounded failure diagnostics. All six arms hit \`provider_timeout\`; zero complete matched pairs again means INCONCLUSIVE, not zero lift.
+- [x] Diagnose and repair the v1 measurement-profile defect offline: provider timeout must exceed latency acceptance by a bounded headroom and profile identity/reasoning settings must be explicit in evidence.
+- [ ] Obtain complete matched provider evidence under an explicitly authorized, versioned execution profile before populating any measured coding pack; only an exact candidate that passes normal quality/safety/authority/token/latency gates may enter the pack.
+
+Implementation verification helper run \`33866236138\` passed **319/319 tests** before M15 merge; exact-head PR CI \`33870080147\` passed and PR #20 merged as \`30bcab22f6129925b704fff0d024ca40e472b06c\`. PR #21 then merged post-run evidence semantics into \`main\` as \`02d80898cd10416c0198007280aca7447bbb7573\` after exact-head CI. The rerun-2 profile hardening is independently verified by run \`33882837781\`: **329/329 tests**, Biome, strict TypeScript, build, secret-free Kimi dry smoke, credential-free A/B dry run, aggregate coverage **89.92% / 77.25% / 95.88%** line/branch/function. No distilled candidate is ACTIVE and no broad model-quality claim is made.`,
+);
+
+replaceOnce(
+  "ROADMAP.md",
+  "Implementation verification: normal PR CI `33858888408` passed **290/290 tests**, Biome, strict TypeScript, and the secret-free Kimi dry smoke. Aggregate coverage was **89.47% lines / 76.70% branches / 95.84% functions**; `skill-intake/firewall` coverage was **90.20% / 79.74% / 98.61%**. Malformed manifests and nested `.github/workflows` surfaces have dedicated fail-closed regressions. A final synchronized exact-head CI is still required before merge.",
+  "Implementation verification: normal PR CI `33858888408` passed **290/290 tests**, Biome, strict TypeScript, and the secret-free Kimi dry smoke. Aggregate coverage was **89.47% lines / 76.70% branches / 95.84% functions**; `skill-intake/firewall` coverage was **90.20% / 79.74% / 98.61%**. Malformed manifests and nested `.github/workflows` surfaces have dedicated fail-closed regressions. M14 was subsequently synchronized, exact-head verified, and merged before M15 work began.",
+);
+
+replaceOnce(
+  "ARCHITECTURE.md",
+  "Authorized post-merge run `33870210502` attempted three matched NVIDIA Kimi K3 coding cases with ten provider calls. Every baseline and candidate arm was incomplete, leaving zero complete matched pairs. The raw sanitized evidence is therefore INCONCLUSIVE and cannot establish candidate lift, pack eligibility, model superiority, or AGI-level capability. Post-run evidence semantics treat zero complete pairs as INCONCLUSIVE rather than numeric zero lift and expose only bounded non-secret failure categories.",
+  `Authorized post-merge run \`33870210502\` attempted three matched NVIDIA Kimi K3 coding cases with ten provider calls. Every baseline and candidate arm was incomplete, leaving zero complete matched pairs. The raw sanitized evidence is therefore INCONCLUSIVE and cannot establish candidate lift, pack eligibility, model superiority, or AGI-level capability. Post-run evidence semantics treat zero complete pairs as INCONCLUSIVE rather than numeric zero lift and expose only bounded non-secret failure categories.
+
+Second authorized run \`33879714040\` used nine calls and again produced zero complete pairs. Bounded diagnostics localize every failure to \`provider_timeout\`: candidate-overlay arms timed out on their first model call before mutation, while baseline arms completed planning, produced a non-accepting mutation, and timed out on the second repair call. This exposed a harness defect because the v1 provider timeout and candidate latency acceptance ceiling were both 180000 ms. A runtime-owned v2 execution profile now binds measurement timeout separately from acceptance (240000 vs 180000 ms), requires at least 30000 ms measurement headroom, binds \`high\` reasoning and temperature 1, and includes the profile version in live evidence identity. Offline run \`33882837781\` verified this profile with 329/329 tests and a credential-free A/B dry run; it made no live provider request.`,
+);
+
+replaceOnce(
+  "ARCHITECTURE.md",
+  "Local CI may never manufacture `integration` or `live` evidence. Any paid resource, deployment, or\nproduction/public traffic remains separately approval-gated. M15's curation, progressive-pack, and proposal-only replay boundaries are merged and verified. The first authorized post-merge Kimi K3 comparison attempt is preserved as INCONCLUSIVE because no matched arm pair completed; it creates no M10 verification or pack evidence. Another live provider run requires separate user authorization, and broader provider or public-benchmark claims require their own complete matched evaluations.",
+  "Local CI may never manufacture `integration` or `live` evidence. Any paid resource, deployment, or\nproduction/public traffic remains separately approval-gated. M15's curation, progressive-pack, and proposal-only replay boundaries are merged and verified. Both authorized post-merge Kimi K3 comparison attempts are preserved as INCONCLUSIVE because no matched arm pair completed; neither creates M10 verification or pack evidence. The v2 measurement profile is offline-verified but not live-verified. A third live provider run requires new explicit user authorization, and broader provider or public-benchmark claims require their own complete matched evaluations.",
+);
+
+replaceOnce(
+  "SECURITY.md",
+  "The bounded live A/B runner keeps provider credentials in the control plane, caps calls, and writes only sanitized evidence. Helper run `33866236138` verified the pre-merge boundaries with 319/319 tests. Authorized post-merge run `33870210502` then exposed an evidence-interpretation edge case: all six arms were incomplete, so the historical numeric zero summary could be mistaken for measured zero lift even though no matched pair completed. The raw evidence remains fail-closed and unpromoted; post-run hardening classifies zero complete pairs as `INCONCLUSIVE` with null quality/lift and records only bounded failure categories rather than raw exception text. A further live provider request remains separately approval-gated.",
+  `The bounded live A/B runner keeps provider credentials in the control plane, caps calls, and writes only sanitized evidence. Helper run \`33866236138\` verified the pre-merge boundaries with 319/319 tests. Authorized post-merge run \`33870210502\` then exposed an evidence-interpretation edge case: all six arms were incomplete, so the historical numeric zero summary could be mistaken for measured zero lift even though no matched pair completed. The raw evidence remains fail-closed and unpromoted; post-run hardening classifies zero complete pairs as \`INCONCLUSIVE\` with null quality/lift and records only bounded failure categories rather than raw exception text.
+
+Second authorized run \`33879714040\` used nine provider calls and again remained INCONCLUSIVE. All six bounded failures were \`provider_timeout\`. Candidate-overlay arms timed out before mutation on the first call; baseline arms mutated after planning and timed out on the second repair call. The review found that v1 used 180000 ms for both provider timeout and candidate latency acceptance, so a latency overrun could be aborted before becoming a complete measured failure. The v2 live profile requires measurement timeout to exceed acceptance by at least 30000 ms, caps timeout at 600000 ms, binds stable provider/model/profile identity and reasoning settings, and includes profile identity in evidence. Run \`33882837781\` verified the v2 profile offline with 329/329 tests and no provider secret/request. A third live provider request remains separately approval-gated.`,
+);
+
+replaceSection(
+  "docs/milestones/M15_CURATED_CAPABILITY_PACK.md",
+  "## Post-merge Kimi evidence",
+  "## Acceptance gate",
+  `## Post-merge Kimi evidence
+
+Authorized run \`33870210502\` attempted three matched NVIDIA \`moonshotai/kimi-k3\` coding cases and used ten provider calls. All six baseline/candidate arms were incomplete, so the evidence is **INCONCLUSIVE** with zero complete pairs and no defensible quality delta. Historical raw evidence remains at \`docs/evals/m15-kimi-coding-ab.json\`; its separate interpretation prevents a numeric zero from being mistaken for measured zero lift.
+
+Second authorized run \`33879714040\` repeated the same three matched cases after the fail-closed evidence-semantics repair. It used nine provider calls and again produced zero complete pairs, therefore **INCONCLUSIVE** with null baseline quality, candidate quality, and lift. The sanitized result is preserved at \`docs/evals/m15-kimi-coding-ab-rerun-2.json\`, with analysis in \`docs/evals/M15_KIMI_CODING_AB_RERUN_2_ANALYSIS.md\`.
+
+All six rerun-2 arms ended with \`ProviderError / provider_timeout\`. Candidate arms used one call, reached about 180 seconds, and had no target mutation. Baseline arms used two calls, had already mutated the target after planning, did not match deterministic expected content, and timed out during bounded repair. This localizes the failure position without inventing a model-quality result.
+
+Review found a live-measurement defect: v1 used 180000 ms for both provider timeout and candidate latency acceptance. A run exceeding the acceptance ceiling could therefore be aborted before it became a complete latency FAIL. The offline repair introduces versioned profile \`m15-kimi-coding-ab-v2\`: 180000 ms acceptance, 240000 ms provider measurement timeout, at least 30000 ms required headroom, 2 calls per arm, 12 total calls, \`high\` reasoning, temperature 1. Profile identity is included in evidence and sanitized metadata.
+
+One-shot offline hardening run \`33882837781\` passed **329/329 tests**, Biome, strict TypeScript, build, secret-free Kimi dry smoke, and credential-free A/B dry-run assertions. Aggregate coverage was **89.92% lines / 77.25% branches / 95.88% functions**; the new live-profile module reached **91.84% / 88.89% / 100%**. It made no live provider request.
+
+Neither live attempt verifies \`odin-coding-discipline\`, populates a pack, activates a skill, changes public Kimi benchmark scores, or supports an AGI/Astra/Fable superiority claim. A third live comparison requires new explicit user authorization.`,
+);
