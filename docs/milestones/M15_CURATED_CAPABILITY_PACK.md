@@ -1,6 +1,6 @@
 # M15 — Curated capability pack and offline improvement evaluation
 
-Status: **IMPLEMENTATION_IN_PROGRESS**. Updated: 2026-09-04.
+Status: **IMPLEMENTATION_VERIFIED_PENDING_FINAL_EXACT_HEAD_CI**. Updated: 2026-09-04.
 
 ## Objective
 
@@ -139,6 +139,14 @@ activate, register tools, or create evidence.
     mapping without importing a second orchestration authority;
 14. research/security/product-marketing adaptations reuse M7/M5/M6 instead of duplicating authority or
     canonical state.
+
+## Implementation evidence
+
+Final hardening helper run `33866236138` passed 319/319 tests plus Biome, strict TypeScript, and the secret-free Kimi dry smoke before checkpointing commit `075c46d301c53521cdb10e713d57d3f45386c244`. Aggregate coverage was 89.81% lines / 77.03% branches / 95.85% functions; curator coverage was 95.48% / 81.05% / 97.22%, pack registry 90.43% / 77.88% / 95.24%, and replay 92.86% / 89.74% / 100%.
+
+Review-found hardening now makes evaluation freshness depend on a trusted runtime clock, denies procedure keys outside the runtime-owned canonical/additive domain catalogs, binds pack membership to the same M15 evidence that established M10 verification, and records interrupted live A/B arms as conservative explicit failures rather than dropping negative evidence.
+
+This verifies the M15 curation/pack/replay mechanism. It does **not** claim that any distilled candidate is already ACTIVE, that an unmeasured domain pack is populated, that Kimi K3 or another model gained a specific public-benchmark score, or that Odin is AGI/ASI. The first real provider lift measurement remains a separately bounded post-merge A/B step under the user's current authorization.
 
 ## Acceptance gate
 

@@ -6,12 +6,13 @@ Updated: 2026-09-04.
 
 - Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).
 - `main` contains verified M0–M14 at merge commit `48fc0074b6bd7df107b839ce0ce7bf1d877baa0c`.
-- PR #19 M14 **Skill Intake Firewall** was squash-merged after final exact-head CI `33860283973` passed `npm run verify` on `916814fdbeb10ab91596dc286c65dab26c1e3f51`.
-- M14 implementation baseline remains CI `33858888408`: **290/290 tests**, Biome PASS, strict TypeScript PASS, secret-free Kimi dry smoke PASS, aggregate coverage **89.47% lines / 76.70% branches / 95.84% functions**, and `skill-intake/firewall` coverage **90.20% / 79.74% / 98.61%**.
-- Active work: M15 **Curated Capability Pack + offline improvement evaluation** on `agent/m15-curated-capability-pack`, created exactly from merged M14 main.
-- M15 milestone contract is now committed at `docs/milestones/M15_CURATED_CAPABILITY_PACK.md`.
-- The user explicitly authorized continuing through M15 and the bounded NVIDIA/Kimi K3 A/B comparison after measured M15 winners are integrated and verified.
-- M12 remains partially verified for hosted-sandbox/public-production claims. No production deployment, paid resource, migration, billing change, or public traffic is authorized by this M15 work.
+- Active work: PR #20 M15 **Curated Capability Pack + offline improvement evaluation** on `agent/m15-curated-capability-pack`.
+- Hardened implementation checkpoint: `075c46d301c53521cdb10e713d57d3f45386c244`.
+- Helper run `33866236138` passed **319/319 tests**, Biome, strict TypeScript, and secret-free Kimi dry smoke; aggregate coverage **89.81% lines / 77.03% branches / 95.85% functions**.
+- Final M15 hardening binds evidence freshness to a trusted runtime clock, rejects self-declared procedure novelty outside the runtime-owned domain catalog, and records live A/B arm failures as explicit negative sanitized measurements.
+- M15 curation/pack/replay infrastructure is implementation-verified, but no distilled candidate is ACTIVE and no domain pack is claimed populated without measured passing evidence.
+- The user explicitly authorized merge after normal exact-head CI is green, then one bounded NVIDIA/Kimi K3 bare-model-vs-Odin A/B comparison. That comparison is task-specific evidence, not a public benchmark or AGI claim.
+- M12 remains partially verified for hosted-sandbox/public-production claims. No production deployment, paid resource, migration, billing change, or public traffic is authorized by this work.
 
 ## M14 capability
 
@@ -35,17 +36,15 @@ Seven pinned source repositories remain immutable discovery/research inputs, not
 
 Additional design reference: `NVIDIA/SkillSpector` fail-closed completeness/resource-bound ideas; no dependency or copied scanner code.
 
-## M15 implementation plan
+## M15 completion and post-merge evidence plan
 
-1. Implement a deterministic curation contract that binds exact M10 candidate identity/hash, one domain, bounded task classes, runtime-owned procedure keys, and policy ceilings.
-2. Deduplicate against canonical Odin behavior before evaluation. Fully redundant candidates must stop without gaining trust.
-3. Add paired held-out evaluation: same fixture baseline vs candidate, integer quality basis points, safety/authority PASS, token/context and latency ceilings, minimum average lift, independent evidence only.
-4. Convert only a passing independently produced report into exact-hash M10 verification. M15 must never activate a skill.
-5. Add progressively loaded capability-pack registry for coding, research, security, data/documents, product/business, and marketing. Empty/unproven domains remain absent.
-6. Add deterministic bounded offline replay that can only recommend RETEST/COMPRESS/DEDUPLICATE/REVIEW/KEEP and receives no mutation authority over M3/M5/M6/M10.
-7. Add adversarial regressions for hash/scope/evidence mismatch, case ordering, quality/safety/authority regressions, context ceilings, pack lifecycle denial, and replay self-promotion attempts.
-8. Synchronize ROADMAP/ARCHITECTURE/SECURITY/HANDOVER and obtain normal exact-head CI before merging M15.
-9. After measured winners are integrated and verified, run the already user-authorized bounded NVIDIA/Kimi K3 A/B comparison with sanitized evidence and existing control-plane credential boundaries.
+1. Synchronize ROADMAP/ARCHITECTURE/SECURITY/M15 milestone/HANDOVER with helper-run evidence.
+2. Obtain one normal exact-head `npm run verify` on the synchronized PR head; do not bypass `action_required` or any failed quality gate.
+3. If green, mark PR #20 ready and merge under the user's explicit authorization.
+4. From merged `main`, create a fresh benchmark-evidence branch and run one bounded NVIDIA `moonshotai/kimi-k3` baseline-vs-Odin coding A/B with sanitized evidence only.
+5. Treat public Kimi K3 benchmark numbers and Odin's matched A/B as different evidence classes. Compare patterns and deltas, never splice Odin fixture percentages into vendor leaderboard scores.
+6. If the candidate passes exact M15 gates, register only that exact measured candidate/report in a progressive pack; otherwise preserve the negative evidence and leave the pack absent.
+7. Use the same matched A/B protocol for other provider/model identities later. Architectural reliability gains may transfer across models; measured lift magnitude must be re-established per model/profile/task class.
 
 ## Standing boundaries
 
