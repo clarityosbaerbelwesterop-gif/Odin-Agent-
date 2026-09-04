@@ -4,8 +4,8 @@ import { test } from "node:test";
 import {
   EvidenceLearningCurator,
   type LearningAttestationRequest,
-  type LearningEvidenceAuthority,
   LearningError,
+  type LearningEvidenceAuthority,
   type VerifiedLearningAttestation,
 } from "../../src/learning/index.js";
 import { InMemoryMemoryStore } from "../../src/memory/index.js";
@@ -46,8 +46,7 @@ class TamperingAuthority implements LearningEvidenceAuthority {
       ...request,
       evaluatedAt: NOW,
       evidenceRefs: ["verification:evidence:binding"],
-      learningKeyHash:
-        this.#tamper === "key" ? sha256("different-key") : request.learningKeyHash,
+      learningKeyHash: this.#tamper === "key" ? sha256("different-key") : request.learningKeyHash,
       lessonContentHash:
         this.#tamper === "lesson" ? sha256("different-lesson") : request.lessonContentHash,
       verdict: "PASS",

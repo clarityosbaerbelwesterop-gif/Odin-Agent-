@@ -4,8 +4,8 @@ import { test } from "node:test";
 import {
   EvidenceLearningCurator,
   type LearningAttestationRequest,
-  type LearningEvidenceAuthority,
   LearningError,
+  type LearningEvidenceAuthority,
   type LearningProposal,
   type LearningRecordResult,
   type VerifiedLearningAttestation,
@@ -57,9 +57,7 @@ function attestation(
     evaluatedAt,
     evidenceRefs: [`evidence:${missionId}:${taskId}`],
     learningKeyHash: hash("typescript repair workflow"),
-    lessonContentHash: hash(
-      "Inspect the smallest failing quality gate before proposing a repair.",
-    ),
+    lessonContentHash: hash("Inspect the smallest failing quality gate before proposing a repair."),
     missionId,
     projectId: PROJECT,
     sensitivity: "internal",
@@ -203,7 +201,10 @@ test("missing, foreign, non-PASS, stale, and malformed evidence are denied", asy
     identity(foreign),
     attestation("foreign", "task", BASE, { projectId: "project-foreign" }),
   );
-  await assert.rejects(() => curator.recordVerifiedLesson(foreign), /scope or verdict did not match/u);
+  await assert.rejects(
+    () => curator.recordVerifiedLesson(foreign),
+    /scope or verdict did not match/u,
+  );
 
   const failed = {
     ...attestation("failed", "task"),

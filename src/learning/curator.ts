@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import type { MemoryStore } from "../memory/types.js";
 import {
-  LearningError,
   type LearningAttestationRequest,
+  LearningError,
   type LearningEvidenceAuthority,
   type LearningMaintenanceRequest,
   type LearningMaintenanceResult,
@@ -89,7 +89,10 @@ export class EvidenceLearningCurator {
         replay.recordId !== recordId ||
         replay.supportIdentity !== supportIdentity
       ) {
-        throw new LearningError("CONFLICT", "Learning idempotency replay conflicts with prior input.");
+        throw new LearningError(
+          "CONFLICT",
+          "Learning idempotency replay conflicts with prior input.",
+        );
       }
       const record = this.#records.get(recordId);
       if (record === undefined) {
@@ -130,7 +133,10 @@ export class EvidenceLearningCurator {
         record.projectId !== proposal.projectId ||
         record.sensitivity !== proposal.sensitivity
       ) {
-        throw new LearningError("CONFLICT", "Learning record identity conflicts with prior content.");
+        throw new LearningError(
+          "CONFLICT",
+          "Learning record identity conflicts with prior content.",
+        );
       }
       const priorSupport = record.supports.find(
         (entry) => entry.missionId === support.missionId && entry.taskId === support.taskId,
@@ -146,7 +152,10 @@ export class EvidenceLearningCurator {
         record.supports.push(support);
         record.supports.sort(compareSupport);
         record.lastObservedAt = maxTimestamp(record.lastObservedAt, proposal.observedAt);
-        record.sourceReferences = uniqueSorted([...record.sourceReferences, proposal.sourceReference]);
+        record.sourceReferences = uniqueSorted([
+          ...record.sourceReferences,
+          proposal.sourceReference,
+        ]);
         record.tags = uniqueSorted([...record.tags, ...proposal.tags]);
         record.evidenceDigest = evidenceDigest(record.supports);
         record.tier = record.supports.length >= ESTABLISHMENT_SUPPORT ? "HOT" : "WARM";
@@ -167,7 +176,8 @@ export class EvidenceLearningCurator {
     assertIdentifier(recordId, "recordId");
     assertCanonicalTimestamp(committedAt, "committedAt");
     const record = this.#records.get(recordId);
-    if (record === undefined) throw new LearningError("NOT_FOUND", "Learning record was not found.");
+    if (record === undefined)
+      throw new LearningError("NOT_FOUND", "Learning record was not found.");
     this.#recomputeGroup(groupKey(record));
     if (record.status !== "ESTABLISHED") {
       throw new LearningError(
@@ -176,7 +186,10 @@ export class EvidenceLearningCurator {
       );
     }
     if (Date.parse(committedAt) < Date.parse(record.lastObservedAt)) {
-      throw new LearningError("INVALID_INPUT", "Memory commit cannot predate the learned evidence.");
+      throw new LearningError(
+        "INVALID_INPUT",
+        "Memory commit cannot predate the learned evidence.",
+      );
     }
 
     const memoryId = `learn-${record.id.slice(6)}`;
@@ -242,12 +255,15 @@ export class EvidenceLearningCurator {
       }
       const relevance = relevanceScore(record, textTokens, wantedTags);
       if ((textTokens.size > 0 || wantedTags.size > 0) && relevance === 0) continue;
-      const score = relevance + record.supports.length * 10 + (record.status === "ESTABLISHED" ? 100 : 0);
+      const score =
+        relevance + record.supports.length * 10 + (record.status === "ESTABLISHED" ? 100 : 0);
       candidates.push({
         confidence: record.status === "ESTABLISHED" ? "ESTABLISHED" : "TENTATIVE",
         contentHash: record.contentHash,
         evidenceDigest: record.evidenceDigest,
-        evidenceRefs: uniqueSorted(record.supports.flatMap((support) => support.evidenceRefs)).slice(0, 8),
+        evidenceRefs: uniqueSorted(
+          record.supports.flatMap((support) => support.evidenceRefs),
+        ).slice(0, 8),
         key: record.key,
         lesson: record.lesson,
         recordId: record.id,
@@ -287,7 +303,10 @@ export class EvidenceLearningCurator {
       if (record.status === "ARCHIVED") continue;
       const ageDays = (evaluatedAt - Date.parse(record.lastObservedAt)) / DAY_MS;
       if (ageDays < 0) {
-        throw new LearningError("INVALID_INPUT", "Maintenance time cannot predate learning evidence.");
+        throw new LearningError(
+          "INVALID_INPUT",
+          "Maintenance time cannot predate learning evidence.",
+        );
       }
       if (record.status !== "ESTABLISHED" && ageDays >= request.archiveAfterDays) {
         record.status = "ARCHIVED";
@@ -355,7 +374,8 @@ export class EvidenceLearningCurator {
         record.status = "CONFLICTED";
         if (record.tier === "HOT") record.tier = "WARM";
       } else {
-        record.status = record.supports.length >= ESTABLISHMENT_SUPPORT ? "ESTABLISHED" : "CANDIDATE";
+        record.status =
+          record.supports.length >= ESTABLISHMENT_SUPPORT ? "ESTABLISHED" : "CANDIDATE";
         if (record.tier !== "COLD") {
           record.tier = record.status === "ESTABLISHED" ? "HOT" : "WARM";
         }
@@ -365,19 +385,23 @@ export class EvidenceLearningCurator {
 }
 
 function normalizeProposal(value: unknown): LearningProposal {
-  const object = exactObject(value, [
-    "idempotencyKey",
-    "key",
-    "lesson",
-    "missionId",
-    "observedAt",
-    "projectId",
-    "sensitivity",
-    "sourceReference",
-    "tags",
-    "taskId",
-    "userId",
-  ], "learning proposal");
+  const object = exactObject(
+    value,
+    [
+      "idempotencyKey",
+      "key",
+      "lesson",
+      "missionId",
+      "observedAt",
+      "projectId",
+      "sensitivity",
+      "sourceReference",
+      "tags",
+      "taskId",
+      "userId",
+    ],
+    "learning proposal",
+  );
   const sensitivity = stringValue(object.sensitivity, "sensitivity");
   if (sensitivity !== "internal" && sensitivity !== "public") {
     throw new LearningError(
@@ -435,7 +459,10 @@ function validateAttestation(
     throw new LearningError("DENIED", "Learning evidence cannot predate the proposed lesson.");
   }
   if (!isSha256(attestation.verificationResultHash)) {
-    throw new LearningError("DENIED", "Learning attestation requires a SHA-256 verification result.");
+    throw new LearningError(
+      "DENIED",
+      "Learning attestation requires a SHA-256 verification result.",
+    );
   }
   if (
     !Array.isArray(attestation.evidenceRefs) ||
@@ -465,7 +492,9 @@ function supportFromAttestation(attestation: VerifiedLearningAttestation): Learn
   });
 }
 
-function normalizeNudgeQuery(value: unknown): Required<Omit<LearningNudgeQuery, "tags">> & { readonly tags?: readonly string[] } {
+function normalizeNudgeQuery(
+  value: unknown,
+): Required<Omit<LearningNudgeQuery, "tags">> & { readonly tags?: readonly string[] } {
   const object = exactObject(
     value,
     ["evaluatedAt", "limit", "maxCharacters", "projectId", "tags", "text", "userId"],
@@ -621,8 +650,15 @@ function identifier(value: unknown, label: string): string {
   return result;
 }
 
+function hasControlCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const codePoint = character.codePointAt(0);
+    return codePoint !== undefined && (codePoint <= 31 || codePoint === 127);
+  });
+}
+
 function assertIdentifier(value: string, label: string): void {
-  if (value === "" || value.length > MAX_ID_LENGTH || /[\u0000-\u001f\u007f]/u.test(value)) {
+  if (value === "" || value.length > MAX_ID_LENGTH || hasControlCharacter(value)) {
     throw new LearningError("INVALID_INPUT", `${label} is invalid.`);
   }
 }
@@ -667,12 +703,7 @@ function stringValue(value: unknown, label: string): string {
   return value;
 }
 
-function integerValue(
-  value: unknown,
-  label: string,
-  minimum: number,
-  maximum: number,
-): number {
+function integerValue(value: unknown, label: string, minimum: number, maximum: number): number {
   if (!Number.isSafeInteger(value) || (value as number) < minimum || (value as number) > maximum) {
     throw new LearningError(
       "INVALID_INPUT",
