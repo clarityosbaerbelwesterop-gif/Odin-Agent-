@@ -1,6 +1,6 @@
 # M13 — Evidence-backed post-task learning and memory curation
 
-Status: **IMPLEMENTATION_IN_PROGRESS**. Updated: 2026-09-04.
+Status: **IMPLEMENTATION_COMPLETE_PENDING_CI**. Updated: 2026-09-04.
 
 ## Objective
 
@@ -36,6 +36,8 @@ M13 is informed by public patterns reviewed on 2026-09-04, without copying or ex
 6. Model/worker/runtime self-claims do not count as learning support unless an injected M5-backed authority
    returns a matching PASS attestation.
 7. Durable user preferences still require explicit-user provenance; M13 never infers them from behavior.
+8. Automatic learning rejects obvious secret-like lesson content before evidence lookup or persistence;
+   the model-provided sensitivity label is not accepted as sufficient proof that content is safe to retain.
 
 ## Learning contract
 
@@ -54,6 +56,10 @@ evidence authority must return a matching PASS attestation bound to:
 A PASS for a real task therefore cannot be reused to authorize a different lesson or semantic key.
 Support is counted only once per distinct mission/task pair. Replaying the exact proposal is idempotent;
 conflicting replay fails closed.
+
+A shared secret-text primitive, also consumed by M12 observability, rejects obvious Bearer/API-key,
+GitHub-token, Slack-token, and private-key patterns before a lesson can enter the learning authority. This
+is a fail-closed guard for obvious credentials, not a claim of complete DLP or semantic secret detection.
 
 ### Promotion threshold
 
@@ -102,6 +108,8 @@ Maintenance is deterministic:
 
 - missing/foreign/FAIL/tampered learning attestation fails closed;
 - exact key/lesson hash mismatch fails even when the task verdict is PASS;
+- obvious secret-like lesson content is rejected regardless of a model-provided `internal` label;
+- the shared secret detector retains M12 observability rejection behavior;
 - duplicate task support cannot inflate confidence;
 - idempotency conflict fails closed;
 - three distinct verified tasks are required before semantic-memory commit;
