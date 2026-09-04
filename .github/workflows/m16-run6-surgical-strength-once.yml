@@ -1,0 +1,85 @@
+name: M16 surgical Kimi strength run 6 once
+
+on:
+  push:
+    branches:
+      - agent/m16-run6-surgical-strength
+    paths:
+      - .github/workflows/m16-run6-surgical-strength-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  run6-strength:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m16-run6-surgical-strength
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Verify repository before provider access
+        run: npm run verify
+      - name: Build repository before provider access
+        run: npm run build
+      - name: Credential-free surgical strength dry run
+        run: ODIN_M16_RESULT_PATH=/tmp/m16-run6-strength-dry.json node scripts/live-m16-grounded-eval.mjs --dry-run --suite=strength
+      - name: Authorized NVIDIA Kimi K3 surgical strength evaluation
+        env:
+          NV_API_KEY: ${{ secrets.NV_API_KEY }}
+          ODIN_M16_RESULT_PATH: docs/evals/m16-kimi-grounded-surgical-strength-run-6.json
+        run: node scripts/live-m16-grounded-eval.mjs --suite=strength
+      - name: Validate sanitized immutable evidence
+        env:
+          NV_API_KEY: ${{ secrets.NV_API_KEY }}
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const path = 'docs/evals/m16-kimi-grounded-surgical-strength-run-6.json';
+          const result = JSON.parse(fs.readFileSync(path, 'utf8'));
+          if (result.provider !== 'nvidia' || result.model !== 'moonshotai/kimi-k3' || result.suite !== 'strength') {
+            throw new Error('Unexpected live identity.');
+          }
+          if (result.executionProfile?.profileVersion !== 'm16-grounded-surgical-live-v2') {
+            throw new Error('Unexpected surgical live profile identity.');
+          }
+          if (!Array.isArray(result.results) || result.results.length !== 4) {
+            throw new Error('Expected four strength cases.');
+          }
+          if (!Number.isSafeInteger(result.providerCalls) || result.providerCalls < 1 || result.providerCalls > 16) {
+            throw new Error('Provider call count outside bound.');
+          }
+          const raw = JSON.stringify(result);
+          if (process.env.NV_API_KEY && raw.includes(process.env.NV_API_KEY)) {
+            throw new Error('Credential leaked into evidence.');
+          }
+          if (/authorization|bearer|nvapi-|api[_-]?key/i.test(raw)) {
+            throw new Error('Secret-like material in evidence.');
+          }
+          console.log(JSON.stringify({
+            providerCalls: result.providerCalls,
+            profileVersion: result.executionProfile.profileVersion,
+            status: result.summary?.status,
+            completePairs: result.summary?.completePairs,
+            baselineCompleted: result.summary?.baselineCompleted,
+            candidateCompleted: result.summary?.candidateCompleted,
+            tokenReductionBps: result.summary?.tokenReductionBps,
+            latencyReductionBps: result.summary?.latencyReductionBps,
+            qualityLiftBps: result.summary?.qualityLiftBps,
+          }));
+          NODE
+      - name: Preserve run-6 evidence and remove one-shot workflow
+        run: |
+          git rm .github/workflows/m16-run6-surgical-strength-once.yml
+          git add docs/evals/m16-kimi-grounded-surgical-strength-run-6.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "eval(m16): preserve surgical Kimi strength run 6"
+          git push origin HEAD:agent/m16-run6-surgical-strength
