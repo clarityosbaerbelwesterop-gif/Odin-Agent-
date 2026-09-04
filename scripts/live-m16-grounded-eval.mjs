@@ -24,10 +24,10 @@ import { FixtureWorkspace } from "../dist/test/runtime/coding-fixtures.js";
 const PROFILE = M15_KIMI_CODING_AB_PROFILE;
 const MODEL = PROFILE.model;
 const MAX_CALLS_PER_ARM_CASE = 2;
-const SUITE = process.argv.find((arg) => arg.startsWith("--suite="))?.slice("--suite=".length) ?? "output";
+const SUITE =
+  process.argv.find((arg) => arg.startsWith("--suite="))?.slice("--suite=".length) ?? "output";
 const DRY_RUN = process.argv.includes("--dry-run");
-const RESULT_PATH =
-  process.env.ODIN_M16_RESULT_PATH ?? `m16-${SUITE}-grounded-eval.json`;
+const RESULT_PATH = process.env.ODIN_M16_RESULT_PATH ?? `m16-${SUITE}-grounded-eval.json`;
 
 const OUTPUT_CASES = Object.freeze([
   Object.freeze({
@@ -121,7 +121,8 @@ const STRENGTH_CASES = Object.freeze([
       "normalizeTimeoutMs using clampTimeoutMs so negative and oversized values are bounded while preserving the existing API.",
     targetPath: "src/timeout.ts",
     files: Object.freeze({
-      "README.md": "normalizeTimeoutMs must preserve its public signature and use the existing bound helper.",
+      "README.md":
+        "normalizeTimeoutMs must preserve its public signature and use the existing bound helper.",
       "package.json": JSON.stringify({ name: "m16-strength-timeout", private: true }),
       "src/limits.ts":
         "export function clampTimeoutMs(value: number): number {\n  return Math.max(0, Math.min(value, 30000));\n}\n",
@@ -137,11 +138,11 @@ const STRENGTH_CASES = Object.freeze([
   }),
   Object.freeze({
     id: "minimal-role-normalization",
-    objective:
-      "normalizeRole using canonicalRole without changing isAdmin or any exported API.",
+    objective: "normalizeRole using canonicalRole without changing isAdmin or any exported API.",
     targetPath: "src/roles.ts",
     files: Object.freeze({
-      "README.md": "normalizeRole delegates canonicalization; authorization behavior must remain unchanged.",
+      "README.md":
+        "normalizeRole delegates canonicalization; authorization behavior must remain unchanged.",
       "package.json": JSON.stringify({ name: "m16-strength-role", private: true }),
       "src/role-utils.ts":
         "export function canonicalRole(value: string): string {\n  return value.trim().toLowerCase();\n}\n",
@@ -273,7 +274,11 @@ function createUsageMeter(rawProvider, callCounter) {
       state.attemptedCalls += 1;
       try {
         const response = await rawProvider.generate(
-          { ...request, reasoningEffort: PROFILE.reasoningEffort, temperature: PROFILE.temperature },
+          {
+            ...request,
+            reasoningEffort: PROFILE.reasoningEffort,
+            temperature: PROFILE.temperature,
+          },
           options,
         );
         addUsage(response.usage);
@@ -289,7 +294,11 @@ function createUsageMeter(rawProvider, callCounter) {
       let completed = false;
       try {
         for await (const event of rawProvider.stream(
-          { ...request, reasoningEffort: PROFILE.reasoningEffort, temperature: PROFILE.temperature },
+          {
+            ...request,
+            reasoningEffort: PROFILE.reasoningEffort,
+            temperature: PROFILE.temperature,
+          },
           options,
         )) {
           if (event.type === "completed") {
@@ -331,7 +340,8 @@ async function runArm({ arm, meteredProvider, caseSpec, observedAt }) {
     () => observedAt,
   );
   const mission = new MissionRuntime(new InMemoryEventStore(), () => observedAt);
-  const provider = arm === "optimized" ? new GroundedCodingProvider(meteredProvider) : meteredProvider;
+  const provider =
+    arm === "optimized" ? new GroundedCodingProvider(meteredProvider) : meteredProvider;
   const coding = new CodingOrchestrator({
     audit,
     clock: () => observedAt,
@@ -459,8 +469,15 @@ function summarize(results) {
     candidateFirstPass: results.filter((entry) => entry.optimized.firstPass).length,
     completePairs: matched.length,
     qualityLiftBps:
-      matched.length === 0 ? null : Math.round((optimizedQuality - baselineQuality) / matched.length),
-    status: matched.length === results.length ? "COMPLETE" : matched.length === 0 ? "INCONCLUSIVE" : "PARTIAL",
+      matched.length === 0
+        ? null
+        : Math.round((optimizedQuality - baselineQuality) / matched.length),
+    status:
+      matched.length === results.length
+        ? "COMPLETE"
+        : matched.length === 0
+          ? "INCONCLUSIVE"
+          : "PARTIAL",
     tokenMatchedPairs: tokenMatched.length,
     tokenReductionBps:
       tokenMatched.length === 0 ? null : percentReductionBps(baselineTokens, optimizedTokens),
