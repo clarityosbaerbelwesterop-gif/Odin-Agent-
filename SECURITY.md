@@ -300,7 +300,7 @@ Procedure novelty is not self-declared authority. Requested keys must belong to 
 
 Capability packs accept only integrity-valid passing M15 reports whose candidate/domain/task-class identity matches an exact M10 VERIFIED/ACTIVE community member and whose M10 verification history carries the same evidence references at the same evaluation time. Compact pack discovery omits instructions; full resolution remains behind M10 lifecycle checks. Offline replay receives no mutation interface and can only emit bounded recommendations.
 
-The bounded live A/B runner keeps provider credentials in the control plane, caps calls, writes only sanitized evidence, and converts interrupted/failed arms into explicit failing measurements with conservative token accounting instead of allowing missing negative results to bias the comparison. Helper run `33866236138` verified these boundaries with 319/319 tests before checkpointing the hardened implementation.
+The bounded live A/B runner keeps provider credentials in the control plane, caps calls, and writes only sanitized evidence. Helper run `33866236138` verified the pre-merge boundaries with 319/319 tests. Authorized post-merge run `33870210502` then exposed an evidence-interpretation edge case: all six arms were incomplete, so the historical numeric zero summary could be mistaken for measured zero lift even though no matched pair completed. The raw evidence remains fail-closed and unpromoted; post-run hardening classifies zero complete pairs as `INCONCLUSIVE` with null quality/lift and records only bounded failure categories rather than raw exception text. A further live provider request remains separately approval-gated.
 
 ## Prompt injection and untrusted-content security
 

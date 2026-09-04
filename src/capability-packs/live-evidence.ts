@@ -51,15 +51,9 @@ const BUDGET_DIMENSIONS = new Set([
 ]);
 
 const MISSION_DOMAIN_CODES = new Map<string, string>([
-  [
-    "Repository discovery found no bounded relevant source files.",
-    "repository_discovery_empty",
-  ],
+  ["Repository discovery found no bounded relevant source files.", "repository_discovery_empty"],
   ["M4 planning requires strict structured-output support.", "strict_output_unsupported"],
-  [
-    "Planning provider did not return a structured JSON object.",
-    "plan_structured_output_missing",
-  ],
+  ["Planning provider did not return a structured JSON object.", "plan_structured_output_missing"],
   [
     "Model plan targets a file outside bounded repository discovery.",
     "plan_target_outside_discovery",
@@ -72,10 +66,7 @@ const MISSION_DOMAIN_CODES = new Map<string, string>([
   ["Model plan selected an unregistered quality command.", "plan_quality_command_unknown"],
   ["The M4 model change task must be dependency-free.", "plan_dependencies_forbidden"],
   ["Model task id collides with an Odin-reserved task id.", "plan_reserved_task_id"],
-  [
-    "Repair provider did not return a structured JSON object.",
-    "repair_structured_output_missing",
-  ],
+  ["Repair provider did not return a structured JSON object.", "repair_structured_output_missing"],
   ["Repair proposal may not change the persisted target path.", "repair_target_mismatch"],
   ["Repair expectedSha is stale or mismatched.", "repair_expected_sha_mismatch"],
   ["Repair proposal does not change the target file.", "repair_no_change"],

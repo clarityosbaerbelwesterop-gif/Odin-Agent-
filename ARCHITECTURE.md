@@ -1,6 +1,6 @@
 # Odin architecture
 
-Status: M0–M13 are merged and verified; M14 skill-intake implementation is verified in normal PR CI and this synchronized head is awaiting its final exact-head CI before merge. M12 remains partially verified for hosted-sandbox/public-production proof, 2026-09-04.
+Status: M0–M15 are merged and verified on `main`. M12 remains partially verified for hosted-sandbox/public-production proof. The first post-merge Kimi K3 M15 comparison attempt is preserved as INCONCLUSIVE because no matched arm pair completed, 2026-09-04.
 
 ## Repository finding
 
@@ -247,7 +247,9 @@ Passing reports are deterministic and hash-addressed. They may produce M10 verif
 
 The live comparison harness is separate from curation authority. It compares the same Kimi K3 coding cases with and without an evaluation-only candidate overlay, caps provider calls, sanitizes evidence, and records failed/interrupted arms as explicit negative measurements instead of dropping them. This supports task-specific lift measurement; it does not turn an orchestration result into a model benchmark or AGI claim.
 
-Implementation verification helper run `33866236138` passed 319/319 tests with 89.81% line / 77.03% branch / 95.85% function coverage after trusted-clock, procedure-catalog, and A/B failure-evidence hardening. Final normal exact-head CI is still required before merge.
+Implementation verification helper run `33866236138` passed 319/319 tests with 89.81% line / 77.03% branch / 95.85% function coverage after trusted-clock, procedure-catalog, and A/B failure-evidence hardening. Normal exact-head PR CI `33870080147` passed before M15 merged into `main` as `30bcab22f6129925b704fff0d024ca40e472b06c`.
+
+Authorized post-merge run `33870210502` attempted three matched NVIDIA Kimi K3 coding cases with ten provider calls. Every baseline and candidate arm was incomplete, leaving zero complete matched pairs. The raw sanitized evidence is therefore INCONCLUSIVE and cannot establish candidate lift, pack eligibility, model superiority, or AGI-level capability. Post-run evidence semantics treat zero complete pairs as INCONCLUSIVE rather than numeric zero lift and expose only bounded non-secret failure categories.
 
 ## Current module map
 
@@ -285,7 +287,7 @@ provider path is verified, but hosted sandbox cleanup/isolation, broader live-mo
 service/auth/realtime transport, deployment, and production recovery remain separate proof.
 
 Local CI may never manufacture `integration` or `live` evidence. Any paid resource, deployment, or
-production/public traffic remains separately approval-gated. M15's curation, progressive-pack, and proposal-only replay boundaries are implementation-verified and awaiting normal exact-head CI before merge. After merge, one user-authorized bounded Kimi K3 bare-model-vs-Odin A/B may record task-specific lift; only a passing exact-hash result may become measured M10 verification/pack evidence. Broader provider or public-benchmark claims require their own matched evaluations.
+production/public traffic remains separately approval-gated. M15's curation, progressive-pack, and proposal-only replay boundaries are merged and verified. The first authorized post-merge Kimi K3 comparison attempt is preserved as INCONCLUSIVE because no matched arm pair completed; it creates no M10 verification or pack evidence. Another live provider run requires separate user authorization, and broader provider or public-benchmark claims require their own complete matched evaluations.
 
 ## Storage and deployment direction
 
