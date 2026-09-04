@@ -13,8 +13,7 @@ test("Kimi live A/B profile preserves measurable latency headroom", () => {
   assert.equal(M15_KIMI_CODING_AB_PROFILE.acceptanceLatencyMs, 180_000);
   assert.equal(M15_KIMI_CODING_AB_PROFILE.providerTimeoutMs, 240_000);
   assert.ok(
-    M15_KIMI_CODING_AB_PROFILE.providerTimeoutMs >
-      M15_KIMI_CODING_AB_PROFILE.acceptanceLatencyMs,
+    M15_KIMI_CODING_AB_PROFILE.providerTimeoutMs > M15_KIMI_CODING_AB_PROFILE.acceptanceLatencyMs,
   );
   assert.equal(Object.isFrozen(M15_KIMI_CODING_AB_PROFILE), true);
 });
@@ -39,9 +38,7 @@ test("live profile rejects timeout equal to or too close to acceptance latency",
     () => createLiveAbExecutionProfile({ ...base, providerTimeoutMs: 209_999 }),
     TypeError,
   );
-  assert.doesNotThrow(() =>
-    createLiveAbExecutionProfile({ ...base, providerTimeoutMs: 210_000 }),
-  );
+  assert.doesNotThrow(() => createLiveAbExecutionProfile({ ...base, providerTimeoutMs: 210_000 }));
 });
 
 test("live profile rejects unsafe ceilings and malformed identity", () => {
@@ -57,10 +54,7 @@ test("live profile rejects unsafe ceilings and malformed identity", () => {
     temperature: 1,
   };
 
-  assert.throws(
-    () => createLiveAbExecutionProfile({ ...valid, maxProviderCalls: 1 }),
-    TypeError,
-  );
+  assert.throws(() => createLiveAbExecutionProfile({ ...valid, maxProviderCalls: 1 }), TypeError);
   assert.throws(
     () => createLiveAbExecutionProfile({ ...valid, providerTimeoutMs: 600_001 }),
     TypeError,
