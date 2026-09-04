@@ -82,6 +82,29 @@ const MISSION_DOMAIN_CODES = new Map<string, string>([
   ["Provider total token usage is inconsistent.", "provider_usage_inconsistent"],
 ]);
 
+const TERMINAL_MEASURED_FAILURE_CODES = new Set([
+  "budget_attempts",
+  "budget_costMicros",
+  "budget_inputTokens",
+  "budget_outputTokens",
+  "budget_toolCalls",
+  "plan_dependencies_forbidden",
+  "plan_expected_sha_mismatch",
+  "plan_no_change",
+  "plan_quality_command_unknown",
+  "plan_reserved_task_id",
+  "plan_structured_output_missing",
+  "plan_target_outside_discovery",
+  "provider_context_overflow",
+  "provider_malformed_response",
+  "quality_failed_after_repair",
+  "repair_expected_sha_mismatch",
+  "repair_no_change",
+  "repair_structured_output_missing",
+  "repair_target_mismatch",
+  "verification_gate_denied",
+]);
+
 export function summarizeLiveComparisons(
   pairs: readonly LiveComparablePair[],
 ): LiveComparisonSummary {
@@ -164,6 +187,18 @@ export function classifyLiveFailure(error: unknown): LiveFailureDiagnostic {
   }
 
   return Object.freeze({ errorClass, errorCode: "unclassified_error" });
+}
+
+export function isTerminalLiveMeasurementFailure(diagnostic: LiveFailureDiagnostic): boolean {
+  if (
+    typeof diagnostic.errorClass !== "string" ||
+    typeof diagnostic.errorCode !== "string" ||
+    diagnostic.errorClass.trim() === "" ||
+    diagnostic.errorCode.trim() === ""
+  ) {
+    return false;
+  }
+  return TERMINAL_MEASURED_FAILURE_CODES.has(diagnostic.errorCode);
 }
 
 function validateArm(arm: LiveComparableArm): void {
