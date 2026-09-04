@@ -1,9 +1,9 @@
 # M13 — Evidence-backed post-task learning and memory curation
 
-Status: **IMPLEMENTATION_VERIFIED_PENDING_FINAL_PR_CI**. Updated: 2026-09-04.
+Status: **VERIFIED**. Updated: 2026-09-04.
 
 Implementation evidence: helper run `33852005166` passed quality, strict TypeScript, 272/272 tests, and the dry Kimi smoke on corrected head `6165114201d151240125ec890b3560b631f6502b`. Aggregate coverage was 89.42% lines / 76.50% branches / 95.67% functions; `learning/curator` was 91.83% / 80.23% / 96.15%, and the shared secret detector remained 100% / 100% / 100%. The helper removed itself before committing.
-Synchronized governance checkpoint before the final normal PR gate: `c1ef3178a805a80ba9ed4f0fbf56b251edaaecd8`.
+Synchronized governance checkpoint: `c1ef3178a805a80ba9ed4f0fbf56b251edaaecd8`. Normal synchronized PR CI run `33853042492` passed on exact head `5a7d2468673aa1701317b965fe5be92257217298`. M13 is marked VERIFIED; the status-only head is still required to pass the same exact-head CI before merge.
 
 ## Objective
 
