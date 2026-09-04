@@ -40,9 +40,18 @@ M13 is informed by public patterns reviewed on 2026-09-04, without copying or ex
 ## Learning contract
 
 A lesson proposal must bind exact user/project/mission/task scope, a compact lesson, a stable semantic key,
-canonical timestamps, source reference, and idempotency key. The injected learning-evidence authority must
-return a matching PASS attestation with a SHA-256 verification-result identity and non-empty evidence refs.
+canonical timestamps, source reference, sensitivity, and idempotency key. Before evidence is requested,
+M13 computes SHA-256 over the normalized semantic key and exact lesson content. The injected learning-
+evidence authority must return a matching PASS attestation bound to:
 
+- exact user/project/mission/task scope;
+- exact `learningKeyHash`;
+- exact `lessonContentHash`;
+- exact sensitivity class;
+- a SHA-256 verification-result identity;
+- non-empty evidence references.
+
+A PASS for a real task therefore cannot be reused to authorize a different lesson or semantic key.
 Support is counted only once per distinct mission/task pair. Replaying the exact proposal is idempotent;
 conflicting replay fails closed.
 
@@ -56,6 +65,17 @@ conflicting replay fails closed.
 
 Only an `ESTABLISHED`, non-conflicted record may be committed to M6 semantic memory. Its provenance is
 `verified_learning`, hash-bound to exact lesson content and verification evidence.
+
+## Learned-memory consumption
+
+Persisted `verified_learning` memory is deliberately lower authority than ordinary semantic memory.
+General M6 semantic retrieval does not return it. A consumer must explicitly request the normalized tag
+`m13-learning`; otherwise the record remains invisible even if text relevance matches. This makes durable
+learning opt-in and prevents stale learned heuristics from silently outranking current repository/task
+truth. The primary M13 consumption API remains the scoped curator/nudge view.
+
+No context compiler automatically elevates M13 learning into P0/P1 context, and M13 memory never grants
+execution authority.
 
 ## Self-nudging
 
@@ -81,6 +101,7 @@ Maintenance is deterministic:
 ## Security tests required
 
 - missing/foreign/FAIL/tampered learning attestation fails closed;
+- exact key/lesson hash mismatch fails even when the task verdict is PASS;
 - duplicate task support cannot inflate confidence;
 - idempotency conflict fails closed;
 - three distinct verified tasks are required before semantic-memory commit;
@@ -88,6 +109,7 @@ Maintenance is deterministic:
 - cross-user/project records are never retrieved or combined;
 - learned content cannot become `user_preference` memory;
 - memory provenance hash must exactly match lesson content;
+- general semantic retrieval excludes `verified_learning` unless `m13-learning` is explicitly requested;
 - maintenance never deletes established M6 memory;
 - M13 does not create M3 grants/tools or M10 activation authority.
 
