@@ -5,27 +5,37 @@ import {
   M15_DISTILLED_CAPABILITY_DRAFTS,
   ODIN_CANONICAL_PROCEDURE_KEYS,
 } from "../../src/capability-packs/index.js";
-import { normalizePackage, SkillRegistry } from "../../src/skills/index.js";
+import { normalizePackage, SkillError, SkillRegistry } from "../../src/skills/index.js";
 
-test("distilled procedures remain unregistered project drafts with no execution authority", () => {
+test("distilled procedures enter M10 only as community candidates with source-bound provenance", () => {
   const skills = new SkillRegistry();
   const names = new Set<string>();
 
   for (const draft of M15_DISTILLED_CAPABILITY_DRAFTS) {
-    assert.equal(draft.package.trustClass, "project");
-    assert.equal(draft.package.provenance.kind, "project");
+    assert.equal(draft.package.trustClass, "community");
+    assert.equal(draft.package.provenance.kind, "community");
     assert.deepEqual(draft.package.requiredTools, []);
     assert.ok(draft.sourceRefs.length > 0);
     assert.ok(draft.taskClasses.length > 0);
     assert.ok(draft.procedureKeys.length > 0);
     assert.equal(names.has(draft.package.name), false);
     names.add(draft.package.name);
+    for (const sourceRef of draft.sourceRefs) {
+      assert.ok(draft.package.provenance.reference.includes(sourceRef));
+    }
 
     const normalized = normalizePackage(draft.package);
     assert.match(normalized.contentHash, /^[a-f0-9]{64}$/u);
+    const candidate = skills.registerCandidate(draft.package);
+    assert.equal(candidate.lifecycle, "CANDIDATE");
+    assert.throws(
+      () => skills.resolve(candidate.package.name, candidate.package.version),
+      (error: unknown) => error instanceof SkillError && error.code === "DENIED",
+    );
   }
 
-  assert.deepEqual(skills.listReviewSummaries(), []);
+  assert.equal(skills.listReviewSummaries().length, M15_DISTILLED_CAPABILITY_DRAFTS.length);
+  assert.deepEqual(skills.listAvailableSummaries(), []);
 });
 
 test("distilled procedure keys are additive and do not relabel canonical Odin behavior", () => {
