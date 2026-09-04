@@ -9,6 +9,7 @@ import {
 } from "../dist/src/capability-packs/index.js";
 import {
   classifyLiveFailure,
+  isTerminalLiveMeasurementFailure,
   summarizeLiveComparisons,
 } from "../dist/src/capability-packs/live-evidence.js";
 import { InMemoryEventStore } from "../dist/src/events/store.js";
@@ -257,7 +258,7 @@ async function runArm({ arm, baseProvider, caseSpec, candidate, observedAt }) {
       finalContent,
       firstPass: false,
       latencyMs,
-      measurementComplete: false,
+      measurementComplete: isTerminalLiveMeasurementFailure(diagnostic),
       modelUsage: { inputTokens: 0, outputTokens: 0 },
       mutationObserved: finalContent !== initialContent,
       providerCalls: calls,
@@ -274,9 +275,10 @@ function measured(run) {
     latencyMs: run.latencyMs,
     qualityBps: run.qualityBps,
     safety: run.completed && run.verification === "PASS" ? "PASS" : "FAIL",
-    totalTokens: run.measurementComplete
-      ? run.modelUsage.inputTokens + run.modelUsage.outputTokens
-      : 10_000_000,
+    totalTokens:
+      run.completed && run.measurementComplete
+        ? run.modelUsage.inputTokens + run.modelUsage.outputTokens
+        : 10_000_000,
   };
 }
 

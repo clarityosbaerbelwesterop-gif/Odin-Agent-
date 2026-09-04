@@ -347,3 +347,9 @@ persistence expands.
 Do not open a public issue containing an exploitable vulnerability, credential, or private user data.
 Use the repository owner's private security reporting channel when enabled. Until then, contact the
 owner privately and provide the smallest safe reproduction.
+
+## M15 live failure-evidence hardening — rerun 3
+
+Live candidate evaluation must not create survivorship bias by discarding deterministic failures. The runtime now treats only an explicit bounded set of terminal task failure codes as complete negative measurements. Transient or ambiguous provider failures—including timeout, network, authentication, quota/rate-limit, unavailable/unknown, and generic malformed-response categories—remain incomplete. This prevents both hiding a candidate failure and falsely blaming a model for an infrastructure/transport ambiguity.
+
+Failed arms keep fail-closed token/quality accounting, raw exception text is not persisted, and the historical live artifact is never rewritten. Rerun-3 derived evidence is PARTIAL rather than promoted: two complete pairs are 0 vs 0 and one remains incomplete. The candidate receives no M10 verification, activation, tool authority, credential access, routing privilege, or pack membership. Normal CI `33888060837` also proves the three fixture patterns succeed through the same deterministic M4/M5 path with valid scripted structured output.

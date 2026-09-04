@@ -300,3 +300,11 @@ contracts. Large outputs should become content-addressed artifacts rather than e
 The MVP remains a modular service plus isolated worker boundary, not a fleet of speculative
 microservices. Split a component only when isolation, independent scaling, or failure containment is
 demonstrated. Mobile clients never host the canonical long-running runtime.
+
+## M15 live-evidence terminal-outcome boundary
+
+Rerun-3 review establishes a sharper distinction inside the live comparison harness. A deterministic terminal task failure (for example plan SHA mismatch, no-change repair, quality still failing after bounded repair, verification denial, or bounded context/budget exhaustion) is a completed negative measurement. A timeout, network/auth/rate-limit failure, unknown error, or ambiguous malformed provider response remains incomplete because outcome attribution is not safe. The runtime owns this allowlist; model output cannot declare itself measured.
+
+Failed arms retain conservative token accounting and cannot pass M15 quality/safety/authority gates merely because they terminate early. Historical raw evidence is immutable; corrected semantics create a separate derived interpretation rather than rewriting the original artifact.
+
+Third authorized Kimi run `33884808665` therefore derives to PARTIAL with 2/3 complete terminal-failure pairs and zero measured lift on those pairs. The exact-fixture offline control passed all three cases through M4/M5, so the next architecture focus is the live model/provider structured-output and plan/repair contract rather than bypassing M5 or relaxing fixture acceptance.

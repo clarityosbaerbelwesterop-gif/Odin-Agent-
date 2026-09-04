@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   classifyLiveFailure,
+  isTerminalLiveMeasurementFailure,
   summarizeLiveComparisons,
 } from "../../src/capability-packs/live-evidence.js";
 import { BudgetExceededError, MissionDomainError } from "../../src/mission/runtime.js";
@@ -128,6 +129,104 @@ test("budget verification and non-error failures have stable categories", () => 
   assert.deepEqual(classifyLiveFailure({ reason: "not an Error" }), {
     errorClass: "UnknownError",
     errorCode: "unknown_error",
+  });
+});
+
+test("terminal model outcomes remain measurable while infrastructure interruptions stay incomplete", () => {
+  const terminal = [
+    classifyLiveFailure(
+      new MissionDomainError("Model plan expectedSha does not match discovered repository state."),
+    ),
+    classifyLiveFailure(new MissionDomainError("Repair proposal does not change the target file.")),
+    classifyLiveFailure(
+      new MissionDomainError("Required quality gate is still failing after the bounded repair."),
+    ),
+    classifyLiveFailure(new CodingVerificationGateError("private detail", null)),
+    classifyLiveFailure(new BudgetExceededError("outputTokens")),
+    classifyLiveFailure(
+      new ProviderError({
+        category: "context_overflow",
+        message: "opaque context detail",
+        provider: "fixture",
+        retryable: false,
+      }),
+    ),
+  ];
+  for (const diagnostic of terminal) {
+    assert.equal(isTerminalLiveMeasurementFailure(diagnostic), true, diagnostic.errorCode);
+  }
+
+  const interruptedCategories = [
+    "aborted",
+    "authentication",
+    "invalid_request",
+    "malformed_response",
+    "network",
+    "permission",
+    "quota",
+    "rate_limit",
+    "timeout",
+    "unavailable",
+    "unsupported",
+    "unknown",
+  ] as const;
+  for (const category of interruptedCategories) {
+    const diagnostic = classifyLiveFailure(
+      new ProviderError({
+        category,
+        message: "opaque provider detail",
+        provider: "fixture",
+        retryable: true,
+      }),
+    );
+    assert.equal(isTerminalLiveMeasurementFailure(diagnostic), false, diagnostic.errorCode);
+  }
+
+  assert.equal(
+    isTerminalLiveMeasurementFailure(
+      classifyLiveFailure(
+        new MissionDomainError("Repository discovery found no bounded relevant source files."),
+      ),
+    ),
+    false,
+  );
+  assert.equal(
+    isTerminalLiveMeasurementFailure({ errorClass: "", errorCode: "quality_failed_after_repair" }),
+    false,
+  );
+  assert.equal(
+    isTerminalLiveMeasurementFailure({ errorClass: "MissionDomainError", errorCode: "" }),
+    false,
+  );
+});
+
+test("rerun-3 terminal diagnostics yield partial zero-lift evidence without upgrading ambiguity", () => {
+  const terminal = (errorClass: string, errorCode: string) =>
+    arm(isTerminalLiveMeasurementFailure({ errorClass, errorCode }), 0);
+  const summary = summarizeLiveComparisons([
+    {
+      baseline: terminal("MissionDomainError", "quality_failed_after_repair"),
+      candidate: terminal("ProviderError", "provider_malformed_response"),
+    },
+    {
+      baseline: terminal("MissionDomainError", "quality_failed_after_repair"),
+      candidate: terminal("MissionDomainError", "plan_expected_sha_mismatch"),
+    },
+    {
+      baseline: terminal("MissionDomainError", "quality_failed_after_repair"),
+      candidate: terminal("MissionDomainError", "repair_no_change"),
+    },
+  ]);
+
+  assert.deepEqual(summary, {
+    averageLiftBps: 0,
+    baselineQualityBps: 0,
+    candidateQualityBps: 0,
+    cases: 3,
+    completePairs: 2,
+    incompletePairs: 1,
+    status: "PARTIAL",
+    totalLiftBps: 0,
   });
 });
 

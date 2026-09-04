@@ -239,3 +239,15 @@ MVP requires a user-supplied provider key, workspace, complex coding request, au
 graph, targeted repository retrieval, scoped edits, tests, diagnosis and repair, durable mission
 resume, token/cost display, and an evidence-backed final report. A mock-only demonstration does not
 satisfy MVP.
+
+## M15 post-merge live evidence — rerun 3 v2
+
+- [x] Third explicitly authorized NVIDIA/Kimi K3 comparison run `33884808665` executed under runtime-owned `m15-kimi-coding-ab-v2` after deterministic preflight gates.
+- [x] Raw sanitized evidence preserved immutably; 10/12 provider calls used and no candidate authority/promotion created.
+- [x] Live evidence semantics hardened so deterministic terminal task failures remain measurable while timeout/network/auth/rate-limit and ambiguous malformed-provider outcomes stay incomplete.
+- [x] Rerun-3 preserved diagnostics re-evaluate conservatively to **PARTIAL**: 2/3 complete matched pairs, baseline 0 vs candidate 0, 0 bps lift on those pairs; one pair remains incomplete.
+- [x] Exact three-fixture scripted control proves the M4/M5 harness can complete all three cases first-pass with valid structured plans; PR CI `33888060837` passed 336/336 tests.
+- [ ] Establish live baseline reliability on a sufficiently complete matched set before reconsidering `odin-coding-discipline` verification or pack membership.
+- [ ] Any fourth live provider comparison requires new explicit authorization and a new immutable evidence identity.
+
+Rerun 3 does not establish a Kimi public benchmark, model-wide Odin lift, AGI/ASI, or equivalence/superiority to Astra/Fable. Current evidence prioritizes provider/model plan-and-repair reliability over additional skill promotion.
