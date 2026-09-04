@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  capabilityCurationReportHash,
   CapabilityCurationError,
   type CapabilityCurationReport,
   proposeCapabilityReplay,
@@ -13,7 +14,7 @@ function report(
   hashCharacter: string,
   overrides: Partial<CapabilityCurationReport> = {},
 ): CapabilityCurationReport {
-  return {
+  const value: CapabilityCurationReport = {
     candidate: {
       contentHash: "a".repeat(64),
       name: `skill-${hashCharacter}`,
@@ -37,11 +38,18 @@ function report(
     novelProcedureKeys: ["coding.surgical-diff"],
     procedureKeys: ["coding.surgical-diff"],
     reasons: [],
-    reportHash: hashCharacter.repeat(64),
+    reportHash: "0".repeat(64),
     taskClasses: ["coding-change"],
     totalLiftBps: 300,
     ...overrides,
   };
+  return { ...value, reportHash: capabilityCurationReportHash(value) };
+}
+
+function actionsByCandidate(result: ReturnType<typeof proposeCapabilityReplay>) {
+  return Object.fromEntries(
+    result.proposals.map((proposal) => [proposal.candidate.name, proposal.action]),
+  );
 }
 
 test("offline replay emits bounded proposal actions without lifecycle authority", () => {
@@ -79,10 +87,13 @@ test("offline replay emits bounded proposal actions without lifecycle authority"
     NOW,
   );
 
-  assert.deepEqual(
-    result.proposals.map((proposal) => proposal.action),
-    ["KEEP", "COMPRESS", "DEDUPLICATE", "REVIEW", "RETEST"],
-  );
+  assert.deepEqual(actionsByCandidate(result), {
+    "skill-a": "KEEP",
+    "skill-b": "COMPRESS",
+    "skill-c": "DEDUPLICATE",
+    "skill-d": "REVIEW",
+    "skill-e": "RETEST",
+  });
   assert.equal(
     skills.resolveForReview(candidate.package.name, candidate.package.version).lifecycle,
     "CANDIDATE",
@@ -94,7 +105,9 @@ test("offline replay emits bounded proposal actions without lifecycle authority"
 test("stale evaluation is proposed for retest instead of being silently reused", () => {
   const stale = report("f", { evaluatedAt: "2026-07-01T00:00:00.000Z" });
 
-  const result = proposeCapabilityReplay([stale], NOW, { staleAfterMs: 7 * 24 * 60 * 60 * 1_000 });
+  const result = proposeCapabilityReplay([stale], NOW, {
+    staleAfterMs: 7 * 24 * 60 * 60 * 1_000,
+  });
 
   assert.equal(result.proposals[0]?.action, "RETEST");
   assert.deepEqual(result.proposals[0]?.reasons, ["STALE_EVALUATION"]);
@@ -118,10 +131,10 @@ test("low measured lift is reviewed while stronger measured lift is kept", () =>
 
   const result = proposeCapabilityReplay([strong, low], NOW, { lowAverageLiftBps: 100 });
 
-  assert.deepEqual(
-    result.proposals.map((proposal) => proposal.action),
-    ["REVIEW", "KEEP"],
-  );
+  assert.deepEqual(actionsByCandidate(result), {
+    "skill-1": "REVIEW",
+    "skill-2": "KEEP",
+  });
 });
 
 test("replay result is deterministic across report ordering", () => {
@@ -132,6 +145,16 @@ test("replay result is deterministic across report ordering", () => {
   const reverse = proposeCapabilityReplay([second, first], NOW);
 
   assert.deepEqual(forward, reverse);
+});
+
+test("tampered reports fail closed before they can influence replay proposals", () => {
+  const original = report("7");
+  const tampered = { ...original, totalLiftBps: original.totalLiftBps + 500 };
+
+  assert.throws(
+    () => proposeCapabilityReplay([tampered], NOW),
+    (error: unknown) => error instanceof CapabilityCurationError && error.code === "INVALID_INPUT",
+  );
 });
 
 test("duplicate hashes malformed timestamps and proposal bounds fail closed", () => {
