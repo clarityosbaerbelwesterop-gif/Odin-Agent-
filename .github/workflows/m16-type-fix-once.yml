@@ -1,0 +1,47 @@
+name: M16 grounded typing fix once
+
+on:
+  push:
+    branches:
+      - agent/m16-live-reliability-efficiency
+    paths:
+      - .github/workflows/m16-type-fix-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m16-live-reliability-efficiency
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply narrow type fix
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const path = 'src/runtime/grounded-coding-provider.ts';
+          let text = fs.readFileSync(path, 'utf8');
+          text = text.replace('  ModelMessage,\n', '  ConversationMessage,\n');
+          text = text.replace('let user: Extract<ModelMessage, { readonly role: "user" }> | undefined;', 'let user: ConversationMessage | undefined;');
+          fs.writeFileSync(path, text);
+          NODE
+          npx biome check --write src/runtime/grounded-coding-provider.ts test/runtime/grounded-coding-provider.test.ts
+      - name: Verify repository
+        run: npm run verify
+      - name: Commit verified fix
+        run: |
+          git rm .github/workflows/m16-type-fix-once.yml
+          git add src/runtime/grounded-coding-provider.ts test/runtime/grounded-coding-provider.test.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(m16): type grounded coding user messages"
+          git push origin HEAD:agent/m16-live-reliability-efficiency
