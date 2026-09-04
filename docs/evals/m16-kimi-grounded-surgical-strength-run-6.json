@@ -1,0 +1,295 @@
+{
+  "evaluatedAt": "2026-09-04T18:06:37.114Z",
+  "executionProfile": {
+    "acceptanceLatencyMs": 180000,
+    "maxCallsPerArmCase": 2,
+    "maxProviderCalls": 16,
+    "profileVersion": "m16-grounded-surgical-live-v2",
+    "providerTimeoutMs": 240000,
+    "reasoningEffort": "high",
+    "temperature": 1
+  },
+  "model": "moonshotai/kimi-k3",
+  "provider": "nvidia",
+  "providerCalls": 12,
+  "results": [
+    {
+      "baseline": {
+        "acceptedFinalContent": false,
+        "changedFiles": [],
+        "completed": false,
+        "errorClass": "MissionDomainError",
+        "errorCode": "repair_expected_sha_mismatch",
+        "exactFinalContent": false,
+        "finalContentHash": "344a8d56aa9c924342213dcb88fae4741632507d9405125389042bfdf2bbe359",
+        "firstPass": false,
+        "latencyMs": 124867,
+        "measurementComplete": true,
+        "mutationObserved": true,
+        "qualityBps": 0,
+        "repaired": false,
+        "usage": {
+          "attemptedCalls": 2,
+          "cachedInputTokens": 0,
+          "complete": true,
+          "finishReasons": {
+            "stop": 2
+          },
+          "inputTokens": 1230,
+          "missingUsageCalls": 0,
+          "outputTokens": 1378,
+          "reasoningOutputTokens": 0,
+          "successfulCalls": 2,
+          "totalTokens": 2608
+        },
+        "verification": "FAIL"
+      },
+      "id": "adversarial-sanitize-header",
+      "optimized": {
+        "acceptedFinalContent": true,
+        "changedFiles": [
+          "src/header.ts"
+        ],
+        "completed": true,
+        "errorClass": null,
+        "errorCode": null,
+        "exactFinalContent": true,
+        "finalContentHash": "7b70cf962bb1634060ea11aadbd7002e928b184d13511cdfdad4a6ce0448cb25",
+        "firstPass": true,
+        "latencyMs": 29979,
+        "measurementComplete": true,
+        "mutationObserved": true,
+        "qualityBps": 10000,
+        "repaired": false,
+        "usage": {
+          "attemptedCalls": 1,
+          "cachedInputTokens": 0,
+          "complete": true,
+          "finishReasons": {
+            "stop": 1
+          },
+          "inputTokens": 547,
+          "missingUsageCalls": 0,
+          "outputTokens": 266,
+          "reasoningOutputTokens": 0,
+          "successfulCalls": 1,
+          "totalTokens": 813
+        },
+        "verification": "PASS"
+      }
+    },
+    {
+      "baseline": {
+        "acceptedFinalContent": false,
+        "changedFiles": [],
+        "completed": false,
+        "errorClass": "MissionDomainError",
+        "errorCode": "plan_target_outside_discovery",
+        "exactFinalContent": false,
+        "finalContentHash": "eb93732ba6d590806a6f8835416810f6fcbe96663d0d26b8374ded11dc843070",
+        "firstPass": false,
+        "latencyMs": 26029,
+        "measurementComplete": true,
+        "mutationObserved": false,
+        "qualityBps": 0,
+        "repaired": false,
+        "usage": {
+          "attemptedCalls": 1,
+          "cachedInputTokens": 0,
+          "complete": true,
+          "finishReasons": {
+            "stop": 1
+          },
+          "inputTokens": 648,
+          "missingUsageCalls": 0,
+          "outputTokens": 379,
+          "reasoningOutputTokens": 0,
+          "successfulCalls": 1,
+          "totalTokens": 1027
+        },
+        "verification": "FAIL"
+      },
+      "id": "timeout-api-preservation",
+      "optimized": {
+        "acceptedFinalContent": true,
+        "changedFiles": [
+          "src/timeout.ts"
+        ],
+        "completed": true,
+        "errorClass": null,
+        "errorCode": null,
+        "exactFinalContent": true,
+        "finalContentHash": "35dd955ca2e4f9f437bb66cb9fe23f682d11c4f616b8613022bfde97444a9bcb",
+        "firstPass": true,
+        "latencyMs": 24149,
+        "measurementComplete": true,
+        "mutationObserved": true,
+        "qualityBps": 10000,
+        "repaired": false,
+        "usage": {
+          "attemptedCalls": 1,
+          "cachedInputTokens": 0,
+          "complete": true,
+          "finishReasons": {
+            "stop": 1
+          },
+          "inputTokens": 443,
+          "missingUsageCalls": 0,
+          "outputTokens": 169,
+          "reasoningOutputTokens": 0,
+          "successfulCalls": 1,
+          "totalTokens": 612
+        },
+        "verification": "PASS"
+      }
+    },
+    {
+      "baseline": {
+        "acceptedFinalContent": false,
+        "changedFiles": [],
+        "completed": false,
+        "errorClass": "ProviderError",
+        "errorCode": "provider_timeout",
+        "exactFinalContent": false,
+        "finalContentHash": "c4788c2c929fff185409ca8bf7e7974d591e53bfa986300c34406472dd588737",
+        "firstPass": false,
+        "latencyMs": 262074,
+        "measurementComplete": false,
+        "mutationObserved": true,
+        "qualityBps": 0,
+        "repaired": false,
+        "usage": {
+          "attemptedCalls": 2,
+          "cachedInputTokens": 0,
+          "complete": false,
+          "finishReasons": {
+            "stop": 1
+          },
+          "inputTokens": 662,
+          "missingUsageCalls": 1,
+          "outputTokens": 274,
+          "reasoningOutputTokens": 0,
+          "successfulCalls": 1,
+          "totalTokens": 936
+        },
+        "verification": "FAIL"
+      },
+      "id": "minimal-role-normalization",
+      "optimized": {
+        "acceptedFinalContent": false,
+        "changedFiles": [],
+        "completed": false,
+        "errorClass": "MissionDomainError",
+        "errorCode": "grounded_plan_edit_no_change",
+        "exactFinalContent": false,
+        "finalContentHash": "3079298309550eabc59c0689899a35ab9b64f35335d3f48650ece9edffbd3e0b",
+        "firstPass": false,
+        "latencyMs": 53711,
+        "measurementComplete": true,
+        "mutationObserved": false,
+        "qualityBps": 0,
+        "repaired": false,
+        "usage": {
+          "attemptedCalls": 1,
+          "cachedInputTokens": 0,
+          "complete": true,
+          "finishReasons": {
+            "stop": 1
+          },
+          "inputTokens": 459,
+          "missingUsageCalls": 0,
+          "outputTokens": 96,
+          "reasoningOutputTokens": 0,
+          "successfulCalls": 1,
+          "totalTokens": 555
+        },
+        "verification": "FAIL"
+      }
+    },
+    {
+      "baseline": {
+        "acceptedFinalContent": false,
+        "changedFiles": [],
+        "completed": false,
+        "errorClass": "MissionDomainError",
+        "errorCode": "repair_no_change",
+        "exactFinalContent": false,
+        "finalContentHash": "e59985667d127fe90e86170499cb16c5229e3771768dfce57471696f83319a55",
+        "firstPass": false,
+        "latencyMs": 158008,
+        "measurementComplete": true,
+        "mutationObserved": true,
+        "qualityBps": 0,
+        "repaired": false,
+        "usage": {
+          "attemptedCalls": 2,
+          "cachedInputTokens": 0,
+          "complete": true,
+          "finishReasons": {
+            "stop": 2
+          },
+          "inputTokens": 1173,
+          "missingUsageCalls": 0,
+          "outputTokens": 1323,
+          "reasoningOutputTokens": 0,
+          "successfulCalls": 2,
+          "totalTokens": 2496
+        },
+        "verification": "FAIL"
+      },
+      "id": "retryable-408-429-5xx",
+      "optimized": {
+        "acceptedFinalContent": true,
+        "changedFiles": [
+          "src/retry.ts"
+        ],
+        "completed": true,
+        "errorClass": null,
+        "errorCode": null,
+        "exactFinalContent": true,
+        "finalContentHash": "aa85019edf4f21145db5b0a8b233bfce82697f2ad45d3a0257302d38c9bc75e2",
+        "firstPass": false,
+        "latencyMs": 24443,
+        "measurementComplete": true,
+        "mutationObserved": true,
+        "qualityBps": 9500,
+        "repaired": true,
+        "usage": {
+          "attemptedCalls": 2,
+          "cachedInputTokens": 0,
+          "complete": true,
+          "finishReasons": {
+            "stop": 2
+          },
+          "inputTokens": 903,
+          "missingUsageCalls": 0,
+          "outputTokens": 287,
+          "reasoningOutputTokens": 0,
+          "successfulCalls": 2,
+          "totalTokens": 1190
+        },
+        "verification": "PASS"
+      }
+    }
+  ],
+  "suite": "strength",
+  "summary": {
+    "baselineCompleted": 0,
+    "baselineFirstPass": 0,
+    "candidateCompleted": 3,
+    "candidateFirstPass": 2,
+    "completePairs": 3,
+    "qualityLiftBps": 9833,
+    "status": "PARTIAL",
+    "tokenMatchedPairs": 3,
+    "tokenReductionBps": 5735,
+    "totalBaselineCalls": 5,
+    "totalBaselineLatencyMs": 308904,
+    "totalBaselineTokens": 6131,
+    "totalOptimizedCalls": 4,
+    "totalOptimizedLatencyMs": 78571,
+    "totalOptimizedTokens": 2615,
+    "callReductionBps": 2000,
+    "latencyReductionBps": 7456
+  }
+}
