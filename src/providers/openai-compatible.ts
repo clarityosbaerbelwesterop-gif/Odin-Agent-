@@ -374,7 +374,13 @@ function parseStructuredOutput(
   ) {
     return undefined;
   }
-  return parseJsonValue(provider, text, "Structured output");
+  return parseJsonValue(provider, unwrapExactJsonFence(text), "Structured output");
+}
+
+function unwrapExactJsonFence(text: string): string {
+  const trimmed = text.trim();
+  const match = /^```(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n```$/u.exec(trimmed);
+  return match?.[1]?.trim() ?? text;
 }
 
 function validateExtraHeaders(

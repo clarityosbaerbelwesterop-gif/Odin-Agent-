@@ -140,3 +140,83 @@ test("generic compatible reasoning requires an explicit wire mapping", async () 
   );
   assert.equal(transport.requests.length, 0);
 });
+
+test("compatible strict structured output accepts one exact JSON markdown fence", async () => {
+  const transport = new MockTransport(() =>
+    jsonResponse({
+      choices: [
+        {
+          finish_reason: "stop",
+          index: 0,
+          message: { content: '```json\n{"ok":true}\n```', role: "assistant" },
+        },
+      ],
+      id: "chat_fenced",
+      model: "test-model",
+      usage: { completion_tokens: 8, prompt_tokens: 8, total_tokens: 16 },
+    }),
+  );
+  const provider = new NvidiaProvider({
+    capabilities: new CapabilityRegistry([capabilityProfile("nvidia")]),
+    credential: () => "nvidia-key",
+    transport,
+  });
+  const response = await provider.generate({
+    ...basicRequest(),
+    responseFormat: {
+      name: "strict_object",
+      schema: {
+        additionalProperties: false,
+        properties: { ok: { type: "boolean" } },
+        required: ["ok"],
+        type: "object",
+      },
+      strict: true,
+      type: "json_schema",
+    },
+  });
+  assert.deepEqual(response.structuredOutput, { ok: true });
+});
+
+test("compatible structured output never extracts fenced JSON from surrounding prose", async () => {
+  const transport = new MockTransport(() =>
+    jsonResponse({
+      choices: [
+        {
+          finish_reason: "stop",
+          index: 0,
+          message: { content: 'Result:\n```json\n{"ok":true}\n```', role: "assistant" },
+        },
+      ],
+      id: "chat_prose_fenced",
+      model: "test-model",
+      usage: { completion_tokens: 9, prompt_tokens: 8, total_tokens: 17 },
+    }),
+  );
+  const provider = new NvidiaProvider({
+    capabilities: new CapabilityRegistry([capabilityProfile("nvidia")]),
+    credential: () => "nvidia-key",
+    transport,
+  });
+  await assert.rejects(
+    provider.generate({
+      ...basicRequest(),
+      responseFormat: {
+        name: "strict_object",
+        schema: {
+          additionalProperties: false,
+          properties: { ok: { type: "boolean" } },
+          required: ["ok"],
+          type: "object",
+        },
+        strict: true,
+        type: "json_schema",
+      },
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof ProviderError);
+      assert.equal(error.category, "malformed_response");
+      return true;
+    },
+  );
+});
