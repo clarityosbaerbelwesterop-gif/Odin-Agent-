@@ -1,3 +1,4 @@
+import { hasValidCapabilityCurationReportHash } from "./report-integrity.js";
 import type { CapabilityCandidateRef, CapabilityCurationReport } from "./types.js";
 import { CapabilityCurationError } from "./types.js";
 
@@ -41,6 +42,11 @@ export function proposeCapabilityReplay(
   if (!Array.isArray(reportsValue) || reportsValue.length > policy.maxReports) {
     invalid("Replay report collection is malformed.");
   }
+  for (const report of reportsValue) {
+    if (!hasValidCapabilityCurationReportHash(report)) {
+      invalid("Replay curation report hash does not match its content.");
+    }
+  }
   const reports = [...reportsValue].sort((left, right) =>
     left.reportHash.localeCompare(right.reportHash),
   );
@@ -50,7 +56,6 @@ export function proposeCapabilityReplay(
 
   const proposals: CapabilityReplayProposal[] = [];
   for (const report of reports) {
-    if (!/^[a-f0-9]{64}$/u.test(report.reportHash)) invalid("Replay report hash is invalid.");
     const proposal = proposalFor(report, observedAt, policy);
     proposals.push(proposal);
     if (proposals.length > policy.maxProposals) {
