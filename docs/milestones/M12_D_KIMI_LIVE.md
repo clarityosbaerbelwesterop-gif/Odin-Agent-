@@ -87,6 +87,15 @@ capable live model on one coding task. A credible 'bridge to AGI' evaluation req
 families, transfer, long-horizon recovery, tool learning, memory, multi-agent work, adversarial safety,
 and repeated comparisons against stronger baselines.
 
+## Verification chain
+
+- secret-free preparation CI `33837231690`: success with 258/258 tests plus `smoke:kimi:dry`;
+- real live provider run `33837291528`: success with the sanitized 100/100 result above;
+- one-shot evidence documentation sync `33837694908`: success; helper removed in the same bot commit;
+- synchronized evidence head before final normal CI: `4e773df58eda9ccf36103336157412b94524e7c2`;
+- this human-authored commit exists only to trigger the final normal PR verification on the synchronized,
+  manual-only workflow state. No live provider call is triggered by it.
+
 ## Remaining M12 proof
 
 - hosted sandbox live smoke and cleanup evidence;
