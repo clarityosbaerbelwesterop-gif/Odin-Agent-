@@ -2,9 +2,9 @@ import { createHash } from "node:crypto";
 import { MissionDomainError } from "../mission/runtime.js";
 import type {
   CapabilityProfile,
+  ConversationMessage,
   JsonObject,
   JsonValue,
-  ModelMessage,
   ModelProvider,
   ModelRequest,
   ModelResponse,
@@ -293,7 +293,7 @@ function parseRepairBinding(payload: JsonObject): RepairBinding {
 }
 
 function parseLastUserJson(request: ModelRequest): JsonObject {
-  let user: Extract<ModelMessage, { readonly role: "user" }> | undefined;
+  let user: ConversationMessage | undefined;
   for (let index = request.messages.length - 1; index >= 0; index -= 1) {
     const message = request.messages[index];
     if (message?.role === "user") {
