@@ -14,6 +14,12 @@ export interface LiveAbExecutionProfileInput {
 
 export type LiveAbExecutionProfile = Readonly<LiveAbExecutionProfileInput>;
 
+export interface LiveProviderCallCounter {
+  readonly limit: number;
+  readonly value: number;
+  consume(): number;
+}
+
 const MAX_LIVE_TIMEOUT_MS = 600_000;
 const MIN_MEASUREMENT_HEADROOM_MS = 30_000;
 
@@ -47,6 +53,24 @@ export function createLiveAbExecutionProfile(
   }
 
   return Object.freeze({ ...input });
+}
+
+export function createLiveProviderCallCounter(limit: number): LiveProviderCallCounter {
+  assertPositiveSafeInteger(limit, "providerCallLimit");
+  let value = 0;
+  return Object.freeze({
+    limit,
+    get value() {
+      return value;
+    },
+    consume() {
+      if (value >= limit) {
+        throw new RangeError("Live provider call ceiling exceeded.");
+      }
+      value += 1;
+      return value;
+    },
+  });
 }
 
 export const M15_KIMI_CODING_AB_PROFILE = createLiveAbExecutionProfile({
