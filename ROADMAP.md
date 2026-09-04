@@ -152,8 +152,8 @@ provider benchmark results or permit model self-confidence to become independent
 
 ## M12 — Production hardening and release proof
 
-Status: **PARTIALLY_VERIFIED**. Local deterministic M12-A/B hardening is verified; live and production
-infrastructure proof remains deliberately open.
+Status: **PARTIALLY_VERIFIED**. Local deterministic M12-A/B/C hardening and release-proof controls are
+verified; live provider/sandbox and public-production infrastructure proof remains deliberately open.
 
 - [x] Canonical workspace boundary rejects traversal, absolute-path ambiguity, root-prefix confusion,
   and symlink escapes for read/write/cwd resolution.
@@ -167,14 +167,19 @@ infrastructure proof remains deliberately open.
   rejects conflicting replay, requires cleanup, makes release idempotent, and forbids released-session reuse.
 - [x] Normal pull-request CI observed: run `33794095989`, 237/237 tests passed; aggregate coverage was
   89.43% lines, 76.28% branches, and 95.37% functions.
-- [ ] M12-C structured observability, deterministic load/recovery evidence, backup/recovery contracts,
-  release manifests, and fail-closed release gates.
+- [x] M12-C structured secret-safe observability, deterministic load/recovery evidence, backup/restore
+  contracts, integrity-bound release manifests, and fail-closed local/integration/live release gates.
+- [x] M12-C normal PR CI observed: run `33796268313`, 258/258 tests passed; aggregate coverage was
+  89.29% lines, 76.24% branches, and 95.64% functions.
+- [x] Local verify + recovery + restore evidence can pass only the `local` release gate; the same evidence
+  is explicitly proven insufficient for `integration` and `live` claims.
 - [ ] Live provider/sandbox smoke and evaluation matrix against explicitly authorized credentials/resources.
 - [ ] Public-service authentication/realtime transport and deployment hardening after local boundaries remain intact.
 
-M12-A/B prove local deterministic enforcement and a provider-neutral remote-sandbox lifecycle contract.
+M12-A/B/C prove local deterministic enforcement, a provider-neutral remote-sandbox lifecycle contract,
+secret-safe observability, deterministic recovery/backup evidence, and fail-closed release-claim levels.
 They do **not** prove Docker/Kubernetes/VM isolation, a specific hosted sandbox API, transport-level DNS
-pinning, live-provider compatibility, deployment, production auth, backups, or public traffic.
+pinning, live-provider compatibility, deployment, production auth, cloud backup guarantees, or public traffic.
 
 ## Post-MVP capability track
 

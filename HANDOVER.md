@@ -1,121 +1,67 @@
 # Engineering handover
 
-Updated: 2026-09-03.
+Updated: 2026-09-04.
 
 ## Current state
 
 - Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).
-- `main` currently contains verified M0–M11 at M11 squash merge
-  `bd9c42a2c07918aed140aebcd0d0d59082a71678`.
-- Active branch: `agent/m12-production-hardening`; Draft PR #15 targets `main`.
-- M12-A/B local hardening and the provider-neutral sandbox lifecycle are repository/CI verified.
-- Normal PR run `33794095989` passed on human-authored head
-  `661510592ffa7e9c2370d8d0097f8355ea9f34fc` with **237/237 tests**, 0 failures, and aggregate coverage
-  **89.43% lines / 76.28% branches / 95.37% functions**.
-- M12 remains **PARTIALLY_VERIFIED**. No hosted sandbox provider, live model provider, deployment,
-  production migration, public traffic, billing, or paid resource was exercised.
-- The user has explicitly authorized merging verified work and immediate continuation into remaining
-  milestones/tranches.
+- `main` contains verified M0–M11 plus merged M12-A/B at squash merge
+  `144e1115196c56e550a5b1da10973fe135d23276`.
+- Active branch: `agent/m12c-release-proof`; Draft PR #16 targets `main`.
+- M12-C local implementation is repository/CI verified on head
+  `5e2a387ca2b2fd4905ac03560df4878be7cda35b`.
+- Normal PR run `33796268313` passed **258/258 tests**, 0 failures, with aggregate coverage
+  **89.29% lines / 76.24% branches / 95.64% functions**.
+- M12 remains **PARTIALLY_VERIFIED** because no authorized live provider/sandbox, production deploy,
+  public-service auth/realtime transport, migration, or public traffic proof has been completed yet.
+- The user has now explicitly authorized a minimal NVIDIA live-provider smoke run using the existing
+  repository secret and requested Kimi K3 if that model is actually available to the key.
 
-## M12-A/B partially verified capability
+## M12-C verified local capability
 
-M12 currently adds a fail-closed local execution and sandbox-selection boundary:
+- bounded structured observability with deterministic event identity and pre-log secret-like metadata rejection;
+- immutable hash-bound release evidence and deterministic manifests;
+- monotonic `local` / `integration` / `live` evidence levels that cannot be upgraded by relabelling;
+- fail-closed release gates for missing/stale/foreign/failed/tampered/duplicate/unreferenced/weak evidence;
+- backup manifests and restore verification bound to exact source/restored state hashes;
+- deterministic five-scenario recovery proof and conversion to scoped release evidence;
+- end-to-end local release proof: repo verify + recovery + restore passes only `local`, while
+  `integration` and `live` remain blocked without real higher-level evidence;
+- concurrent sandbox release race fixed: identical releases collapse to one remote destroy, conflicting
+  release reasons fail closed.
 
-- canonical workspace root plus `realpath`/symlink escape enforcement for read, write, and cwd;
-- rejection of lexical traversal, absolute-path ambiguity, NUL/backslash ambiguity, and root-prefix
-  confusion;
-- stable trusted command IDs only, `shell: false`, runtime-owned executable/arguments, explicit
-  environment inheritance, concurrency ceilings, timeout/cancellation, and independent bounded
-  stdout/stderr;
-- process concurrency is reserved before asynchronous cwd resolution and released through `finally`,
-  preventing the race discovered during M12 testing;
-- outbound HTTPS/host/port/address policy with injected DNS evidence, private/reserved address denial,
-  and destination/redirect re-authorization;
-- exact `provider + model + profileVersion` binding to a sandbox backend;
-- provider credentials resolve with exact provider/model context; sandbox credentials remain behind
-  runtime-owned `credentialRef`s and are not exposed to model, worker, client, or public metadata;
-- M11 routing decisions deterministically select the corresponding sandbox backend for primary or
-  escalation routes;
-- remote sandbox allocation uses deterministic idempotency keys, collapses concurrent identical
-  creates, rejects conflicting replay, requires `destroy`, and provides replay-safe cleanup;
-- released sandbox allocations cannot silently become usable again;
-- optional provider expiry metadata is validated when present and structurally omitted when absent.
+## Boundaries retained
 
-This is a provider-neutral contract and bounded host-process boundary. It is **not** proof of a
-specific hosted sandbox API, kernel/container isolation, transport-level DNS pinning, or production
-readiness.
-
-## M11 verified capability retained beneath M12
-
-M11 remains the adaptive model/reasoning policy boundary:
-
-- hash-addressed independent/project evaluation records bind exact provider, model, profile version,
-  task class, and supported reasoning effort;
-- stale/future/self-authored/tampered evidence fails closed;
-- capability filtering and risk/uncertainty-adjusted quality floors run before cost/latency
-  optimization;
-- deterministic primary selection and bounded stronger escalation routes;
-- bounded branch, critique, repair, model-call, parallel-call, estimated-cost, and estimated-token
-  ceilings;
-- `AdaptiveReasoningController` accepts only with independent non-contradictory PASS evidence;
-- response-cache metadata is identity/freshness scoped and sensitive work disables caching;
-- offline evaluation compares small/fast and stronger profiles without live provider spend.
-
-M12 consumes M11 route identity but does not let routing mint M3 tool capabilities, manufacture M5
-evidence, claim M7 ownership, promote M10 skills, expand budgets, or expose credentials.
+- M3 remains execution/capability authority; M5 remains completion authority.
+- M6 memory is still an in-memory contract; M7 ownership is logical single-process coordination.
+- M8 durability is local SQLite and does not imply distributed exactly-once effects.
+- M9 is a local client protocol/reference shell, not production auth/realtime transport.
+- M10 learned/community skills cannot self-promote.
+- M11 offline evaluation does not prove live model quality.
+- M12 host-process execution is not kernel/container isolation; network policy is not transport-level
+  DNS pinning; provider-neutral sandbox contracts are not proof of a hosted sandbox implementation.
+- Local fixtures never become integration/live evidence.
 
 ## Verified evidence history
 
-- M0 run `33664864552`.
-- M1 run `33667957350`.
-- M2 run `33672695583` with 41 tests.
-- M3 implementation run `33675783522`; verified merge
-  `0a9a76bc7ce2b52e8e879d81d3b261a8168efb29`.
-- M4 implementation run `33678970596`; documentation run `33679222149`; merge
-  `c60ee329d66511dfbd708176c850557d48e9c9df`.
-- M5 implementation run `33724426019` with 77 tests; documentation run `33724647879`.
-- M6 implementation run `33752964771` with 108 tests; documentation run `33753281792`; final evidence
-  run `33753417686`.
-- M7 implementation run `33755851793` with 132 tests; documentation run `33756217402`.
-- M8 implementation run `33766277108` with 149 tests; documentation run `33766944528`; merge
-  `ce0fdb0454999218d1d1145f406d5165a225e6a8`.
-- M9 implementation run `33773644733` with 161 tests; synchronized docs run `33774320732`; merge
-  `0d47e31fec79b6341be2ced4b0d67df126eeabe4`.
-- M10 implementation run `33777800516` with 172 tests; clean docs run `33780349974`; final evidence
-  run `33780616385`; squash merge `bfc76b57a3531f5b6824fa3a3c285c5a55fd13d0`.
-- M11 final squash merge `bd9c42a2c07918aed140aebcd0d0d59082a71678`; merge message records exact-head CI
-  `33784885858`.
-- M12-A/B implementation/lifecycle normal PR run `33794095989`: 237/237 tests, 0 failures,
-  89.43% line / 76.28% branch / 95.37% function coverage.
-
-CI uses injected provider/tool/worker/skill/routing/sandbox boundaries and temporary local SQLite
-stores. M12-A/B used no live provider call, hosted sandbox call, deployment, production migration,
-public traffic, billing change, or paid external resource.
-
-## Security and architecture boundaries
-
-- M3 remains the only tool execution/capability authority.
-- M5 remains completion authority; routing or sandbox success cannot become independent evidence.
-- M6 memory remains an in-memory contract; no production vector DB/FTS hybrid is claimed.
-- M7 ownership remains logical single-process coordination.
-- M8 durability remains local SQLite; no distributed cross-host fencing or exactly-once external effect
-  is claimed.
-- M9 remains a local client protocol/reference UI proof, not hosted auth/realtime service.
-- M10 skills remain procedure only; learned/community packages cannot self-promote.
-- M11 evaluations remain offline deterministic evidence fixtures, not live-provider benchmarks.
-- M12 host-process execution is not a kernel/container sandbox; outbound policy is not transport-level
-  DNS pinning; the remote sandbox interface is provider-neutral and injected, not live-provider proof.
-- No production public service/auth/realtime transport, distributed worker fleet, live MCP gateway,
-  production backup service, or live-provider E2E is verified yet.
+- M10 implementation run `33777800516`, 172/172; squash merge
+  `bfc76b57a3531f5b6824fa3a3c285c5a55fd13d0`.
+- M11 final squash merge `bd9c42a2c07918aed140aebcd0d0d59082a71678`; exact-head CI recorded in merge message.
+- M12-A/B normal PR run `33794095989`: 237/237; squash merge
+  `144e1115196c56e550a5b1da10973fe135d23276`.
+- M12-C normal PR run `33796268313`: 258/258, 89.29% line / 76.24% branch / 95.64% function coverage.
 
 ## Exact next action
 
-1. Finish synchronizing M12-A/B documentation and obtain a final normal PR-specific `npm run verify`
+1. Finish M12-C documentation synchronization and obtain a final normal PR-specific `npm run verify`
    on the exact clean head.
-2. If PR #15 remains mergeable, mark it ready and squash-merge with exact-head protection under the
-   user's authorization.
-3. Create a fresh branch from the resulting `main` for **M12-C**.
-4. Implement no-cost M12-C work: structured secret-safe observability, deterministic load/recovery
-   fixtures, backup/recovery contracts, release-evidence manifests, and fail-closed release gates.
-5. Do not perform live provider/sandbox calls, deployment, production migration, public traffic,
-   billing changes, or paid-resource creation without separate explicit approval.
+2. Mark PR #16 ready and squash-merge with exact-head protection under the user's standing merge approval.
+3. Create a fresh live-evaluation branch from the resulting `main`.
+4. Add a narrowly scoped GitHub Actions live-smoke path that reads `NV_API_KEY` only from repository
+   secrets, never prints it, discovers/validates the exact NVIDIA Kimi model identifier, and performs one
+   low-volume end-to-end task through Odin's provider/runtime boundary.
+5. Record latency/usage/output/evidence and score the task against deterministic acceptance criteria. Do
+   not claim superiority over GPT-6 Astra/Fable 5.1 unless the same task is actually run against authorized
+   comparable baselines; use architecture/eval evidence only for an AGI-bridge assessment.
+6. Continue remaining no-cost post-MVP tracks after the live smoke, without deployment, production
+   migration, or paid-resource creation beyond this explicitly authorized minimal provider call.
