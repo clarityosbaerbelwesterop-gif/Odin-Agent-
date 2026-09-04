@@ -83,7 +83,11 @@ test("grounded planning removes model-owned SHA/task metadata and rebinds truste
   const inner = new ScriptedProvider([
     modelResponse(
       {
-        change: { content: FIXED_CONTENT, path: "src/user.ts" },
+        change: {
+          newText: "  return canonicalizeId(value);",
+          oldText: "  return value;",
+          path: "src/user.ts",
+        },
         qualityCommandId: "verify",
       },
       50,
@@ -96,7 +100,7 @@ test("grounded planning removes model-owned SHA/task metadata and rebinds truste
   const response = await provider.generate(request);
   assert.equal(inner.requests.length, 1);
   const sent = inner.requests[0];
-  assert.equal(responseFormatName(sent), "odin_grounded_coding_plan_v1");
+  assert.equal(responseFormatName(sent), "odin_grounded_coding_plan_v2");
   assert.ok((sent?.maxOutputTokens ?? 10_000) < 3_072);
   const sentText = requestText(sent);
   assert.equal(sentText.includes(TARGET_SHA), false);
@@ -124,7 +128,13 @@ test("grounded repair asks only for replacement content and restores runtime pat
     sha: TARGET_SHA,
     truncated: false,
   };
-  const inner = new ScriptedProvider([modelResponse({ content: FIXED_CONTENT }, 35, 15)]);
+  const inner = new ScriptedProvider([
+    modelResponse(
+      { newText: "  return canonicalizeId(value);", oldText: "  return value;" },
+      35,
+      15,
+    ),
+  ]);
   const provider = new GroundedCodingProvider(inner);
   const request: ModelRequest = {
     maxOutputTokens: 2_048,
@@ -158,7 +168,7 @@ test("grounded repair asks only for replacement content and restores runtime pat
 
   const response = await provider.generate(request);
   const sent = inner.requests[0];
-  assert.equal(responseFormatName(sent), "odin_grounded_coding_repair_v1");
+  assert.equal(responseFormatName(sent), "odin_grounded_coding_repair_v2");
   const sentText = requestText(sent);
   assert.equal(sentText.includes(TARGET_SHA), false);
   assert.equal(sentText.includes("failureSignature"), false);
@@ -173,7 +183,11 @@ test("grounded provider rejects a model-selected path outside trusted discovery"
   const inner = new ScriptedProvider([
     modelResponse(
       {
-        change: { content: "export const compromised = true;\n", path: "src/other.ts" },
+        change: {
+          newText: "export const compromised = true;",
+          oldText: "  return value;",
+          path: "src/other.ts",
+        },
         qualityCommandId: "verify",
       },
       20,
@@ -197,7 +211,11 @@ test("non-M4 requests pass through unchanged", async () => {
 
 test("grounded provider normalizes model schema violations into a bounded contract failure", async () => {
   const inner = new ScriptedProvider([
-    modelResponse({ change: { path: "src/user.ts" }, qualityCommandId: "verify" }, 10, 5),
+    modelResponse(
+      { change: { oldText: "  return value;", path: "src/user.ts" }, qualityCommandId: "verify" },
+      10,
+      5,
+    ),
   ]);
   const provider = new GroundedCodingProvider(inner);
   await assert.rejects(provider.generate(planRequest(discovery())), (error: unknown) => {
@@ -205,4 +223,47 @@ test("grounded provider normalizes model schema violations into a bounded contra
     assert.equal(error.message, "Grounded coding plan failed schema validation.");
     return true;
   });
+});
+
+test("grounded surgical edit rejects ambiguous and no-op model edits", async () => {
+  const ambiguous = new ScriptedProvider([
+    modelResponse(
+      {
+        change: { newText: "value", oldText: "value", path: "src/user.ts" },
+        qualityCommandId: "verify",
+      },
+      10,
+      5,
+    ),
+  ]);
+  await assert.rejects(
+    new GroundedCodingProvider(ambiguous).generate(planRequest(discovery())),
+    (error: unknown) => {
+      assert.ok(error instanceof MissionDomainError);
+      assert.equal(error.message, "Grounded coding plan edit does not change trusted content.");
+      return true;
+    },
+  );
+
+  const duplicate = new ScriptedProvider([
+    modelResponse(
+      {
+        change: { newText: "VALUE", oldText: "value", path: "src/user.ts" },
+        qualityCommandId: "verify",
+      },
+      10,
+      5,
+    ),
+  ]);
+  await assert.rejects(
+    new GroundedCodingProvider(duplicate).generate(planRequest(discovery())),
+    (error: unknown) => {
+      assert.ok(error instanceof MissionDomainError);
+      assert.equal(
+        error.message,
+        "Grounded coding plan edit oldText is ambiguous in trusted content.",
+      );
+      return true;
+    },
+  );
 });

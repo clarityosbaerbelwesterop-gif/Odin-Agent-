@@ -85,6 +85,17 @@ const MISSION_DOMAIN_CODES = new Map<string, string>([
   ["Grounded coding change is not an object.", "grounded_plan_change_invalid"],
   ["Grounded coding path is invalid.", "grounded_plan_path_invalid"],
   ["Grounded coding content is invalid.", "grounded_plan_content_invalid"],
+  ["Grounded coding oldText is invalid.", "grounded_plan_old_text_invalid"],
+  ["Grounded coding newText is invalid.", "grounded_plan_new_text_invalid"],
+  [
+    "Grounded coding plan edit oldText was not found in trusted content.",
+    "grounded_plan_edit_missing",
+  ],
+  [
+    "Grounded coding plan edit oldText is ambiguous in trusted content.",
+    "grounded_plan_edit_ambiguous",
+  ],
+  ["Grounded coding plan edit does not change trusted content.", "grounded_plan_edit_no_change"],
   ["Grounded coding quality command is invalid.", "grounded_plan_quality_command_invalid"],
   [
     "Grounded coding provider selected a path outside trusted discovery.",
@@ -97,6 +108,20 @@ const MISSION_DOMAIN_CODES = new Map<string, string>([
   ["Grounded coding repair is not a JSON object.", "grounded_repair_structured_output_missing"],
   ["Grounded coding repair failed schema validation.", "grounded_repair_schema_invalid"],
   ["Grounded coding repair content is invalid.", "grounded_repair_content_invalid"],
+  ["Grounded coding repair oldText is invalid.", "grounded_repair_old_text_invalid"],
+  ["Grounded coding repair newText is invalid.", "grounded_repair_new_text_invalid"],
+  [
+    "Grounded coding repair edit oldText was not found in current content.",
+    "grounded_repair_edit_missing",
+  ],
+  [
+    "Grounded coding repair edit oldText is ambiguous in current content.",
+    "grounded_repair_edit_ambiguous",
+  ],
+  [
+    "Grounded coding repair edit does not change current content.",
+    "grounded_repair_edit_no_change",
+  ],
 ]);
 
 const TERMINAL_MEASURED_FAILURE_CODES = new Set([
@@ -107,6 +132,11 @@ const TERMINAL_MEASURED_FAILURE_CODES = new Set([
   "budget_toolCalls",
   "grounded_plan_change_invalid",
   "grounded_plan_content_invalid",
+  "grounded_plan_edit_ambiguous",
+  "grounded_plan_edit_missing",
+  "grounded_plan_edit_no_change",
+  "grounded_plan_new_text_invalid",
+  "grounded_plan_old_text_invalid",
   "grounded_plan_path_invalid",
   "grounded_plan_quality_command_invalid",
   "grounded_plan_quality_command_unknown",
@@ -114,6 +144,11 @@ const TERMINAL_MEASURED_FAILURE_CODES = new Set([
   "grounded_plan_structured_output_missing",
   "grounded_plan_target_outside_discovery",
   "grounded_repair_content_invalid",
+  "grounded_repair_edit_ambiguous",
+  "grounded_repair_edit_missing",
+  "grounded_repair_edit_no_change",
+  "grounded_repair_new_text_invalid",
+  "grounded_repair_old_text_invalid",
   "grounded_repair_schema_invalid",
   "grounded_repair_structured_output_missing",
   "plan_dependencies_forbidden",
