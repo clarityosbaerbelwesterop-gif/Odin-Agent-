@@ -425,6 +425,7 @@ function scanFile(
   const lowerPath = file.path.toLowerCase();
   if (
     lowerPath.startsWith(".github/workflows/") ||
+    lowerPath.includes("/.github/workflows/") ||
     lowerPath.includes("/hooks/") ||
     lowerPath.endsWith("/hooks.json")
   ) {
