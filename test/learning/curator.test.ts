@@ -7,6 +7,7 @@ import {
   type LearningEvidenceAuthority,
   LearningError,
   type LearningProposal,
+  type LearningRecordResult,
   type VerifiedLearningAttestation,
 } from "../../src/learning/index.js";
 import { InMemoryMemoryStore } from "../../src/memory/index.js";
@@ -94,10 +95,14 @@ async function addSupport(
   taskId: string,
   observedAt: string = BASE,
   overrides: Partial<LearningProposal> = {},
-): Promise<ReturnType<EvidenceLearningCurator["recordVerifiedLesson"]> extends Promise<infer T> ? T : never> {
-  const proof = attestation(missionId, taskId, observedAt);
+): Promise<LearningRecordResult> {
+  const input = proposal(missionId, taskId, observedAt, overrides);
+  const proof = attestation(missionId, taskId, observedAt, {
+    projectId: input.projectId,
+    userId: input.userId,
+  });
   authority.set(proof);
-  return curator.recordVerifiedLesson(proposal(missionId, taskId, observedAt, overrides));
+  return curator.recordVerifiedLesson(input);
 }
 
 test("three distinct verified tasks establish a lesson before semantic-memory commit", async () => {
@@ -185,18 +190,18 @@ test("missing, foreign, non-PASS, stale, and malformed evidence are denied", asy
     /requires independent PASS evidence/u,
   );
 
-  authority.set(
-    attestation("foreign", "task", BASE, {
-      projectId: "project-foreign",
-    }),
-  );
   const foreign = proposal("foreign", "task");
-  authority.attestations.set(identity(foreign), attestation("foreign", "task", BASE, { projectId: "project-foreign" }));
+  authority.attestations.set(
+    identity(foreign),
+    attestation("foreign", "task", BASE, { projectId: "project-foreign" }),
+  );
   await assert.rejects(() => curator.recordVerifiedLesson(foreign), /scope or verdict did not match/u);
 
-  const failed = attestation("failed", "task") as VerifiedLearningAttestation & { verdict: string };
-  failed.verdict = "FAIL";
-  authority.attestations.set(identity(proposal("failed", "task")), failed as VerifiedLearningAttestation);
+  const failed = {
+    ...attestation("failed", "task"),
+    verdict: "FAIL",
+  } as unknown as VerifiedLearningAttestation;
+  authority.attestations.set(identity(proposal("failed", "task")), failed);
   await assert.rejects(
     () => curator.recordVerifiedLesson(proposal("failed", "task")),
     /scope or verdict did not match/u,
@@ -256,14 +261,18 @@ test("bounded nudges remain scoped and expose confidence plus evidence instead o
   await addSupport(curator, authority, "m-1", "t-1", BASE);
   await addSupport(curator, authority, "m-2", "t-2", DAY_1);
   await addSupport(curator, authority, "m-3", "t-3", DAY_2);
-  await addSupport(curator, authority, "foreign", "task", DAY_2, {
+  const foreign = await addSupport(curator, authority, "foreign", "task", DAY_2, {
     idempotencyKey: "foreign",
     key: "foreign lesson",
     lesson: "Foreign project content.",
     projectId: "project-2",
     sourceReference: "foreign:source",
     tags: ["foreign"],
-  }).catch(() => undefined);
+  });
+
+  assert.equal(foreign.record.projectId, "project-2");
+  assert.equal(curator.list({ projectId: PROJECT, userId: USER }).length, 1);
+  assert.equal(curator.list({ projectId: "project-2", userId: USER }).length, 1);
 
   const nudges = curator.compileNudges({
     evaluatedAt: DAY_2,
@@ -286,6 +295,30 @@ test("bounded nudges remain scoped and expose confidence plus evidence instead o
   assert.ok(nudge.evidenceRefs.length > 0);
   assert.equal("capability" in nudge, false);
   assert.equal("tool" in nudge, false);
+});
+
+test("learning records also isolate users under the same project", async () => {
+  const authority = new FixtureAuthority();
+  const curator = new EvidenceLearningCurator(authority, new InMemoryMemoryStore());
+  await addSupport(curator, authority, "user-a", "task", BASE);
+  await addSupport(curator, authority, "user-b", "task", BASE, {
+    idempotencyKey: "user-b",
+    userId: "user-2",
+  });
+
+  assert.equal(curator.list({ projectId: PROJECT, userId: USER }).length, 1);
+  assert.equal(curator.list({ projectId: PROJECT, userId: "user-2" }).length, 1);
+  assert.deepEqual(
+    curator.compileNudges({
+      evaluatedAt: DAY_1,
+      limit: 10,
+      maxCharacters: 4_000,
+      projectId: PROJECT,
+      text: "repair",
+      userId: "user-3",
+    }),
+    [],
+  );
 });
 
 test("maintenance cools stale learning and archives unsupported conflicts without deleting memory", async () => {
