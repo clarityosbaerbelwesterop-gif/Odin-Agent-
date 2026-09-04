@@ -2,6 +2,9 @@
 
 Status: **IMPLEMENTATION_COMPLETE_PENDING_CI**. Updated: 2026-09-04.
 
+Implementation code checkpoint before the normal exact-head gate: `cd080b625004009eca322eea1af4c8f728648622`.
+The one-shot formatter completed successfully and removed itself; no temporary M13 helper workflow remains.
+
 ## Objective
 
 Make successful work compound across missions without allowing a model, worker, memory item, or learned
