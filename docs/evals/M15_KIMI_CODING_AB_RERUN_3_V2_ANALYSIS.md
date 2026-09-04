@@ -52,6 +52,10 @@ Normal PR CI run `33888060837` passed **336/336 tests**. All three controls comp
 
 This control demonstrates that the three fixtures are solvable through the current Odin M4/M5 harness when a valid structured plan is supplied. It does **not** prove that every aspect of the live NVIDIA adapter or prompt contract is optimal. The remaining investigation should therefore focus on the live model/provider interaction and model-produced plan/repair quality rather than weakening fixture acceptance or M5.
 
+## Governance verification
+
+Governance synchronization run `33888434077` applied the rerun-3 interpretation to `HANDOVER.md`, `ROADMAP.md`, `ARCHITECTURE.md`, `SECURITY.md`, and the M15 milestone document, then passed `npm run verify` with **336/336 tests**, Biome, strict TypeScript, and the credential-free Kimi dry smoke before committing the synchronized documents. The helper workflow and helper script removed themselves. No live provider call occurred in that synchronization run.
+
 ## Engineering conclusions
 
 1. v2 improved observability: the experiment progressed past the v1 timeout-dominated state and exposed deterministic plan/repair/quality failures.
