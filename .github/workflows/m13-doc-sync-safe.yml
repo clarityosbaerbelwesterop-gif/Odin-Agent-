@@ -1,0 +1,219 @@
+name: M13 safe documentation sync
+
+on:
+  push:
+    branches:
+      - agent/m13-evidence-learning
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m13-evidence-learning
+          fetch-depth: 0
+      - name: Synchronize governance
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from textwrap import dedent
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'anchor missing in {path}: {old[:100]!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              'docs/milestones/M13_EVIDENCE_LEARNING.md',
+              dedent('''\
+              Status: **IMPLEMENTATION_COMPLETE_PENDING_CI**. Updated: 2026-09-04.
+
+              Implementation code checkpoint before the normal exact-head gate: `cd080b625004009eca322eea1af4c8f728648622`.
+              The one-shot formatter completed successfully and removed itself; no temporary M13 helper workflow remains.'''),
+              dedent('''\
+              Status: **IMPLEMENTATION_VERIFIED_PENDING_FINAL_PR_CI**. Updated: 2026-09-04.
+
+              Implementation evidence: helper run `33852005166` passed quality, strict TypeScript, 272/272 tests, and the dry Kimi smoke on corrected head `6165114201d151240125ec890b3560b631f6502b`. Aggregate coverage was 89.42% lines / 76.50% branches / 95.67% functions; `learning/curator` was 91.83% / 80.23% / 96.15%, and the shared secret detector remained 100% / 100% / 100%. The helper removed itself before committing.'''),
+          )
+          replace_once(
+              'docs/milestones/M13_EVIDENCE_LEARNING.md',
+              '- unsupported stale candidates may be archived after a longer configured age;',
+              '- unsupported stale candidates or conflicts below the three-support establishment threshold may be archived after a longer configured age; strongly supported conflicted records remain available for deterministic re-establishment if weaker conflicts are archived;',
+          )
+          replace_once(
+              'docs/milestones/M13_EVIDENCE_LEARNING.md',
+              '- idempotency conflict fails closed;',
+              '- exact idempotency replay returns prior state without requiring fresh evidence lookup, while changed input under the same replay key fails closed before evidence lookup;',
+          )
+
+          roadmap_old = dedent('''\
+          ## Post-MVP capability track
+
+          - [ ] Production hybrid memory retrieval/retention (lexical/FTS plus optional vector retrieval) behind M6 scope and privacy rules.
+          - [ ] Post-task learning curation, memory compression/pruning, and evidence-backed self-nudging.
+          - [ ] Event-driven background mission service, scheduler/triggers, and resumable automation.
+          - [ ] Permissioned MCP/Agent-Skills-style adapters and omnichannel clients behind the same capability model.''')
+          roadmap_new = dedent('''\
+          ## M13 — Evidence-backed post-task learning and memory curation
+
+          - [x] Exact M5-backed learning attestations bind user/project/mission/task, semantic-key hash, lesson hash, sensitivity, verification-result hash, and evidence references.
+          - [x] One or two distinct verified tasks remain tentative; three distinct verified tasks are required before a lesson becomes established.
+          - [x] Conflicting lessons under one scoped key block nudging and M6 promotion until deterministic maintenance resolves the conflict.
+          - [x] Established learning enters M6 only as lower-authority `verified_learning` semantic memory and remains invisible to broad retrieval without explicit `m13-learning` opt-in.
+          - [x] Exact replay is idempotent without a fresh evidence lookup; changed replay input fails closed before evidence lookup and the post-await replay check still protects races.
+          - [x] Obvious credential-like content is rejected across semantic keys, lessons, tags, and source references via the shared M12/M13 secret-text primitive.
+          - [x] M13 cannot mint M3 tools/capabilities, promote M10 skills, infer durable user preferences, raise budgets, alter routing floors, or mark tasks complete.
+          - [x] Corrected implementation verification: run `33852005166`, 272/272 tests, 89.42% line / 76.50% branch / 95.67% function coverage.
+
+          M13 makes successful verified work compound without converting memory into authority. It is capability amplification, not evidence of AGI/ASI or permission for recursive self-modification.
+
+          ## M14 — Skill intake firewall
+
+          - [ ] Discover external Agent Skills / Claude plugins without executing third-party code during intake.
+          - [ ] Resolve mutable refs to immutable commit SHAs and bind repository, subdirectory, subset, manifest, license metadata, and content hashes.
+          - [ ] Bound file count, byte size, depth, symlinks, binaries, scripts, hooks, MCP configuration, workflows, and nested references.
+          - [ ] Emit stable risk findings for prompt injection, credential collection, exfiltration, shell/subprocess use, destructive writes, self-promotion, memory poisoning, MCP/tool poisoning, dependency installation, and privilege escalation.
+          - [ ] Treat incomplete/partial/failed analysis as non-safe and quarantine rather than silently accepting.
+          - [ ] Convert only fully analyzed accepted material into M10 `community` candidates; intake may never activate a skill or create M3 authority.
+          - [ ] Pin reviewed source snapshots and require a new intake result whenever upstream content changes.
+
+          Research fixtures reviewed for M14: `ComposioHQ/awesome-claude-skills@be2a406907dbc61b73e6827ded415c96139d13a2`, `multica-ai/andrej-karpathy-skills@2c606141936f1eeef17fa3043a72095b4765b9c2`, `alirezarezvani/claude-skills@19392f7a08264ed00486a251f5b2098321771f94`, `anthropics/claude-plugins-official@1dd995193ba20bba51ca6c681aa8d3398dbd80a2`, and `coreyhaines31/marketingskills@5cd4a7eae3a9a7b5d2aceb0613f7d1f7c4b65968`.
+
+          ## M15 — Curated capability pack and offline improvement evaluation
+
+          - [ ] Deduplicate external procedures against canonical Odin M2/M4/M5/M7/M10/M11 behavior instead of stacking redundant prompts.
+          - [ ] Evaluate candidate skills with deterministic held-out fixtures for quality, regressions, latency/context cost, authority safety, and task-class usefulness before trusted promotion.
+          - [ ] Build progressively loaded domain packs for coding, research, security, data/documents, product/business, and marketing from winners only.
+          - [ ] Adapt high-leverage coding discipline (explicit assumptions, simplicity, surgical edits, goal-driven verification) into Odin-owned policy/eval contracts rather than importing it as higher authority.
+          - [ ] Add bounded offline sleep/replay proposals that can recommend memory/skill changes but cannot self-promote, rewrite system policy, or manufacture M5 evidence.
+          - [ ] Measure output lift against the no-skill baseline and preserve M11 quality floors and token/cost ceilings.
+
+          ## Post-MVP capability track
+
+          - [ ] Production hybrid memory retrieval/retention (lexical/FTS plus optional vector retrieval) behind M6 scope and privacy rules.
+          - [ ] Event-driven background mission service, scheduler/triggers, and resumable automation.
+          - [ ] Permissioned MCP/Agent-Skills-style adapters and omnichannel clients behind the same capability model.''')
+          replace_once('ROADMAP.md', roadmap_old, roadmap_new)
+
+          replace_once(
+              'ARCHITECTURE.md',
+              'Status: M12-A/B/C local hardening plus one M12-D NVIDIA/Kimi K3 live-provider path verified; full M12 remains partially verified pending hosted-sandbox/public-production proof, 2026-09-04.',
+              'Status: M0–M13 implementation verified locally/in CI; M12 remains partially verified for hosted-sandbox/public-production proof, while M13 evidence-backed learning is implemented and pending final synchronized exact-head PR CI, 2026-09-04.',
+          )
+          replace_once(
+              'ARCHITECTURE.md',
+              '16. Sandbox/provider selection is runtime policy: a routed model identity may select a configured sandbox backend, but models cannot choose a stronger sandbox scope or receive its raw credentials.',
+              '16. Sandbox/provider selection is runtime policy: a routed model identity may select a configured sandbox backend, but models cannot choose a stronger sandbox scope or receive its raw credentials.\n17. Learned experience is lower-authority data: only independently verified, hash-bound repeated outcomes may become established M13 learning, and learned memory never mints execution, completion, skill-promotion, budget, routing, credential, or user-preference authority.',
+          )
+          m13_arch = dedent('''\
+          ### M13 — Evidence-backed post-task learning
+
+          `src/learning` converts repeated independently verified task outcomes into scoped learning records with exact semantic-key and lesson-content hashes. Three distinct mission/task supports are required for establishment; competing content under the same user/project/key is conflicted and cannot become a nudge or memory entry. Exact replay is resolved before requesting fresh evidence, while a second replay check after the asynchronous authority call preserves race safety.
+
+          Established, non-conflicted learning may enter M6 only as `verified_learning` semantic memory. Broad semantic retrieval deliberately excludes it unless the caller explicitly asks for the `m13-learning` tag. M13 maintenance may cool stale records and archive under-supported stale conflicts, allowing a sufficiently supported surviving lesson to re-establish without deleting already committed M6 memory.
+
+          The shared `src/security/secret-text.ts` primitive is used by both observability and learning intake to reject obvious credential patterns. M13 cannot register tools, grant capabilities, promote skills, infer durable user preferences, change routing quality floors, increase budgets, or mark a task complete. Run `33852005166` verified 272/272 tests after the replay/maintenance hardening.
+
+          ''')
+          replace_once('ARCHITECTURE.md', '## Current module map\n', m13_arch + '## Current module map\n')
+          replace_once(
+              'ARCHITECTURE.md',
+              '  release/       M12-C backup/recovery proof, release evidence/manifests, fail-closed gates\n  artifacts/',
+              '  release/       M12-C backup/recovery proof, release evidence/manifests, fail-closed gates\n  learning/      M13 evidence-backed repeated learning, conflict curation, bounded nudges\n  security/      shared secret-text and future cross-cutting security primitives\n  artifacts/',
+          )
+          replace_once(
+              'ARCHITECTURE.md',
+              'Local CI may never manufacture `integration` or `live` evidence. Any paid resource, deployment, or\nproduction/public traffic remains separately approval-gated. The preferred no-cost next milestone is\nM13 evidence-backed post-task learning and memory curation behind M5/M6/M10 authority boundaries.',
+              'Local CI may never manufacture `integration` or `live` evidence. Any paid resource, deployment, or\nproduction/public traffic remains separately approval-gated. With M13 implemented, the preferred no-cost next milestone is M14: an immutable, fail-closed Skill Intake Firewall that can inspect large external skill catalogs without executing them, bind accepted material to exact commits/content hashes, and hand only fully analyzed community candidates to M10. M15 then evaluates and deduplicates candidate procedures into measured, progressively loaded capability packs; neither milestone may turn external instructions into authority.',
+          )
+
+          replace_once(
+              'SECURITY.md',
+              'and M12-A/B/C local execution/sandbox, observability, recovery-evidence, and release-gate safeguards, plus one M12-D bounded live-provider credential path. Controls not explicitly identified as implemented remain future work.',
+              'M12-A/B/C local execution/sandbox, observability, recovery-evidence, and release-gate safeguards, one M12-D bounded live-provider credential path, and M13 evidence-backed learning safeguards. Controls not explicitly identified as implemented remain future work.',
+          )
+          m13_security = dedent('''\
+          ## Implemented M13 learning safeguards
+
+          `src/learning` treats every proposed lesson as untrusted data. Before evidence lookup or persistence, proposal shape/scope/bounds are validated and obvious credential-like content is rejected across semantic key, lesson, source reference, and tags. The model-provided sensitivity label is never sufficient evidence that content is safe.
+
+          A learning attestation must be an exact independently backed PASS bound to user, project, mission, task, semantic-key SHA-256, lesson SHA-256, sensitivity, verification-result SHA-256, and non-empty evidence references. One task can count only once. Exact idempotent replay returns prior state without requiring a new attestation; changed input under the same replay key fails closed before evidence lookup, and the existing post-await replay check prevents asynchronous races from bypassing the replay contract.
+
+          Three distinct verified mission/task pairs are required before a lesson becomes `ESTABLISHED`. Competing active content under the same scoped key forces `CONFLICTED`; conflicted records cannot be emitted as nudges or written to M6. Maintenance may archive stale conflicts only below the establishment-support threshold, then deterministically re-evaluate the surviving group. It never silently deletes established M6 memory.
+
+          M13-created M6 memory has `verified_learning` provenance and remains lower authority: broad semantic retrieval excludes it unless `m13-learning` is explicitly requested. M13 cannot create M3 handlers/grants, mark M2/M5 work complete, activate M10 skills, resolve credentials, change M11 quality floors, increase budgets, or infer durable user preferences.
+
+          The next planned M14 intake boundary must retain these principles for external skills: immutable source pinning, bounded complete analysis, no execution during intake, and no path from discovery to activation without M10 independent verification/trusted promotion. A curated or official source is provenance evidence, not automatic runtime trust.
+
+          ''')
+          replace_once('SECURITY.md', '## Prompt injection and untrusted-content security\n', m13_security + '## Prompt injection and untrusted-content security\n')
+          replace_once(
+              'SECURITY.md',
+              '- compromised plugin/skill packages and dependency substitution;',
+              '- compromised plugin/skill packages, mutable upstream refs, transitive catalog trust, incomplete scans, and dependency substitution;\n- forged, replayed, hash-mismatched, secret-bearing, cross-scope, or conflicting post-task learning evidence;',
+          )
+
+          handover = dedent('''\
+          # Engineering handover
+
+          Updated: 2026-09-04.
+
+          ## Current state
+
+          - Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).
+          - `main` contains verified M0–M12; active work is M13 on `agent/m13-evidence-learning`, Draft PR #18.
+          - M13 implementation head after replay/maintenance hardening: `6165114201d151240125ec890b3560b631f6502b`.
+          - Implementation verification run `33852005166`: 272/272 tests, Biome PASS, strict TypeScript PASS, dry Kimi smoke PASS, 89.42% line / 76.50% branch / 95.67% function coverage.
+          - No temporary M13 helper workflow remains after the implementation commit. Documentation is synchronized before the final normal exact-head PR CI.
+          - M12 remains partially verified for hosted-sandbox/public-production claims; do not spend money, create paid resources, deploy production, or repeat live-provider calls without explicit authorization.
+
+          ## M13 capability
+
+          M13 turns repeated independently verified task outcomes into lower-authority learning without letting a model manufacture trust. Exact learning key/content hashes and M5-backed evidence are required; three distinct verified task identities establish a lesson. Conflicting lessons block nudges and memory promotion. Exact replay is idempotent without fresh evidence lookup, changed replay input fails closed, and asynchronous replay races remain checked.
+
+          Established learning may commit to M6 semantic memory only with `verified_learning` provenance. General semantic retrieval hides it unless `m13-learning` is explicitly requested. Secret-like values are rejected across the lesson, semantic key, tags, and source references. M13 never creates M3 execution authority, M5 completion, M10 activation, credentials, budget, routing-floor changes, or inferred durable preferences.
+
+          ## External capability research for M14/M15
+
+          Five user-supplied repositories were reviewed as immutable research snapshots, not installed or executed:
+
+          - `ComposioHQ/awesome-claude-skills@be2a406907dbc61b73e6827ded415c96139d13a2` — broad community discovery catalog and MCP/action examples; useful for breadth/stress testing, never transitive trust.
+          - `multica-ai/andrej-karpathy-skills@2c606141936f1eeef17fa3043a72095b4765b9c2` — coding discipline: surface assumptions, prefer simplicity, make surgical edits, define verifiable success. Adapt into Odin-owned policy/evals rather than higher-authority external instructions.
+          - `alirezarezvani/claude-skills@19392f7a08264ed00486a251f5b2098321771f94` — hundreds of skills plus scripts/hooks, self-improving memory, agent harness, research, security, business and marketing. High-value M14 stress corpus with a large executable/supply-chain surface.
+          - `anthropics/claude-plugins-official@1dd995193ba20bba51ca6c681aa8d3398dbd80a2` — official marketplace reference with repository/path/ref/commit SHA and explicit skill subsets, while warning users not to assume third-party plugins are safe.
+          - `coreyhaines31/marketingskills@5cd4a7eae3a9a7b5d2aceb0613f7d1f7c4b65968` — strong domain workflows for product context, CRO, copy, SEO/AEO, pricing, launch, analytics, sales and recurring marketing loops; shared product context and disagreement/council patterns map well to M6/M7/M11.
+
+          No third-party code from these repositories was executed or copied into Odin during this review.
+
+          ## Next milestones
+
+          1. Obtain final normal exact-head `npm run verify` for synchronized M13 PR #18, update evidence status, then squash-merge under the user's standing merge approval.
+          2. Create fresh M14 branch from merged `main`: **Skill Intake Firewall**. Discover broadly, resolve mutable refs to exact commits, scan bounded manifests/scripts/hooks/MCP/config content without executing it, emit explicit completeness/risk findings, quarantine partial scans, and hand only fully analyzed community candidates to M10.
+          3. M15: **Curated Capability Pack + offline improvement evaluation**. Deduplicate candidate procedures against Odin's canonical runtime, evaluate output lift/safety/context cost on held-out fixtures, then promote only measured winners through M10. Add bounded offline sleep/replay proposals that cannot self-promote.
+          4. Keep future scheduler/triggers/background missions and permissioned MCP/Agent-Skills adapters as separate no-cost milestones before public production deployment.
+
+          ## Standing boundaries
+
+          - Repository evidence overrides documentation and memory; CI green is required before merge.
+          - M3 remains execution/capability authority; M5 remains completion/evidence authority; M10 remains skill promotion authority.
+          - Models/workers/skills/memory cannot mint credentials, capabilities, approval, budgets, quality evidence, or trusted policy.
+          - External skill catalogs are discovery inputs only until exact-source analysis and M10 lifecycle requirements succeed.
+          - No secrets in commits/logs/artifacts, no paid/live infrastructure actions without explicit user approval.
+          ''')
+          Path('HANDOVER.md').write_text(handover)
+          PY
+      - name: Remove helper and commit docs
+        run: |
+          rm .github/workflows/m13-doc-sync-safe.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ROADMAP.md ARCHITECTURE.md SECURITY.md HANDOVER.md docs/milestones/M13_EVIDENCE_LEARNING.md .github/workflows/m13-doc-sync-safe.yml
+          git commit -m 'docs(m13): synchronize evidence and capability roadmap'
+          git push origin HEAD:agent/m13-evidence-learning
