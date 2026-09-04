@@ -119,3 +119,22 @@ test("verified-learning semantic memory is invisible unless retrieval explicitly
   assert.equal(explicit[0]?.record.id, "learn-opt-in");
   assert.equal(explicit[0]?.record.provenance.sourceClass, "verified_learning");
 });
+
+test("automatic learning rejects obvious secret-like lesson content regardless of model sensitivity label", async () => {
+  const curator = new EvidenceLearningCurator(
+    new TamperingAuthority("key"),
+    new InMemoryMemoryStore(),
+  );
+  await assert.rejects(
+    () =>
+      curator.recordVerifiedLesson({
+        ...proposal(),
+        lesson: "Remember API credential sk-proj-abcdefghijk12345 for later use.",
+        sensitivity: "internal",
+      }),
+    (error: unknown) =>
+      error instanceof LearningError &&
+      error.code === "DENIED" &&
+      /secret-like lesson content/u.test(error.message),
+  );
+});

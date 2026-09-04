@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { MemoryStore } from "../memory/types.js";
+import { containsObviousSecret } from "../security/secret-text.js";
 import {
   type LearningAttestationRequest,
   LearningError,
@@ -409,10 +410,17 @@ function normalizeProposal(value: unknown): LearningProposal {
       "Post-task learning cannot automatically persist sensitive or preference content.",
     );
   }
+  const lesson = boundedText(object.lesson, "lesson", MAX_LESSON_LENGTH);
+  if (containsObviousSecret(lesson)) {
+    throw new LearningError(
+      "DENIED",
+      "Post-task learning rejects obvious secret-like lesson content.",
+    );
+  }
   return Object.freeze({
     idempotencyKey: identifier(object.idempotencyKey, "idempotencyKey"),
     key: normalizeKey(object.key),
-    lesson: boundedText(object.lesson, "lesson", MAX_LESSON_LENGTH),
+    lesson,
     missionId: identifier(object.missionId, "missionId"),
     observedAt: canonicalTimestamp(object.observedAt, "observedAt"),
     projectId: identifier(object.projectId, "projectId"),

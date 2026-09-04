@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { containsObviousSecret } from "../security/secret-text.js";
 
 const MAX_METADATA_ENTRIES = 32;
 const MAX_METADATA_TEXT = 512;
@@ -7,8 +8,6 @@ const MAX_REASON_CODE = 120;
 
 const FORBIDDEN_KEY =
   /(?:secret|token|password|authorization|credential|cookie|api[_-]?key|private[_-]?key|chain[_-]?of[_-]?thought|reasoning|prompt|stdout|stderr|environment|env)/iu;
-const FORBIDDEN_VALUE =
-  /(?:\bBearer\s+\S+|\bsk-[A-Za-z0-9_-]{8,}|\bgh[pousr]_[A-Za-z0-9]{8,}|\bxox[baprs]-|-----BEGIN [A-Z ]*PRIVATE KEY-----)/u;
 
 export type RuntimeEventSeverity = "info" | "warning" | "error";
 export type RuntimeEventKind =
@@ -123,7 +122,7 @@ function normalizeMetadata(
       if (
         value.length > MAX_METADATA_TEXT ||
         value.includes("\u0000") ||
-        FORBIDDEN_VALUE.test(value)
+        containsObviousSecret(value)
       ) {
         throw new ObservabilityError("Runtime event metadata text is invalid or secret-like.");
       }
