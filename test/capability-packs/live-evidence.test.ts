@@ -294,3 +294,34 @@ test("run-4 grounded contract failures remain terminal measured evidence", () =>
   });
   assert.equal(isTerminalLiveMeasurementFailure(internalBindingFailure), false);
 });
+
+test("surgical grounded edit failures remain bounded terminal evidence", () => {
+  const messages = [
+    [
+      "Grounded coding plan edit oldText was not found in trusted content.",
+      "grounded_plan_edit_missing",
+    ],
+    [
+      "Grounded coding plan edit oldText is ambiguous in trusted content.",
+      "grounded_plan_edit_ambiguous",
+    ],
+    ["Grounded coding plan edit does not change trusted content.", "grounded_plan_edit_no_change"],
+    [
+      "Grounded coding repair edit oldText was not found in current content.",
+      "grounded_repair_edit_missing",
+    ],
+    [
+      "Grounded coding repair edit oldText is ambiguous in current content.",
+      "grounded_repair_edit_ambiguous",
+    ],
+    [
+      "Grounded coding repair edit does not change current content.",
+      "grounded_repair_edit_no_change",
+    ],
+  ] as const;
+  for (const [message, errorCode] of messages) {
+    const diagnostic = classifyLiveFailure(new MissionDomainError(message));
+    assert.deepEqual(diagnostic, { errorClass: "MissionDomainError", errorCode });
+    assert.equal(isTerminalLiveMeasurementFailure(diagnostic), true, errorCode);
+  }
+});
