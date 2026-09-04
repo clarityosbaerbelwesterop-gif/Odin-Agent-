@@ -6,7 +6,8 @@ export type MemorySourceClass =
   | "import"
   | "model_summary"
   | "repository"
-  | "tool";
+  | "tool"
+  | "verified_learning";
 
 export interface MemoryScope {
   readonly userId: string;
