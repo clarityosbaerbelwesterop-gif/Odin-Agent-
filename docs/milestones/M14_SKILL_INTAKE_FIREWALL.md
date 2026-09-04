@@ -40,6 +40,17 @@ resolved and analyzed:
 - `alirezarezvani/claude-skills@19392f7a08264ed00486a251f5b2098321771f94`
 - `anthropics/claude-plugins-official@1dd995193ba20bba51ca6c681aa8d3398dbd80a2`
 - `coreyhaines31/marketingskills@5cd4a7eae3a9a7b5d2aceb0613f7d1f7c4b65968`
+- `anthropics/claude-code-security-review@0c6a49f1fa56a1d472575da86a94dbc1edb78eda`
+- `0xNyk/awesome-hermes-agent@e4dde5e0e19b734c175a34038deac8e80cd04cb2`
+
+`anthropics/claude-code-security-review` is a useful security-analysis reference, not trusted intake code.
+Its own documentation explicitly warns that the action is not hardened against prompt injection, so Odin
+must preserve its separate trust boundary and complete-coverage evidence rather than inheriting the action's
+assumptions.
+
+`0xNyk/awesome-hermes-agent` is an independent ecosystem directory, not a security endorsement. Its own
+trust-boundary guidance treats skills/plugins/MCP servers as discovery inputs whose triggers, tools,
+credentials, execution environment, and stop controls must be reviewed before use.
 
 `NVIDIA/SkillSpector` was reviewed as a security-design reference. Odin adapts its fail-closed resource-
 bound/completeness principles but does not install or copy SkillSpector as a dependency.
@@ -73,7 +84,7 @@ M14 produces stable fingerprinted findings without retaining matched secret/raw 
 - self-installation, self-promotion, or trusted-policy mutation;
 - durable memory/policy poisoning;
 - MCP/tool configuration capable of introducing execution authority;
-- hooks/workflows that execute automatically;
+- hooks/workflows that execute automatically, including nested `.github/workflows` surfaces inside a selected skill;
 - dependency installation;
 - shell/subprocess instructions or executable bundled scripts.
 
@@ -83,8 +94,10 @@ low/medium findings may be `ACCEPT`, but M10 still records only a candidate.
 ## Agent-Skills manifest handling
 
 M14 reads only bounded `SKILL.md` frontmatter and body. It extracts a compact name and description and
-hashes the exact instructions. Auxiliary text is analyzed for risk/completeness but is not granted tool or
-execution authority. Bundled scripts remain data even if the report is accepted.
+hashes the exact instructions. Malformed or invalid manifest values are represented as explicit partial
+coverage and quarantine rather than escaping the intake boundary as an unhandled parser failure. Auxiliary
+text is analyzed for risk/completeness but is not granted tool or execution authority. Bundled scripts remain
+data even if the report is accepted.
 
 ## M10 handoff
 
@@ -115,7 +128,9 @@ workers, approvals, budgets, or completion evidence.
 8. finding-output ceiling cannot turn a truncated scan into `ACCEPT`;
 9. source or content change changes report identity and candidate version/hash;
 10. M14 candidate creation leaves M3 `ToolRegistry` empty and M10 lifecycle unprivileged;
-11. a broad catalog link is discovery metadata only; its downstream repository requires a separate intake.
+11. a broad catalog link is discovery metadata only; its downstream repository requires a separate intake;
+12. malformed manifests become explicit partial quarantine instead of unhandled parser errors;
+13. nested `.github/workflows` surfaces inside a selected skill are detected and quarantined.
 
 ## Acceptance gate
 
