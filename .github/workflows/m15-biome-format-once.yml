@@ -1,0 +1,39 @@
+name: M15 one-shot Biome formatter
+
+on:
+  push:
+    branches:
+      - agent/m15-curated-capability-pack
+    paths:
+      - .github/workflows/m15-biome-format-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m15-curated-capability-pack
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Apply repository Biome rules to M15 files
+        run: npx biome check --write src/capability-packs test/capability-packs
+      - name: Remove one-shot workflow and commit deterministic formatting
+        run: |
+          git rm .github/workflows/m15-biome-format-once.yml
+          git add src/capability-packs test/capability-packs
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "style(m15): apply Biome formatting"
+          git push origin HEAD:agent/m15-curated-capability-pack
