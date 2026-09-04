@@ -41,7 +41,9 @@ export function proposeCapabilityReplay(
   if (!Array.isArray(reportsValue) || reportsValue.length > policy.maxReports) {
     invalid("Replay report collection is malformed.");
   }
-  const reports = [...reportsValue].sort((left, right) => left.reportHash.localeCompare(right.reportHash));
+  const reports = [...reportsValue].sort((left, right) =>
+    left.reportHash.localeCompare(right.reportHash),
+  );
   if (new Set(reports.map((report) => report.reportHash)).size !== reports.length) {
     invalid("Replay report hashes must be unique.");
   }

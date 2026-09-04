@@ -1,8 +1,4 @@
-import type {
-  SkillPackage,
-  SkillRecord,
-  SkillVerificationProducer,
-} from "../skills/types.js";
+import type { SkillPackage, SkillRecord, SkillVerificationProducer } from "../skills/types.js";
 
 export type CapabilityDomain =
   | "coding"

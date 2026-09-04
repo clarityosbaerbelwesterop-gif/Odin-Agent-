@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import type { SkillVerificationProducer } from "../skills/types.js";
 import {
-  CapabilityCurationError,
   type CapabilityCandidateRef,
   type CapabilityCurationCaseResult,
+  CapabilityCurationError,
   type CapabilityCurationPolicy,
   type CapabilityCurationReport,
   type CapabilityCurationRequest,
@@ -64,7 +64,10 @@ export class CapabilityCurator {
 
   async curate(value: unknown): Promise<CapabilityCurationResult> {
     const request = normalizeRequest(value, this.#policy);
-    const record = this.#registry.resolveForReview(request.candidate.name, request.candidate.version);
+    const record = this.#registry.resolveForReview(
+      request.candidate.name,
+      request.candidate.version,
+    );
 
     if (record.package.contentHash !== request.candidate.contentHash) {
       throw new CapabilityCurationError(
@@ -327,7 +330,9 @@ function normalizeAttestation(value: unknown, maxCases: number): CapabilityEvalu
   if (!Array.isArray(object.cases) || object.cases.length === 0 || object.cases.length > maxCases) {
     invalid("Capability evaluation cases are malformed.");
   }
-  const cases = object.cases.map(normalizeCase).sort((left, right) => left.id.localeCompare(right.id));
+  const cases = object.cases
+    .map(normalizeCase)
+    .sort((left, right) => left.id.localeCompare(right.id));
   if (new Set(cases.map((entry) => entry.id)).size !== cases.length) {
     invalid("Capability evaluation case ids must be unique.");
   }
@@ -436,12 +441,7 @@ function normalizePolicy(value: CapabilityCurationPolicy): CapabilityCurationPol
     ),
     maxProcedureKeys: safeInteger(value.maxProcedureKeys, "policy maxProcedureKeys", 1, 256),
     maxTaskClasses: safeInteger(value.maxTaskClasses, "policy maxTaskClasses", 1, 128),
-    minAverageLiftBps: safeInteger(
-      value.minAverageLiftBps,
-      "policy minAverageLiftBps",
-      0,
-      10_000,
-    ),
+    minAverageLiftBps: safeInteger(value.minAverageLiftBps, "policy minAverageLiftBps", 0, 10_000),
   });
 }
 
@@ -493,19 +493,18 @@ function canonicalTimestamp(value: unknown, label: string): string {
   return result;
 }
 
-function safeInteger(
-  value: unknown,
-  label: string,
-  minimum: number,
-  maximum: number,
-): number {
+function safeInteger(value: unknown, label: string, minimum: number, maximum: number): number {
   if (!Number.isSafeInteger(value) || (value as number) < minimum || (value as number) > maximum) {
     invalid(`${label} is outside its allowed integer range.`);
   }
   return value as number;
 }
 
-function exactKeys(object: Record<string, unknown>, required: readonly string[], label: string): void {
+function exactKeys(
+  object: Record<string, unknown>,
+  required: readonly string[],
+  label: string,
+): void {
   const keys = Object.keys(object);
   const allowed = new Set(required);
   if (required.some((key) => !(key in object)) || keys.some((key) => !allowed.has(key))) {

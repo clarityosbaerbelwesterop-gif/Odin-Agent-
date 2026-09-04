@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   CapabilityCurator,
+  type CapabilityEvaluationRequest,
   CapabilityPackError,
   CapabilityPackRegistry,
-  type CapabilityEvaluationRequest,
 } from "../../src/capability-packs/index.js";
 import { SkillRegistry } from "../../src/skills/index.js";
 
@@ -64,11 +64,9 @@ async function measuredSecuritySkill() {
     trustClass: "community",
     version: "gabc123def456",
   });
-  const curator = new CapabilityCurator(
-    skills,
-    new PassingAuthority(),
-    ["verification.evidence-binding"],
-  );
+  const curator = new CapabilityCurator(skills, new PassingAuthority(), [
+    "verification.evidence-binding",
+  ]);
   const result = await curator.curate({
     candidate: {
       contentHash: candidate.package.contentHash,
@@ -136,10 +134,7 @@ test("pack rejects missing forged failed or foreign curation evidence", async ()
   );
 
   assert.throws(
-    () =>
-      new CapabilityPackRegistry(measured.skills, [
-        { ...measured.report, decision: "FAIL" },
-      ]),
+    () => new CapabilityPackRegistry(measured.skills, [{ ...measured.report, decision: "FAIL" }]),
     (error: unknown) => error instanceof CapabilityPackError && error.code === "DENIED",
   );
 
@@ -244,11 +239,9 @@ test("pack identity is deterministic across member order", async () => {
     trustClass: "community",
     version: "gdef456abc123",
   });
-  const curator = new CapabilityCurator(
-    skills,
-    new PassingAuthority(),
-    ["verification.evidence-binding"],
-  );
+  const curator = new CapabilityCurator(skills, new PassingAuthority(), [
+    "verification.evidence-binding",
+  ]);
   const second = await curator.curate({
     candidate: {
       contentHash: secondCandidate.package.contentHash,

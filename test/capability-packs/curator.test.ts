@@ -44,7 +44,10 @@ function registerCandidate(skills: SkillRegistry, overrides: Record<string, unkn
   });
 }
 
-function request(record: ReturnType<typeof registerCandidate>, overrides: Record<string, unknown> = {}) {
+function request(
+  record: ReturnType<typeof registerCandidate>,
+  overrides: Record<string, unknown> = {},
+) {
   return {
     candidate: {
       contentHash: record.package.contentHash,
@@ -120,7 +123,10 @@ test("novel independently passing candidate becomes VERIFIED but never ACTIVE", 
   assert.equal(result.report.cases.length, 2);
   assert.ok(result.verified);
   assert.equal(result.verified.lifecycle, "VERIFIED");
-  assert.equal(skills.resolve(candidate.package.name, candidate.package.version).contentHash, candidate.package.contentHash);
+  assert.equal(
+    skills.resolve(candidate.package.name, candidate.package.version).contentHash,
+    candidate.package.contentHash,
+  );
   assert.throws(
     () => skills.resolveActive(candidate.package.name),
     (error: unknown) => error instanceof SkillError && error.code === "NOT_FOUND",
@@ -141,7 +147,10 @@ test("fully redundant procedure stops before evaluation and keeps candidate unpr
   assert.equal(result.report.decision, "REDUNDANT");
   assert.deepEqual(result.report.reasons, ["NO_NOVEL_PROCEDURE"]);
   assert.equal(authority.calls, 0);
-  assert.equal(skills.resolveForReview(candidate.package.name, candidate.package.version).lifecycle, "CANDIDATE");
+  assert.equal(
+    skills.resolveForReview(candidate.package.name, candidate.package.version).lifecycle,
+    "CANDIDATE",
+  );
 });
 
 test("quality safety authority token and latency regressions never verify", async () => {
@@ -177,7 +186,10 @@ test("quality safety authority token and latency regressions never verify", asyn
 
     assert.equal(result.report.decision, "FAIL");
     assert.ok(result.report.reasons.some((reason) => reason.includes(variant.expected)));
-    assert.equal(skills.resolveForReview(candidate.package.name, candidate.package.version).lifecycle, "CANDIDATE");
+    assert.equal(
+      skills.resolveForReview(candidate.package.name, candidate.package.version).lifecycle,
+      "CANDIDATE",
+    );
   }
 });
 
@@ -198,18 +210,18 @@ test("average lift floor is monotonic and cannot be offset by lower cost", async
       })),
     };
   });
-  const curator = new CapabilityCurator(
-    skills,
-    authority,
-    ["verification.evidence-binding"],
-    { minAverageLiftBps: 100 },
-  );
+  const curator = new CapabilityCurator(skills, authority, ["verification.evidence-binding"], {
+    minAverageLiftBps: 100,
+  });
 
   const result = await curator.curate(request(candidate));
 
   assert.equal(result.report.decision, "FAIL");
   assert.ok(result.report.reasons.includes("AVERAGE_LIFT_BELOW_FLOOR"));
-  assert.equal(skills.resolveForReview(candidate.package.name, candidate.package.version).lifecycle, "CANDIDATE");
+  assert.equal(
+    skills.resolveForReview(candidate.package.name, candidate.package.version).lifecycle,
+    "CANDIDATE",
+  );
 });
 
 test("foreign stale and self-authored evaluation evidence fails closed", async () => {
@@ -226,18 +238,19 @@ test("foreign stale and self-authored evaluation evidence fails closed", async (
   for (const factory of cases) {
     const skills = new SkillRegistry();
     const candidate = registerCandidate(skills);
-    const curator = new CapabilityCurator(
-      skills,
-      new FixtureAuthority(factory),
-      ["verification.evidence-binding"],
-    );
+    const curator = new CapabilityCurator(skills, new FixtureAuthority(factory), [
+      "verification.evidence-binding",
+    ]);
 
     await assert.rejects(
       () => curator.curate(request(candidate)),
       (error: unknown) =>
         error instanceof CapabilityCurationError && error.code === "EVALUATION_FAILED",
     );
-    assert.equal(skills.resolveForReview(candidate.package.name, candidate.package.version).lifecycle, "CANDIDATE");
+    assert.equal(
+      skills.resolveForReview(candidate.package.name, candidate.package.version).lifecycle,
+      "CANDIDATE",
+    );
   }
 });
 
@@ -271,11 +284,9 @@ test("candidate hash mismatch and non-community lifecycle are denied before eval
     version: "v1",
   });
   const trustedAuthority = new FixtureAuthority((value) => attestation(value));
-  const trustedCurator = new CapabilityCurator(
-    projectSkills,
-    trustedAuthority,
-    ["verification.evidence-binding"],
-  );
+  const trustedCurator = new CapabilityCurator(projectSkills, trustedAuthority, [
+    "verification.evidence-binding",
+  ]);
   await assert.rejects(
     () =>
       trustedCurator.curate({
@@ -325,11 +336,9 @@ test("malformed duplicate and incomplete held-out cases fail closed", async () =
   for (const factory of factories) {
     const skills = new SkillRegistry();
     const candidate = registerCandidate(skills);
-    const curator = new CapabilityCurator(
-      skills,
-      new FixtureAuthority(factory),
-      ["verification.evidence-binding"],
-    );
+    const curator = new CapabilityCurator(skills, new FixtureAuthority(factory), [
+      "verification.evidence-binding",
+    ]);
     await assert.rejects(
       () => curator.curate(request(candidate)),
       (error: unknown) => error instanceof CapabilityCurationError,
@@ -341,17 +350,17 @@ test("context ceiling blocks evaluation without converting size pressure into tr
   const skills = new SkillRegistry();
   const candidate = registerCandidate(skills, { instructions: "A".repeat(512) });
   const authority = new FixtureAuthority((value) => attestation(value));
-  const curator = new CapabilityCurator(
-    skills,
-    authority,
-    ["verification.evidence-binding"],
-    { maxContextBytes: 128 },
-  );
+  const curator = new CapabilityCurator(skills, authority, ["verification.evidence-binding"], {
+    maxContextBytes: 128,
+  });
 
   const result = await curator.curate(request(candidate));
 
   assert.equal(result.report.decision, "FAIL");
   assert.deepEqual(result.report.reasons, ["CONTEXT_LIMIT"]);
   assert.equal(authority.calls, 0);
-  assert.equal(skills.resolveForReview(candidate.package.name, candidate.package.version).lifecycle, "CANDIDATE");
+  assert.equal(
+    skills.resolveForReview(candidate.package.name, candidate.package.version).lifecycle,
+    "CANDIDATE",
+  );
 });

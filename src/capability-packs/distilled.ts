@@ -141,10 +141,7 @@ export const M15_DISTILLED_CAPABILITY_DRAFTS: readonly DistilledCapabilityDraft[
       trustClass: "project",
       version: "m15v1",
     }),
-    procedureKeys: Object.freeze([
-      "marketing.customer-language",
-      "marketing.switching-dynamics",
-    ]),
+    procedureKeys: Object.freeze(["marketing.customer-language", "marketing.switching-dynamics"]),
     sourceRefs: Object.freeze([
       "coreyhaines31/marketingskills@5cd4a7eae3a9a7b5d2aceb0613f7d1f7c4b65968:product-marketing",
     ]),

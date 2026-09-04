@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   CapabilityCurationError,
-  proposeCapabilityReplay,
   type CapabilityCurationReport,
+  proposeCapabilityReplay,
 } from "../../src/capability-packs/index.js";
 import { SkillRegistry } from "../../src/skills/index.js";
 

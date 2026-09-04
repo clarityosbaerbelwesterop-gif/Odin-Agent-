@@ -157,7 +157,10 @@ export class CapabilityPackRegistry {
       const instructionBytes = Buffer.byteLength(record.package.instructions, "utf8");
       contextBytes += instructionBytes;
       if (contextBytes > this.#limits.maxContextBytes) {
-        throw new CapabilityPackError("DENIED", "Capability pack exceeds its context byte ceiling.");
+        throw new CapabilityPackError(
+          "DENIED",
+          "Capability pack exceeds its context byte ceiling.",
+        );
       }
       for (const taskClass of member.taskClasses) taskClasses.add(taskClass);
       if (taskClasses.size > this.#limits.maxTaskClasses) {
@@ -199,22 +202,38 @@ export class CapabilityPackRegistry {
             version: pack.version,
           }),
         )
-        .sort((left, right) => packKey(left.id, left.version).localeCompare(packKey(right.id, right.version))),
+        .sort((left, right) =>
+          packKey(left.id, left.version).localeCompare(packKey(right.id, right.version)),
+        ),
     );
   }
 
-  resolveMember(packId: string, packVersion: string, name: string, versionValue: string): SkillPackage {
-    const pack = this.#packs.get(packKey(identifier(packId, "pack id"), version(packVersion, "pack version")));
-    if (pack === undefined) throw new CapabilityPackError("NOT_FOUND", "Capability pack was not found.");
+  resolveMember(
+    packId: string,
+    packVersion: string,
+    name: string,
+    versionValue: string,
+  ): SkillPackage {
+    const pack = this.#packs.get(
+      packKey(identifier(packId, "pack id"), version(packVersion, "pack version")),
+    );
+    if (pack === undefined)
+      throw new CapabilityPackError("NOT_FOUND", "Capability pack was not found.");
     const member = pack.members.find(
       (entry) => entry.name === name && entry.version === versionValue,
     );
     if (member === undefined) {
-      throw new CapabilityPackError("NOT_FOUND", "Skill is not a member of the requested capability pack.");
+      throw new CapabilityPackError(
+        "NOT_FOUND",
+        "Skill is not a member of the requested capability pack.",
+      );
     }
     const resolved = this.#skills.resolve(name, versionValue);
     if (resolved.contentHash !== member.contentHash) {
-      throw new CapabilityPackError("CONFLICT", "Resolved M10 member no longer matches pack identity.");
+      throw new CapabilityPackError(
+        "CONFLICT",
+        "Resolved M10 member no longer matches pack identity.",
+      );
     }
     return resolved;
   }
@@ -223,14 +242,21 @@ export class CapabilityPackRegistry {
 function normalizePackInput(value: unknown, limits: CapabilityPackLimits): CapabilityPackInput {
   const object = objectValue(value, "capability pack");
   exactKeys(object, ["domain", "id", "members", "version"], "capability pack");
-  if (!Array.isArray(object.members) || object.members.length === 0 || object.members.length > limits.maxMembers) {
+  if (
+    !Array.isArray(object.members) ||
+    object.members.length === 0 ||
+    object.members.length > limits.maxMembers
+  ) {
     invalid("Capability pack members are malformed.");
   }
-  const members = object.members.map(normalizeMember).sort((left, right) =>
-    `${left.name}@${left.version}`.localeCompare(`${right.name}@${right.version}`),
-  );
+  const members = object.members
+    .map(normalizeMember)
+    .sort((left, right) =>
+      `${left.name}@${left.version}`.localeCompare(`${right.name}@${right.version}`),
+    );
   const identities = members.map((member) => `${member.name}@${member.version}`);
-  if (new Set(identities).size !== identities.length) invalid("Capability pack contains duplicate members.");
+  if (new Set(identities).size !== identities.length)
+    invalid("Capability pack contains duplicate members.");
   const domainValue = text(object.domain, "capability pack domain") as CapabilityDomain;
   if (!DOMAINS.has(domainValue)) invalid("Capability pack domain is unsupported.");
   return Object.freeze({
@@ -284,7 +310,8 @@ function normalizeLimits(value: CapabilityPackLimits): CapabilityPackLimits {
 }
 
 function normalizedIdentifiers(value: unknown, label: string, maximum: number): readonly string[] {
-  if (!Array.isArray(value) || value.length === 0 || value.length > maximum) invalid(`${label} collection is malformed.`);
+  if (!Array.isArray(value) || value.length === 0 || value.length > maximum)
+    invalid(`${label} collection is malformed.`);
   const result = value.map((entry) => identifier(entry, label)).sort();
   if (new Set(result).size !== result.length) invalid(`${label} collection contains duplicates.`);
   return Object.freeze(result);
@@ -315,7 +342,11 @@ function safeInteger(value: unknown, label: string, minimum: number, maximum: nu
   return value as number;
 }
 
-function exactKeys(object: Record<string, unknown>, required: readonly string[], label: string): void {
+function exactKeys(
+  object: Record<string, unknown>,
+  required: readonly string[],
+  label: string,
+): void {
   const keys = Object.keys(object);
   const allowed = new Set(required);
   if (required.some((key) => !(key in object)) || keys.some((key) => !allowed.has(key))) {
@@ -324,7 +355,8 @@ function exactKeys(object: Record<string, unknown>, required: readonly string[],
 }
 
 function objectValue(value: unknown, label: string): Record<string, unknown> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) invalid(`${label} must be an object.`);
+  if (value === null || typeof value !== "object" || Array.isArray(value))
+    invalid(`${label} must be an object.`);
   return value as Record<string, unknown>;
 }
 
