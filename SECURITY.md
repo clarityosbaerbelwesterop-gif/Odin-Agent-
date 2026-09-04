@@ -2,7 +2,7 @@
 
 Status: implemented M1 provider, M3 tool-control, M5 verification, M6 memory/context, M7 specialist
 coordination, M8 durable mission/worker, M9 client-protocol, M10 skill-lifecycle, M11 adaptive-routing,
-and M12-A/B local execution/sandbox safeguards. Controls not explicitly identified as implemented remain future work.
+and M12-A/B/C local execution/sandbox, observability, recovery-evidence, and release-gate safeguards. Controls not explicitly identified as implemented remain future work.
 
 ## Protected assets
 
@@ -240,6 +240,24 @@ rebinding resistance can be claimed.
 Normal PR CI `33794095989` verified the M12-A/B local tranche with 237/237 tests. No hosted sandbox
 provider, live model provider, paid resource, production deployment, migration, billing change, or
 public traffic was exercised.
+
+## Implemented M12-C observability and release-proof safeguards
+
+`src/observability` rejects dangerous metadata keys and obvious secret-like values before event
+materialization. Events carry only bounded typed metadata, canonical timestamps, and deterministic
+identity; raw credentials, full environments, private reasoning, and unbounded process output are not
+valid event content.
+
+`src/release` binds evidence to exact producer, level, subject, status, timestamp, and content hash.
+Release manifests bind exact commit/config/suite/policy/evidence identities. Policy levels are monotonic:
+stronger claims retain lower-level requirements and must add evidence genuinely produced at the stronger
+level. Missing, stale, future, foreign, failed, tampered, duplicated, unreferenced, or weak evidence
+blocks. Backup/restore verification binds restored-state hash to the source-state hash and cannot claim
+cloud/production recovery without separately exercised infrastructure.
+
+Concurrent identical sandbox release now collapses to one remote cleanup call; a conflicting release
+reason fails closed. Normal PR CI `33796268313` passed 258/258 tests. The local end-to-end release proof
+explicitly passes `local` and blocks `integration`/`live` when only local evidence exists.
 
 ## Prompt injection and untrusted-content security
 

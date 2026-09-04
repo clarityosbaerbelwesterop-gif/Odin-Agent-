@@ -1,6 +1,6 @@
 # M12-C — Observability, recovery evidence, and release gates
 
-Status: implementation in progress. Updated: 2026-09-03.
+Status: local implementation VERIFIED; full M12 remains PARTIALLY_VERIFIED pending authorized live/infrastructure proof. Updated: 2026-09-04.
 
 ## Objective
 
@@ -70,3 +70,13 @@ Tests must cover bounded fixtures for:
 
 M12-C may finish the **local deterministic** M12 release-proof tranche. Full M12 remains
 `PARTIALLY_VERIFIED` until every live/infrastructure claim required by ROADMAP has matching evidence.
+
+## Verified repository evidence
+
+- Normal PR CI run `33796268313` passed on implementation head `5e2a387ca2b2fd4905ac03560df4878be7cda35b`.
+- 258/258 tests passed with 0 failures.
+- Aggregate coverage: 89.29% lines, 76.24% branches, 95.64% functions.
+- The end-to-end local release fixture passes `local` using repository verify + recovery + restore evidence and deliberately blocks `integration` and `live` without stronger evidence.
+- The sandbox load fixture proves concurrent create collapse and single remote destroy; conflicting concurrent release reasons fail closed.
+
+A final synchronized-documentation CI run is still required before PR #16 is merge-ready.

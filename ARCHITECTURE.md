@@ -1,6 +1,6 @@
 # Odin architecture
 
-Status: M12-A/B local execution and provider-neutral sandbox lifecycle partially verified, 2026-09-03.
+Status: M12-A/B/C local execution, sandbox lifecycle, observability, recovery evidence, and release gates verified locally; full M12 remains partially verified pending authorized live/infrastructure proof, 2026-09-04.
 
 ## Repository finding
 
@@ -195,6 +195,19 @@ provider-neutral and have no live sandbox-provider proof yet.
 Normal PR run `33794095989` verified this tranche with 237/237 tests and aggregate coverage 89.43%
 lines / 76.28% branches / 95.37% functions.
 
+### M12-C — Observability, recovery evidence, and release proof
+
+`src/observability` adds bounded structured runtime events with deterministic identity and fail-closed
+secret-like metadata rejection. `src/release` adds hash-bound release evidence, monotonic local /
+integration / live claim policies, backup/restore proof, deterministic recovery proof, and release gates
+that reject missing, stale, foreign, failed, tampered, or weaker-than-required evidence.
+
+Sandbox cleanup was additionally hardened so concurrent identical releases collapse to one remote
+`destroy` operation while conflicting release reasons fail closed. The local end-to-end release fixture
+proves that repository verify + recovery + restore evidence can unlock only a local claim and cannot be
+relabelled into integration/live proof. Normal PR run `33796268313` passed 258/258 tests with 89.29%
+line / 76.24% branch / 95.64% function coverage.
+
 ## Current module map
 
 ```text
@@ -213,6 +226,8 @@ src/
   skills/        M10 progressive skill registry, synthesis, verification/promotion history
   routing/       M11 empirical model/effort selection, cache, eval harness, bounded reasoning
   sandbox/       M12 canonical workspace, bounded process/network policy, backend lifecycle/routing
+  observability/ M12-C secret-safe bounded runtime events
+  release/       M12-C backup/recovery proof, release evidence/manifests, fail-closed gates
   artifacts/     content-addressed artifact byte/storage layer later
   cli/           user-facing entry point later
 web/             M9 responsive static reference client
@@ -220,13 +235,13 @@ web/             M9 responsive static reference client
 
 ## Next architecture milestone
 
-M12-C completes the no-cost production-hardening work around the verified M12-A/B execution boundary:
-structured secret-safe observability, deterministic load/recovery evidence, backup/recovery contracts,
-release manifests, and fail-closed release gates.
+The remaining M12 path is evidence escalation, not local claim inflation: run an explicitly authorized
+live provider/sandbox smoke matrix through the existing provider/runtime boundaries, then bind those
+observations into `integration` or `live` release evidence. Public service/auth/realtime transport and
+deployment hardening remain separate production work.
 
-Live-provider/sandbox smoke matrices, production deployment, public service/auth transport, and any
-paid infrastructure require separate explicit authorization and remain unproven until actually
-exercised.
+Local CI may never manufacture `integration` or `live` evidence. Any paid resource, deployment, or
+production/public traffic remains separately approval-gated.
 
 ## Storage and deployment direction
 
