@@ -1,6 +1,6 @@
 # M15 — Curated capability pack and offline improvement evaluation
 
-Status: **IMPLEMENTATION_VERIFIED_PENDING_FINAL_EXACT_HEAD_CI**. Updated: 2026-09-04.
+Status: **VERIFIED_AWAITING_FINAL_EXACT_HEAD_CI**. Updated: 2026-09-04.
 
 ## Objective
 
