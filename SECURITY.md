@@ -2,7 +2,7 @@
 
 Status: implemented M1 provider, M3 tool-control, M5 verification, M6 memory/context, M7 specialist
 coordination, M8 durable mission/worker, M9 client-protocol, M10 skill-lifecycle, M11 adaptive-routing,
-and M12-A/B/C local execution/sandbox, observability, recovery-evidence, and release-gate safeguards. Controls not explicitly identified as implemented remain future work.
+and M12-A/B/C local execution/sandbox, observability, recovery-evidence, and release-gate safeguards, plus one M12-D bounded live-provider credential path. Controls not explicitly identified as implemented remain future work.
 
 ## Protected assets
 
@@ -258,6 +258,19 @@ cloud/production recovery without separately exercised infrastructure.
 Concurrent identical sandbox release now collapses to one remote cleanup call; a conflicting release
 reason fails closed. Normal PR CI `33796268313` passed 258/258 tests. The local end-to-end release proof
 explicitly passes `local` and blocks `integration`/`live` when only local evidence exists.
+
+## Implemented M12-D live-provider safeguards
+
+The M12-D runner resolves `NV_API_KEY` only inside GitHub Actions and only after exact
+`nvidia + moonshotai/kimi-k3` credential context checks. The key is not part of prompts, fixture state,
+result JSON, committed files, or persisted reasoning. The workflow reruns deterministic repository
+gates before any live request and caps the coding mission at two provider calls.
+
+Run `33837291528` used one provider call and completed first pass with deterministic quality and M5 PASS.
+The uploaded artifact is intentionally sanitized and the live workflow was changed to manual-only after
+the evidence run. This proves the credential/provider boundary for one task; it does not authorize or
+prove hosted sandbox access, customer data, public production traffic, repeated benchmark sweeps, or
+other provider credentials.
 
 ## Prompt injection and untrusted-content security
 
