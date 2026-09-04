@@ -10,7 +10,7 @@ Updated: 2026-09-04.
 - Authorized post-merge live run `33870210502` completed its workflow with **10/12** maximum provider calls across three matched coding cases. All six baseline/candidate arms recorded `measurementComplete=false`, so there are **0 complete matched pairs** and the result is **INCONCLUSIVE**, not measured zero lift.
 - Raw sanitized evidence remains in `docs/evals/m15-kimi-coding-ab.json` at commit `42f9f28`; interpretation is recorded separately in `docs/evals/M15_KIMI_CODING_AB_ANALYSIS.md` so the historical evidence is not rewritten after the fact.
 - No M15 coding candidate is promoted or activated from that run. No Kimi/Astra/Fable/AGI capability claim follows from incomplete task-specific evidence.
-- PR #21 adds deterministic `MEASURED`/`PARTIAL`/`INCONCLUSIVE` summary semantics plus bounded secret-safe live failure codes. These changes make no provider request and still require normal PR CI before they are VERIFIED.
+- PR #21 adds deterministic `MEASURED`/`PARTIAL`/`INCONCLUSIVE` summary semantics plus bounded secret-safe live failure codes. Helper run `33878406947` passed **325/325 tests**, Biome, strict TypeScript, secret-free Kimi dry smoke, and **89.87% / 77.08% / 95.87%** aggregate line/branch/function coverage. Normal exact-head PR CI remains the non-bypassable merge gate.
 - A second Kimi K3 live run is **not authorized by the current continuation request** and has not been triggered. A future rerun requires separate approval because it is an external provider action.
 - M12 remains partially verified for hosted-sandbox/public-production claims. No production deployment, paid resource, migration, billing change, or public traffic is authorized by this work.
 
@@ -40,8 +40,8 @@ Additional design reference: `NVIDIA/SkillSpector` fail-closed completeness/reso
 
 1. Preserve the raw authorized run `33870210502` unchanged and classify its result correctly from recorded evidence: zero complete matched pairs means `INCONCLUSIVE`.
 2. Harden future live evidence so incomplete arms cannot produce a false numeric zero-lift conclusion; emit only bounded non-secret diagnostic codes for failures.
-3. Verify the hardening with unit regressions plus normal PR `npm run verify`; repair any failures before changing the evidence state to VERIFIED.
-4. Synchronize ROADMAP/ARCHITECTURE/SECURITY/M15 milestone/HANDOVER with the observed run and its inconclusive interpretation.
+3. Keep the hardening behind normal PR `npm run verify`; helper verification is supporting evidence, never a substitute for exact-head PR CI.
+4. Keep ROADMAP/ARCHITECTURE/SECURITY/M15 milestone/HANDOVER synchronized with the observed run and its inconclusive interpretation.
 5. Do not promote or activate `odin-coding-discipline` from incomplete evidence.
 6. Do not run another live provider comparison without separate user authorization. If a rerun is later approved, use the corrected harness and keep the same provider/model/task-class identity so the new evidence can be compared cleanly.
 7. Use the same matched A/B protocol for other provider/model identities later. Architectural reliability gains may transfer across models; measured lift magnitude must be re-established per model/profile/task class.
