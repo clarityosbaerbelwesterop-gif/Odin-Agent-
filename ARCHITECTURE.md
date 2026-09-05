@@ -1,371 +1,293 @@
 # Odin architecture
 
-Status: M0–M19 are merged and verified on `main`; M20–M22 are implemented on active PR #32 and await final exact-head CI before any merge claim. M12 remains partially verified for hosted-sandbox/public-production proof. The first post-merge Kimi K3 M15 comparison attempt is preserved as INCONCLUSIVE because no matched arm pair completed, 2026-09-04.
+Status: M0–M22 are merged and verified on `main`. M23–M25 are implemented on active PR #33 and
+are governance-synchronized pending one fresh normal exact-head CI before merge. M12 remains
+**PARTIALLY_VERIFIED** for real hosted-sandbox/public-production proof; no repository-local contract or
+synthetic fixture may be relabeled as live infrastructure evidence.
 
-## Repository finding
+## Architectural thesis
 
-Odin began as a greenfield repository. The product remains a strict TypeScript modular monolith:
-boundaries are explicit because they protect trust, substitution, recovery, or testing, not because the
-system has been prematurely split into microservices.
+Odin is a strict TypeScript modular monolith with explicit trust boundaries. A boundary exists because
+it protects authority, substitution, recovery, verification, or testability—not because the system is
+prematurely split into services.
+
+The core product is an agent runtime, not a chat transcript. Durable mission state, deterministic
+policy, scoped execution, evidence-backed completion, progressive context, and resumable workers remain
+canonical even when models, skills, tools, clients, or providers change.
 
 ## System invariants
 
 1. Durable mission state, not conversation history or client state, is canonical.
-2. The model proposes; deterministic runtime and policy decide what executes.
-3. Important work cannot become complete without mapped verification evidence.
-4. Execution is scoped, interruptible, budgeted, and deny-by-default.
-5. Provider, tool, skill, memory, persistence, worker, client, routing, and sandbox protocols are versioned boundaries.
-6. External content, repository content under analysis, tool output, model output, worker output, and
-   client input are untrusted.
-7. Credentials remain in the trusted control plane and are never placed in model or client payloads.
-8. Consequential state changes and side effects are auditable without storing hidden reasoning.
-9. Context is compiled progressively from state and artifacts; raw history remains recoverable.
-10. Quality-per-cost may be optimized only after the required quality floor is preserved.
-11. Specialists propose bounded work; the runtime retains scheduling, ownership, acceptance, and settlement.
-12. Local durability is not distributed correctness: SQLite recovery never implies exactly-once external effects.
-13. Clients are observers/controllers. They cannot append arbitrary events, settle jobs, call tools or models directly, or bypass M5 completion evidence.
-14. Skill instructions are reusable procedure, never authority. Learned/community skills require exact provenance, independent verification, and trusted promotion before normal runtime loading.
-15. Adaptive reasoning is runtime policy, not model authority: route, branch, critique, repair, escalation, cost, call, concurrency, and token ceilings remain runtime-owned and independently verifiable.
-16. Sandbox/provider selection is runtime policy: a routed model identity may select a configured sandbox backend, but models cannot choose a stronger sandbox scope or receive its raw credentials.
-17. Learned experience is lower-authority data: only independently verified, hash-bound repeated outcomes may become established M13 learning, and learned memory never mints execution, completion, skill-promotion, budget, routing, credential, or user-preference authority.
+2. Models propose; deterministic runtime and policy decide what executes.
+3. Important work cannot become complete without mapped M5 verification evidence.
+4. Execution is scoped, interruptible, budgeted, idempotent where required, and deny-by-default.
+5. Provider, tool, skill, memory, persistence, worker, client, routing, sandbox, and evaluation
+   protocols are versioned boundaries.
+6. External content, repository content under analysis, tool output, model output, worker output, skill
+   content, memory, and client input are untrusted data until validated.
+7. Credentials stay in the trusted control plane and never become model/client/normal-worker payloads.
+8. Consequential state changes and external side effects are auditable without storing hidden reasoning.
+9. Context is compiled progressively from current state and artifacts; raw history remains recoverable.
+10. Quality-per-cost optimization occurs only after the required quality floor is preserved.
+11. Specialists propose bounded work; runtime retains scheduling, ownership, acceptance, and settlement.
+12. Local durability is not distributed correctness; SQLite recovery never implies exactly-once external
+    effects or multi-host fencing.
+13. Clients are observers/controllers and cannot append arbitrary events, settle jobs, execute tools,
+    resolve credentials, or bypass verification.
+14. Skills are reusable procedure, never authority. M10 owns lifecycle and M15 owns measured community
+    pack evidence.
+15. Adaptive reasoning is runtime policy: route, branch, critique, repair, escalation, cost, call,
+    concurrency, and token ceilings are runtime-owned.
+16. Sandbox/provider selection is runtime policy. A routed model cannot choose stronger isolation,
+    filesystem/network scope, or credentials.
+17. Learned and remembered experience is lower-authority data. Current repository/runtime/task evidence
+    wins conflicts.
+18. M23 Skill OS selects only already-eligible exact capability-pack revisions and cannot change M10/M15
+    lifecycle or evidence.
+19. M24 advanced memory cannot convert remembered conclusions or model summaries into current-source
+    authority.
+20. M25 tool descriptors are catalog metadata only; all execution authority remains in M3.
 
 ## Logical architecture
 
 ```text
 Web / future native clients
   -> versioned client protocol / future API + realtime transport
-     -> mission/session policy and controller gateway
+     -> mission/session policy + controller gateway
         -> deterministic mission runtime and scheduler
            -> planner / empirical model router / context compiler
               -> bounded branch / critique / repair / escalation policy
+              -> Skill OS selection over verified capability packs
               -> exact model/profile sandbox binding
-           -> M3 tool gateway -> M12 execution/sandbox boundary -> workers
-           -> verifier and repair loop
-        -> canonical events / checkpoints / durable jobs / artifacts / memory / skills / eval metadata
+           -> M3 tool gateway
+              -> M25 typed ecosystem catalog
+              -> M12/M26 execution + sandbox boundary
+              -> workers / external adapters
+           -> M5 verifier + adversarial review / repair loop
+        -> canonical events / checkpoints / durable jobs / artifacts
+        -> scoped memory + learning + skill packages + evaluation evidence
 ```
+
+## Trust and execution planes
 
 ### Trusted control plane
 
 Owns identity, sessions, missions, permissions, budgets, provider configuration, secret brokering,
 worker leases, canonical events, approvals, persistence, routing policy, sandbox backend configuration,
-and future client fan-out. It does not load arbitrary plugins in-process and does not trust
-client/model-supplied capability or credential objects.
+Skill OS selection policy, and future client fan-out. It does not load arbitrary community code
+in-process and does not trust client/model/skill/tool-shaped authority objects.
 
 ### Cognitive runtime
 
 Owns task classification, planning effort, dependency-aware task graphs, context compilation,
-provider-independent model requests, empirical route selection, bounded reasoning strategy,
-verification strategy, evidence collection, targeted repair, and final audit. It cannot bypass policy,
-raise its own budget/quality evidence, or mark itself complete without required evidence.
+provider-independent model requests, empirical route selection, bounded reasoning, capability-pack
+selection, verification strategy, evidence collection, targeted repair, and final reporting. It cannot
+raise its own budget/quality evidence or complete a task without the required independent evidence.
 
 ### Execution plane
 
-Runs filesystem, terminal, browser, repository, and programmatic-workflow tools behind policy and
-isolation boundaries. Host execution and unrestricted network access are never defaults. M3 remains
-the tool/capability authority. M12 adds canonical workspace enforcement, a bounded trusted-command
-host-process runner, fail-closed outbound destination policy, and a provider-neutral remote-sandbox
-lifecycle/binding boundary. The host-process runner is **not** kernel/container isolation, and no
-specific hosted sandbox provider is claimed until a real adapter is authorized and exercised.
+Runs repository/filesystem/terminal/browser/database/cloud/document/data/API/research operations only
+behind policy and isolation boundaries. M3 owns tool registration, grants, approvals, schema validation,
+idempotency, timeout/retry, cancellation, handler dispatch, and audit. M25 adds uniform discovery but no
+new execution authority. M12 supplies canonical workspace, process/network policy, and a provider-neutral
+remote-sandbox lifecycle. Real container/VM isolation remains an M26 proof target rather than a current
+claim.
 
 ### Knowledge and persistence plane
 
 Stores canonical mission events, validated checkpoints, durable job state, lifecycle cursors,
-versioned artifacts, working/project/user memory, skill packages, provenance, and eval outcomes.
-Repository state and current primary evidence override remembered facts.
+content-addressed artifacts, scoped memory, skill packages, provenance, and evaluation outcomes.
+Repository state and current primary evidence override remembered facts. M8 provides local SQLite
+restart durability; M24 adds bounded advanced retrieval/maintenance over M6 without changing authority.
 
-M8 implements the first durable local state adapter with Node 24 `node:sqlite`. Canonical mission
-events remain source of truth. Checkpoints are derived and must reproduce from canonical events.
-Worker jobs use at-least-once semantics with fenced settlement. This is not a hosted queue or
-cross-host correctness claim.
+### Experience/client plane
 
-### Experience layer
+M9 defines strict bounded client projections and controller-only mission controls. Clients reconnect from
+M8 lifecycle cursors and never become canonical mission state. M28 will extend this to mobile/native
+experience contracts while keeping long-running compute server-side.
 
-M9 introduces one strict client protocol for the responsive reference web shell and future native
-clients on iOS, iPadOS, macOS, and Android. A client receives a bounded derived mission projection plus
-paged durable lifecycle activity. It may request only explicitly granted controls. Device suspension
-does not suspend the canonical long-running mission; a future transport reconnects from durable state.
-
-M8 lifecycle cursors are globally increasing while client reads are mission-scoped. Therefore cursor
-values observed for one mission can have numeric gaps. M9 continuity is based on exact `afterCursor`
-chaining, monotonic delivered events, scope, and event hashes rather than requiring `cursor + 1`.
-
-## Implemented milestones
+## Implemented capability map
 
 ### M1 — Provider boundary
 
 `src/providers` normalizes requests, responses, streaming, usage, tool calls, structured output, and
-typed errors across OpenAI, Anthropic, OpenRouter, NVIDIA, and explicit compatible endpoints. Unknown
-capabilities fail before credentials resolve. M12 extends the credential resolver with exact
-provider/model context. Injected-transport tests remain the broad compatibility base; M12-D separately proves
-one bounded real NVIDIA/Kimi K3 end-to-end provider path, not universal live-provider compatibility.
+typed failures across OpenAI, Anthropic, OpenRouter, NVIDIA, and explicit compatible endpoints.
+Provider-specific payloads stop at adapters and credentials resolve only after trusted binding checks.
 
 ### M2 — Mission runtime
 
-`src/mission` and `src/events` implement closed mission states, validated task DAGs, deterministic
-scheduling, integer budgets, bounded equivalent-failure circuits, append-only events, optimistic
-aggregate versions, idempotent batches, checkpoints, and replay.
+`src/mission` and `src/events` implement the closed mission state machine, task DAG, deterministic
+scheduling, budgets, bounded retries, pause/resume/cancel, append-only events, checkpoints, optimistic
+versions, and replay.
 
-### M3 — Tool-control boundary
+### M3 — Tool-control authority
 
-`src/tools` provides progressive tool discovery, strict schemas, capability grants, approval evidence,
-idempotency, timeout/retry ownership, secret-safe audit records, and scoped repository search/read/
-patch/quality operations through injected adapters. It accepts no model-provided shell string.
+`src/tools` provides progressive discovery, strict schemas, scoped capability grants, approval evidence,
+idempotency, timeout/retry/cancellation, secret-safe audit, and scoped repository operations. Models
+cannot supply arbitrary shell strings or mint tool authority.
 
 ### M4 — Coding vertical slice
 
-`src/runtime` connects M1/M2/M3 through a fixture-backed coding workflow: bounded repository discovery,
-strict plan validation, scoped patching, a deliberate quality failure, diagnosis/repair, green rerun,
-checkpoint/replay, and evidence reporting. This is orchestration proof, not a production sandbox.
+`src/runtime` composes provider planning, scoped repository discovery, strict plan validation, mutation,
+quality gates, targeted repair, checkpoint/replay, and evidence reporting. Later M16 surgical coding and
+M19 multi-file coordination harden the same authority boundaries rather than creating parallel ones.
 
 ### M5 — Verification authority
 
-`src/verification` validates typed claims, evidence, bindings, scope, timestamps, hashes, freshness,
-producer class, and coverage. A separate adversarial reviewer returns `ACCEPT`, `BLOCK`, or bounded
-`REPAIR_REQUIRED`. Missing, stale, foreign, failed, contradictory, malformed, duplicated, weak, or
-self-authored evidence cannot silently complete work.
+`src/verification` validates bounded claims/evidence/bindings, producer class, freshness, scope, hashes,
+coverage, and contradictions. Independent adversarial review returns ACCEPT, BLOCK, or bounded
+REPAIR_REQUIRED. Missing or weak evidence cannot silently complete work.
 
-### M6 — Memory and context
+### M6 / M18 / M24 — Memory and context
 
-`src/memory` defines scoped/versioned working, episodic, semantic, project, and explicit user-preference
-memory contracts. `src/context` compiles P0–P6 context with mandatory P0–P2, current-source precedence,
-deterministic budget estimates, sensitive-cache exclusion, and integrity-checked session snapshots.
-The memory adapter remains in-memory.
+`src/memory` provides scoped/versioned working, episodic, semantic, project, and explicit user-preference
+records with optimistic versions, expiry, tombstones, sensitivity, and provenance. `src/context` compiles
+P0–P6 context with mandatory P0–P2 authority, current-source precedence, bounded token estimates,
+sensitive-cache exclusion, integrity snapshots, and M18 delta/semantic reuse.
+
+M24 adds exact-scope advanced episodic/project retrieval, current-source comparison, stale marking,
+conflict surfacing, bounded retention planning, tombstone delegation, and runtime-issued lower-authority
+compression. Future timestamps, secret-like material, sensitivity downgrade, saturated-retention claims,
+and tampered/replayed proposals fail closed.
 
 ### M7 — Specialist coordination
 
-`src/coordination` adds bounded specialist discovery, dependency-ready assignment, logical repository/
-resource/state ownership, concurrency ceilings, expiring in-process leases, cancellation, strict
-proposal validation, runtime evidence attestation, and deterministic reconciliation. Specialists remain
-untrusted proposal producers.
+`src/coordination` adds bounded specialist discovery, dependency-ready assignment, logical ownership,
+concurrency ceilings, expiring leases, cancellation, strict structured proposals, runtime evidence
+attestation, and deterministic reconciliation. Workers remain untrusted proposal producers.
 
-### M8 — Durable missions and worker recovery
+### M8 / M20 — Durable missions and long-running recovery
 
-`src/durable` persists M2 events, validated checkpoints, durable jobs, and lifecycle events in local
-SQLite. It provides deterministic claims, bounded attempts, expiring leases, fencing generations,
-hashed opaque tokens, heartbeat/timeout/cancellation settlement, corruption checks, reopen recovery,
-and mission-scoped cursor reads. Recovery tests include stale-generation rejection and a 32-job
-interrupted fixture.
+`src/durable` persists canonical M2 events, validated checkpoints, jobs, and lifecycle events in local
+SQLite with integrity checks, bounded attempts, expiring fenced leases, opaque-token hashes,
+heartbeat/settlement, cancellation, and crash/reopen recovery.
 
-### M9 — Client protocol and responsive shell
+`src/autonomy` adds runtime-owned 6 h / 12 h / 24 h logical synthetic-clock soak profiles with
+hash-chained observations, checkpoint/restart binding, generation fencing, cancellation terminality,
+budget ceilings, and anti-loop validation. These prove logical recovery properties, not hosted uptime.
 
-`src/client` adds strict protocol codecs, bounded projections, exact mission/session capability policy,
-controller-only pause/resume/cancel, optimistic expected versions, durable idempotency, state bootstrap,
-paged reconnect, and a deterministic reducer. Foreign scope, changed hashes, unsupported versions,
-stale projections, and continuity violations fail closed or require bootstrap resync.
+### M9 — Client protocol
 
-`web/` is a framework-free reference fixture showing mission state, tasks, budgets, durable worker
-activity, evidence, reconnect state, pause/resume, and deliberate cancel confirmation. It uses no live
-transport and stores no mission state in browser persistent storage.
+`src/client` defines strict versioned codecs, bounded projections, mission/session capability policy,
+controller-only pause/resume/cancel, expected versions, durable idempotency, bootstrap/reconnect, and a
+deterministic reducer. `web/` is a static responsive reference client, not a public hosted service.
 
-### M10 — Progressive skill lifecycle and synthesis
+### M10 / M14 / M15 / M23 — Skill lifecycle and Skill OS
 
-`src/skills` adds immutable hash-addressed skill packages, compact discovery, separately bounded full
-instruction loading, provenance/trust classes, candidate/verified/active/revoked lifecycle,
-independent verification, trusted promotion, deterministic supersession/rollback, and concise
-lifecycle audit events. Learned/community content never becomes normal runtime instruction merely
-because a model or worker claims success.
+`src/skills` owns immutable hash-addressed packages, discovery, bounded instruction loading,
+verification, activation, supersession, revocation, rollback, and candidate-only solved-task synthesis.
 
-`SkillSynthesisService` can convert an attested solved task into a learned `CANDIDATE` with exact
-source mission/task provenance and idempotency. It does not execute generated code, install public
-packages, register M3 tools, mint capabilities, expose credentials, or bypass M5/M7 authorities.
+`src/skill-intake` treats external skill/plugin repositories as untrusted snapshots. It binds immutable
+source identity, scans bounded content without execution, emits stable risk/completeness evidence, and
+allows only COMPLETE+ACCEPT material to become an M10 community candidate with no M3 authority.
 
-### M11 — Adaptive reasoning, routing, and efficiency
+`src/capability-packs` measures distilled procedure candidates and creates progressive packs only when
+exact M10 lifecycle and integrity-valid M15 evidence agree. Offline replay is proposal-only.
 
-`src/routing` adds hash-addressed empirical evaluation records, exact provider/model/profile/effort
-binding, capability-first filtering, risk/uncertainty-adjusted quality floors, deterministic
-quality-before-cost route selection, stronger eligible escalation paths, bounded cache metadata, and an
-offline small/fast-versus-stronger evaluation harness.
+`src/skill-os` is the M23 runtime consumer of those already-verified packs. It performs compact discovery,
+deterministic domain/task-class selection, exact pack/member/hash/freshness binding, progressive loading,
+and explicit pin/history rollback. M23 cannot activate/promote a skill, register a tool, change memory,
+or mint evidence.
 
-`AdaptiveReasoningController` limits continuation to `ACCEPT`, `CRITIQUE`, `REPAIR`, `ESCALATE`, or
-`BLOCK`. Only independent non-contradictory PASS evidence can accept. Branch, critique, repair,
-model-call, parallel-call, cost, and estimated-token ceilings are runtime-owned.
+### M11 / M21 — Adaptive multi-model routing
 
-### M12-A/B — Local execution hardening and sandbox backend boundary
+`src/routing` binds empirical quality/cost/latency evidence to exact provider/model/profile/reasoning/task
+identity and chooses only routes that meet capability and effective quality floors. Bounded critique,
+repair, branch search, and escalation remain runtime-owned.
 
-`src/sandbox` canonicalizes the trusted workspace root, denies lexical/canonical escape, bounds trusted
-subprocess execution, and evaluates outbound destinations before a future transport is allowed to use
-them. Sandbox backends are selected by exact provider/model/profile identity. Runtime-owned credential
-references are resolved only after binding checks, and M11 route decisions feed the selected exact
-model identity into sandbox allocation.
+M21 adds recent typed negative failure evidence for exact route exclusion. It may remove only the exact
+recently failing route and cannot create positive quality, lower floors, add capability, or increase
+budget.
 
-Remote sandbox creation is idempotent per mission/task/backend/model/profile allocation identity.
-Identical sequential or concurrent replay shares one create operation; conflicting replay fails closed.
-Remote backends must implement cleanup, release is idempotent, and released sessions cannot be reused.
-Provider expiry metadata is validated when present and omitted when absent. These contracts are
-provider-neutral and have no live sandbox-provider proof yet.
+### M12 — Local sandbox/release hardening
 
-Normal PR run `33794095989` verified this tranche with 237/237 tests and aggregate coverage 89.43%
-lines / 76.28% branches / 95.37% functions.
+`src/sandbox` canonicalizes workspace roots, denies traversal/symlink escape, bounds trusted subprocess
+execution, starts child environments deny-by-default, enforces timeout/output/concurrency ceilings,
+validates outbound destinations, and binds sandbox lifecycle to exact provider/model/profile identity.
+Remote lifecycle contracts are idempotent and cleanup-aware.
 
-### M12-C — Observability, recovery evidence, and release proof
+`src/observability` provides bounded secret-safe runtime events. `src/release` provides integrity-bound
+local/integration/live evidence levels, recovery/backup proof, manifests, and fail-closed release gates.
+One bounded live NVIDIA Kimi K3 provider path is verified, but no hosted sandbox/container/VM or public
+service is currently proven.
 
-`src/observability` adds bounded structured runtime events with deterministic identity and fail-closed
-secret-like metadata rejection. `src/release` adds hash-bound release evidence, monotonic local /
-integration / live claim policies, backup/restore proof, deterministic recovery proof, and release gates
-that reject missing, stale, foreign, failed, tampered, or weaker-than-required evidence.
+### M13 — Evidence-backed learning
 
-Sandbox cleanup was additionally hardened so concurrent identical releases collapse to one remote
-`destroy` operation while conflicting release reasons fail closed. The local end-to-end release fixture
-proves that repository verify + recovery + restore evidence can unlock only a local claim and cannot be
-relabelled into integration/live proof. Normal PR run `33796268313` passed 258/258 tests with 89.29%
-line / 76.24% branch / 95.64% function coverage.
+`src/learning` promotes repeated independently verified outcomes into lower-authority project learning
+only after exact scope/hash/evidence checks and support thresholds. Conflicts block promotion. Learning
+cannot create tools, credentials, budgets, route quality, durable user preferences, skill activation, or
+completion evidence.
 
-### M12-D — Bounded live-provider evidence
+### M16 / M17 / M19 — Coding reliability
 
-A dedicated live runner reuses the existing M4 coding fixture but replaces the scripted model boundary
-with the real `NvidiaProvider` and `moonshotai/kimi-k3`. Repository secret resolution remains in the
-control plane and is restricted to the exact provider/model identity. The live workflow first reruns
-all deterministic gates, caps the model path at two calls, persists only sanitized evidence, and is
-manual-only after the evidence run.
+M16 uses runtime-bound exact `oldText`/`newText` surgical edits instead of model-owned full-file identity.
+M17 deterministically classifies failures and chooses bounded retry/repair/alternate-plan/rollback/
+escalation/checkpoint actions under anti-loop and side-effect rules. M19 coordinates 1–100 file change-set
+DAGs with exact pre/post hashes, ownership, staging, verification, and preimage restoration on failure.
 
-Live run `33837291528` completed the mission first pass with one provider call, 632 input / 222 output
-tokens, 22.4 s latency, seven Odin tool calls, deterministic `verify` exit 0, and M5 PASS for a 100/100
-smoke score. This proves one live provider integration, not a hosted sandbox, broad benchmark, model
-superiority, or AGI.
+### M22 — Frontier evaluation protocol
 
-### M13 — Evidence-backed post-task learning
+`src/frontier-evals` defines versioned 50–200 case model-alone versus model-plus-Odin matched evaluation
+with hidden acceptance metadata removed from model-facing input, equal identity/budget requirements,
+complete/partial/inconclusive aggregation, and explicit infrastructure ambiguity. Synthetic fixtures test
+the protocol; they are not live frontier-agent benchmark results.
 
-`src/learning` converts repeated independently verified task outcomes into scoped learning records with exact semantic-key and lesson-content hashes. Three distinct mission/task supports are required for establishment; competing content under the same user/project/key is conflicted and cannot become a nudge or memory entry. Exact replay is resolved before requesting fresh evidence, while a second replay check after the asynchronous authority call preserves race safety.
+### M25 — Tool ecosystem catalog
 
-Established, non-conflicted learning may enter M6 only as `verified_learning` semantic memory. Broad semantic retrieval deliberately excludes it unless the caller explicitly asks for the `m13-learning` tag. M13 maintenance may cool stale records and archive under-supported stale conflicts, allowing a sufficiently supported surviving lesson to re-establish without deleting already committed M6 memory.
-
-The shared `src/security/secret-text.ts` primitive is used by both observability and learning intake to reject obvious credential patterns. M13 cannot register tools, grant capabilities, promote skills, infer durable user preferences, change routing quality floors, increase budgets, or mark a task complete. Run `33852005166` verified 272/272 tests after the replay/maintenance hardening.
-
-### M14 — Skill intake firewall
-
-`src/skill-intake` converts one externally resolved skill snapshot into immutable bounded evidence without executing third-party code. The trusted resolver must bind repository, requested ref, selected path, and an exact 40-hex commit. File count, per-file bytes, total bytes, path depth, and retained findings are bounded; binaries, symlinks, truncation, incomplete inventory, unknown license state, and malformed manifests remain explicit limitations rather than being interpreted as clean coverage.
-
-Static findings cover prompt override, credential collection/exfiltration, download-and-execute patterns, destructive writes, privilege escalation, self-promotion, policy/memory poisoning, dependency installation, explicit shell/subprocess use, MCP configuration, hooks/workflows including nested `.github/workflows` surfaces, and executable content. Findings retain stable hashes/fingerprints instead of matched raw snippets.
-
-Only `COMPLETE + ACCEPT` may become an M10 `community` candidate. M14 forces `requiredTools=[]` and cannot activate the skill, register M3 handlers, mint grants, expose credentials, change budgets/routing, or create M5 completion evidence. M10 independent verification/trusted promotion remains a separate authority boundary. Normal PR run `33858888408` passed 290/290 tests, Biome, strict TypeScript, and the secret-free Kimi dry smoke; aggregate coverage was 89.47% lines / 76.70% branches / 95.84% functions.
-
-### M15 — Curated capability packs and measured procedure intake
-
-`src/capability-packs` adds a lower-authority curation layer above M10. Candidate identity is bound to exact package hash, domain, bounded task classes, runtime-owned procedure keys, context ceilings, and a trusted runtime clock. Fully redundant procedures stop before evaluation. Unknown/self-declared procedure keys, stale/future/foreign evidence, and model/runtime/worker self-evaluation fail closed.
-
-Passing reports are deterministic and hash-addressed. They may produce M10 verification for the exact community candidate but never activation. Progressive packs require the same passing report evidence to match M10 lifecycle history and expose compact metadata only; full instructions still resolve through M10. Offline replay is proposal-only and receives no M3/M5/M6/M10 mutation authority.
-
-The live comparison harness is separate from curation authority. It compares the same Kimi K3 coding cases with and without an evaluation-only candidate overlay, caps provider calls, sanitizes evidence, and records failed/interrupted arms as explicit negative measurements instead of dropping them. This supports task-specific lift measurement; it does not turn an orchestration result into a model benchmark or AGI claim.
-
-Implementation verification helper run `33866236138` passed 319/319 tests with 89.81% line / 77.03% branch / 95.85% function coverage after trusted-clock, procedure-catalog, and A/B failure-evidence hardening. Normal exact-head PR CI `33870080147` passed before M15 merged into `main` as `30bcab22f6129925b704fff0d024ca40e472b06c`.
-
-Authorized post-merge run `33870210502` attempted three matched NVIDIA Kimi K3 coding cases with ten provider calls. Every baseline and candidate arm was incomplete, leaving zero complete matched pairs. The raw sanitized evidence is therefore INCONCLUSIVE and cannot establish candidate lift, pack eligibility, model superiority, or AGI-level capability. Post-run evidence semantics treat zero complete pairs as INCONCLUSIVE rather than numeric zero lift and expose only bounded non-secret failure categories.
-
-Second authorized run `33879714040` used nine calls and again produced zero complete pairs. Bounded diagnostics localize every failure to `provider_timeout`: candidate-overlay arms timed out on their first model call before mutation, while baseline arms completed planning, produced a non-accepting mutation, and timed out on the second repair call. This exposed a harness defect because the v1 provider timeout and candidate latency acceptance ceiling were both 180000 ms. A runtime-owned v2 execution profile now binds measurement timeout separately from acceptance (240000 vs 180000 ms), requires at least 30000 ms measurement headroom, binds `high` reasoning and temperature 1, and includes the profile version in live evidence identity. Offline run `33882837781` verified this profile with 329/329 tests and a credential-free A/B dry run; it made no live provider request.
-
-### M17–M19 — Reliability, efficient context, and transactional multi-file coding
-
-`src/reliability` makes recovery a runtime-owned deterministic policy. Typed failures map to bounded
-retry, repair, alternate-plan, rollback, verifier/model escalation, context reduction, cancellation, or
-checkpoint-and-block actions. Budgets and repeated-strategy signatures prevent loops. M17 does not gain
-M3 execution authority or M5 completion authority.
-
-M18 extends `src/context` with source/profile/policy/verification-bound delta context, semantic reuse,
-compact hash-referenced tool summaries, evidence-gated early exit, and risk/budget-adaptive reasoning.
-Mandatory P0–P2 context remains present in the effective compiled context, and sensitive material is not
-retained for reuse. The measured 99.10% estimate is a deterministic fixture result, not universal or
-provider-billed token savings.
-
-M19 adds `runtime/multi-file` for bounded 1–100 file change-set DAGs. Runtime canonicalization,
-ownership, exact pre/post hashes, dependencies, and M18 context identity are validated before commit.
-A trusted workspace adapter stages the full set; quality evidence and M5 verify the resulting tree.
-Partial mutation, post-commit quality/verification failure, thrown verification paths, or cancellation
-after mutation restore runtime-captured preimages. Restoration deliberately ignores an already-aborted
-task signal, is independently bound to the exact snapshot hash, and occurs even if an injected recovery
-policy returns an unexpected non-rollback action; that configuration then fails closed after safe-state
-restoration. This is an injected adapter transaction contract, not a claim of kernel/filesystem atomicity.
-
-Implementation helper run `33949434835` passed 379/379 tests, Biome, strict TypeScript, build, and
-credential-free Kimi dry smoke; aggregate coverage was 90.31% / 77.67% / 95.87% and M19 module coverage
-was 86.88% / 75.46% / 95.56%. Normal exact-head PR CI remains the final package gate.
+`src/tools/ecosystem.ts` defines uniform categories for repository, browser, database, cloud, documents,
+data, CI/CD, API, and research adapters. Every descriptor must mirror one exact registered M3 manifest.
+Discovery remains compact and execution always delegates through `ToolRuntime.execute`, preserving M3
+policy, idempotency, retry/timeout, cancellation, and audit. Current category adapters are offline fixture
+proof only, not live external integrations.
 
 ## Current module map
 
 ```text
 src/
-  mission/       mission aggregate, task DAG, state machine, budgets, checkpoints
-  events/        append-only event contracts and in-memory contract adapter
-  providers/     normalized model API, capability profiles, adapters, transport errors
-  tools/         tool discovery, policy, schemas, audit, repository execution authority
-  runtime/       coding orchestrator, strict plan/repair, M19 bounded multi-file coordinator
-  reliability/   M17 typed failure classification and bounded recovery policy
-  verification/  typed evidence verifier and adversarial review authority
-  memory/        asynchronous scoped memory contracts and in-memory adapter
-  context/       retrieval facade, P0-P6 compiler/cache, M18 deltas/efficiency, session snapshots
-  coordination/  specialist registry, logical ownership, bounded execution, reconciliation
-  durable/       SQLite mission events/checkpoints/jobs, lifecycle cursors, runner recovery
-  client/        M9 protocol codecs, controller gateway, reconnect reducer
-  skills/        M10 progressive skill registry, synthesis, verification/promotion history
-  routing/       M11 empirical model/effort selection, cache, eval harness, bounded reasoning
-  sandbox/       M12 canonical workspace, bounded process/network policy, backend lifecycle/routing
-  observability/ M12-C secret-safe bounded runtime events
-  release/       M12-C backup/recovery proof, release evidence/manifests, fail-closed gates
-  learning/      M13 evidence-backed repeated learning, conflict curation, bounded nudges
-  skill-intake/  M14 immutable community-skill intake, bounded risk/completeness quarantine
-  capability-packs/ M15 measured procedure curation, progressive packs, proposal-only replay
-  security/      shared secret-text and future cross-cutting security primitives
-  artifacts/     content-addressed artifact byte/storage layer later
-  cli/           user-facing entry point later
-web/             M9 responsive static reference client
+  mission/          M2 mission aggregate, DAG, state machine, budgets, checkpoints
+  events/           append-only event contracts
+  providers/        M1 provider-neutral model boundary
+  tools/            M3 execution authority + M25 ecosystem catalog
+  runtime/          M4/M16 coding orchestration + M19 multi-file coordinator
+  reliability/      M17 typed failure/recovery policy
+  verification/     M5 evidence verifier and adversarial review
+  memory/           M6 scoped memory + M24 advanced retrieval/maintenance
+  context/          M6/M18 context compiler, caching, deltas, snapshots
+  coordination/     M7 specialist ownership and reconciliation
+  durable/          M8 SQLite events/checkpoints/jobs/lifecycle
+  autonomy/         M20 logical soak/recovery evidence
+  client/           M9 protocol/controller/reconnect; M28 will extend experience contracts
+  skills/           M10 skill lifecycle and synthesis
+  skill-intake/     M14 immutable bounded external-skill intake
+  capability-packs/ M15 measured procedure curation and progressive packs
+  skill-os/         M23 runtime pack discovery/selection/loading/rollback
+  routing/          M11 empirical routing + M21 failure-aware route filtering
+  frontier-evals/   M22 matched evaluation protocol
+  sandbox/          M12 workspace/process/network/backend lifecycle; M26 extends production contract
+  observability/    M12 secret-safe bounded events
+  release/          M12 recovery/backup/release evidence gates
+  learning/         M13 evidence-backed repeated learning
+  security/         shared secret-text and cross-cutting primitives
+  artifacts/        content-addressed artifact layer direction
+  cli/              user-facing CLI direction
+web/                M9 static responsive reference client
 ```
 
-## Next architecture milestone
+## Next architecture package — M26–M28
 
-The remaining M12 path is now hosted-sandbox and production evidence escalation. One real Kimi K3
-provider path is verified, but hosted sandbox cleanup/isolation, broader live-model comparison, public
-service/auth/realtime transport, deployment, and production recovery remain separate proof.
+M26–M28 must extend existing boundaries rather than replace them:
 
-Local CI may never manufacture `integration` or `live` evidence. Any paid resource, deployment, or
-production/public traffic remains separately approval-gated. M15's curation, progressive-pack, and proposal-only replay boundaries are merged and verified. Both authorized post-merge Kimi K3 comparison attempts are preserved as INCONCLUSIVE because no matched arm pair completed; neither creates M10 verification or pack evidence. The v2 measurement profile is offline-verified but not live-verified. A third live provider run requires new explicit user authorization, and broader provider or public-benchmark claims require their own complete matched evaluations.
+- **M26** builds on M12. It must not invent a second tool gateway or credential path. Production sandbox
+  work must preserve exact M3 policy, M12 destination/workspace rules, runtime-owned quotas/timeouts,
+  opaque secret references, idempotent allocation/cleanup, and auditable evidence. Deterministic adapter
+  proof is distinct from real container/VM isolation proof.
+- **M27** builds on M2/M8/M9. Canonical mission semantics remain unchanged while a hosted-service adapter
+  adds authenticated access, database/queue/worker/artifact boundaries, realtime reconnect, recovery,
+  fencing, idempotency, backup, and failure injection. Local SQLite behavior cannot be relabeled as
+  distributed correctness.
+- **M28** builds on M9. Mobile/native clients remain observers/controllers. They may cache bounded
+  projections/cursors for UX but never canonical mission state, credentials, tool authority, or offline
+  mutation authority. Long-running work stays server-side and reconnects from durable state.
 
-## Storage and deployment direction
-
-Local mode uses verified SQLite durability for mission events, checkpoints, jobs, and lifecycle
-cursors. Server/team mode may later add PostgreSQL or a hosted job transport behind the same domain
-contracts. Large outputs should become content-addressed artifacts rather than embedded event/job data.
-
-The MVP remains a modular service plus isolated worker boundary, not a fleet of speculative
-microservices. Split a component only when isolation, independent scaling, or failure containment is
-demonstrated. Mobile clients never host the canonical long-running runtime.
-
-## M15 live-evidence terminal-outcome boundary
-
-Rerun-3 review establishes a sharper distinction inside the live comparison harness. A deterministic terminal task failure (for example plan SHA mismatch, no-change repair, quality still failing after bounded repair, verification denial, or bounded context/budget exhaustion) is a completed negative measurement. A timeout, network/auth/rate-limit failure, unknown error, or ambiguous malformed provider response remains incomplete because outcome attribution is not safe. The runtime owns this allowlist; model output cannot declare itself measured.
-
-Failed arms retain conservative token accounting and cannot pass M15 quality/safety/authority gates merely because they terminate early. Historical raw evidence is immutable; corrected semantics create a separate derived interpretation rather than rewriting the original artifact.
-
-Third authorized Kimi run `33884808665` therefore derives to PARTIAL with 2/3 complete terminal-failure pairs and zero measured lift on those pairs. The exact-fixture offline control passed all three cases through M4/M5, so the next architecture focus is the live model/provider structured-output and plan/repair contract rather than bypassing M5 or relaxing fixture acceptance.
-
-
-## M20–M22 architecture extension — active PR #32
-
-### M20 — Long-running autonomy evidence
-
-`src/autonomy` is an integrity/evaluation layer over the existing M2/M8 durable runtime, not a second
-mission store. Runtime-owned versioned soak profiles define logical 6 h / 12 h / 24 h coverage and
-resource ceilings. Hash-chained exact-shape observations represent checkpoints, restarts, lease recovery,
-settlement, cancellation, bounded failures, budget consumption, and heartbeats. Replay rejects unknown
-fields, clock regression, foreign restart checkpoints, stale generations, late success after cancellation,
-and equivalent-failure loops. Existing M8 SQLite events/checkpoints/jobs remain canonical; synthetic
-soak time does not establish hosted wall-clock uptime.
-
-### M21 — Failure-aware multi-model routing
-
-`src/routing/multi-model.ts` adds a negative-evidence filter in front of the existing M11 empirical
-router. A recent typed failure is bound to exact provider/model/profile/reasoning/task-class identity and
-failure signature. It may exclude that exact route after runtime-owned rules, but it cannot create positive
-quality evidence, lower the M11 floor, add capability, or raise call/token/cost budget. The surviving set
-still passes through the existing M11 capability, freshness, independent-quality, cost, latency, and
-escalation logic. The configured provider names in tests are offline identities, not live capability proof.
-
-### M22 — Frontier evaluation protocol
-
-`src/frontier-evals` is a non-authoritative evidence protocol. Cases commit to public input, hidden
-acceptance metadata, task class, suite version, and an exact budget profile. Model-facing projections omit
-the hidden acceptance hash itself. Results bind arm, exact model profile/reasoning, harness, budget,
-completion attribution, verification, failure class, quality, tokens, latency, calls, tools, repairs, and
-recoveries. Numeric aggregates use only complete attributable matched pairs; infrastructure ambiguity is
-never coerced into zero. COMPLETE/PARTIAL/INCONCLUSIVE reports are benchmark evidence only and cannot
-become M5 completion or M11 quality evidence without a separate independent promotion path. M22 v1
-implements the model-alone/Odin protocol with synthetic offline fixtures; no real frontier-model or
-external-agent benchmark is claimed.
+No paid resource, deployment, live sandbox/database/cloud service, production migration, billing change,
+or public traffic is authorized by the current M23–M25 package. Those proofs remain separately gated.
