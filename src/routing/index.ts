@@ -14,12 +14,12 @@ export {
 export {
   createRouteFailure,
   FailureAwareModelRouter,
-  routeFailureHash,
   type FailureAwareRouteResult,
   type FailureAwareRoutingPolicy,
   type RouteFailure,
   type RouteFailureCategory,
   type RouteFailureInput,
+  routeFailureHash,
 } from "./multi-model.js";
 export { AdaptiveReasoningController, createReasoningPlan } from "./reasoning.js";
 export { EmpiricalModelRouter, normalizeRouteRequest } from "./router.js";

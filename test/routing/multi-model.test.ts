@@ -4,8 +4,8 @@ import test from "node:test";
 import {
   createRouteFailure,
   FailureAwareModelRouter,
-  RoutingError,
   type RouteFailure,
+  RoutingError,
 } from "../../src/routing/index.js";
 import { routeRequest, routingEvaluation, routingProfile } from "./helpers.js";
 
