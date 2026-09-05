@@ -5,6 +5,11 @@ import {
   type MissionSnapshot,
 } from "../mission/runtime.js";
 import type { JsonObject, ModelProvider, ModelResponse } from "../providers/types.js";
+import {
+  classifyFailure,
+  type FailureRecoveryAuthority,
+  ReliabilityController,
+} from "../reliability/index.js";
 import type { QualityCommandRunner } from "../tools/repository.js";
 import type { ToolRuntime } from "../tools/runtime.js";
 import type { CapabilityGrant, ToolExecutionRequest } from "../tools/types.js";
@@ -84,6 +89,7 @@ export interface CodingRuntimeDependencies {
   readonly quality: QualityCommandRunner;
   readonly audit: ToolAuditReader;
   readonly verification: VerificationAuthority;
+  readonly reliability?: FailureRecoveryAuthority;
   readonly clock?: () => string;
 }
 
@@ -106,6 +112,7 @@ export class CodingOrchestrator {
   readonly #quality: QualityCommandRunner;
   readonly #audit: ToolAuditReader;
   readonly #verification: VerificationAuthority;
+  readonly #reliability: FailureRecoveryAuthority;
   readonly #clock: () => string;
   #grantSerial = 0;
 
@@ -118,6 +125,7 @@ export class CodingOrchestrator {
     this.#quality = dependencies.quality;
     this.#audit = dependencies.audit;
     this.#verification = dependencies.verification;
+    this.#reliability = dependencies.reliability ?? new ReliabilityController();
     this.#clock = dependencies.clock ?? (() => new Date().toISOString());
   }
 
@@ -199,6 +207,44 @@ export class CodingOrchestrator {
       "DIAGNOSING",
       eventKey(snapshot, "diagnosing"),
     );
+
+    const recovery = this.#reliability.decide({
+      attempts: [],
+      budget: {
+        alternativePlansRemaining: 0,
+        maxRepeatedStrategyFailures: 1,
+        modelEscalationsRemaining: 0,
+        repairsRemaining: 1,
+        retriesRemaining: 0,
+        rollbacksRemaining: 0,
+        verifierEscalationsRemaining: 0,
+      },
+      capabilities: {
+        contextReduction: false,
+        modelEscalation: false,
+        verifierEscalation: false,
+      },
+      failure: classifyFailure({
+        contradictoryEvidence: false,
+        independentEvidence: false,
+        missionId: snapshot.id,
+        phase: "VERIFYING",
+        reasonCode: "quality_gate_failed",
+        retryable: false,
+        sideEffect: "REVERSIBLE",
+        source: "verification",
+        taskId: QUALITY_TASK_ID,
+      }),
+    });
+    if (recovery.action !== "TARGETED_REPAIR") {
+      await this.#mission.transition(
+        snapshot.id,
+        snapshot.version,
+        "BLOCKED",
+        eventKey(snapshot, `recovery-${recovery.reasonCode}`),
+      );
+      throw new MissionDomainError("Reliability policy denied the bounded coding repair.");
+    }
 
     const checkpoint = createMissionCheckpoint(snapshot, snapshot.version);
     if (options.interruptAfterFirstFailure === true) {

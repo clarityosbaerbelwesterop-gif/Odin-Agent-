@@ -251,3 +251,143 @@ satisfy MVP.
 - [ ] Any fourth live provider comparison requires new explicit authorization and a new immutable evidence identity.
 
 Rerun 3 does not establish a Kimi public benchmark, model-wide Odin lift, AGI/ASI, or equivalence/superiority to Astra/Fable. Current evidence prioritizes provider/model plan-and-repair reliability over additional skill promotion.
+
+## M16 — Grounded surgical coding
+
+Status: **PARTIALLY_VERIFIED**. The deterministic implementation is verified; no live run after the
+surgical-edit change has established a quality improvement.
+
+- [x] Bind model-facing edits to runtime-trusted task, path, source content, and preimage hash.
+- [x] Replace model-facing full-file generation with bounded exact `oldText`/`newText` edit proposals.
+- [x] Reject absent or ambiguous anchors, no-op edits, stale sources, scope changes, and malformed output.
+- [x] Expand an accepted surgical proposal into the existing M4 full-file contract without moving M3
+  execution or M5 completion authority into the model wrapper.
+- [x] Preserve bounded finish-reason, usage, acceptance, and terminal diagnostic evidence.
+- [x] Current-main baseline verified locally after merge: 346/346 tests, Biome, strict TypeScript, and
+  credential-free Kimi dry smoke pass.
+- [ ] Establish live quality efficacy for the surgical protocol under a newly authorized immutable profile.
+
+Historical run 4 completed 2/3 matched pairs and reported 43.92% fewer tokens and 37.05% lower aggregate
+latency on those pairs, with quality 0 vs 0. Run 5 completed 4/4 pairs and reported 42.07% fewer tokens,
+3.81% lower aggregate latency, equal calls (8 vs 8), and quality 0 vs 0. These results motivated the
+surgical protocol but do not verify its efficacy because both runs predate it.
+
+## Delivery batches after M16
+
+One pull request or merge package contains three sequential milestones unless the final release package
+has fewer remaining milestones. Every milestone keeps its own exit gate inside the package.
+
+| Package | Milestones | Delivery theme |
+| --- | --- | --- |
+| 1 | M17–M19 | Reliability, context efficiency, multi-file coding |
+| 2 | M20–M22 | Long-running autonomy, multi-model routing, frontier evals |
+| 3 | M23–M25 | Skill OS, advanced memory, tool ecosystem |
+| 4 | M26–M28 | Production sandbox, hosted backend, mobile experience |
+| 5 | M29–M30 | Adversarial hardening and final release gate |
+
+## M17 — Reliability engine
+
+- [x] Deterministic failure classification from typed evidence.
+- [x] Targeted retry, alternate plan, rollback, verifier/model escalation, checkpoint, and stop policies.
+- [x] Serializable anti-loop history prevents repeated no-progress strategies.
+- [x] Coding-path integration and requirement-derived failure/recovery tests.
+
+M17 focused verification passed with 357/357 tests, Biome, strict TypeScript, credential-free Kimi dry
+smoke, and 90.43% line / 77.60% branch / 95.91% function coverage. The combined M17–M19 package has
+since passed its full implementation helper gate; final exact-head PR CI remains the merge gate.
+
+## M18 — Token efficiency 2.0
+
+- [x] Context deltas preserve M6 P0–P2 invariants and verification-critical evidence.
+- [x] Source-bound semantic caching and compact hash-referenced tool results.
+- [x] Evidence-gated early exit and M11 risk/budget-adaptive reasoning depth.
+- [x] Held-out offline fixture evidence for at least 50% estimated-context reduction with verifier parity.
+
+M18 local verification passed with 365/365 tests and all configured gates. Its deterministic three-case
+fixture measured 50 versus 5,589 estimated context tokens (99.10% lower) with identical verifier
+outcomes. This does not claim universal savings, provider-billed token reduction, or live-model quality.
+
+## M19 — Multi-file coding
+
+- [x] Dependency-aware, ownership-safe change sets spanning 10–100 files.
+- [x] Exact preimage validation, staging, conflict detection, and deterministic reconciliation.
+- [x] Runtime-attested rollback after partial application or failed quality/verification.
+- [x] Verified disposable-repository refactor plus destructive-path regression tests.
+
+M19 helper run `33949434835` passed 379/379 tests, Biome, strict TypeScript, build, and the
+credential-free Kimi dry smoke. Aggregate coverage was 90.31% lines / 77.67% branches / 95.87%
+functions. The rollback verifier is bound to the exact runtime-preimage snapshot; restoration still
+executes after a partial mutation even if the injected recovery authority does not return ROLLBACK, and
+the runtime then fails closed. This proves the injected workspace transaction/rollback contract, not
+OS-level filesystem atomicity. Final normal exact-head PR CI remains required before merge.
+
+The binding M17–M19 exit criteria and non-goals are defined in
+`docs/milestones/M17_M19_RELIABILITY_EFFICIENCY_MULTIFILE.md`.
+
+## M20 — Long-running autonomy
+
+- [ ] Six-, twelve-, and twenty-four-hour soak profiles with bounded budgets and synthetic clocks where
+  appropriate.
+- [ ] Durable checkpoints, crash/lease recovery, cancellation, reconnect, and anti-loop enforcement.
+- [ ] No duration claim without preserved recovery and integrity evidence.
+
+## M21 — Multi-model router
+
+- [ ] Empirical task-specific profiles across configured Kimi, OpenAI, Anthropic, GLM, and OpenRouter
+  routes without assuming capabilities from model names.
+- [ ] Quality-floor, latency, cost, availability, and previous-failure-aware selection and escalation.
+- [ ] Every numeric comparison remains bound to provider, model, profile, task class, and evidence version.
+
+## M22 — Frontier evaluation suite
+
+- [ ] Reproducible 50–200 task suite covering coding, reasoning, tool use, recovery, and long missions.
+- [ ] Hidden/held-out fixtures and equal tool/budget conditions for model-alone versus model-plus-Odin.
+- [ ] Comparable external agent baselines only where their public interfaces and conditions are verifiable.
+
+## M23 — Skill OS
+
+- [ ] Verified capability packs, progressive discovery/loading, task-based selection, and rollback.
+- [ ] Skills remain plugins without tool, permission, evidence, memory, or activation authority.
+
+## M24 — Advanced memory
+
+- [ ] Episodic and project retrieval with provenance, retention, deletion, compression, and conflicts.
+- [ ] Stale-data detection keeps repository/current sources above remembered conclusions.
+
+## M25 — Tool ecosystem
+
+- [ ] Permissioned adapters for repository, browser, database, cloud, documents, data, CI/CD, APIs, and
+  research through the M3 gateway.
+- [ ] Every adapter declares schemas, side effects, idempotency, timeout, retry, cost, and confirmation.
+
+## M26 — Production sandbox
+
+- [ ] Isolated container/VM execution, scoped filesystem/network/credentials, quotas, timeout, and cleanup.
+- [ ] Secret broker and audit evidence without exposing secret values to models or logs.
+
+## M27 — Hosted mission backend
+
+- [ ] Durable database, queues, workers, authentication, audit log, artifacts, and realtime reconnect.
+- [ ] Recovery, idempotency, fencing, backups, and failure injection verified before public traffic.
+
+## M28 — Mobile experience
+
+- [ ] Responsive web plus iOS/iPadOS, Android, and desktop strategy for mission progress and approvals.
+- [ ] Long-running compute stays server-side; clients reconnect to canonical durable mission state.
+
+## M29 — Adversarial hardening
+
+- [ ] Prompt injection, poisoned repositories, malicious skills, broken APIs, permission abuse, and partial
+  outage suites.
+- [ ] No security, verification, or release gate can be bypassed by model/tool/skill output.
+
+## M30 — Final release gate
+
+- [ ] All required build, test, lint, type, security, recovery, benchmark, soak, and deployment gates green.
+- [ ] No open critical defect and no unsupported reliability, savings, duration, provider, or platform claim.
+- [ ] Release evidence reports at least 95% task completion and verification pass, at least 90% first-pass
+  or automatic recovery, at least 50% measured token reduction versus the declared baseline, multiple
+  verified providers, and 24-hour recovery—or explicitly remains blocked.
+
+M30 targets are acceptance thresholds, not current product facts. Exact metric definitions, sample sizes,
+confidence treatment, and held-out datasets must be fixed before measurement.

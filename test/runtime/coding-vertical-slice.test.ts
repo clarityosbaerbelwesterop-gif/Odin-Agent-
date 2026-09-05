@@ -8,6 +8,12 @@ import {
   type MissionEventData,
   MissionRuntime,
 } from "../../src/mission/runtime.js";
+import type {
+  FailureRecoveryAuthority,
+  RecoveryDecision,
+  RecoveryRequest,
+} from "../../src/reliability/index.js";
+import { ReliabilityController } from "../../src/reliability/index.js";
 import { CodingOrchestrator, CodingVerificationGateError } from "../../src/runtime/coding.js";
 import { InMemoryToolAuditSink } from "../../src/tools/audit.js";
 import { InMemoryCapabilityPolicy } from "../../src/tools/policy.js";
@@ -81,6 +87,16 @@ class CapturingVerificationAuthority implements VerificationAuthority {
   }
 }
 
+class CapturingRecoveryAuthority implements FailureRecoveryAuthority {
+  readonly requests: RecoveryRequest[] = [];
+  readonly #controller = new ReliabilityController();
+
+  decide(request: RecoveryRequest): RecoveryDecision {
+    this.requests.push(structuredClone(request));
+    return this.#controller.decide(request);
+  }
+}
+
 function repair(expectedSha: string, content = REPAIRED_CONTENT) {
   return modelResponse({ content, expectedSha, path: TARGET_PATH }, 30, 10);
 }
@@ -106,6 +122,7 @@ function orchestrator(input: {
   audit: InMemoryToolAuditSink;
   grants?: InMemoryCapabilityPolicy;
   verification?: VerificationAuthority;
+  reliability?: FailureRecoveryAuthority;
 }) {
   const toolStack = buildTools(input.workspace, input.quality, input.audit, input.grants);
   return new CodingOrchestrator({
@@ -116,6 +133,7 @@ function orchestrator(input: {
     model: "fixture-model",
     provider: input.provider,
     quality: input.quality,
+    ...(input.reliability === undefined ? {} : { reliability: input.reliability }),
     tools: toolStack.tools,
     verification:
       input.verification ?? new IndependentVerificationEngine({ maxEvidenceAgeMs: 60_000 }),
@@ -202,6 +220,40 @@ test("M4 connects discovery, strict planning, scoped patch, failed gate, repair,
       assert.equal(text.text.includes(TARGET_PATH), true);
     }
   }
+});
+
+test("M17 coding integration classifies a failed quality gate before targeted repair", async () => {
+  const workspace = new FixtureWorkspace(fixtureFiles());
+  const quality = new FixtureQualityRunner(workspace);
+  const audit = new InMemoryToolAuditSink();
+  const provider = new ScriptedProvider([
+    plan(workspace.sha(TARGET_PATH)),
+    repair(textHash(WRONG_CONTENT)),
+  ]);
+  const reliability = new CapturingRecoveryAuthority();
+  const coding = orchestrator({
+    audit,
+    mission: new MissionRuntime(new InMemoryEventStore<MissionEventData>(), () => FIXED_NOW),
+    provider,
+    quality,
+    reliability,
+    workspace,
+  });
+
+  const result = await coding.start({
+    budgetLimits: BUDGETS,
+    missionId: "mission-m17-recovery",
+    objective: "Fix add so it returns the sum",
+  });
+
+  assert.equal(result.status, "completed");
+  assert.equal(reliability.requests.length, 1);
+  assert.equal(reliability.requests[0]?.failure.category, "VERIFICATION");
+  assert.equal(reliability.requests[0]?.failure.reasonCode, "quality_gate_failed");
+  assert.equal(reliability.requests[0]?.failure.sideEffect, "REVERSIBLE");
+  const captured = reliability.requests[0];
+  assert.ok(captured !== undefined);
+  assert.equal(new ReliabilityController().decide(captured).action, "TARGETED_REPAIR");
 });
 
 test("M4 restart replays mission state and resumes from DIAGNOSING with fresh runtime objects", async () => {

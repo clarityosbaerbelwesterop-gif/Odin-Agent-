@@ -253,6 +253,32 @@ Authorized post-merge run `33870210502` attempted three matched NVIDIA Kimi K3 c
 
 Second authorized run `33879714040` used nine calls and again produced zero complete pairs. Bounded diagnostics localize every failure to `provider_timeout`: candidate-overlay arms timed out on their first model call before mutation, while baseline arms completed planning, produced a non-accepting mutation, and timed out on the second repair call. This exposed a harness defect because the v1 provider timeout and candidate latency acceptance ceiling were both 180000 ms. A runtime-owned v2 execution profile now binds measurement timeout separately from acceptance (240000 vs 180000 ms), requires at least 30000 ms measurement headroom, binds `high` reasoning and temperature 1, and includes the profile version in live evidence identity. Offline run `33882837781` verified this profile with 329/329 tests and a credential-free A/B dry run; it made no live provider request.
 
+### M17–M19 — Reliability, efficient context, and transactional multi-file coding
+
+`src/reliability` makes recovery a runtime-owned deterministic policy. Typed failures map to bounded
+retry, repair, alternate-plan, rollback, verifier/model escalation, context reduction, cancellation, or
+checkpoint-and-block actions. Budgets and repeated-strategy signatures prevent loops. M17 does not gain
+M3 execution authority or M5 completion authority.
+
+M18 extends `src/context` with source/profile/policy/verification-bound delta context, semantic reuse,
+compact hash-referenced tool summaries, evidence-gated early exit, and risk/budget-adaptive reasoning.
+Mandatory P0–P2 context remains present in the effective compiled context, and sensitive material is not
+retained for reuse. The measured 99.10% estimate is a deterministic fixture result, not universal or
+provider-billed token savings.
+
+M19 adds `runtime/multi-file` for bounded 1–100 file change-set DAGs. Runtime canonicalization,
+ownership, exact pre/post hashes, dependencies, and M18 context identity are validated before commit.
+A trusted workspace adapter stages the full set; quality evidence and M5 verify the resulting tree.
+Partial mutation, post-commit quality/verification failure, thrown verification paths, or cancellation
+after mutation restore runtime-captured preimages. Restoration deliberately ignores an already-aborted
+task signal, is independently bound to the exact snapshot hash, and occurs even if an injected recovery
+policy returns an unexpected non-rollback action; that configuration then fails closed after safe-state
+restoration. This is an injected adapter transaction contract, not a claim of kernel/filesystem atomicity.
+
+Implementation helper run `33949434835` passed 379/379 tests, Biome, strict TypeScript, build, and
+credential-free Kimi dry smoke; aggregate coverage was 90.31% / 77.67% / 95.87% and M19 module coverage
+was 86.88% / 75.46% / 95.56%. Normal exact-head PR CI remains the final package gate.
+
 ## Current module map
 
 ```text
@@ -261,10 +287,11 @@ src/
   events/        append-only event contracts and in-memory contract adapter
   providers/     normalized model API, capability profiles, adapters, transport errors
   tools/         tool discovery, policy, schemas, audit, repository execution authority
-  runtime/       coding orchestrator, strict plan/repair, verification integration
+  runtime/       coding orchestrator, strict plan/repair, M19 bounded multi-file coordinator
+  reliability/   M17 typed failure classification and bounded recovery policy
   verification/  typed evidence verifier and adversarial review authority
   memory/        asynchronous scoped memory contracts and in-memory adapter
-  context/       retrieval facade, P0-P6 compiler/cache, session snapshots
+  context/       retrieval facade, P0-P6 compiler/cache, M18 deltas/efficiency, session snapshots
   coordination/  specialist registry, logical ownership, bounded execution, reconciliation
   durable/       SQLite mission events/checkpoints/jobs, lifecycle cursors, runner recovery
   client/        M9 protocol codecs, controller gateway, reconnect reducer

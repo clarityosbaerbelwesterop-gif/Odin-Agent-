@@ -1,6 +1,18 @@
 # Engineering handover
 
-Updated: 2026-09-04.
+Updated: 2026-09-05.
+
+## Current state — M17–M19 package
+
+- Active PR: **#31**, branch `agent/m17-m19-reliability-efficiency-multifile`, packaging exactly M17, M18, and M19.
+- M17 reliability engine and M18 token-efficiency 2.0 are implemented with focused deterministic evidence; M19 is now implemented and hardened.
+- Final M19 helper run `33949434835` passed **379/379 tests**, Biome, strict TypeScript, `npm run build`, and credential-free Kimi dry smoke. Aggregate coverage: **90.31% lines / 77.67% branches / 95.87% functions**; M19 module: **86.88% / 75.46% / 95.56%**.
+- M19 proves verified 10-file and 100-file fixture refactors, rejects the 101-file boundary and unsafe/conflicting/stale inputs before mutation, and restores exact preimages after partial apply, post-commit quality/M5 failure, thrown verifier paths, or cancellation after mutation. Restoration is independently snapshot-hash-bound and is not cancelled by the failed task signal.
+- A misconfigured injected recovery authority cannot leave a partially mutated tree merely by refusing ROLLBACK: Odin restores first, then fails closed because policy attestation was unexpected.
+- M18 held-out deterministic fixture remains 50 vs 5,589 estimated context tokens (**99.10% lower**) with verifier parity. This is fixture-bound estimated context, not universal billed-token savings.
+- No live model call, deployment, paid resource, production migration, or public traffic was used for M17–M19.
+- Remaining gate: synchronize governance docs, obtain normal exact-head PR CI on the final user-authored head, then mark PR #31 ready. Merge remains separately approval-gated.
+- The M19 workspace is an injected transaction/staging contract. Do not claim production filesystem/kernel atomicity until a concrete adapter is implemented and independently failure-tested.
 
 ## Current state
 
