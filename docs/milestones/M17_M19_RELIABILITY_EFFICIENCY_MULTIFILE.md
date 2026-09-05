@@ -1,6 +1,6 @@
 # M17–M19 — Reliability, context efficiency, and multi-file coding
 
-Status: **VERIFIED_AWAITING_FINAL_EXACT_HEAD_CI**. This document is the delivery contract for one pull request containing three
+Status: **IMPLEMENTATION_VERIFIED_AWAITING_FINAL_EXACT_HEAD_CI**. This document is the delivery contract for one pull request containing three
 sequentially verified milestones. A checked item requires repository evidence; intent is never marked
 complete.
 
@@ -51,9 +51,9 @@ Goal: replace ad-hoc retries with deterministic failure classification and evide
 Exit gate: deterministic recovery decisions survive serialization/replay; at least one coding-path
 integration test proves a classified failure reaches the permitted next action; all repository gates pass.
 
-M17 local evidence: `npm run verify` passed with 357/357 tests, 90.43% line / 77.60% branch /
-95.91% function coverage, Biome, strict TypeScript, and credential-free Kimi dry smoke. Pull-request CI
-remains required before the combined package can merge.
+M17 focused evidence: `npm run verify` passed with 357/357 tests, 90.43% line / 77.60% branch /
+95.91% function coverage, Biome, strict TypeScript, and credential-free Kimi dry smoke. The combined
+package has since passed the larger M19 implementation gate below; exact-head PR CI remains required.
 
 ## M18 — Token efficiency 2.0
 
@@ -74,7 +74,7 @@ Exit gate: a deterministic held-out fixture suite demonstrates at least 50% fewe
 than its declared baseline with identical verifier outcomes, and all cache/staleness/security regressions
 pass. This is a fixture-bound result, not a universal savings claim.
 
-M18 local evidence: `npm run verify` passed with 365/365 tests and 90.40% line / 77.70% branch /
+M18 focused evidence: `npm run verify` passed with 365/365 tests and 90.40% line / 77.70% branch /
 95.88% function coverage. The three-case deterministic delta fixture used 50 versus 5,589 estimated
 tokens (99.10% lower) with identical PASS/REPAIR_REQUIRED/BLOCK outcomes. The figure is fixture-bound
 and does not represent billed provider tokens or universal savings.
