@@ -2,105 +2,161 @@
 
 Updated: 2026-09-05.
 
-## Current state — M20–M22 package
+## Current delivery state — M23–M25
 
-- PR #31 (M17–M19) was squash-merged into `main` as
-  `090bfe3d68edd7b6cb0de0bad5e77bade7e14915` after normal exact-head CI passed.
-- Active PR: **#32**, branch `agent/m20-m22-autonomy-router-frontier-evals`, containing exactly M20,
-  M21, and M22.
-- M20 adds versioned 6 h / 12 h / 24 h logical soak profiles with synthetic-clock integrity,
-  checkpoint/restart binding, generation fencing, cancellation terminality, retry anti-looping, exact
-  event shapes, and deterministic reports. These are logical-duration proofs, not real wall-clock uptime.
-- M21 adds a bounded failure-aware layer over M11. Fresh typed failures may exclude only the exact
-  provider/model/profile/reasoning/task-class route; M11 still owns capability, quality-floor, cost,
-  latency, and escalation decisions. The five-provider matrix is offline fixture evidence only.
-- M22 adds a versioned matched-evaluation protocol for 50–200 cases. Hidden acceptance metadata is not
-  model-facing; arm identity and per-case budgets must match; deterministic task failures remain negative
-  evidence while infrastructure ambiguity remains incomplete. The verified 60-case fixture uses synthetic
-  outcomes and is not a live frontier benchmark.
-- Final adversarial hardening run `33951098718` passed **408/408 tests**, Biome, strict TypeScript,
-  credential-free Kimi dry smoke, and build. Aggregate coverage: **90.29% lines / 77.60% branches /
-  96.09% functions**.
-- No live provider call, deployment, paid resource, migration, billing change, or public traffic was used
-  for M20–M22.
-- Remaining gate: synchronized governance verification followed by normal exact-head PR CI. Merge remains
-  separately approval-gated.
+Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).
 
-## Historical M15 state
+- `main` contains verified M0–M22. PR #32 (M20–M22) passed normal exact-head CI run
+  `33951326491` before merge.
+- Active PR: **#33**, branch `agent/m23-m25-skill-os-memory-tools`, containing exactly M23, M24,
+  and M25.
+- The binding package contract is
+  `docs/milestones/M23_M25_SKILL_OS_ADVANCED_MEMORY_TOOL_ECOSYSTEM.md`.
+- M23, M24, and M25 implementation gates are complete. The package hardening run `33954348383`
+  passed **427/427 tests**, strict TypeScript, credential-free Kimi dry smoke, and build. Aggregate
+  coverage was **90.30% lines / 77.62% branches / 95.75% functions**.
+- Warning-clean verification run `33954417440` passed after the adversarial hardening changes.
+- Normal PR CI `33954471567` passed on implementation head
+  `fddd8518a23782172d6a03fd9e5099839ee3f881` before governance synchronization.
+- Governance synchronization is the only repository-local delivery step after that implementation
+  evidence. A fresh normal exact-head CI run is required on the final governance head before merge.
+- The user has explicitly authorized merge of the completed three-milestone block in the current
+  delivery request. Merge still occurs only after final exact-head CI is green.
 
-- Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).
-- `main` contains verified M0–M15 plus PR #21 post-run evidence hardening at merge commit `02d80898cd10416c0198007280aca7447bbb7573`.
-- Active work: `agent/m15-kimi-rerun-2`, preserving the second authorized Kimi K3 A/B evidence and hardening the live measurement profile before any future provider run.
-- Second authorized live run `33879714040` completed successfully at the workflow level and used **9/12** maximum provider calls across the same three matched coding cases. All three matched pairs remain incomplete, so the result is **INCONCLUSIVE** with null quality/lift.
-- Every arm ended with bounded diagnostic `ProviderError / provider_timeout`. Candidate arms used one call, timed out at about 180 seconds, and made no target mutation. Baseline arms used two calls, mutated the target after planning, failed deterministic acceptance, and timed out during repair.
-- Raw sanitized rerun evidence is preserved at `docs/evals/m15-kimi-coding-ab-rerun-2.json`; interpretation is recorded in `docs/evals/M15_KIMI_CODING_AB_RERUN_2_ANALYSIS.md`. No M10 verification, pack population, activation, public benchmark claim, or AGI/model-superiority claim follows from either incomplete run.
-- Review found a measurement-design defect: v1 used the same 180000 ms value for provider timeout and candidate latency acceptance, making a slow arm unmeasurable at the latency boundary. Offline hardening separates measurement timeout from acceptance in a versioned runtime-owned profile.
-- Verified profile `m15-kimi-coding-ab-v2`: acceptance latency 180000 ms, provider measurement timeout 240000 ms, minimum 30000 ms headroom, 2 calls per arm, 12 total calls, `high` reasoning, temperature 1. Evidence identity includes the profile version and sanitized output exposes bounded profile metadata.
-- One-shot profile hardening run `33882837781` passed **329/329 tests**, Biome, strict TypeScript, build, secret-free Kimi dry smoke, and a credential-free A/B dry profile; aggregate coverage **89.92% lines / 77.25% branches / 95.88% functions**. No live provider request occurred in this hardening run.
-- Adversarial diff review found that the A/B wrapper charged `generate()` but not `stream()` against the total provider-call budget. Run `33883857442` verified a shared fail-closed call counter for both paths with **331/331 tests**, aggregate coverage **89.95% lines / 77.30% branches / 95.89% functions**, `live-profile` coverage **96.97% / 95.83% / 100%**, build, and credential-free A/B dry-run PASS. No live provider request occurred.
-- The automatic exact-head CI created by the bot-authored hardening commit was `action_required` with no jobs, so this factual handover checkpoint is intentionally user-authored to trigger the required normal PR CI rather than treating helper CI as a substitute.
-- The previous authorization for one second Kimi live rerun has been consumed. A third live provider comparison requires new explicit user authorization. PR merge also remains separately approval-gated.
-- M12 remains partially verified for hosted-sandbox/public-production claims. No production deployment, paid resource, migration, billing change, or public traffic is authorized by this work.
+No live provider/browser/database/cloud/API request, deployment, paid resource, production migration,
+billing change, public traffic, or new credential use is part of M23–M25.
 
-## M14 capability
+## M23 — Skill OS
 
-`src/skill-intake` treats every community skill/plugin snapshot as untrusted data. A trusted resolver binds repository, requested ref, selected path, and one immutable 40-hex commit. Analysis is bounded by file count, per-file bytes, total bytes, path depth, and finding count. Opaque binaries/symlinks, unknown license state, truncation, invalid manifests, and incomplete inventory force `PARTIAL` and cannot silently become safe.
+`src/skill-os` turns already verified M10/M15 capability packs into a runtime-owned selection service.
+It does not become a second skill lifecycle authority.
 
-Static findings cover prompt override, credential collection, exfiltration, download-and-execute patterns, destructive writes, privilege escalation, self-promotion, policy/memory poisoning, dependency installation, explicit shell/subprocess use, MCP configuration, hooks/workflows, nested `.github/workflows`, and executable surfaces. Matched raw snippets are not persisted in findings; stable fingerprints and content hashes carry evidence identity.
+Verified behavior:
 
-Only `COMPLETE + ACCEPT` may be converted into an M10 `community` candidate. Intake forces `requiredTools=[]` and cannot activate a skill, register M3 handlers, create capabilities, expose credentials, change budgets/routing, or create completion evidence. M10 verification/promotion remains a separate authority boundary.
+- compact pack discovery occurs without loading member instructions;
+- selection is deterministic by domain and task class under bounded member/context ceilings;
+- every selection binds exact pack id, version, content hash, member identity, and task class;
+- task-class scope comes from trusted M15 pack metadata and cannot be caller-relabeled;
+- stale, future, changed, revoked, or otherwise unloadable selections fail closed;
+- progressive instruction loading re-resolves exact M10/M15 identity before returning content;
+- runtime-owned pin/history supports explicit rollback to a previously observed exact revision;
+- rollback never activates, promotes, verifies, or otherwise mutates M10 lifecycle state.
 
-## External capability research for M15
+M10 remains verification/promotion/activation/revocation authority. M15 remains measured community-pack
+evidence authority. M23 cannot register M3 tools, create grants, expose credentials, create memory, or
+mint completion/quality/release evidence.
 
-Seven pinned source repositories remain immutable discovery/research inputs, not installed or executed:
+## M24 — Advanced memory
 
-- `ComposioHQ/awesome-claude-skills@be2a406907dbc61b73e6827ded415c96139d13a2` — broad community discovery/stress corpus; never transitive trust.
-- `multica-ai/andrej-karpathy-skills@2c606141936f1eeef17fa3043a72095b4765b9c2` — explicit assumptions, simplicity/YAGNI, surgical edits, goal-driven verification. M15 adapts only additive discipline into Odin-owned policy/evals.
-- `alirezarezvani/claude-skills@19392f7a08264ed00486a251f5b2098321771f94` — broad skill corpus. High-value reviewed procedures include `zero-hallucination-coder` and `deep-research`; their orchestration is not copied wholesale because it duplicates M2/M4/M5/M7.
-- `anthropics/claude-plugins-official@1dd995193ba20bba51ca6c681aa8d3398dbd80a2` — marketplace/source metadata reference; third-party packages remain untrusted.
-- `coreyhaines31/marketingskills@5cd4a7eae3a9a7b5d2aceb0613f7d1f7c4b65968` — product/ICP/positioning context plus domain marketing workflows. M6 remains canonical context/memory rather than `.agents` files.
-- `anthropics/claude-code-security-review@0c6a49f1fa56a1d472575da86a94dbc1edb78eda` — diff-aware security review and false-positive filtering reference. Its own upstream prompt-injection warning prevents treating the action as trusted code.
-- `0xNyk/awesome-hermes-agent@e4dde5e0e19b734c175a34038deac8e80cd04cb2` — Hermes ecosystem discovery reference only.
+`src/memory/advanced.ts` extends the M6 contract with bounded episodic/project retrieval and
+maintenance while preserving current-source precedence.
 
-Additional design reference: `NVIDIA/SkillSpector` fail-closed completeness/resource-bound ideas; no dependency or copied scanner code.
+Verified behavior:
 
-## M15 current evidence and next gate
+- exact user/project scope isolation and deterministic retrieval/provenance;
+- current repository/runtime observations outrank remembered conclusions;
+- changed/older remembered conclusions are marked stale rather than silently presented as current;
+- conflicting current project-memory conclusions are surfaced as conflicts;
+- future-dated current-source or remembered evidence is rejected;
+- retention planning is bounded and cannot claim complete coverage from a saturated M6 retrieval
+  window;
+- deletion delegates to exact M6 tombstones and cannot resurrect an existing memory id;
+- compression preserves source record ids/hashes, strongest sensitivity, and lower-authority
+  `model_summary` provenance;
+- secret-like compression input is rejected;
+- a compression proposal must have been issued by the current runtime instance before commit;
+- exact compression replay is idempotent and tampered replay fails closed.
 
-1. Preserve both raw live attempts unchanged. Run `33870210502` and rerun `33879714040` each have zero complete matched pairs and remain `INCONCLUSIVE`.
-2. Keep `odin-coding-discipline` unverified/unactivated from live evidence until a complete matched comparison passes normal M15 quality, safety, authority, token, and latency gates.
-3. Keep execution-profile identity part of future evidence; v1 incomplete results must not be numerically combined with v2 results.
-4. Use `m15-kimi-coding-ab-v2` for any future explicitly authorized Kimi comparison: 180000 ms acceptance, 240000 ms measurement timeout, `high` reasoning, 12-call hard ceiling shared by generate/stream.
-5. Obtain a normal exact-head PR `npm run verify` on the current user-authored head. Helper runs are supporting evidence, not a merge substitute.
-6. Do not merge the current PR without explicit merge authorization.
-7. Do not issue a third live provider request without new explicit user authorization. If approved later, preserve the result separately and classify it only from complete matched evidence.
-8. Re-establish measured lift separately for every provider/model/profile/task class; architectural reliability mechanisms may transfer, numeric lift does not.
+Memory remains lower authority than current repository/runtime/task evidence. M24 does not infer durable
+user preferences, mint tools/permissions, raise budgets, change routing floors, promote skills, or mark
+work complete.
 
-## Standing boundaries
+## M25 — Tool ecosystem
 
-- Repository evidence overrides documentation and memory; CI green is required before merge.
-- M3 remains execution/capability authority; M5 remains completion/evidence authority; M10 remains skill promotion authority; M11 quality floors remain monotonic.
-- Models/workers/skills/replay cannot mint credentials, capabilities, approval, budgets, quality evidence, trusted policy, or lifecycle promotion.
-- External skills are discovery/candidate inputs only; Odin-owned distilled procedures must still pass M15 held-out evaluation before trusted registration/use.
-- No secrets in commits/logs/artifacts. The consumed rerun authorization does not cover another live provider action.
+`src/tools/ecosystem.ts` adds a typed discovery/catalog layer for repository, browser, database, cloud,
+documents, data, CI/CD, API, and research adapters.
 
-## M15 rerun-3 v2 evidence update — 2026-09-04
+Verified behavior:
 
-Third authorized NVIDIA/Kimi K3 live run `33884808665` completed under `m15-kimi-coding-ab-v2` after repository verify, build, and credential-free dry-run gates passed. It used 10/12 maximum provider calls. The immutable raw artifact remains `docs/evals/m15-kimi-coding-ab-rerun-3-v2.json` and its separate interpretation is `docs/evals/M15_KIMI_CODING_AB_RERUN_3_V2_ANALYSIS.md`.
+- each descriptor binds an exact already-registered M3 tool name/version;
+- operation, risk, side-effect, timeout, retry, and trust metadata must mirror the M3 manifest;
+- cost/network/credential/confirmation metadata is descriptive only and cannot weaken policy;
+- compact discovery does not duplicate the full tool schema;
+- execution always delegates to `ToolRuntime.execute`;
+- M3 therefore retains capability grants, approval checks, idempotency, timeout, retry, cancellation,
+  handler dispatch, and audit ownership;
+- duplicate identities, unknown categories/tools, descriptor/manifest mismatch, unsafe confirmation
+  claims, and side-effecting requests without idempotency fail closed.
 
-Post-run review found that the old wrapper marked every thrown task failure incomplete. The hardened semantics distinguish ambiguous/infrastructure interruption from deterministic terminal task failure. Applied conservatively to the preserved diagnostics, rerun 3 is **PARTIAL**: two matched pairs are complete terminal failures at quality 0 vs 0 / lift 0, while `canonical-user-id` stays incomplete because the candidate ended in ambiguous `provider_malformed_response`. No M10 verification, activation, capability-pack inclusion, public benchmark claim, or AGI/Astra/Fable claim follows.
+M25 contains offline fixture adapters only. It does not prove a real browser/database/cloud/API
+integration or authorize any external request.
 
-An offline exact-fixture control proves the three coding fixtures themselves are solvable through the same Odin M4 repository/quality path and M5 completion authority when supplied one valid structured plan. Normal PR CI `33888060837` passed 336/336 tests, Biome, strict TypeScript, and secret-free Kimi dry smoke; aggregate coverage was 89.99% lines / 77.41% branches / 95.89% functions. This shifts the next engineering priority toward live Kimi/provider structured-output and plan/repair reliability, not weaker quality gates or more candidate prompt text. PR #23 remains merge-approval-gated and no fourth live provider run is authorized.
+## Adversarial hardening findings already fixed
 
+The M23–M25 review found two material authority/evidence gaps and closed them before the final package
+claim:
 
-## M16 run-4 grounded output evidence — 2026-09-04
+1. An M15 pack member could otherwise be relabeled by a caller onto a different task class inside the
+   same pack. M23 now derives and validates task scope from trusted pack membership.
+2. A deterministic compression hash by itself did not prove that the current runtime had issued the
+   proposal. M24 now requires runtime-instance issuance before commit and preserves idempotent exact
+   replay.
 
-Authorized NVIDIA/Kimi K3 run `33896223881` completed after verify/build/dry-run gates and used 11/12 live calls. Immutable evidence is `docs/evals/m16-kimi-grounded-output-run-4.json`; interpretation is `docs/evals/M16_KIMI_GROUNDED_OUTPUT_RUN_4_ANALYSIS.md`. Historical result: **PARTIAL**, 2/3 complete pairs. On those matched pairs, grounded M4 reduced total tokens from 3,916 to 2,196 (**43.92%**) and aggregate latency from 277,968 ms to 174,981 ms (**37.05%**), while provider calls increased from 3 to 4 and quality stayed 0 vs 0. No completion/quality superiority is established.
+The same hardening tranche added selection freshness, future-memory rejection, sensitivity monotonicity,
+secret rejection, saturated-retention blocking, and additional tamper/bounds regressions.
 
-Review found a deterministic evidence-classification gap: new grounded plan/repair contract failures could collapse to `mission_domain_unknown`, making a completed model-contract failure look measurement-incomplete. M16 now assigns bounded terminal codes to model-output-side grounded failures, normalizes grounded schema-validation failure, and adds safe finish-reason/token/acceptance telemetry for the fifth strength run. Runtime binding failures stay incomplete. Run 5 remains authorized but must occur only after this hardening is normal-CI green and merged.
+## Standing authority boundaries
 
+These remain binding for every later milestone:
 
-## M16 run-5 strength evidence — 2026-09-04
+- M2/M8 durable runtime state, not conversation history or client state, is canonical.
+- M3 is the only tool/capability execution authority.
+- M5 is completion/evidence authority.
+- M6 memory is lower authority than current primary evidence.
+- M10 owns skill verification/promotion/activation/revocation.
+- M11 quality floors are monotonic and cannot be optimized away.
+- M12 sandbox/network/credential boundaries remain fail closed.
+- M15 measured pack evidence is required for community capability-pack claims.
+- Models, workers, skills, memory, tool descriptors, replay, and clients cannot mint credentials,
+  approval, capabilities, budget, quality evidence, completion, or release authority.
+- No secrets belong in commits, logs, artifacts, memory, client payloads, or model context.
 
-Authorized NVIDIA/Kimi K3 strength run `33898932204` is preserved at `docs/evals/m16-kimi-grounded-strength-run-5.json`. All 4/4 matched pairs are measurement-complete. Neither legacy nor grounded M4 completed a strength case, so quality lift remains 0 and no model-superiority claim is valid. Grounded M4 used 5,457 vs 9,420 total tokens (**42.07% lower**) and 565,906 vs 588,336 ms aggregate latency (**3.81% lower**) with equal provider-call count (8 vs 8).
+## Existing evidence that remains deliberately scoped
 
-Telemetry localizes the next reliability defect: two grounded repair responses ended with `finishReason=length`; two other grounded cases ended in deterministic non-accepting/no-change repair outcomes. The next M16 tranche replaces model-facing full-file generation with exact bounded oldText/newText edits that Odin validates and expands against runtime-trusted repository content. SHA/task/path authority, M3 execution authority, M5 completion authority, and all quality gates remain unchanged.
+- M12 is still **PARTIALLY_VERIFIED** for hosted-sandbox and public-production claims. Local sandbox,
+  process/network policy, lifecycle contracts, recovery/release evidence, and one bounded live NVIDIA
+  Kimi K3 provider path are verified, but that does not prove container/VM isolation or a hosted service.
+- Historical M15/M16 Kimi comparisons remain task/profile-specific evidence. They do not establish
+  model-wide superiority, universal token savings, AGI/ASI, or equivalence to other named agents/models.
+- M20 logical 6 h / 12 h / 24 h soaks use a runtime-owned synthetic clock. They are recovery/integrity
+  proofs, not wall-clock hosted uptime claims.
+- M22 frontier evaluation fixtures are synthetic offline protocol tests, not a live frontier-model or
+  external-agent benchmark.
+
+## Next package after PR #33 merge — M26–M28
+
+The next three-milestone package is:
+
+1. **M26 Production sandbox** — production-grade sandbox contracts for isolated execution, scoped
+   filesystem/network/credential access, quotas, timeout, cleanup, secret brokering, and audit evidence.
+2. **M27 Hosted mission backend** — durable hosted-service contracts for database/queue/workers,
+   authentication, audit, artifacts, realtime reconnect, recovery, idempotency, fencing, backups, and
+   failure injection.
+3. **M28 Mobile experience** — responsive/mobile/native client protocol and UX contracts for mission
+   progress and approvals while canonical long-running compute remains server-side.
+
+Because no hosted sandbox, database, cloud account, production deployment, paid resource, or public
+traffic has been authorized by this delivery, M26–M28 must distinguish deterministic/provider-neutral
+contract proof from real infrastructure proof. Repository-local implementation may proceed; any live
+resource use, deployment, production migration, billing change, or paid action remains separately
+approval-gated.
+
+## Exact next steps
+
+1. Finish governance synchronization for PR #33.
+2. Obtain one fresh normal exact-head CI run on the final governance head.
+3. Merge PR #33 only if that CI is green and the PR remains mergeable.
+4. Create the M26–M28 branch from the resulting `main` head.
+5. Write the binding M26–M28 contract before implementation, then execute M26, M27, and M28
+   sequentially with focused tests, full `npm run verify`, adversarial review, governance sync, and
+   exact-head CI.
