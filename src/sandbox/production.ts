@@ -230,6 +230,16 @@ interface InflightAllocation {
   readonly promise: Promise<ProductionSandboxSession>;
 }
 
+interface ExecutionRecord {
+  readonly fingerprint: string;
+  readonly result: ProductionSandboxAdapterExecuteResult;
+}
+
+interface InflightExecution {
+  readonly fingerprint: string;
+  readonly promise: Promise<ProductionSandboxAdapterExecuteResult>;
+}
+
 interface InflightCleanup {
   readonly reason: ProductionSandboxCleanupReason;
   readonly promise: Promise<void>;
@@ -241,9 +251,12 @@ export class ProductionSandboxRuntime {
   readonly #secretBroker: ProductionSecretBroker;
   readonly #allocations = new Map<string, AllocationRecord>();
   readonly #inflightAllocations = new Map<string, InflightAllocation>();
+  readonly #executions = new Map<string, ExecutionRecord>();
+  readonly #inflightExecutions = new Map<string, InflightExecution>();
   readonly #released = new Map<string, ProductionSandboxCleanupReason>();
   readonly #inflightCleanup = new Map<string, InflightCleanup>();
   readonly #audit: ProductionSandboxAuditRecord[] = [];
+  readonly #secretRefsBySession = new Map<string, ReadonlyMap<string, string>>();
 
   constructor(
     registrations: readonly ProductionSandboxBackendRegistration[],
@@ -372,77 +385,62 @@ export class ProductionSandboxRuntime {
     const requestedAt = canonicalTimestamp(request.requestedAt, "requestedAt");
     const commandId = identifier(request.commandId, "commandId");
     const idempotencyKey = identifier(request.idempotencyKey, "idempotencyKey", 256);
-    const session = this.#requireSession(request.session, requestedAt);
+    const knownSession = this.#requireKnownSession(request.session);
+    const executionKey = sha256(
+      canonicalPairs({ idempotencyKey, sessionHash: knownSession.sessionHash }),
+    );
+    const fingerprint = sha256(canonicalPairs({ commandId, executionKey }));
+
+    const settled = this.#executions.get(executionKey);
+    if (settled !== undefined) {
+      assertReplayFingerprint(settled.fingerprint, fingerprint);
+      this.#auditEvent(
+        "execute",
+        knownSession,
+        requestedAt,
+        "REPLAYED",
+        settled.result.outcome === "SUCCEEDED" ? null : settled.result.outcome.toLowerCase(),
+        settled.result.usage,
+      );
+      return settled.result;
+    }
+    const inflight = this.#inflightExecutions.get(executionKey);
+    if (inflight !== undefined) {
+      assertReplayFingerprint(inflight.fingerprint, fingerprint);
+      const replayed = await inflight.promise;
+      assertNotAborted(request.signal, "Production sandbox execution replay was cancelled.");
+      this.#auditEvent(
+        "execute",
+        knownSession,
+        requestedAt,
+        "REPLAYED",
+        replayed.outcome === "SUCCEEDED" ? null : replayed.outcome.toLowerCase(),
+        replayed.usage,
+      );
+      return replayed;
+    }
+
+    const session = this.#requireSession(knownSession, requestedAt);
     const backend = this.#backends.get(session.backendId);
     if (backend === undefined) {
       throw new SandboxError("BACKEND_NOT_FOUND", "Production sandbox backend is unavailable.");
     }
-
-    const secrets: Array<Readonly<{ ref: string; value: string }>> = [];
-    for (const secretRefHash of session.secretRefHashes) {
-      const originalRef = this.#secretReferenceForHash(session, secretRefHash);
-      let value: string;
-      try {
-        value = await this.#secretBroker.resolve(
-          Object.freeze({
-            expiresAt: session.expiresAt,
-            missionId: session.missionId,
-            secretRef: originalRef,
-            sessionId: session.sessionId,
-            taskId: session.taskId,
-          }),
-        );
-      } catch {
-        throw new SandboxError(
-          "SECRET_DENIED",
-          "Production secret broker denied a scoped reference.",
-        );
-      }
-      if (
-        typeof value !== "string" ||
-        value.length === 0 ||
-        value.includes("\r") ||
-        value.includes("\n")
-      ) {
-        throw new SandboxError(
-          "SECRET_DENIED",
-          "Production secret broker returned invalid material.",
-        );
-      }
-      secrets.push(Object.freeze({ ref: originalRef, value }));
-    }
-
-    const result = await backend.adapter.execute(
-      Object.freeze({
-        commandId,
-        idempotencyKey,
-        missionId: session.missionId,
-        networkResolutionHashes: session.networkResolutionHashes,
-        quota: session.quota,
-        secrets: Object.freeze(secrets),
-        sessionId: session.sessionId,
-        signal: request.signal,
-        taskId: session.taskId,
-        workspaceRoots: session.workspaceRoots,
-      }),
-    );
-    assertNotAborted(request.signal, "Production sandbox execution was cancelled.");
-    const normalized = normalizeExecutionResult(result);
-    try {
-      assertUsageWithinQuota(normalized.usage, session.quota);
-    } catch (error) {
-      await this.#cleanupAfterQuota(session);
-      throw error;
-    }
-    this.#auditEvent(
-      "execute",
-      session,
+    const promise = this.#executeOnce({
+      backend,
+      commandId,
+      idempotencyKey,
       requestedAt,
-      "ACCEPTED",
-      normalized.outcome === "SUCCEEDED" ? null : normalized.outcome.toLowerCase(),
-      normalized.usage,
-    );
-    return normalized;
+      session,
+      signal: request.signal,
+    });
+    this.#inflightExecutions.set(executionKey, Object.freeze({ fingerprint, promise }));
+    try {
+      const result = await promise;
+      this.#executions.set(executionKey, Object.freeze({ fingerprint, result }));
+      return result;
+    } finally {
+      this.#inflightExecutions.delete(executionKey);
+    }
   }
 
   async cleanup(request: ProductionSandboxCleanupRequest): Promise<"RELEASED" | "REPLAYED"> {
@@ -487,6 +485,102 @@ export class ProductionSandboxRuntime {
     } finally {
       this.#inflightCleanup.delete(session.allocationKey);
     }
+  }
+
+  async #executeOnce(input: Readonly<{
+    backend: RegisteredProductionBackend;
+    commandId: string;
+    idempotencyKey: string;
+    requestedAt: string;
+    session: ProductionSandboxSession;
+    signal: AbortSignal;
+  }>): Promise<ProductionSandboxAdapterExecuteResult> {
+    const secrets: Array<Readonly<{ ref: string; value: string }>> = [];
+    for (const secretRefHash of input.session.secretRefHashes) {
+      const originalRef = this.#secretReferenceForHash(input.session, secretRefHash);
+      let value: string;
+      try {
+        value = await this.#secretBroker.resolve(
+          Object.freeze({
+            expiresAt: input.session.expiresAt,
+            missionId: input.session.missionId,
+            secretRef: originalRef,
+            sessionId: input.session.sessionId,
+            taskId: input.session.taskId,
+          }),
+        );
+      } catch {
+        throw new SandboxError(
+          "SECRET_DENIED",
+          "Production secret broker denied a scoped reference.",
+        );
+      }
+      if (
+        typeof value !== "string" ||
+        value.length === 0 ||
+        value.includes("\r") ||
+        value.includes("\n")
+      ) {
+        throw new SandboxError(
+          "SECRET_DENIED",
+          "Production secret broker returned invalid material.",
+        );
+      }
+      secrets.push(Object.freeze({ ref: originalRef, value }));
+    }
+
+    let adapterResult: ProductionSandboxAdapterExecuteResult;
+    try {
+      adapterResult = await input.backend.adapter.execute(
+        Object.freeze({
+          commandId: input.commandId,
+          idempotencyKey: input.idempotencyKey,
+          missionId: input.session.missionId,
+          networkResolutionHashes: input.session.networkResolutionHashes,
+          quota: input.session.quota,
+          secrets: Object.freeze(secrets),
+          sessionId: input.session.sessionId,
+          signal: input.signal,
+          taskId: input.session.taskId,
+          workspaceRoots: input.session.workspaceRoots,
+        }),
+      );
+    } catch (error) {
+      await this.#cleanupTerminal(
+        input.session,
+        input.signal.aborted ? "cancelled" : "failed",
+        input.requestedAt,
+      );
+      throw error;
+    }
+
+    if (input.signal.aborted) {
+      await this.#cleanupTerminal(input.session, "cancelled", input.requestedAt);
+      throw new SandboxError("CANCELLED", "Production sandbox execution was cancelled.");
+    }
+
+    const normalized = normalizeExecutionResult(adapterResult);
+    try {
+      assertUsageWithinQuota(normalized.usage, input.session.quota);
+    } catch (error) {
+      await this.#cleanupTerminal(input.session, "quota_exceeded", input.requestedAt);
+      throw error;
+    }
+
+    this.#auditEvent(
+      "execute",
+      input.session,
+      input.requestedAt,
+      "ACCEPTED",
+      normalized.outcome === "SUCCEEDED" ? null : normalized.outcome.toLowerCase(),
+      normalized.usage,
+    );
+
+    const terminalCleanupReason = executionCleanupReason(normalized.outcome);
+    if (terminalCleanupReason !== null) {
+      await this.#cleanupTerminal(input.session, terminalCleanupReason, input.requestedAt);
+    }
+    return normalized;
   }
 
   async #createSession(
@@ -573,8 +667,6 @@ export class ProductionSandboxRuntime {
     return session;
   }
 
-  readonly #secretRefsBySession = new Map<string, ReadonlyMap<string, string>>();
-
   #rememberSecretReferences(session: ProductionSandboxSession, refs: readonly string[]): void {
     this.#secretRefsBySession.set(
       session.sessionHash,
@@ -616,30 +708,18 @@ export class ProductionSandboxRuntime {
     return session;
   }
 
-  async #cleanupAfterQuota(session: ProductionSandboxSession): Promise<void> {
-    if (this.#released.has(session.allocationKey)) return;
-    const backend = this.#backends.get(session.backendId);
-    if (backend === undefined) return;
+  async #cleanupTerminal(
+    session: ProductionSandboxSession,
+    reason: ProductionSandboxCleanupReason,
+    requestedAt: string,
+  ): Promise<void> {
     const controller = new AbortController();
-    await backend.adapter.cleanup(
-      Object.freeze({
-        idempotencyKey: `cleanup:${session.allocationKey}`,
-        missionId: session.missionId,
-        reason: "quota_exceeded",
-        sessionId: session.sessionId,
-        signal: controller.signal,
-        taskId: session.taskId,
-      }),
-    );
-    this.#released.set(session.allocationKey, "quota_exceeded");
-    this.#auditEvent(
-      "cleanup",
+    await this.cleanup({
+      reason,
+      requestedAt,
       session,
-      new Date().toISOString(),
-      "ACCEPTED",
-      "quota_exceeded",
-      null,
-    );
+      signal: controller.signal,
+    });
   }
 
   #auditEvent(
@@ -968,6 +1048,14 @@ function normalizeCleanupReason(value: string): ProductionSandboxCleanupReason {
     throw new SandboxError("SESSION_INVALID", "Production sandbox cleanup reason is invalid.");
   }
   return value;
+}
+
+function executionCleanupReason(
+  outcome: ProductionSandboxExecutionOutcome,
+): ProductionSandboxCleanupReason | null {
+  if (outcome === "SUCCEEDED") return null;
+  if (outcome === "CANCELLED") return "cancelled";
+  return "failed";
 }
 
 function assertCleanupReason(
