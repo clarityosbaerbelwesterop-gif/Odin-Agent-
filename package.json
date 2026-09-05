@@ -14,7 +14,7 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome lint .",
-    "quality": "biome check --write . >/dev/null && printf '\\n===PRODUCTION_BEGIN===\\n' && cat src/sandbox/production.ts && printf '\\n===PRODUCTION_END===\\n===INDEX_BEGIN===\\n' && cat src/sandbox/index.ts && printf '\\n===INDEX_END===\\n===TEST_BEGIN===\\n' && cat test/sandbox/production.test.ts && printf '\\n===TEST_END===\\n' && exit 1",
+    "quality": "biome check .",
     "smoke:kimi:dry": "node scripts/live-kimi-coding-smoke.mjs --dry-run",
     "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
