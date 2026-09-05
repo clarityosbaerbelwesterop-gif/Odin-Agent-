@@ -1,9 +1,4 @@
-export type FrontierTaskClass =
-  | "coding"
-  | "reasoning"
-  | "tool_use"
-  | "recovery"
-  | "long_mission";
+export type FrontierTaskClass = "coding" | "reasoning" | "tool_use" | "recovery" | "long_mission";
 
 export type FrontierArm = "model_alone" | "odin";
 export type FrontierEvidenceStatus = "COMPLETE" | "PARTIAL" | "INCONCLUSIVE";

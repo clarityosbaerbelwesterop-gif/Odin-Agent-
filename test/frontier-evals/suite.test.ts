@@ -6,11 +6,11 @@ import {
   createFrontierBudgetProfile,
   createFrontierCase,
   evaluateFrontierSuite,
-  FrontierEvaluationError,
-  modelFacingFrontierCase,
   type FrontierArmResult,
   type FrontierCase,
+  FrontierEvaluationError,
   type FrontierTaskClass,
+  modelFacingFrontierCase,
 } from "../../src/frontier-evals/index.js";
 
 function sha(value: string): string {

@@ -1,12 +1,12 @@
 import { createHash } from "node:crypto";
 import {
-  FrontierEvaluationError,
   type FrontierAggregateMetrics,
   type FrontierArmResult,
   type FrontierArmResultInput,
   type FrontierBudgetProfile,
   type FrontierCase,
   type FrontierCaseInput,
+  FrontierEvaluationError,
   type FrontierEvaluationReport,
   type FrontierFailureCategory,
   type FrontierModelFacingCase,
@@ -137,7 +137,9 @@ export function evaluateFrontierSuite(input: {
     throw new FrontierEvaluationError("Frontier result collection exceeds its bound.");
   }
 
-  const cases = input.cases.map(normalizeCase).sort((left, right) => left.caseHash.localeCompare(right.caseHash));
+  const cases = input.cases
+    .map(normalizeCase)
+    .sort((left, right) => left.caseHash.localeCompare(right.caseHash));
   const byCase = new Map<string, FrontierCase>();
   const caseIds = new Set<string>();
   for (const current of cases) {
@@ -151,7 +153,9 @@ export function evaluateFrontierSuite(input: {
     caseIds.add(current.id);
   }
 
-  const results = input.results.map(normalizeResult).sort((left, right) => left.resultHash.localeCompare(right.resultHash));
+  const results = input.results
+    .map(normalizeResult)
+    .sort((left, right) => left.resultHash.localeCompare(right.resultHash));
   const pairMap = new Map<string, Partial<Record<"model_alone" | "odin", FrontierArmResult>>>();
   const seenResultHashes = new Set<string>();
   for (const result of results) {
@@ -160,14 +164,18 @@ export function evaluateFrontierSuite(input: {
       throw new FrontierEvaluationError("Frontier result references a foreign case.");
     }
     if (result.harnessVersion !== harnessVersion) {
-      throw new FrontierEvaluationError("Frontier result harness version does not match suite execution.");
+      throw new FrontierEvaluationError(
+        "Frontier result harness version does not match suite execution.",
+      );
     }
     if (result.budgetHash !== currentCase.budget.budgetHash) {
       throw new FrontierEvaluationError("Frontier result budget does not match its case budget.");
     }
     assertWithinBudget(result, currentCase.budget);
     if (seenResultHashes.has(result.resultHash)) {
-      throw new FrontierEvaluationError("Duplicate frontier result hash is not valid pair evidence.");
+      throw new FrontierEvaluationError(
+        "Duplicate frontier result hash is not valid pair evidence.",
+      );
     }
     seenResultHashes.add(result.resultHash);
     const pair = pairMap.get(result.caseHash) ?? {};
@@ -380,19 +388,27 @@ function validateOutcomeSemantics(value: FrontierArmResultInput): void {
       value.verification !== "INCOMPLETE" ||
       !INFRASTRUCTURE_FAILURES.has(value.failureCategory)
     ) {
-      throw new FrontierEvaluationError("Infrastructure-ambiguous evidence cannot become a measured task result.");
+      throw new FrontierEvaluationError(
+        "Infrastructure-ambiguous evidence cannot become a measured task result.",
+      );
     }
     return;
   }
   if (!value.completed || !value.attributable || value.qualityBps === null) {
-    throw new FrontierEvaluationError("Completed task outcomes require attributable numeric quality evidence.");
+    throw new FrontierEvaluationError(
+      "Completed task outcomes require attributable numeric quality evidence.",
+    );
   }
   if (value.outcomeClass === "SUCCESS") {
     if (value.failureCategory !== "none" || value.verification !== "PASS") {
-      throw new FrontierEvaluationError("Successful frontier outcomes require PASS and no failure category.");
+      throw new FrontierEvaluationError(
+        "Successful frontier outcomes require PASS and no failure category.",
+      );
     }
   } else if (value.failureCategory === "none" || value.verification === "INCOMPLETE") {
-    throw new FrontierEvaluationError("Terminal task failures require a bounded failure category and final verification state.");
+    throw new FrontierEvaluationError(
+      "Terminal task failures require a bounded failure category and final verification state.",
+    );
   }
 }
 
@@ -405,7 +421,9 @@ function assertMatchedIdentity(left: FrontierArmResult, right: FrontierArmResult
     left.harnessVersion !== right.harnessVersion ||
     left.budgetHash !== right.budgetHash
   ) {
-    throw new FrontierEvaluationError("Matched frontier arms must use the same model profile, harness, and budget.");
+    throw new FrontierEvaluationError(
+      "Matched frontier arms must use the same model profile, harness, and budget.",
+    );
   }
 }
 
@@ -419,7 +437,9 @@ function assertWithinBudget(result: FrontierArmResult, budget: FrontierBudgetPro
     result.repairs > budget.maxRepairs ||
     result.recoveries > budget.maxRecoveries
   ) {
-    throw new FrontierEvaluationError("Frontier result exceeds its declared equal-condition budget.");
+    throw new FrontierEvaluationError(
+      "Frontier result exceeds its declared equal-condition budget.",
+    );
   }
 }
 
@@ -498,7 +518,11 @@ function caseIdentity(value: FrontierCaseInput): unknown {
   };
 }
 
-function exactKeys(value: object, required: readonly string[], optional: readonly string[] = []): void {
+function exactKeys(
+  value: object,
+  required: readonly string[],
+  optional: readonly string[] = [],
+): void {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     throw new FrontierEvaluationError("Frontier value must be an object.");
   }
