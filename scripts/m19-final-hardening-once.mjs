@@ -75,7 +75,10 @@ source = replaceExact(
   assertHash(value.evidenceHash, "restoration evidenceHash");
   assertCanonicalTime(value.observedAt, "restoration observedAt");
   if (value.status !== "PASS" && value.status !== "FAIL") {
-    throw new MultiFileCodingError("ROLLBACK_FAILED", "Restoration verification status is invalid.");
+    throw new MultiFileCodingError(
+      "ROLLBACK_FAILED",
+      "Restoration verification status is invalid.",
+    );
   }
 }`,
   `function validateRestoration(value: RestorationVerification, expectedSnapshotHash: string): void {
@@ -89,7 +92,10 @@ source = replaceExact(
     );
   }
   if (value.status !== "PASS" && value.status !== "FAIL") {
-    throw new MultiFileCodingError("ROLLBACK_FAILED", "Restoration verification status is invalid.");
+    throw new MultiFileCodingError(
+      "ROLLBACK_FAILED",
+      "Restoration verification status is invalid.",
+    );
   }
 }`,
   "validate restoration snapshot",
