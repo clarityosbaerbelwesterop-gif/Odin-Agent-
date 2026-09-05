@@ -1,0 +1,41 @@
+name: M20-M22 governance sync once
+
+on:
+  push:
+    branches:
+      - agent/m20-m22-autonomy-router-frontier-evals
+    paths:
+      - scripts/sync-m20-m22-docs-once.mjs
+      - .github/workflows/sync-m20-m22-docs-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync-verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m20-m22-autonomy-router-frontier-evals
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx biome check --write scripts/sync-m20-m22-docs-once.mjs
+      - name: Synchronize M20-M22 governance docs
+        run: node scripts/sync-m20-m22-docs-once.mjs
+      - name: Verify repository
+        run: npm run verify
+      - name: Build repository
+        run: npm run build
+      - name: Remove helper and commit synchronized docs
+        run: |
+          git rm -f scripts/sync-m20-m22-docs-once.mjs .github/workflows/sync-m20-m22-docs-once.yml
+          git add ROADMAP.md HANDOVER.md ARCHITECTURE.md SECURITY.md docs/milestones/M20_M22_AUTONOMY_ROUTING_FRONTIER_EVALS.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "docs(m20-m22): synchronize verified package evidence"
+          git push origin HEAD:agent/m20-m22-autonomy-router-frontier-evals
