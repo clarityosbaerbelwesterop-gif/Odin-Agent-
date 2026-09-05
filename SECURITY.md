@@ -304,6 +304,32 @@ The bounded live A/B runner keeps provider credentials in the control plane, cap
 
 Second authorized run `33879714040` used nine provider calls and again remained INCONCLUSIVE. All six bounded failures were `provider_timeout`. Candidate-overlay arms timed out before mutation on the first call; baseline arms mutated after planning and timed out on the second repair call. The review found that v1 used 180000 ms for both provider timeout and candidate latency acceptance, so a latency overrun could be aborted before becoming a complete measured failure. The v2 live profile requires measurement timeout to exceed acceptance by at least 30000 ms, caps timeout at 600000 ms, binds stable provider/model/profile identity and reasoning settings, and includes profile identity in evidence. Run `33882837781` verified the v2 profile offline with 329/329 tests and no provider secret/request. A third live provider request remains separately approval-gated.
 
+## Implemented M17–M19 reliability, efficiency, and multi-file safeguards
+
+M17 normalizes failure evidence into bounded categories without persisting raw provider/tool exceptions.
+Retry is denied after unknown or irreversible side effects; reversible mutations require runtime-owned
+preimage evidence. Recovery budgets and repeated-strategy signatures prevent unbounded retry/repair or
+escalation loops. The recovery controller cannot mint M3 grants or M5 completion evidence.
+
+M18 optimization cannot discard mandatory P0–P2 authority context or verification-critical evidence.
+Delta/cache identity binds mission/task scope, model profile, policy, stable source identity, and
+verification requirements. Sensitive context is excluded from retained reuse. Early exit requires fresh
+independent non-contradictory evidence; token reduction never lowers the M11 quality floor.
+
+M19 accepts at most 100 canonical workspace-relative targets and blocks duplicate/ancestor overlap,
+forbidden `.git`, workflow, dependency, or `.env` surfaces, stale preimages, tampered postimages,
+cycles, and ownership conflicts before mutation. Runtime-trusted preimages are captured before the
+workspace commit boundary. Any partial commit, post-commit verification exception, failed quality/M5
+gate, or cancellation after mutation enters fail-closed restoration. Restoration does not inherit an
+already-aborted task signal and its independent evidence must match the exact preimage snapshot hash.
+Even a misconfigured injected recovery authority cannot prevent restoration once mutation occurred; the
+runtime then reports `ROLLBACK_FAILED` rather than claiming success. The injected workspace adapter must
+supply its own atomic/staging semantics; current tests do not prove OS/filesystem atomicity for a future
+production adapter.
+
+Helper run `33949434835` passed 379/379 tests with all configured deterministic gates and no live
+provider credential/request.
+
 ## Prompt injection and untrusted-content security
 
 Every context item carries origin/trust metadata. Tool results and external content are data, not

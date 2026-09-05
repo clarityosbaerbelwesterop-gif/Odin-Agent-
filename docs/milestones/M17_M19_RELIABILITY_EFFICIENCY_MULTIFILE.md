@@ -1,6 +1,6 @@
 # M17–M19 — Reliability, context efficiency, and multi-file coding
 
-Status: **IN PROGRESS**. This document is the delivery contract for one pull request containing three
+Status: **VERIFIED_AWAITING_FINAL_EXACT_HEAD_CI**. This document is the delivery contract for one pull request containing three
 sequentially verified milestones. A checked item requires repository evidence; intent is never marked
 complete.
 
@@ -84,21 +84,32 @@ and does not represent billed provider tokens or universal savings.
 Goal: support real repository-wide changes across 10–100 files with dependency-aware coordination and
 recoverable application.
 
-- [ ] Represent a bounded change set as a DAG with canonical paths, dependencies, ownership, operation,
+- [x] Represent a bounded change set as a DAG with canonical paths, dependencies, ownership, operation,
   exact preimage hash, proposed postimage hash, and verification method.
-- [ ] Reject cycles, duplicate ownership, path overlap, stale preimages, symlink/path escape, forbidden
+- [x] Reject cycles, duplicate ownership, path overlap, stale preimages, symlink/path escape, forbidden
   files, and more than 100 target files before mutation.
-- [ ] Stage all changes, validate the complete staged tree, and commit only after every operation succeeds.
-- [ ] Restore runtime-trusted preimages after partial application or failed quality/verification gates and
+- [x] Stage all changes, validate the complete staged tree, and commit only after every operation succeeds.
+- [x] Restore runtime-trusted preimages after partial application or failed quality/verification gates and
   verify the restoration independently.
-- [ ] Reconcile non-overlapping specialist proposals deterministically; conflicting proposals block rather
+- [x] Reconcile non-overlapping specialist proposals deterministically; conflicting proposals block rather
   than last-writer-win.
-- [ ] Integrate M17 recovery decisions and M18 context deltas into the multi-file coding workflow.
-- [ ] Test the 10-file minimum scenario, 100-file boundary, dependency ordering, cycle/conflict rejection,
+- [x] Integrate M17 recovery decisions and M18 context deltas into the multi-file coding workflow.
+- [x] Test the 10-file minimum scenario, 100-file boundary, dependency ordering, cycle/conflict rejection,
   partial write, stale hash, quality failure, cancellation, rollback, and successful verification.
 
 Exit gate: a disposable repository fixture completes a verified 10+ file refactor; deliberate mid-apply
 and post-apply failures restore the exact original tree; all repository gates pass.
+
+M19 implementation evidence: helper run `33949434835` passed **379/379 tests**, Biome, strict
+TypeScript, credential-free Kimi dry smoke, and `npm run build`. Aggregate coverage was **90.31% lines /
+77.67% branches / 95.87% functions**; `runtime/multi-file` coverage was **86.88% / 75.46% / 95.56%**.
+The fixture proves verified 10-file and 100-file boundaries; 101 files, cycles, overlapping/forbidden/
+noncanonical paths, stale preimages, and tampered postimages fail before mutation. Partial apply,
+post-commit quality/M5 failure, thrown verification paths, and cancellation after mutation restore exact
+runtime preimages. Restoration is independently snapshot-hash-bound. Even a misconfigured injected
+recovery authority cannot prevent the safety restoration, although the runtime then fails closed instead
+of claiming recovery success. The workspace adapter remains an injected transaction contract; this does
+not claim filesystem/kernel atomicity for a future production adapter.
 
 ## Verification and delivery
 

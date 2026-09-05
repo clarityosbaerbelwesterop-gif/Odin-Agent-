@@ -292,9 +292,9 @@ has fewer remaining milestones. Every milestone keeps its own exit gate inside t
 - [x] Serializable anti-loop history prevents repeated no-progress strategies.
 - [x] Coding-path integration and requirement-derived failure/recovery tests.
 
-M17 local verification passed with 357/357 tests, Biome, strict TypeScript, credential-free Kimi dry
-smoke, and 90.43% line / 77.60% branch / 95.91% function coverage. Exact-head PR CI remains open;
-M18 and M19 are not implied complete.
+M17 focused verification passed with 357/357 tests, Biome, strict TypeScript, credential-free Kimi dry
+smoke, and 90.43% line / 77.60% branch / 95.91% function coverage. The combined M17–M19 package has
+since passed its full implementation helper gate; final exact-head PR CI remains the merge gate.
 
 ## M18 — Token efficiency 2.0
 
@@ -309,10 +309,17 @@ outcomes. This does not claim universal savings, provider-billed token reduction
 
 ## M19 — Multi-file coding
 
-- [ ] Dependency-aware, ownership-safe change sets spanning 10–100 files.
-- [ ] Exact preimage validation, staging, conflict detection, and deterministic reconciliation.
-- [ ] Runtime-attested rollback after partial application or failed quality/verification.
-- [ ] Verified disposable-repository refactor plus destructive-path regression tests.
+- [x] Dependency-aware, ownership-safe change sets spanning 10–100 files.
+- [x] Exact preimage validation, staging, conflict detection, and deterministic reconciliation.
+- [x] Runtime-attested rollback after partial application or failed quality/verification.
+- [x] Verified disposable-repository refactor plus destructive-path regression tests.
+
+M19 helper run `33949434835` passed 379/379 tests, Biome, strict TypeScript, build, and the
+credential-free Kimi dry smoke. Aggregate coverage was 90.31% lines / 77.67% branches / 95.87%
+functions. The rollback verifier is bound to the exact runtime-preimage snapshot; restoration still
+executes after a partial mutation even if the injected recovery authority does not return ROLLBACK, and
+the runtime then fails closed. This proves the injected workspace transaction/rollback contract, not
+OS-level filesystem atomicity. Final normal exact-head PR CI remains required before merge.
 
 The binding M17–M19 exit criteria and non-goals are defined in
 `docs/milestones/M17_M19_RELIABILITY_EFFICIENCY_MULTIFILE.md`.
