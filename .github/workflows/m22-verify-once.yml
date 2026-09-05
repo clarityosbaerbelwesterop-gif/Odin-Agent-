@@ -1,0 +1,38 @@
+name: M22 frontier evaluation verify once
+
+on:
+  push:
+    branches:
+      - agent/m20-m22-autonomy-router-frontier-evals
+    paths:
+      - src/frontier-evals/**
+      - test/frontier-evals/**
+      - .github/workflows/m22-verify-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify-m22:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m20-m22-autonomy-router-frontier-evals
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx biome check --write src/frontier-evals test/frontier-evals
+      - run: npm run verify
+      - run: npm run build
+      - name: Commit verified M22 checkpoint and remove helper
+        run: |
+          git rm -f .github/workflows/m22-verify-once.yml
+          git add src/frontier-evals test/frontier-evals
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(m22): checkpoint verified frontier evaluation suite"
+          git push origin HEAD:agent/m20-m22-autonomy-router-frontier-evals
