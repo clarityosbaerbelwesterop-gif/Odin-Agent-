@@ -91,6 +91,7 @@ export interface RestorationVerification {
   readonly status: "FAIL" | "PASS";
   readonly observedAt: string;
   readonly evidenceHash: string;
+  readonly snapshotHash: string;
 }
 
 export interface MultiFileRestorationVerifier {
@@ -311,12 +312,7 @@ export class MultiFileCodingCoordinator {
       },
       failure,
     });
-    if (recovery.action !== "ROLLBACK") {
-      throw new MultiFileCodingError(
-        "ROLLBACK_FAILED",
-        "Reliability policy did not authorize restoration of reversible multi-file writes.",
-      );
-    }
+    const rollbackAuthorized = recovery.action === "ROLLBACK";
 
     try {
       // Rollback is a safety action and must not inherit an already-aborted task signal.
@@ -332,7 +328,7 @@ export class MultiFileCodingCoordinator {
         snapshotHash: input.snapshotHash,
         taskId: input.changeSet.taskId,
       });
-      validateRestoration(restoration);
+      validateRestoration(restoration, input.snapshotHash);
     } catch {
       throw new MultiFileCodingError(
         "ROLLBACK_FAILED",
@@ -343,6 +339,12 @@ export class MultiFileCodingCoordinator {
       throw new MultiFileCodingError(
         "ROLLBACK_FAILED",
         "Independent restoration verification failed.",
+      );
+    }
+    if (!rollbackAuthorized) {
+      throw new MultiFileCodingError(
+        "ROLLBACK_FAILED",
+        "Repository was restored, but reliability policy did not attest the expected rollback action.",
       );
     }
     if (input.originalError instanceof MultiFileCodingError) throw input.originalError;
@@ -684,9 +686,16 @@ function validateQualityEvidence(value: MultiFileQualityEvidence): void {
   }
 }
 
-function validateRestoration(value: RestorationVerification): void {
+function validateRestoration(value: RestorationVerification, expectedSnapshotHash: string): void {
   assertHash(value.evidenceHash, "restoration evidenceHash");
+  assertHash(value.snapshotHash, "restoration snapshotHash");
   assertCanonicalTime(value.observedAt, "restoration observedAt");
+  if (value.snapshotHash !== expectedSnapshotHash) {
+    throw new MultiFileCodingError(
+      "ROLLBACK_FAILED",
+      "Restoration verification is bound to a different runtime preimage snapshot.",
+    );
+  }
   if (value.status !== "PASS" && value.status !== "FAIL") {
     throw new MultiFileCodingError(
       "ROLLBACK_FAILED",

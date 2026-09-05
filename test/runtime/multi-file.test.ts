@@ -203,13 +203,17 @@ class ExactRestorationVerifier implements MultiFileRestorationVerifier {
     this.#workspace = workspace;
   }
 
-  async verify(input: { readonly preimages: readonly RuntimePreimage[] }) {
+  async verify(input: {
+    readonly preimages: readonly RuntimePreimage[];
+    readonly snapshotHash: string;
+  }) {
     const restored = input.preimages.every(
       (entry) => this.#workspace.read(entry.path) === entry.content,
     );
     return {
       evidenceHash: hash(JSON.stringify(input.preimages)),
       observedAt: NOW,
+      snapshotHash: input.snapshotHash,
       status: restored ? ("PASS" as const) : ("FAIL" as const),
     };
   }
@@ -582,6 +586,63 @@ test("equivalent input ordering produces one deterministic change-set identity",
   });
   assert.equal(first.changeSetHash, second.changeSetHash);
   assert.deepEqual(first.orderedChangeIds, second.orderedChangeIds);
+});
+
+test("restoration executes even when an injected recovery authority refuses rollback", async () => {
+  const data = fixture(10);
+  const workspace = new MemoryWorkspace(data.files);
+  const original = workspace.snapshot();
+  workspace.failCommitAfter = 2;
+  const context = efficientContext();
+  const runtime = new MultiFileCodingCoordinator({
+    clock: () => NOW,
+    quality: new ExpectedQuality(workspace, data.expected),
+    reliability: {
+      decide: (request) => ({
+        action: "CHECKPOINT_AND_BLOCK" as const,
+        decisionHash: hash(
+          JSON.stringify({ failure: request.failure.signature, action: "CHECKPOINT_AND_BLOCK" }),
+        ),
+        failureSignature: request.failure.signature,
+        reasonCode: "fixture_refusal",
+      }),
+    },
+    restoration: new ExactRestorationVerifier(workspace),
+    verification: new IndependentVerificationEngine({ maxEvidenceAgeMs: 60_000 }),
+    workspace,
+  });
+  await assert.rejects(
+    runtime.execute({ changeSet: changeSet(data.changes, context.resultHash), context }),
+    (error: unknown) => error instanceof MultiFileCodingError && error.code === "ROLLBACK_FAILED",
+  );
+  assert.deepEqual(workspace.snapshot(), original);
+});
+
+test("forged restoration evidence for another preimage snapshot fails closed", async () => {
+  const data = fixture(10);
+  const workspace = new MemoryWorkspace(data.files);
+  const original = workspace.snapshot();
+  workspace.failCommitAfter = 2;
+  const context = efficientContext();
+  const runtime = new MultiFileCodingCoordinator({
+    clock: () => NOW,
+    quality: new ExpectedQuality(workspace, data.expected),
+    restoration: {
+      verify: async () => ({
+        evidenceHash: hash("forged restoration evidence"),
+        observedAt: NOW,
+        snapshotHash: "f".repeat(64),
+        status: "PASS" as const,
+      }),
+    },
+    verification: new IndependentVerificationEngine({ maxEvidenceAgeMs: 60_000 }),
+    workspace,
+  });
+  await assert.rejects(
+    runtime.execute({ changeSet: changeSet(data.changes, context.resultHash), context }),
+    (error: unknown) => error instanceof MultiFileCodingError && error.code === "ROLLBACK_FAILED",
+  );
+  assert.deepEqual(workspace.snapshot(), original);
 });
 
 test("M18 context identity cannot be swapped under a staged M19 plan", async () => {
