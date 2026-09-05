@@ -1,5 +1,11 @@
 import { createHash } from "node:crypto";
-import { AutonomyIntegrityError, type SoakObservation, type SoakObservationBody, type SoakProfile, type SoakReport } from "./types.js";
+import {
+  AutonomyIntegrityError,
+  type SoakObservation,
+  type SoakObservationBody,
+  type SoakProfile,
+  type SoakReport,
+} from "./types.js";
 
 const SHA256 = /^[a-f0-9]{64}$/u;
 const HOUR_MS = 60 * 60 * 1_000;
@@ -104,7 +110,9 @@ export function evaluateSoak(
         }
         const restartCheckpoint = requiredHash(observation.checkpointHash, "checkpointHash");
         if (latestCheckpointHash === null || restartCheckpoint !== latestCheckpointHash) {
-          throw new AutonomyIntegrityError("Restart is not bound to the latest trusted checkpoint.");
+          throw new AutonomyIntegrityError(
+            "Restart is not bound to the latest trusted checkpoint.",
+          );
         }
         break;
       }

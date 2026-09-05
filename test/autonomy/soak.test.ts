@@ -80,7 +80,13 @@ test("stale fenced settlement cannot win after a higher-generation reclaim", () 
   append(events, { atMs: HOUR_MS, checkpointHash: sha("c1"), kind: "checkpoint" });
   append(events, { atMs: HOUR_MS, generation: 2, jobId: "job-a", kind: "lease_reclaimed" });
   append(events, { atMs: HOUR_MS, generation: 3, jobId: "job-a", kind: "lease_reclaimed" });
-  append(events, { atMs: HOUR_MS, generation: 2, jobId: "job-a", kind: "job_settled", settlement: "SUCCEEDED" });
+  append(events, {
+    atMs: HOUR_MS,
+    generation: 2,
+    jobId: "job-a",
+    kind: "job_settled",
+    settlement: "SUCCEEDED",
+  });
   assert.throws(() => evaluateSoak(profile, events), /Stale or foreign/u);
 });
 
@@ -90,7 +96,13 @@ test("cancellation remains terminal against a late worker success", () => {
   append(events, { atMs: HOUR_MS, checkpointHash: sha("c1"), kind: "checkpoint" });
   append(events, { atMs: HOUR_MS, generation: 2, jobId: "job-cancel", kind: "lease_reclaimed" });
   append(events, { atMs: HOUR_MS, jobId: "job-cancel", kind: "cancel_requested" });
-  append(events, { atMs: HOUR_MS, generation: 2, jobId: "job-cancel", kind: "job_settled", settlement: "SUCCEEDED" });
+  append(events, {
+    atMs: HOUR_MS,
+    generation: 2,
+    jobId: "job-cancel",
+    kind: "job_settled",
+    settlement: "SUCCEEDED",
+  });
   assert.throws(() => evaluateSoak(profile, events), /Late success/u);
 });
 
@@ -112,7 +124,11 @@ test("synthetic clock rollback and forged profile ceilings are rejected", () => 
   assert.throws(() => evaluateSoak(profile, events), /clock moved backwards/u);
 
   assert.throws(
-    () => evaluateSoak({ ...profile, maxBudgetUnits: profile.maxBudgetUnits + 1 }, passingSoak(profile)),
+    () =>
+      evaluateSoak(
+        { ...profile, maxBudgetUnits: profile.maxBudgetUnits + 1 },
+        passingSoak(profile),
+      ),
     /runtime-owned versioned profile/u,
   );
 });
