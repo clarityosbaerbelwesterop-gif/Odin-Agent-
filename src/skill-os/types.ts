@@ -14,16 +14,22 @@ export interface SkillOsPackSummary {
   readonly version: string;
 }
 
-export interface SkillOsPackSource {
-  listSummaries(): readonly SkillOsPackSummary[];
-  resolveMember(packId: string, packVersion: string, name: string, version: string): SkillPackage;
-}
-
 export interface SkillOsPackMemberRef {
   readonly contentHash: string;
   readonly name: string;
   readonly taskClasses: readonly string[];
   readonly version: string;
+}
+
+export interface SkillOsPackSource {
+  listSummaries(): readonly SkillOsPackSummary[];
+  resolveMemberMetadata(
+    packId: string,
+    packVersion: string,
+    name: string,
+    version: string,
+  ): SkillOsPackMemberRef;
+  resolveMember(packId: string, packVersion: string, name: string, version: string): SkillPackage;
 }
 
 export interface SkillOsPackRegistration extends SkillOsPackSummary {
@@ -84,6 +90,7 @@ export interface SkillOsLimits {
   readonly maxContextBytes: number;
   readonly maxMembers: number;
   readonly maxPacks: number;
+  readonly maxSelectionAgeMs: number;
   readonly maxTaskClasses: number;
 }
 
