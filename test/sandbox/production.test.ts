@@ -9,9 +9,9 @@ import {
   type ProductionSandboxAdapterExecuteRequest,
   type ProductionSandboxAdapterExecuteResult,
   type ProductionSandboxPolicy,
+  ProductionSandboxRuntime,
   type ProductionSecretBroker,
   productionIsolationAttestationHash,
-  ProductionSandboxRuntime,
   SandboxError,
 } from "../../src/sandbox/index.js";
 
@@ -91,11 +91,13 @@ function attestation(
   return { ...base, attestationHash: productionIsolationAttestationHash(base) };
 }
 
-function runtime(input: {
-  adapter?: FixtureProductionAdapter;
-  verifier?: ProductionIsolationVerifier;
-  broker?: ProductionSecretBroker;
-} = {}) {
+function runtime(
+  input: {
+    adapter?: FixtureProductionAdapter;
+    verifier?: ProductionIsolationVerifier;
+    broker?: ProductionSecretBroker;
+  } = {},
+) {
   const adapter = input.adapter ?? new FixtureProductionAdapter();
   return {
     adapter,
@@ -148,7 +150,13 @@ test("production sandbox binds strong isolation, brokered secrets, audit, and cl
   const auditJson = JSON.stringify(fixture.runtime.auditRecords());
   assert.doesNotMatch(auditJson, /top-secret-value/u);
   assert.doesNotMatch(auditJson, /sandbox\/key/u);
-  assert.equal(fixture.runtime.auditRecords().map((record) => record.action).join(","), "allocate,execute");
+  assert.equal(
+    fixture.runtime
+      .auditRecords()
+      .map((record) => record.action)
+      .join(","),
+    "allocate,execute",
+  );
 
   assert.equal(
     await fixture.runtime.cleanup({
