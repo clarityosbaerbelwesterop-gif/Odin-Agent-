@@ -1,0 +1,42 @@
+name: M23-M25 clean warning once
+
+on:
+  push:
+    branches:
+      - agent/m23-m25-skill-os-memory-tools
+    paths:
+      - .github/workflows/m23-m25-clean-warning-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  clean-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m23-m25-skill-os-memory-tools
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Remove unused type import
+        run: sed -i '/^  ActiveMemoryRecord,$/d' src/memory/advanced.ts
+      - name: Require clean Biome output
+        run: npx biome check src/memory/advanced.ts
+      - name: Verify repository
+        run: npm run verify
+      - name: Build repository
+        run: npm run build
+      - name: Remove helper and commit clean verification head
+        run: |
+          git rm -f .github/workflows/m23-m25-clean-warning-once.yml
+          git add src/memory/advanced.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(m23-m25): remove final lint warning"
+          git push origin HEAD:agent/m23-m25-skill-os-memory-tools
