@@ -6,6 +6,7 @@ on:
       - agent/m17-m19-reliability-efficiency-multifile
     paths:
       - scripts/m19-hardening-once.mjs
+      - scripts/m19-tsfix-once.mjs
       - .github/workflows/m19-hardening-once.yml
 
 permissions:
@@ -25,10 +26,12 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Format one-shot helper
-        run: npx biome check --write scripts/m19-hardening-once.mjs
+      - name: Format one-shot helpers
+        run: npx biome check --write scripts/m19-hardening-once.mjs scripts/m19-tsfix-once.mjs
       - name: Apply M19 hardening
-        run: node scripts/m19-hardening-once.mjs
+        run: |
+          node scripts/m19-hardening-once.mjs
+          node scripts/m19-tsfix-once.mjs
       - name: Format touched files
         run: npx biome check --write src/runtime/multi-file.ts test/runtime/multi-file.test.ts
       - name: Verify repository
@@ -37,7 +40,7 @@ jobs:
         run: npm run build
       - name: Remove one-shot helpers and commit verified changes
         run: |
-          git rm -f scripts/m19-hardening-once.mjs .github/workflows/m19-hardening-once.yml
+          git rm -f scripts/m19-hardening-once.mjs scripts/m19-tsfix-once.mjs .github/workflows/m19-hardening-once.yml
           git add src/runtime/multi-file.ts test/runtime/multi-file.test.ts
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
