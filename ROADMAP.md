@@ -356,23 +356,38 @@ The binding M17–M19 exit criteria and non-goals are defined in
 
 Final adversarial hardening run `33951098718` passed **408/408 tests**, Biome, strict TypeScript,
 credential-free Kimi dry smoke, and build; aggregate coverage was **90.29% / 77.60% / 96.09%**.
-Normal exact-head PR CI remains required before merge.
+Normal exact-head PR CI `33951326491` passed before PR #32 merged into `main`.
 
 ## M23 — Skill OS
 
-- [ ] Verified capability packs, progressive discovery/loading, task-based selection, and rollback.
-- [ ] Skills remain plugins without tool, permission, evidence, memory, or activation authority.
+- [x] Verified capability packs, progressive discovery/loading, task-based selection, and rollback.
+- [x] Skills remain plugins without tool, permission, evidence, memory, or activation authority.
+
+M23 binds exact pack revision, member identity, task class, freshness, and context ceilings. Runtime
+selection cannot relabel pack members, activate/promote skills, or bypass M10/M15 evidence.
 
 ## M24 — Advanced memory
 
-- [ ] Episodic and project retrieval with provenance, retention, deletion, compression, and conflicts.
-- [ ] Stale-data detection keeps repository/current sources above remembered conclusions.
+- [x] Episodic and project retrieval with provenance, retention, deletion, compression, and conflicts.
+- [x] Stale-data detection keeps repository/current sources above remembered conclusions.
+
+M24 rejects future evidence, exposes current-memory conflicts, blocks incomplete saturated retention
+claims, preserves source sensitivity, and permits only runtime-issued lower-authority compression.
 
 ## M25 — Tool ecosystem
 
-- [ ] Permissioned adapters for repository, browser, database, cloud, documents, data, CI/CD, APIs, and
+- [x] Permissioned adapters for repository, browser, database, cloud, documents, data, CI/CD, APIs, and
   research through the M3 gateway.
-- [ ] Every adapter declares schemas, side effects, idempotency, timeout, retry, cost, and confirmation.
+- [x] Every adapter declares schemas, side effects, idempotency, timeout, retry, cost, and confirmation.
+
+M25 descriptors mirror exact registered M3 manifests and never create grants, approvals, credentials,
+network scope, handlers, or execution authority. All execution delegates through `ToolRuntime.execute`.
+Hardening run `33954348383` passed **427/427 tests** with aggregate coverage **90.30% lines / 77.62%
+branches / 95.75% functions**. Warning-clean verification run `33954417440` and normal exact-head PR CI
+`33954471567` passed on the implementation head before governance synchronization.
+
+The binding M23–M25 contract is
+`docs/milestones/M23_M25_SKILL_OS_ADVANCED_MEMORY_TOOL_ECOSYSTEM.md`.
 
 ## M26 — Production sandbox
 
