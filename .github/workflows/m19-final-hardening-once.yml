@@ -1,0 +1,43 @@
+name: M19 final rollback integrity hardening once
+
+on:
+  push:
+    branches:
+      - agent/m17-m19-reliability-efficiency-multifile
+    paths:
+      - scripts/m19-final-hardening-once.mjs
+      - .github/workflows/m19-final-hardening-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify-final-hardening:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m17-m19-reliability-efficiency-multifile
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx biome check --write scripts/m19-final-hardening-once.mjs
+      - name: Apply final M19 hardening
+        run: node scripts/m19-final-hardening-once.mjs
+      - run: npx biome check --write src/runtime/multi-file.ts test/runtime/multi-file.test.ts
+      - name: Verify repository
+        run: npm run verify
+      - name: Build repository
+        run: npm run build
+      - name: Remove helper and commit verified final hardening
+        run: |
+          git rm -f scripts/m19-final-hardening-once.mjs .github/workflows/m19-final-hardening-once.yml
+          git add src/runtime/multi-file.ts test/runtime/multi-file.test.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(m19): bind and guarantee rollback restoration"
+          git push origin HEAD:agent/m17-m19-reliability-efficiency-multifile
