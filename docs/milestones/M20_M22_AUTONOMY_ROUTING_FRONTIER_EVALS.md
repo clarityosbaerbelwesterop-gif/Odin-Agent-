@@ -1,6 +1,6 @@
 # M20–M22 — Long-running autonomy, multi-model routing, and frontier evaluation
 
-Status: **IN PROGRESS**. This document is the binding delivery contract for one pull request containing exactly three sequential milestones. A checked item requires repository evidence; intent is never marked complete.
+Status: **VERIFIED_AWAITING_FINAL_EXACT_HEAD_CI**. This document is the binding delivery contract for one pull request containing exactly three sequential milestones. A checked item requires repository evidence; intent is never marked complete.
 
 ## Package objective
 
@@ -24,13 +24,13 @@ Extend Odin from verified bounded coding/runtime primitives into a durable, evid
 
 Goal: prove that a mission can remain bounded, recoverable, cancellable, and auditable across long logical durations and repeated interruptions.
 
-- [ ] Define versioned 6 h, 12 h, and 24 h soak profiles with explicit event, checkpoint, retry, failure-signature, recovery, and budget ceilings.
-- [ ] Drive soak evidence from a runtime-owned monotonic/synthetic clock so tests do not sleep for real hours and caller timestamps cannot extend deadlines.
-- [ ] Preserve exact checkpoint/event identity across simulated process restart and reject stale/tampered recovery evidence.
-- [ ] Prove expired leases are reclaimed at a higher generation and stale settlement cannot win after recovery.
-- [ ] Prove cancellation remains terminal across restart/reconnect and late success cannot resurrect work.
-- [ ] Track repeated equivalent failure signatures and block before an unbounded retry/no-progress loop.
-- [ ] Emit a deterministic soak report with duration coverage, restart count, recovery count, peak pending work, terminal state, budget consumption, and integrity hash.
+- [x] Define versioned 6 h, 12 h, and 24 h soak profiles with explicit event, checkpoint, retry, failure-signature, recovery, and budget ceilings.
+- [x] Drive soak evidence from a runtime-owned monotonic/synthetic clock so tests do not sleep for real hours and caller timestamps cannot extend deadlines.
+- [x] Preserve exact checkpoint/event identity across simulated process restart and reject stale/tampered recovery evidence.
+- [x] Prove expired leases are reclaimed at a higher generation and stale settlement cannot win after recovery.
+- [x] Prove cancellation remains terminal across restart/reconnect and late success cannot resurrect work.
+- [x] Track repeated equivalent failure signatures and block before an unbounded retry/no-progress loop.
+- [x] Emit a deterministic soak report with duration coverage, restart count, recovery count, peak pending work, terminal state, budget consumption, and integrity hash.
 
 Exit gate: deterministic 6 h, 12 h, and 24 h profiles all PASS with preserved recovery/integrity evidence; deliberate corruption, stale fencing, cancellation races, and retry-loop attempts fail closed; full repository verification passes.
 
@@ -38,29 +38,55 @@ Exit gate: deterministic 6 h, 12 h, and 24 h profiles all PASS with preserved re
 
 Goal: make exact provider/model/profile selection depend on measured task-specific evidence, current budgets, availability, previous failures, and preserved quality floors.
 
-- [ ] Represent empirical model profiles for configured provider/model/profile/reasoning/task-class identities without inferring capabilities from names.
-- [ ] Require fresh independent quality evidence for the requested task class before a model can become eligible.
-- [ ] Apply quality-floor and required-capability filtering before cost, latency, availability, or preference ordering.
-- [ ] Incorporate previous typed failure signatures so a route does not blindly repeat a recently failed exact strategy/model profile.
-- [ ] Support deterministic escalation to a stronger eligible profile while preserving remaining call/token/cost ceilings.
-- [ ] Keep profile/evidence/cache identity bound to provider, model, profile version, reasoning effort, task class, and evidence version.
-- [ ] Add deterministic matrix tests covering Kimi, OpenAI, Anthropic, GLM, and OpenRouter-style identities using offline fixtures only; no real provider call is implied.
+- [x] Represent empirical model profiles for configured provider/model/profile/reasoning/task-class identities without inferring capabilities from names.
+- [x] Require fresh independent quality evidence for the requested task class before a model can become eligible.
+- [x] Apply quality-floor and required-capability filtering before cost, latency, availability, or preference ordering.
+- [x] Incorporate previous typed failure signatures so a route does not blindly repeat a recently failed exact strategy/model profile.
+- [x] Support deterministic escalation to a stronger eligible profile while preserving remaining call/token/cost ceilings.
+- [x] Keep profile/evidence/cache identity bound to provider, model, profile version, reasoning effort, task class, and evidence version.
+- [x] Add deterministic matrix tests covering Kimi, OpenAI, Anthropic, GLM, and OpenRouter-style identities using offline fixtures only; no real provider call is implied.
 
 Exit gate: the offline routing matrix proves quality-before-cost selection, failure-aware rerouting, stale/foreign/tampered evidence rejection, deterministic escalation, and budget-safe blocking when no eligible route exists; full repository verification passes.
 
 ## M22 — Frontier evaluation suite
 
-Goal: establish a reproducible benchmark protocol for model-alone versus model-plus-Odin and comparable external-agent baselines without turning benchmark output into runtime authority.
+Goal: establish a reproducible benchmark protocol for model-alone versus model-plus-Odin without turning benchmark output into runtime authority. External-agent comparison requires a separately verified adapter/provenance contract and is not claimed by M22 v1.
 
-- [ ] Define a versioned 50–200 task suite spanning coding, reasoning, tool use, recovery, and long-mission control with bounded task inputs and expected evidence requirements.
-- [ ] Support hidden/held-out partitions whose expected answers/acceptance metadata are not exposed to the evaluated model path.
-- [ ] Enforce equal tool, call, token, time, and side-effect budgets between matched model-alone and model-plus-Odin arms unless the profile explicitly declares and reports a difference.
-- [ ] Record quality, completion, verification, token, latency, call, repair, recovery, and failure-category outcomes only for complete attributable arms.
-- [ ] Keep incomplete/infrastructure-ambiguous arms separate from deterministic task failures and never convert missing pairs into numeric zero lift.
-- [ ] Bind every result to suite version, case hash, arm, provider/model/profile, task class, budget profile, harness version, and evidence hash.
-- [ ] Produce deterministic aggregate summaries that distinguish COMPLETE, PARTIAL, and INCONCLUSIVE evidence and cannot be used as M5 completion or M11 quality evidence without a separate independent promotion step.
+- [x] Define a versioned 50–200 task suite spanning coding, reasoning, tool use, recovery, and long-mission control with bounded task inputs and expected evidence requirements.
+- [x] Support hidden/held-out partitions whose expected answers/acceptance metadata are not exposed to the evaluated model path.
+- [x] Enforce equal tool, call, token, time, and side-effect budgets between matched model-alone and model-plus-Odin arms unless the profile explicitly declares and reports a difference.
+- [x] Record quality, completion, verification, token, latency, call, repair, recovery, and failure-category outcomes only for complete attributable arms.
+- [x] Keep incomplete/infrastructure-ambiguous arms separate from deterministic task failures and never convert missing pairs into numeric zero lift.
+- [x] Bind every result to suite version, case hash, arm, provider/model/profile, task class, budget profile, harness version, and evidence hash.
+- [x] Produce deterministic aggregate summaries that distinguish COMPLETE, PARTIAL, and INCONCLUSIVE evidence and cannot be used as M5 completion or M11 quality evidence without a separate independent promotion step.
 
 Exit gate: an offline 50+ case fixture suite reproduces identical aggregate evidence independent of input order, detects budget/harness asymmetry and hidden-answer leakage, preserves partial/inconclusive semantics, and passes all repository gates.
+
+## Verified implementation evidence
+
+Final adversarial hardening run `33951098718` passed **408/408 tests**, Biome, strict TypeScript,
+credential-free Kimi dry smoke, and `npm run build`. Aggregate coverage was **90.29% lines / 77.60%
+branches / 96.09% functions**. Focused coverage was **86.16% / 74.31% / 100%** for the M20 soak
+engine, **88.36% / 76.27% / 100%** for M21 failure-aware routing, and **91.48% / 78.76% / 100%**
+for the M22 frontier-evaluation suite.
+
+M20's 6 h, 12 h, and 24 h results are logical-duration synthetic-clock proofs, not wall-clock uptime
+claims. The runtime rejects unknown or misplaced soak-event fields before hashing and again on replay;
+restart evidence binds the latest checkpoint, lease generations fence stale settlement, cancellation
+beats late success, and equivalent failure signatures are bounded.
+
+M21's five-provider matrix is an **offline identity/evidence fixture**. It proves that recent typed
+failures can only remove exact routes before the existing M11 quality/capability/budget router runs;
+negative failure evidence cannot lower a quality floor, add budget, or create positive evaluation
+quality. No provider name implies a capability and no live provider was called.
+
+M22's 60-case held-out fixture validates the protocol and aggregation semantics with synthetic outcomes;
+it is **not** a real frontier-model benchmark result. Hidden acceptance metadata is omitted from the
+model-facing projection, matched arms require the same provider/model/profile/reasoning/harness/budget,
+per-case ceilings are enforced, two results for one arm cannot be cherry-picked, deterministic terminal
+task failures remain measurable negatives, and infrastructure-ambiguous pairs remain unscored. Zero
+complete pairs is INCONCLUSIVE rather than numeric zero lift. External-agent baselines are not
+implemented or claimed in this v1 package.
 
 ## Verification and delivery
 

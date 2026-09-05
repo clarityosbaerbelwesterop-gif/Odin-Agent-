@@ -379,3 +379,30 @@ owner privately and provide the smallest safe reproduction.
 Live candidate evaluation must not create survivorship bias by discarding deterministic failures. The runtime now treats only an explicit bounded set of terminal task failure codes as complete negative measurements. Transient or ambiguous provider failures—including timeout, network, authentication, quota/rate-limit, unavailable/unknown, and generic malformed-response categories—remain incomplete. This prevents both hiding a candidate failure and falsely blaming a model for an infrastructure/transport ambiguity.
 
 Failed arms keep fail-closed token/quality accounting, raw exception text is not persisted, and the historical live artifact is never rewritten. Rerun-3 derived evidence is PARTIAL rather than promoted: two complete pairs are 0 vs 0 and one remains incomplete. The candidate receives no M10 verification, activation, tool authority, credential access, routing privilege, or pack membership. Normal CI `33888060837` also proves the three fixture patterns succeed through the same deterministic M4/M5 path with valid scripted structured output.
+
+
+## M20–M22 autonomy, routing, and evaluation safeguards — active PR #32
+
+M20 soak observations are runtime data, not model-authored authority. The producer and replay paths both
+require the exact event-specific field set; unknown, missing, or misplaced fields fail closed. Every replay
+enforces a contiguous SHA-256 chain and monotonic synthetic time. Restarts must name the latest trusted
+checkpoint, recovered leases must strictly increase generation, stale settlement cannot win, cancellation
+blocks late success, repeated equivalent failure signatures are bounded, and profile/event/restart/
+recovery/budget ceilings are runtime-owned. M8 durable state remains canonical. Synthetic logical duration
+is not evidence of production uptime.
+
+M21 recent route failures are negative routing evidence only. They are exact provider/model/profile/
+reasoning/task-class/signature records with bounded age and hash integrity. Stale entries are ignored;
+future/tampered/malformed entries fail. The layer can remove an exact recently failing route but cannot
+invent positive evaluation quality, lower M11 quality floors, grant capability, increase budget, resolve
+credentials, or choose a stronger sandbox scope. The remaining candidates still pass normal M11 checks.
+
+M22 treats benchmark cases and results as untrusted evidence objects. Hidden acceptance metadata is
+excluded from the model-facing projection; result identity is bound to suite/case/arm/model/profile/
+reasoning/harness/budget and bounded execution metrics. Matched arms must have equal identity and budget,
+results beyond per-case ceilings fail, and multiple results for one arm cannot be cherry-picked. Only
+complete attributable outcomes are scored. Deterministic terminal task failures remain complete negative
+evidence, while timeout/network/auth/rate-limit/unavailable/malformed/unknown infrastructure ambiguity is
+INCOMPLETE and excluded from numeric lift. A zero-complete-pair report is INCONCLUSIVE with null numeric
+lift. These reports cannot mint M3/M5/M10/M11/M12/release authority, and this package performs no live
+provider or external-agent benchmark.
