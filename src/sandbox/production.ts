@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { normalizeRelativePath } from "./workspace.js";
 import { SandboxError } from "./types.js";
+import { normalizeRelativePath } from "./workspace.js";
 
 const MAX_IDENTIFIER = 160;
 const MAX_SESSION_ID = 256;
@@ -21,11 +21,7 @@ export type ProductionSandboxCleanupReason =
   | "failed"
   | "expired"
   | "quota_exceeded";
-export type ProductionSandboxExecutionOutcome =
-  | "SUCCEEDED"
-  | "FAILED"
-  | "CANCELLED"
-  | "TIMED_OUT";
+export type ProductionSandboxExecutionOutcome = "SUCCEEDED" | "FAILED" | "CANCELLED" | "TIMED_OUT";
 export type ProductionSandboxAuditAction = "allocate" | "execute" | "cleanup";
 
 export interface ProductionSandboxQuota {
@@ -77,12 +73,14 @@ export interface ProductionIsolationAttestation {
 }
 
 export interface ProductionIsolationVerifier {
-  verify(input: Readonly<{
-    backendId: string;
-    isolation: ProductionIsolationClass;
-    policyVersion: string;
-    evaluatedAt: string;
-  }>): Promise<ProductionIsolationAttestation> | ProductionIsolationAttestation;
+  verify(
+    input: Readonly<{
+      backendId: string;
+      isolation: ProductionIsolationClass;
+      policyVersion: string;
+      evaluatedAt: string;
+    }>,
+  ): Promise<ProductionIsolationAttestation> | ProductionIsolationAttestation;
 }
 
 export interface ProductionSecretBrokerRequest {
@@ -253,7 +251,10 @@ export class ProductionSandboxRuntime {
     secretBroker: ProductionSecretBroker,
   ) {
     if (!Array.isArray(registrations) || registrations.length === 0) {
-      throw new SandboxError("BACKEND_INVALID", "At least one production sandbox backend is required.");
+      throw new SandboxError(
+        "BACKEND_INVALID",
+        "At least one production sandbox backend is required.",
+      );
     }
     if (typeof verifier?.verify !== "function") {
       throw new SandboxError("BACKEND_INVALID", "Production isolation verifier is required.");
@@ -277,9 +278,15 @@ export class ProductionSandboxRuntime {
         );
       }
       if (this.#backends.has(descriptor.id)) {
-        throw new SandboxError("BACKEND_INVALID", `Duplicate production backend: ${descriptor.id}.`);
+        throw new SandboxError(
+          "BACKEND_INVALID",
+          `Duplicate production backend: ${descriptor.id}.`,
+        );
       }
-      this.#backends.set(descriptor.id, Object.freeze({ descriptor, adapter: registration.adapter }));
+      this.#backends.set(
+        descriptor.id,
+        Object.freeze({ descriptor, adapter: registration.adapter }),
+      );
     }
   }
 
@@ -358,7 +365,9 @@ export class ProductionSandboxRuntime {
     }
   }
 
-  async execute(request: ProductionSandboxExecuteRequest): Promise<ProductionSandboxAdapterExecuteResult> {
+  async execute(
+    request: ProductionSandboxExecuteRequest,
+  ): Promise<ProductionSandboxAdapterExecuteResult> {
     assertNotAborted(request.signal, "Production sandbox execution was cancelled.");
     const requestedAt = canonicalTimestamp(request.requestedAt, "requestedAt");
     const commandId = identifier(request.commandId, "commandId");
@@ -384,7 +393,10 @@ export class ProductionSandboxRuntime {
           }),
         );
       } catch {
-        throw new SandboxError("SECRET_DENIED", "Production secret broker denied a scoped reference.");
+        throw new SandboxError(
+          "SECRET_DENIED",
+          "Production secret broker denied a scoped reference.",
+        );
       }
       if (
         typeof value !== "string" ||
@@ -392,7 +404,10 @@ export class ProductionSandboxRuntime {
         value.includes("\r") ||
         value.includes("\n")
       ) {
-        throw new SandboxError("SECRET_DENIED", "Production secret broker returned invalid material.");
+        throw new SandboxError(
+          "SECRET_DENIED",
+          "Production secret broker returned invalid material.",
+        );
       }
       secrets.push(Object.freeze({ ref: originalRef, value }));
     }
@@ -474,17 +489,19 @@ export class ProductionSandboxRuntime {
     }
   }
 
-  async #createSession(input: Readonly<{
-    allocationKey: string;
-    backend: RegisteredProductionBackend;
-    fingerprint: string;
-    missionId: string;
-    taskId: string;
-    policy: ProductionSandboxPolicy;
-    policyHash: string;
-    requestedAt: string;
-    signal: AbortSignal;
-  }>): Promise<ProductionSandboxSession> {
+  async #createSession(
+    input: Readonly<{
+      allocationKey: string;
+      backend: RegisteredProductionBackend;
+      fingerprint: string;
+      missionId: string;
+      taskId: string;
+      policy: ProductionSandboxPolicy;
+      policyHash: string;
+      requestedAt: string;
+      signal: AbortSignal;
+    }>,
+  ): Promise<ProductionSandboxSession> {
     const attestation = normalizeAttestation(
       await this.#verifier.verify(
         Object.freeze({
@@ -568,7 +585,10 @@ export class ProductionSandboxRuntime {
   #secretReferenceForHash(session: ProductionSandboxSession, hash: string): string {
     const reference = this.#secretRefsBySession.get(session.sessionHash)?.get(hash);
     if (reference === undefined) {
-      throw new SandboxError("SECRET_DENIED", "Production secret reference binding is unavailable.");
+      throw new SandboxError(
+        "SECRET_DENIED",
+        "Production secret reference binding is unavailable.",
+      );
     }
     return reference;
   }
@@ -577,7 +597,10 @@ export class ProductionSandboxRuntime {
     const normalized = normalizeSession(value);
     const stored = this.#allocations.get(normalized.allocationKey)?.session;
     if (stored === undefined || stored.sessionHash !== normalized.sessionHash) {
-      throw new SandboxError("SESSION_INVALID", "Production sandbox session is unknown or tampered.");
+      throw new SandboxError(
+        "SESSION_INVALID",
+        "Production sandbox session is unknown or tampered.",
+      );
     }
     return stored;
   }
@@ -609,7 +632,14 @@ export class ProductionSandboxRuntime {
       }),
     );
     this.#released.set(session.allocationKey, "quota_exceeded");
-    this.#auditEvent("cleanup", session, new Date().toISOString(), "ACCEPTED", "quota_exceeded", null);
+    this.#auditEvent(
+      "cleanup",
+      session,
+      new Date().toISOString(),
+      "ACCEPTED",
+      "quota_exceeded",
+      null,
+    );
   }
 
   #auditEvent(
@@ -695,7 +725,10 @@ function normalizeDescriptor(
   });
 }
 
-function normalizePolicy(value: ProductionSandboxPolicy, evaluatedAt: string): ProductionSandboxPolicy {
+function normalizePolicy(
+  value: ProductionSandboxPolicy,
+  evaluatedAt: string,
+): ProductionSandboxPolicy {
   if (typeof value !== "object" || value === null) {
     throw new SandboxError("POLICY_INVALID", "Production sandbox policy is invalid.");
   }
@@ -703,10 +736,8 @@ function normalizePolicy(value: ProductionSandboxPolicy, evaluatedAt: string): P
   if (Date.parse(expiresAt) <= Date.parse(evaluatedAt)) {
     throw new SandboxError("POLICY_INVALID", "Production sandbox policy is expired.");
   }
-  const workspaceRoots = normalizeUniqueItems(
-    value.workspaceRoots,
-    "workspaceRoots",
-    (item) => normalizeRelativePath(item),
+  const workspaceRoots = normalizeUniqueItems(value.workspaceRoots, "workspaceRoots", (item) =>
+    normalizeRelativePath(item),
   );
   const networkResolutionHashes = normalizeUniqueItems(
     value.networkResolutionHashes,
@@ -761,8 +792,14 @@ function normalizeAttestation(
   }
   const issuedAt = canonicalTimestamp(value.issuedAt, "issuedAt");
   const expiresAt = canonicalTimestamp(value.expiresAt, "expiresAt");
-  if (Date.parse(issuedAt) > Date.parse(evaluatedAt) || Date.parse(expiresAt) <= Date.parse(evaluatedAt)) {
-    throw new SandboxError("ATTESTATION_INVALID", "Production isolation attestation is stale or future.");
+  if (
+    Date.parse(issuedAt) > Date.parse(evaluatedAt) ||
+    Date.parse(expiresAt) <= Date.parse(evaluatedAt)
+  ) {
+    throw new SandboxError(
+      "ATTESTATION_INVALID",
+      "Production isolation attestation is stale or future.",
+    );
   }
   const evidenceRefs = normalizeUniqueItems(value.evidenceRefs, "evidenceRefs", (item) =>
     identifier(item, "evidenceRef", 256),
@@ -783,7 +820,10 @@ function normalizeAttestation(
     normalized.isolation !== descriptor.isolation ||
     normalized.policyVersion !== descriptor.policyVersion
   ) {
-    throw new SandboxError("ATTESTATION_INVALID", "Isolation attestation does not match backend policy.");
+    throw new SandboxError(
+      "ATTESTATION_INVALID",
+      "Isolation attestation does not match backend policy.",
+    );
   }
   if (value.attestationHash !== productionIsolationAttestationHash(normalized)) {
     throw new SandboxError("ATTESTATION_INVALID", "Isolation attestation hash is invalid.");
@@ -850,7 +890,10 @@ function normalizeUsage(value: ProductionSandboxUsage): ProductionSandboxUsage {
   });
 }
 
-function assertUsageWithinQuota(usage: ProductionSandboxUsage, quota: ProductionSandboxQuota): void {
+function assertUsageWithinQuota(
+  usage: ProductionSandboxUsage,
+  quota: ProductionSandboxQuota,
+): void {
   const exceeded = [
     usage.cpuMillis > quota.cpuMillis ? "cpuMillis" : null,
     usage.memoryBytes > quota.memoryBytes ? "memoryBytes" : null,
@@ -893,10 +936,8 @@ function normalizeSession(value: ProductionSandboxSession): ProductionSandboxSes
     secretRefHashes: normalizeUniqueItems(value.secretRefHashes, "secretRefHashes", sha256Value),
     sessionId: identifier(value.sessionId, "sessionId", MAX_SESSION_ID),
     taskId: identifier(value.taskId, "taskId"),
-    workspaceRoots: normalizeUniqueItems(
-      value.workspaceRoots,
-      "workspaceRoots",
-      (item) => normalizeRelativePath(item),
+    workspaceRoots: normalizeUniqueItems(value.workspaceRoots, "workspaceRoots", (item) =>
+      normalizeRelativePath(item),
     ),
   } as const;
   const sessionHash = sha256Value(value.sessionHash);
@@ -908,7 +949,10 @@ function normalizeSession(value: ProductionSandboxSession): ProductionSandboxSes
 
 function normalizeIsolation(value: string): ProductionIsolationClass {
   if (value !== "container" && value !== "microvm" && value !== "vm") {
-    throw new SandboxError("POLICY_INVALID", "Production sandbox requires container/microvm/vm isolation.");
+    throw new SandboxError(
+      "POLICY_INVALID",
+      "Production sandbox requires container/microvm/vm isolation.",
+    );
   }
   return value;
 }
@@ -931,13 +975,19 @@ function assertCleanupReason(
   requested: ProductionSandboxCleanupReason,
 ): void {
   if (existing !== requested) {
-    throw new SandboxError("SESSION_INVALID", "Production sandbox cleanup replay conflicts with prior reason.");
+    throw new SandboxError(
+      "SESSION_INVALID",
+      "Production sandbox cleanup replay conflicts with prior reason.",
+    );
   }
 }
 
 function assertReplayFingerprint(existing: string, requested: string): void {
   if (existing !== requested) {
-    throw new SandboxError("SESSION_INVALID", "Production sandbox replay changed immutable policy input.");
+    throw new SandboxError(
+      "SESSION_INVALID",
+      "Production sandbox replay changed immutable policy input.",
+    );
   }
 }
 
