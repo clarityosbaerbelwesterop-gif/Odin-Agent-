@@ -296,3 +296,101 @@ test("M24 exact scope and malformed current-source evidence fail closed", async 
     AdvancedMemoryError,
   );
 });
+
+test("M24 rejects future evidence, sensitivity downgrade, forged compression, and preserves replay", async () => {
+  const store = new InMemoryMemoryStore();
+  await writeEpisode(store, "episode-a", "First source.", T1);
+  await store.write({
+    expectedVersion: 0,
+    idempotencyKey: "write-sensitive",
+    record: {
+      content: "Sensitive project detail.",
+      id: "episode-sensitive",
+      key: "episode-sensitive",
+      kind: "episodic",
+      provenance: {
+        contentHash: hash("Sensitive project detail."),
+        observedAt: T1,
+        reference: "fixture:sensitive",
+        sourceClass: "tool",
+        sourceVersion: "fixture-v1",
+      },
+      scope: { projectId: "project-1", userId: "user-1" },
+      sensitivity: "sensitive",
+      tags: ["episode"],
+    },
+    updatedAt: T1,
+  });
+  const engine = new AdvancedMemoryEngine(store, () => T2);
+
+  await assert.rejects(
+    () =>
+      engine.retrieve({
+        currentSources: [
+          {
+            contentHash: hash("future"),
+            key: "architecture",
+            observedAt: "2026-09-05T08:00:00.001Z",
+            sourceVersion: "v3",
+          },
+        ],
+        evaluatedAt: T2,
+        limit: 10,
+        projectId: "project-1",
+        text: "",
+        userId: "user-1",
+      }),
+    (error: unknown) => error instanceof AdvancedMemoryError && error.code === "CONFLICT",
+  );
+
+  await assert.rejects(
+    () =>
+      engine.proposeCompression({
+        key: "unsafe-summary",
+        projectId: "project-1",
+        sensitivity: "internal",
+        sourceRecordIds: ["episode-a", "episode-sensitive"],
+        summary: "A lower-classified summary.",
+        userId: "user-1",
+      }),
+    (error: unknown) => error instanceof AdvancedMemoryError && error.code === "DENIED",
+  );
+
+  const proposal = await engine.proposeCompression({
+    key: "safe-summary",
+    projectId: "project-1",
+    sensitivity: "sensitive",
+    sourceRecordIds: ["episode-a", "episode-sensitive"],
+    summary: "A sensitivity-preserving summary.",
+    userId: "user-1",
+  });
+  const forgedEngine = new AdvancedMemoryEngine(store, () => T2);
+  await assert.rejects(
+    () => forgedEngine.commitCompression(proposal, "forged-runtime-commit"),
+    (error: unknown) => error instanceof AdvancedMemoryError && error.code === "DENIED",
+  );
+
+  const first = await engine.commitCompression(proposal, "compression-replay");
+  const replay = await engine.commitCompression(proposal, "compression-replay");
+  assert.equal(first.replayed, false);
+  assert.equal(replay.replayed, true);
+});
+
+test("M24 compression rejects obvious secret material before lower-authority persistence", async () => {
+  const store = new InMemoryMemoryStore();
+  await writeEpisode(store, "episode-a", "First source.", T1);
+  await writeEpisode(store, "episode-b", "Second source.", T1);
+  const engine = new AdvancedMemoryEngine(store, () => T2);
+  await assert.rejects(
+    () =>
+      engine.proposeCompression({
+        key: "secret-summary",
+        projectId: "project-1",
+        sensitivity: "sensitive",
+        sourceRecordIds: ["episode-a", "episode-b"],
+        summary: "Bearer definitely-not-safe-token",
+        userId: "user-1",
+      }),
+    (error: unknown) => error instanceof AdvancedMemoryError && error.code === "INVALID_INPUT",
+  );
+});

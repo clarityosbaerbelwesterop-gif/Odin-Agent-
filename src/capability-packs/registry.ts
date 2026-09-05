@@ -222,6 +222,32 @@ export class CapabilityPackRegistry {
     );
   }
 
+  resolveMemberMetadata(
+    packId: string,
+    packVersion: string,
+    name: string,
+    versionValue: string,
+  ): CapabilityPackMember {
+    const pack = this.#packs.get(
+      packKey(identifier(packId, "pack id"), version(packVersion, "pack version")),
+    );
+    if (pack === undefined)
+      throw new CapabilityPackError("NOT_FOUND", "Capability pack was not found.");
+    const member = pack.members.find(
+      (entry) => entry.name === name && entry.version === versionValue,
+    );
+    if (member === undefined) {
+      throw new CapabilityPackError(
+        "NOT_FOUND",
+        "Skill is not a member of the requested capability pack.",
+      );
+    }
+    return Object.freeze({
+      ...member,
+      taskClasses: Object.freeze([...member.taskClasses]),
+    });
+  }
+
   resolveMember(
     packId: string,
     packVersion: string,

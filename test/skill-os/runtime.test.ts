@@ -69,6 +69,16 @@ class FixturePackSource implements SkillOsPackSource {
     return structuredClone(this.summaries);
   }
 
+  resolveMemberMetadata(packId: string, packVersion: string, name: string, version: string) {
+    const member = this.resolveMember(packId, packVersion, name, version);
+    return {
+      contentHash: member.contentHash,
+      name: member.name,
+      taskClasses: ["coding.patch"],
+      version: member.version,
+    };
+  }
+
   resolveMember(packId: string, packVersion: string, name: string, version: string): SkillPackage {
     const key = `${packId}@${packVersion}/${name}@${version}`;
     if (this.revoked.has(key)) throw new Error("fixture member revoked");
@@ -213,5 +223,31 @@ test("M23 ceilings and task identity fail closed before progressive instruction 
   assert.throws(
     () => runtime.select({ domain: "coding", taskClass: "coding.security" }),
     (error: unknown) => error instanceof SkillOsError && error.code === "NOT_FOUND",
+  );
+});
+
+test("M23 rejects forged per-member task scope and stale selections", () => {
+  const source = new FixturePackSource();
+  let now = T0;
+  const runtime = new SkillOsRuntime(source, {}, () => now);
+  const forged = registration(source, "pack.small");
+  assert.throws(
+    () =>
+      runtime.registerPack({
+        ...forged,
+        members: forged.members.map((member) => ({
+          ...member,
+          taskClasses: ["coding.security"],
+        })),
+      }),
+    (error: unknown) => error instanceof SkillOsError && error.code === "CONFLICT",
+  );
+
+  runtime.registerPack(forged);
+  const selection = runtime.select({ domain: "coding", taskClass: "coding.patch" });
+  now = "2026-09-05T08:15:00.001Z";
+  assert.throws(
+    () => runtime.load(selection),
+    (error: unknown) => error instanceof SkillOsError && error.code === "DENIED",
   );
 });

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { containsObviousSecret } from "../security/secret-text.js";
 import type {
   ActiveMemoryRecord,
   MemoryScope,
@@ -82,7 +83,7 @@ export interface MemoryCompressionProposal {
 
 export class AdvancedMemoryError extends Error {
   constructor(
-    readonly code: "CONFLICT" | "INVALID_INPUT" | "NOT_FOUND",
+    readonly code: "CONFLICT" | "DENIED" | "INVALID_INPUT" | "NOT_FOUND",
     message: string,
   ) {
     super(message);
@@ -90,9 +91,12 @@ export class AdvancedMemoryError extends Error {
   }
 }
 
+const MAX_ISSUED_COMPRESSION_PROPOSALS = 256;
+
 export class AdvancedMemoryEngine {
   readonly #store: MemoryStore;
   readonly #clock: () => string;
+  readonly #issuedCompressionProposals = new Map<string, MemoryCompressionProposal>();
 
   constructor(store: MemoryStore, clock: () => string = () => new Date().toISOString()) {
     this.#store = store;
@@ -110,6 +114,20 @@ export class AdvancedMemoryEngine {
       text: query.text,
       userId: query.userId,
     });
+    const evaluatedAtMs = Date.parse(query.evaluatedAt);
+    if (
+      query.currentSources.some((source) => Date.parse(source.observedAt) > evaluatedAtMs) ||
+      recalled.some(
+        (item) =>
+          Date.parse(item.record.updatedAt) > evaluatedAtMs ||
+          Date.parse(item.record.provenance.observedAt) > evaluatedAtMs,
+      )
+    ) {
+      throw new AdvancedMemoryError(
+        "CONFLICT",
+        "Advanced memory evidence cannot originate after its evaluation time.",
+      );
+    }
     const sourceByKey = new Map(query.currentSources.map((source) => [source.key, source]));
     const stale = new Map<string, StaleMemoryEntry>();
 
@@ -195,6 +213,12 @@ export class AdvancedMemoryEngine {
       text: "",
       userId: input.userId,
     });
+    if (recalled.length === 100) {
+      throw new AdvancedMemoryError(
+        "DENIED",
+        "Retention planning reached the M6 retrieval ceiling and cannot claim complete coverage.",
+      );
+    }
     const evaluatedAt = Date.parse(input.evaluatedAt);
     const candidates = recalled
       .filter((item) => {
@@ -247,6 +271,7 @@ export class AdvancedMemoryEngine {
     const input = normalizeCompression(value);
     const scope: MemoryScope = { projectId: input.projectId, userId: input.userId };
     const sourceRecords: { id: string; recordHash: string }[] = [];
+    let requiredSensitivity: MemorySensitivity = "public";
     for (const id of input.sourceRecordIds) {
       const record = await this.#store.get(id, scope);
       if (
@@ -260,6 +285,15 @@ export class AdvancedMemoryEngine {
         );
       }
       sourceRecords.push({ id: record.id, recordHash: record.recordHash });
+      if (sensitivityRank(record.sensitivity) > sensitivityRank(requiredSensitivity)) {
+        requiredSensitivity = record.sensitivity;
+      }
+    }
+    if (sensitivityRank(input.sensitivity) < sensitivityRank(requiredSensitivity)) {
+      throw new AdvancedMemoryError(
+        "DENIED",
+        "Compression cannot downgrade the sensitivity of its source memory.",
+      );
     }
     sourceRecords.sort((left, right) => left.id.localeCompare(right.id));
     const createdAt = canonicalTime(this.#clock());
@@ -273,15 +307,38 @@ export class AdvancedMemoryEngine {
       summary: input.summary,
       userId: input.userId,
     };
-    return Object.freeze({ ...body, proposalHash: stableHash(body) });
+    const proposal = Object.freeze({ ...body, proposalHash: stableHash(body) });
+    const existing = this.#issuedCompressionProposals.get(proposal.proposalHash);
+    if (existing !== undefined) return structuredClone(existing);
+    if (this.#issuedCompressionProposals.size >= MAX_ISSUED_COMPRESSION_PROPOSALS) {
+      throw new AdvancedMemoryError(
+        "DENIED",
+        "Compression proposal issuance reached its runtime-owned bound.",
+      );
+    }
+    this.#issuedCompressionProposals.set(proposal.proposalHash, structuredClone(proposal));
+    return structuredClone(proposal);
   }
 
   async commitCompression(value: unknown, idempotencyKey: string): Promise<MemoryWriteResult> {
     const proposal = normalizeProposal(value);
     validateIdentifier(idempotencyKey, "idempotencyKey");
     const { proposalHash, ...body } = proposal;
-    if (stableHash(body) !== proposalHash) {
+    if (stableHash(body) !== proposalHash || proposal.contentHash !== sha256(proposal.summary)) {
       throw new AdvancedMemoryError("CONFLICT", "Compression proposal integrity check failed.");
+    }
+    const issued = this.#issuedCompressionProposals.get(proposalHash);
+    if (issued === undefined) {
+      throw new AdvancedMemoryError(
+        "DENIED",
+        "Compression commits require a proposal issued by this runtime instance.",
+      );
+    }
+    if (stableHash(issued) !== stableHash(proposal)) {
+      throw new AdvancedMemoryError(
+        "CONFLICT",
+        "Compression proposal differs from issued evidence.",
+      );
     }
     const scope: MemoryScope = { projectId: proposal.projectId, userId: proposal.userId };
     for (const source of proposal.sourceRecords) {
@@ -317,7 +374,7 @@ export class AdvancedMemoryEngine {
         sensitivity: proposal.sensitivity,
         tags: ["m24-compressed"],
       },
-      updatedAt: canonicalTime(this.#clock()),
+      updatedAt: proposal.createdAt,
     });
   }
 }
@@ -418,9 +475,10 @@ function normalizeCompression(value: unknown): {
   if (
     typeof object.summary !== "string" ||
     object.summary.trim() === "" ||
-    object.summary.length > 16_384
+    object.summary.length > 16_384 ||
+    containsObviousSecret(object.summary)
   ) {
-    invalid("Compression summary is invalid.");
+    invalid("Compression summary is invalid or contains obvious secret material.");
   }
   if (
     object.sensitivity !== "public" &&
@@ -535,6 +593,12 @@ function canonicalTime(value: unknown): string {
     invalid("Timestamp must be canonical UTC.");
   }
   return value;
+}
+
+function sensitivityRank(value: MemorySensitivity): number {
+  if (value === "public") return 0;
+  if (value === "internal") return 1;
+  return 2;
 }
 
 function positiveDuration(value: unknown, name: string): number {

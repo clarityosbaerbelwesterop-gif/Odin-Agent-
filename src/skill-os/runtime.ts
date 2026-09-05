@@ -21,6 +21,7 @@ const DEFAULT_LIMITS: SkillOsLimits = Object.freeze({
   maxContextBytes: 65_536,
   maxMembers: 16,
   maxPacks: 128,
+  maxSelectionAgeMs: 15 * 60 * 1_000,
   maxTaskClasses: 64,
 });
 
@@ -74,6 +75,23 @@ export class SkillOsRuntime {
 
     let contextBytes = 0;
     for (const member of input.members) {
+      const trustedMember = this.#source.resolveMemberMetadata(
+        input.id,
+        input.version,
+        member.name,
+        member.version,
+      );
+      if (
+        trustedMember.name !== member.name ||
+        trustedMember.version !== member.version ||
+        trustedMember.contentHash !== member.contentHash ||
+        !equalStrings(trustedMember.taskClasses, member.taskClasses)
+      ) {
+        throw new SkillOsError(
+          "CONFLICT",
+          "Pack member task scope does not match trusted capability-pack metadata.",
+        );
+      }
       const loaded = this.#source.resolveMember(
         input.id,
         input.version,
@@ -175,6 +193,14 @@ export class SkillOsRuntime {
 
   load(value: unknown): SkillOsLoadedSelection {
     const selection = normalizeIssuedSelection(value);
+    const nowMs = Date.parse(canonicalNow(this.#clock()));
+    const issuedAtMs = Date.parse(selection.issuedAt);
+    if (issuedAtMs > nowMs) {
+      throw new SkillOsError("DENIED", "Skill OS selection was issued in the future.");
+    }
+    if (nowMs - issuedAtMs > this.#limits.maxSelectionAgeMs) {
+      throw new SkillOsError("DENIED", "Skill OS selection is stale and must be reselected.");
+    }
     const { selectionHash, ...body } = selection;
     if (selectionHash !== stableHash(body)) {
       throw new SkillOsError("CONFLICT", "Skill OS selection integrity check failed.");
