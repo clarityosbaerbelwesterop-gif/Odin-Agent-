@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { containsObviousSecret } from "../security/secret-text.js";
 import type {
-  ActiveMemoryRecord,
   MemoryScope,
   MemorySensitivity,
   MemoryStore,
