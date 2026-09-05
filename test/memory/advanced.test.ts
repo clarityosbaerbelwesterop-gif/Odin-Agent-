@@ -107,12 +107,16 @@ test("M24 current repository observations outrank stale project-memory conclusio
     userId: "user-1",
   });
 
-  assert.deepEqual(result.selected.map((item) => item.record.id), ["episode-1"]);
+  assert.deepEqual(
+    result.selected.map((item) => item.record.id),
+    ["episode-1"],
+  );
   assert.deepEqual(result.stale, [
     {
       reason: "current_source_newer",
-      recordHash: (await store.get("project-route-old", { projectId: "project-1", userId: "user-1" }))
-        ?.recordHash,
+      recordHash: (
+        await store.get("project-route-old", { projectId: "project-1", userId: "user-1" })
+      )?.recordHash,
       recordId: "project-route-old",
     },
   ]);
@@ -149,7 +153,10 @@ test("M24 conflicting equally fresh project conclusions block silent selection",
   });
 
   assert.equal(result.selected.length, 0);
-  assert.deepEqual(result.conflicts.map((group) => group.recordIds), [["strategy-a", "strategy-b"]]);
+  assert.deepEqual(
+    result.conflicts.map((group) => group.recordIds),
+    [["strategy-a", "strategy-b"]],
+  );
 });
 
 test("M24 newer project memory supersedes older memory deterministically", async () => {
@@ -179,7 +186,10 @@ test("M24 newer project memory supersedes older memory deterministically", async
     text: "",
     userId: "user-1",
   });
-  assert.deepEqual(result.selected.map((item) => item.record.id), ["architecture-new"]);
+  assert.deepEqual(
+    result.selected.map((item) => item.record.id),
+    ["architecture-new"],
+  );
   assert.equal(result.stale[0]?.reason, "newer_project_memory");
 });
 
@@ -190,11 +200,17 @@ test("M24 retention planning and exact tombstone preserve M6 deletion semantics"
   const engine = new AdvancedMemoryEngine(store, () => T2);
   const plan = await engine.planRetention({
     evaluatedAt: T2,
-    policy: { episodicMaxAgeMs: 2 * 24 * 60 * 60 * 1000, projectMaxAgeMs: 30 * 24 * 60 * 60 * 1000 },
+    policy: {
+      episodicMaxAgeMs: 2 * 24 * 60 * 60 * 1000,
+      projectMaxAgeMs: 30 * 24 * 60 * 60 * 1000,
+    },
     projectId: "project-1",
     userId: "user-1",
   });
-  assert.deepEqual(plan.candidates.map((candidate) => candidate.id), ["old-episode"]);
+  assert.deepEqual(
+    plan.candidates.map((candidate) => candidate.id),
+    ["old-episode"],
+  );
   assert.match(plan.planHash, /^[a-f0-9]{64}$/u);
 
   const deleted = await engine.tombstone({
@@ -221,7 +237,10 @@ test("M24 compression is source-hash-bound and commits only lower-authority proj
     summary: "Two repair observations were preserved as a lower-authority summary.",
     userId: "user-1",
   });
-  assert.deepEqual(proposal.sourceRecords.map((source) => source.id), ["episode-a", "episode-b"]);
+  assert.deepEqual(
+    proposal.sourceRecords.map((source) => source.id),
+    ["episode-a", "episode-b"],
+  );
 
   const committed = await engine.commitCompression(proposal, "compress-repairs");
   assert.equal(committed.record.status, "active");

@@ -276,10 +276,7 @@ export class AdvancedMemoryEngine {
     return Object.freeze({ ...body, proposalHash: stableHash(body) });
   }
 
-  async commitCompression(
-    value: unknown,
-    idempotencyKey: string,
-  ): Promise<MemoryWriteResult> {
+  async commitCompression(value: unknown, idempotencyKey: string): Promise<MemoryWriteResult> {
     const proposal = normalizeProposal(value);
     validateIdentifier(idempotencyKey, "idempotencyKey");
     const { proposalHash, ...body } = proposal;
@@ -326,15 +323,11 @@ export class AdvancedMemoryEngine {
 }
 
 function normalizeQuery(value: unknown): AdvancedMemoryQuery {
-  const object = exactObject(value, [
-    "currentSources",
-    "evaluatedAt",
-    "limit",
-    "projectId",
-    "tags",
-    "text",
-    "userId",
-  ], ["tags"]);
+  const object = exactObject(
+    value,
+    ["currentSources", "evaluatedAt", "limit", "projectId", "tags", "text", "userId"],
+    ["tags"],
+  );
   if (!Array.isArray(object.currentSources) || object.currentSources.length > 64) {
     invalid("currentSources must contain at most 64 observations.");
   }
@@ -342,7 +335,11 @@ function normalizeQuery(value: unknown): AdvancedMemoryQuery {
   if (new Set(currentSources.map((source) => source.key)).size !== currentSources.length) {
     invalid("currentSources keys must be unique.");
   }
-  if (!Number.isSafeInteger(object.limit) || (object.limit as number) < 1 || (object.limit as number) > 100) {
+  if (
+    !Number.isSafeInteger(object.limit) ||
+    (object.limit as number) < 1 ||
+    (object.limit as number) > 100
+  ) {
     invalid("limit must be 1-100.");
   }
   if (typeof object.text !== "string" || object.text.length > 4_000) invalid("text is invalid.");
@@ -398,16 +395,38 @@ function normalizeCompression(value: unknown): {
   summary: string;
   userId: string;
 } {
-  const object = exactObject(value, ["key", "projectId", "sensitivity", "sourceRecordIds", "summary", "userId"]);
-  if (!Array.isArray(object.sourceRecordIds) || object.sourceRecordIds.length < 2 || object.sourceRecordIds.length > 32) {
+  const object = exactObject(value, [
+    "key",
+    "projectId",
+    "sensitivity",
+    "sourceRecordIds",
+    "summary",
+    "userId",
+  ]);
+  if (
+    !Array.isArray(object.sourceRecordIds) ||
+    object.sourceRecordIds.length < 2 ||
+    object.sourceRecordIds.length > 32
+  ) {
     invalid("Compression requires 2-32 source records.");
   }
-  const sourceRecordIds = object.sourceRecordIds.map((id) => validateIdentifier(id, "sourceRecordId")).sort();
-  if (new Set(sourceRecordIds).size !== sourceRecordIds.length) invalid("Compression sources must be unique.");
-  if (typeof object.summary !== "string" || object.summary.trim() === "" || object.summary.length > 16_384) {
+  const sourceRecordIds = object.sourceRecordIds
+    .map((id) => validateIdentifier(id, "sourceRecordId"))
+    .sort();
+  if (new Set(sourceRecordIds).size !== sourceRecordIds.length)
+    invalid("Compression sources must be unique.");
+  if (
+    typeof object.summary !== "string" ||
+    object.summary.trim() === "" ||
+    object.summary.length > 16_384
+  ) {
     invalid("Compression summary is invalid.");
   }
-  if (object.sensitivity !== "public" && object.sensitivity !== "internal" && object.sensitivity !== "sensitive") {
+  if (
+    object.sensitivity !== "public" &&
+    object.sensitivity !== "internal" &&
+    object.sensitivity !== "sensitive"
+  ) {
     invalid("Compression sensitivity is invalid.");
   }
   return Object.freeze({
@@ -432,17 +451,24 @@ function normalizeProposal(value: unknown): MemoryCompressionProposal {
     "summary",
     "userId",
   ]);
-  if (!Array.isArray(object.sourceRecords) || object.sourceRecords.length < 2 || object.sourceRecords.length > 32) {
+  if (
+    !Array.isArray(object.sourceRecords) ||
+    object.sourceRecords.length < 2 ||
+    object.sourceRecords.length > 32
+  ) {
     invalid("Compression proposal sources are invalid.");
   }
-  const sourceRecords = object.sourceRecords.map((value) => {
-    const source = exactObject(value, ["id", "recordHash"]);
-    return Object.freeze({
-      id: validateIdentifier(source.id, "source record id"),
-      recordHash: shaValue(source.recordHash, "source record hash"),
-    });
-  }).sort((left, right) => left.id.localeCompare(right.id));
-  if (new Set(sourceRecords.map((source) => source.id)).size !== sourceRecords.length) invalid("Compression proposal sources must be unique.");
+  const sourceRecords = object.sourceRecords
+    .map((value) => {
+      const source = exactObject(value, ["id", "recordHash"]);
+      return Object.freeze({
+        id: validateIdentifier(source.id, "source record id"),
+        recordHash: shaValue(source.recordHash, "source record hash"),
+      });
+    })
+    .sort((left, right) => left.id.localeCompare(right.id));
+  if (new Set(sourceRecords.map((source) => source.id)).size !== sourceRecords.length)
+    invalid("Compression proposal sources must be unique.");
   const normalized = normalizeCompression({
     key: object.key,
     projectId: object.projectId,
@@ -464,18 +490,30 @@ function normalizeProposal(value: unknown): MemoryCompressionProposal {
   });
 }
 
-function exactObject(value: unknown, allowed: readonly string[], optional: readonly string[] = []): Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) invalid("Expected an object.");
+function exactObject(
+  value: unknown,
+  allowed: readonly string[],
+  optional: readonly string[] = [],
+): Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    invalid("Expected an object.");
   const object = value as Record<string, unknown>;
   const allowedSet = new Set(allowed);
-  if (Object.keys(object).some((key) => !allowedSet.has(key))) invalid("Object contains unknown fields.");
+  if (Object.keys(object).some((key) => !allowedSet.has(key)))
+    invalid("Object contains unknown fields.");
   const optionalSet = new Set(optional);
-  for (const key of allowed) if (!optionalSet.has(key) && !(key in object)) invalid(`Object is missing ${key}.`);
+  for (const key of allowed)
+    if (!optionalSet.has(key) && !(key in object)) invalid(`Object is missing ${key}.`);
   return object;
 }
 
 function validateIdentifier(value: unknown, name: string): string {
-  if (typeof value !== "string" || value.trim() === "" || value.length > 200 || value.includes("\u0000")) {
+  if (
+    typeof value !== "string" ||
+    value.trim() === "" ||
+    value.length > 200 ||
+    value.includes("\u0000")
+  ) {
     invalid(`${name} is invalid.`);
   }
   return value;
@@ -489,21 +527,30 @@ function normalizedTag(value: unknown): string {
 }
 
 function canonicalTime(value: unknown): string {
-  if (typeof value !== "string" || Number.isNaN(Date.parse(value)) || new Date(value).toISOString() !== value) {
+  if (
+    typeof value !== "string" ||
+    Number.isNaN(Date.parse(value)) ||
+    new Date(value).toISOString() !== value
+  ) {
     invalid("Timestamp must be canonical UTC.");
   }
   return value;
 }
 
 function positiveDuration(value: unknown, name: string): number {
-  if (!Number.isSafeInteger(value) || (value as number) < 1 || (value as number) > 3650 * 24 * 60 * 60 * 1000) {
+  if (
+    !Number.isSafeInteger(value) ||
+    (value as number) < 1 ||
+    (value as number) > 3650 * 24 * 60 * 60 * 1000
+  ) {
     invalid(`${name} is invalid.`);
   }
   return value as number;
 }
 
 function shaValue(value: unknown, name: string): string {
-  if (typeof value !== "string" || !/^[a-f0-9]{64}$/u.test(value)) invalid(`${name} must be SHA-256.`);
+  if (typeof value !== "string" || !/^[a-f0-9]{64}$/u.test(value))
+    invalid(`${name} must be SHA-256.`);
   return value;
 }
 
