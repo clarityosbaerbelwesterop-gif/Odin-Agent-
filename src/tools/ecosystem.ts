@@ -137,7 +137,10 @@ export class ToolEcosystem {
     return structuredClone(manifest);
   }
 
-  async execute(adapterId: string, request: ToolEcosystemExecutionRequest): Promise<ToolExecutionResult> {
+  async execute(
+    adapterId: string,
+    request: ToolEcosystemExecutionRequest,
+  ): Promise<ToolExecutionResult> {
     const descriptor = this.#requireDescriptor(adapterId);
     validateExecutionRequest(request, descriptor);
     const currentManifest = this.#registry.resolveManifest(descriptor.tool, descriptor.version);
@@ -181,16 +184,31 @@ function normalizeDescriptor(value: unknown): ToolEcosystemDescriptor {
     "trustClass",
     "version",
   ]);
-  if (typeof object.category !== "string" || !CATEGORIES.has(object.category as ToolEcosystemCategory)) {
+  if (
+    typeof object.category !== "string" ||
+    !CATEGORIES.has(object.category as ToolEcosystemCategory)
+  ) {
     invalid("category is invalid.");
   }
-  if (object.confirmation !== "none" && object.confirmation !== "m3-policy") invalid("confirmation is invalid.");
-  if (object.costClass !== "none" && object.costClass !== "metered") invalid("costClass is invalid.");
-  if (object.credentialMode !== "none" && object.credentialMode !== "brokered") invalid("credentialMode is invalid.");
-  if (object.operation !== "execute" && object.operation !== "read" && object.operation !== "search" && object.operation !== "write") invalid("operation is invalid.");
-  if (object.riskClass !== "low" && object.riskClass !== "medium" && object.riskClass !== "high") invalid("riskClass is invalid.");
-  if (object.trustClass !== "builtin" && object.trustClass !== "project") invalid("trustClass is invalid.");
-  if (typeof object.sideEffecting !== "boolean" || typeof object.networkAccess !== "boolean") invalid("boolean descriptor fields are invalid.");
+  if (object.confirmation !== "none" && object.confirmation !== "m3-policy")
+    invalid("confirmation is invalid.");
+  if (object.costClass !== "none" && object.costClass !== "metered")
+    invalid("costClass is invalid.");
+  if (object.credentialMode !== "none" && object.credentialMode !== "brokered")
+    invalid("credentialMode is invalid.");
+  if (
+    object.operation !== "execute" &&
+    object.operation !== "read" &&
+    object.operation !== "search" &&
+    object.operation !== "write"
+  )
+    invalid("operation is invalid.");
+  if (object.riskClass !== "low" && object.riskClass !== "medium" && object.riskClass !== "high")
+    invalid("riskClass is invalid.");
+  if (object.trustClass !== "builtin" && object.trustClass !== "project")
+    invalid("trustClass is invalid.");
+  if (typeof object.sideEffecting !== "boolean" || typeof object.networkAccess !== "boolean")
+    invalid("boolean descriptor fields are invalid.");
   const maxAttempts = positiveInteger(object.maxAttempts, 16, "maxAttempts");
   const timeoutMs = positiveInteger(object.timeoutMs, 600_000, "timeoutMs");
   const descriptor: ToolEcosystemDescriptor = {
@@ -254,13 +272,17 @@ function validateExecutionRequest(
   if (typeof request.input !== "object" || request.input === null || Array.isArray(request.input)) {
     invalid("input must be a JSON object.");
   }
-  if (descriptor.sideEffecting && (request.idempotencyKey === undefined || request.idempotencyKey.trim() === "")) {
+  if (
+    descriptor.sideEffecting &&
+    (request.idempotencyKey === undefined || request.idempotencyKey.trim() === "")
+  ) {
     throw new ToolEcosystemError(
       "DENIED",
       "Side-effecting ecosystem requests require an M3 idempotency key.",
     );
   }
-  if (request.idempotencyKey !== undefined) validateIdentifier(request.idempotencyKey, "idempotencyKey");
+  if (request.idempotencyKey !== undefined)
+    validateIdentifier(request.idempotencyKey, "idempotencyKey");
 }
 
 function summary(descriptor: ToolEcosystemDescriptor): ToolEcosystemSummary {
@@ -280,7 +302,8 @@ function summary(descriptor: ToolEcosystemDescriptor): ToolEcosystemSummary {
 }
 
 function exactObject(value: unknown, fields: readonly string[]): Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) invalid("Expected an object.");
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    invalid("Expected an object.");
   const object = value as Record<string, unknown>;
   const expected = [...fields].sort();
   const actual = Object.keys(object).sort();
@@ -291,7 +314,12 @@ function exactObject(value: unknown, fields: readonly string[]): Record<string, 
 }
 
 function validateIdentifier(value: unknown, name: string): string {
-  if (typeof value !== "string" || value.trim() === "" || value.length > 200 || value.includes("\u0000")) {
+  if (
+    typeof value !== "string" ||
+    value.trim() === "" ||
+    value.length > 200 ||
+    value.includes("\u0000")
+  ) {
     invalid(`${name} is invalid.`);
   }
   return value;

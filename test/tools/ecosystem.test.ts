@@ -4,13 +4,13 @@ import {
   InMemoryCapabilityPolicy,
   InMemoryToolAuditSink,
   ToolEcosystem,
+  type ToolEcosystemCategory,
   ToolEcosystemError,
+  type ToolManifest,
+  type ToolRegistration,
   ToolRegistry,
   ToolRuntime,
   ToolRuntimeError,
-  type ToolEcosystemCategory,
-  type ToolManifest,
-  type ToolRegistration,
 } from "../../src/tools/index.js";
 
 const NOW = "2026-09-05T08:00:00.000Z";
@@ -62,14 +62,21 @@ function descriptor(category: ToolEcosystemCategory, toolManifest: ToolManifest)
     adapterId: `adapter.${category}`,
     category,
     confirmation: toolManifest.riskClass === "high" ? ("m3-policy" as const) : ("none" as const),
-    costClass: category === "cloud" || category === "api" ? ("metered" as const) : ("none" as const),
+    costClass:
+      category === "cloud" || category === "api" ? ("metered" as const) : ("none" as const),
     credentialMode:
-      category === "browser" || category === "cloud" || category === "database" || category === "api"
+      category === "browser" ||
+      category === "cloud" ||
+      category === "database" ||
+      category === "api"
         ? ("brokered" as const)
         : ("none" as const),
     maxAttempts: toolManifest.retryPolicy.maxAttempts,
     networkAccess:
-      category === "browser" || category === "cloud" || category === "database" || category === "api",
+      category === "browser" ||
+      category === "cloud" ||
+      category === "database" ||
+      category === "api",
     operation: toolManifest.operation,
     riskClass: toolManifest.riskClass,
     sideEffecting: toolManifest.sideEffecting,
@@ -204,11 +211,10 @@ test("M25 high-risk side effects still require idempotency, scoped M3 grant, app
   assert.equal(replay.replayed, true);
   assert.equal(calls, 1);
   assert.equal(policy.callsUsed("grant-cloud-write"), 1);
-  assert.deepEqual(audit.records().map((record) => record.policyDecision), [
-    "REQUIRE_APPROVAL",
-    "ALLOW",
-    "REPLAY",
-  ]);
+  assert.deepEqual(
+    audit.records().map((record) => record.policyDecision),
+    ["REQUIRE_APPROVAL", "ALLOW", "REPLAY"],
+  );
 });
 
 test("M25 rejects descriptor tampering, unknown tools, and weakened confirmation metadata", () => {
@@ -232,7 +238,12 @@ test("M25 rejects descriptor tampering, unknown tools, and weakened confirmation
     (error: unknown) => error instanceof ToolEcosystemError && error.code === "DENIED",
   );
   assert.throws(
-    () => ecosystem.register({ ...descriptor("research", readManifest), adapterId: "adapter.unknown", tool: "missing.tool" }),
+    () =>
+      ecosystem.register({
+        ...descriptor("research", readManifest),
+        adapterId: "adapter.unknown",
+        tool: "missing.tool",
+      }),
     (error: unknown) => error instanceof ToolEcosystemError && error.code === "NOT_FOUND",
   );
 });
