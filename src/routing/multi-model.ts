@@ -111,6 +111,17 @@ export class FailureAwareModelRouter {
     failuresValue: readonly RouteFailure[],
   ): FailureAwareRouteResult {
     const request = normalizeRouteRequest(requestValue);
+    if (
+      inputs === null ||
+      typeof inputs !== "object" ||
+      !Array.isArray(inputs.evaluations) ||
+      !Array.isArray(inputs.profiles)
+    ) {
+      throw new RoutingError(
+        "INVALID_INPUT",
+        "M21 routing inputs must contain profile and evaluation arrays.",
+      );
+    }
     if (!Array.isArray(failuresValue) || failuresValue.length > 1_000) {
       throw new RoutingError("INVALID_INPUT", "M21 failure history exceeds its collection bound.");
     }

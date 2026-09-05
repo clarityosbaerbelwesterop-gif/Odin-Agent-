@@ -349,3 +349,45 @@ test("suite and outcome bounds reject malformed benchmark evidence", () => {
     FrontierEvaluationError,
   );
 });
+
+test("declared case budgets are enforced independently of global result bounds", () => {
+  const allCases = cases(50);
+  const first = allCases[0];
+  assert.ok(first !== undefined);
+  const overBudget = createFrontierArmResult({
+    ...result(first, "odin"),
+    modelCalls: budget.maxModelCalls + 1,
+  });
+  assert.throws(
+    () =>
+      evaluateFrontierSuite({
+        cases: allCases,
+        harnessVersion: "frontier-harness-v1",
+        results: [result(first, "model_alone"), overBudget],
+        suiteVersion: "frontier-suite-v1",
+      }),
+    /exceeds its declared equal-condition budget/u,
+  );
+});
+
+test("two distinct results for the same case arm cannot be cherry-picked", () => {
+  const allCases = cases(50);
+  const first = allCases[0];
+  assert.ok(first !== undefined);
+  const baseline = result(first, "model_alone");
+  const alternateBaseline = createFrontierArmResult({
+    ...baseline,
+    latencyMs: baseline.latencyMs + 1,
+  });
+  assert.notEqual(baseline.resultHash, alternateBaseline.resultHash);
+  assert.throws(
+    () =>
+      evaluateFrontierSuite({
+        cases: allCases,
+        harnessVersion: "frontier-harness-v1",
+        results: [baseline, alternateBaseline, result(first, "odin")],
+        suiteVersion: "frontier-suite-v1",
+      }),
+    /duplicate results for one arm/u,
+  );
+});

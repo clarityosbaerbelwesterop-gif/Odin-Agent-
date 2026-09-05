@@ -132,3 +132,35 @@ test("synthetic clock rollback and forged profile ceilings are rejected", () => 
     /runtime-owned versioned profile/u,
   );
 });
+
+test("soak observations reject unknown and event-inappropriate fields before hashing", () => {
+  assert.throws(
+    () =>
+      createSoakObservation(null, {
+        atMs: HOUR_MS,
+        kind: "heartbeat",
+        jobId: "smuggled-job",
+      } as SoakObservationBody),
+    /unknown, missing, or misplaced fields/u,
+  );
+  assert.throws(
+    () =>
+      createSoakObservation(null, {
+        atMs: HOUR_MS,
+        checkpointHash: sha("checkpoint"),
+        kind: "checkpoint",
+        unexpected: true,
+      } as unknown as SoakObservationBody),
+    /unknown, missing, or misplaced fields/u,
+  );
+});
+
+test("hash-valid replay envelopes still reject extra semantic metadata", () => {
+  const profile = SOAK_PROFILES["soak-6h-v1"];
+  const events = [...passingSoak(profile)];
+  const first = events[0];
+  assert.ok(first !== undefined);
+  const forged = { ...first, jobId: "smuggled-job" } as SoakObservation;
+  events[0] = forged;
+  assert.throws(() => evaluateSoak(profile, events), /unknown, missing, or misplaced fields/u);
+});

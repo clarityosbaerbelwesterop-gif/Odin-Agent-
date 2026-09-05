@@ -47,7 +47,7 @@ export function createSoakObservation(
   previous: SoakObservation | null,
   body: SoakObservationBody,
 ): SoakObservation {
-  validateObservationBody(body);
+  validateObservationBody(body, false);
   const sequence = previous === null ? 1 : previous.sequence + 1;
   const previousHash = previous?.eventHash ?? null;
   const canonical = observationBody(sequence, previousHash, body);
@@ -79,7 +79,7 @@ export function evaluateSoak(
   const failureCounts = new Map<string, number>();
 
   for (const observation of observationsValue) {
-    validateObservationBody(observation);
+    validateObservationBody(observation, true);
     const expectedSequence = previous === null ? 1 : previous.sequence + 1;
     if (observation.sequence !== expectedSequence) {
       throw new AutonomyIntegrityError("Soak sequence is not contiguous.");
@@ -234,21 +234,72 @@ function observationBody(
   });
 }
 
-function validateObservationBody(value: SoakObservationBody): void {
+function validateObservationBody(value: SoakObservationBody, envelope: boolean): void {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw new AutonomyIntegrityError("Soak observation must be an object.");
+  }
   if (!Number.isSafeInteger(value.atMs) || value.atMs < 0) {
     throw new AutonomyIntegrityError("Soak synthetic time must be a non-negative safe integer.");
   }
-  const kinds = new Set([
-    "checkpoint",
-    "restart",
-    "lease_reclaimed",
-    "job_settled",
-    "cancel_requested",
-    "retry_failed",
-    "budget_consumed",
-    "heartbeat",
-  ]);
-  if (!kinds.has(value.kind)) throw new AutonomyIntegrityError("Unsupported soak event kind.");
+  const shapes: Readonly<Record<string, readonly string[]>> = Object.freeze({
+    budget_consumed: ["budgetUnits"],
+    cancel_requested: ["jobId"],
+    checkpoint: ["checkpointHash"],
+    heartbeat: [],
+    job_settled: ["generation", "jobId", "settlement"],
+    lease_reclaimed: ["generation", "jobId"],
+    restart: ["checkpointHash"],
+    retry_failed: ["failureSignature"],
+  });
+  const shape = shapes[value.kind];
+  if (shape === undefined) throw new AutonomyIntegrityError("Unsupported soak event kind.");
+  const expectedKeys = [
+    "atMs",
+    "kind",
+    ...shape,
+    ...(envelope ? ["eventHash", "previousHash", "sequence"] : []),
+  ].sort();
+  const actualKeys = Object.keys(value).sort();
+  if (
+    actualKeys.length !== expectedKeys.length ||
+    actualKeys.some((key, index) => key !== expectedKeys[index])
+  ) {
+    throw new AutonomyIntegrityError("Soak observation has unknown, missing, or misplaced fields.");
+  }
+  switch (value.kind) {
+    case "checkpoint":
+    case "restart":
+      requiredHash(value.checkpointHash, "checkpointHash");
+      break;
+    case "lease_reclaimed":
+      requiredId(value.jobId, "jobId");
+      requiredGeneration(value.generation);
+      break;
+    case "job_settled":
+      requiredId(value.jobId, "jobId");
+      requiredGeneration(value.generation);
+      if (
+        value.settlement !== "SUCCEEDED" &&
+        value.settlement !== "BLOCKED" &&
+        value.settlement !== "CANCELLED"
+      ) {
+        throw new AutonomyIntegrityError("Job settlement status is invalid.");
+      }
+      break;
+    case "cancel_requested":
+      requiredId(value.jobId, "jobId");
+      break;
+    case "retry_failed":
+      requiredHash(value.failureSignature, "failureSignature");
+      break;
+    case "budget_consumed":
+      if (!Number.isSafeInteger(value.budgetUnits) || (value.budgetUnits ?? 0) <= 0) {
+        throw new AutonomyIntegrityError("Budget consumption must be a positive safe integer.");
+      }
+      break;
+    case "heartbeat":
+      break;
+  }
 }
 
 function requiredHash(value: string | undefined, label: string): string {

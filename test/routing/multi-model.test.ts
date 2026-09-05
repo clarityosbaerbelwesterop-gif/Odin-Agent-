@@ -168,3 +168,15 @@ test("M21 decision identity is deterministic across profile evaluation and failu
   );
   assert.deepEqual(first, second);
 });
+
+test("malformed M21 routing input containers fail with a bounded routing error", () => {
+  assert.throws(
+    () =>
+      new FailureAwareModelRouter().route(
+        routeRequest(),
+        { evaluations: null, profiles: [] } as never,
+        [],
+      ),
+    (error: unknown) => error instanceof RoutingError && error.code === "INVALID_INPUT",
+  );
+});
