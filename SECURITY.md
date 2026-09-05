@@ -1,25 +1,29 @@
 # Security model
 
-Status: implemented M1 provider, M3 tool-control, M5 verification, M6 memory/context, M7 specialist
-coordination, M8 durable mission/worker, M9 client-protocol, M10 skill-lifecycle, M11 adaptive-routing,
-M12-A/B/C local execution/sandbox, observability, recovery-evidence, and release-gate safeguards, one M12-D bounded live-provider credential path, M13 evidence-backed learning safeguards, and M14 bounded external-skill intake safeguards. Controls not explicitly identified as implemented remain future work.
+Status: deterministic safeguards through M25 are implemented or governance-synchronized on PR #33.
+M0–M22 are merged on `main`; M23–M25 await one fresh exact-head CI before merge. M12 remains
+**PARTIALLY_VERIFIED** for real hosted-sandbox/public-production isolation. Controls not explicitly
+identified as implemented remain future work and must not be inferred from names or fixture evidence.
 
 ## Protected assets
 
 - provider and integration credentials;
 - user repositories, documents, memory, artifacts, and personal data;
 - mission integrity, budgets, approvals, durable events, checkpoints, job state, and audit history;
-- execution hosts, network access, connected devices, and external accounts;
-- system-protected skills, policies, evaluation records, routing decisions, sandbox sessions, and release artifacts.
+- execution hosts, network access, connected devices, external accounts, and side effects;
+- system-protected policy, skills, capability packs, routing/evaluation records, sandbox sessions,
+  release evidence, and tool manifests.
 
 ## Trust boundaries
 
-Trusted: the minimal control plane, policy engine, secret broker, validated protocol handlers, sandbox
-backend configuration, and durable state layer.
+Trusted: the minimal control plane, policy engine, secret broker, validated runtime protocol handlers,
+canonical persistence, registered M3 manifests/handlers, configured sandbox backends, and independent
+verification authorities.
 
-Untrusted by default: user/client input, web/email/chat content, repositories being analyzed,
-dependency metadata, tool output, model output, community skills/plugins, generated code, browsers,
-and workers. An instruction embedded in untrusted content never becomes runtime authority.
+Untrusted by default: user/client input, web/email/chat content, repositories under analysis, dependency
+metadata, model output, tool output, community skills/plugins, generated code, browsers, workers, memory
+content, compression proposals, capability-pack selection requests, and ecosystem adapter descriptors.
+An instruction embedded in untrusted content never becomes runtime authority.
 
 ## Default policy
 
@@ -33,376 +37,304 @@ external-write: require-scoped-grant
 high-impact-action: require-explicit-approval
 ```
 
-Capabilities bind the narrowest available subject and resource scope. Denial is the fallback for
-malformed or missing policy data. A model, worker, skill, or client cannot mint authority merely by
-including a capability-shaped object in its output.
+Denial is the fallback for malformed, missing, stale, foreign, ambiguous, or conflicting policy data.
+A model, worker, skill, client, memory record, or adapter cannot mint authority merely by returning a
+capability-shaped object.
 
-## Credential handling
+## Credential and secret handling
 
-Long-lived credentials reside only in a protected credential store. Models, clients, and normal worker
-processes receive neither raw keys nor a general-purpose environment containing them. The control plane
-proxies requests or resolves the narrowest configured credential only after policy/binding checks.
-Redaction applies before logs, events, artifacts, errors, memory, client payloads, or crash reports are
-persisted or returned.
+Long-lived credentials reside only in a protected credential store. Models, clients, memory, skill
+instructions, and ordinary workers receive neither raw keys nor a general-purpose secret environment.
+The control plane resolves the narrowest configured credential only after exact identity/policy checks.
 
-The committed `.env.example` contains names and blank values only. Real `.env` files are ignored.
+Redaction/secret rejection occurs before sensitive values can enter logs, events, artifacts, errors,
+memory, client payloads, evaluation evidence, or model context. The committed `.env.example` contains
+names and blank values only; real environment files remain ignored.
 
-M1 resolves credentials only after request-shape and capability checks pass. M12 extends provider
-credential resolution with exact provider/model context, allowing different routed models to use
-different configured credentials without placing those keys in prompt or worker data.
+M12 sandbox credentials use runtime-owned opaque `credentialRef`s. Public/session metadata may expose
+that a credential is required, but never the underlying reference or value. M24 compression additionally
+rejects obvious secret-like input and cannot lower source sensitivity.
 
-Sandbox credentials are held behind runtime-owned `credentialRef`s. Public binding metadata exposes
-backend identity and credential requirement, not the credential reference or secret value.
+## Authority matrix
 
-## Implemented M3 tool controls
+- **M2/M8** own canonical mission lifecycle and durable orchestration state.
+- **M3** owns tool registration, grants, approvals, schema enforcement, side-effect/idempotency policy,
+  timeout/retry/cancellation, handler dispatch, and audit.
+- **M5** owns completion/evidence acceptance.
+- **M6** owns scoped memory contracts; memory remains lower authority than current evidence.
+- **M10** owns skill verification, activation, supersession, rollback, and revocation.
+- **M11** owns empirical quality-floor-preserving model routing.
+- **M12** owns current workspace/process/network/sandbox lifecycle and release-proof boundaries.
+- **M15** owns measured evidence required for community capability-pack membership.
+- **M23** may select/load already-eligible capability packs but cannot alter M10/M15 authority.
+- **M24** may retrieve/maintain lower-authority memory but cannot relabel it as current evidence.
+- **M25** may catalog registered M3 tools but cannot execute outside M3 or weaken its manifests.
 
-Model-proposed tool calls are untrusted data. `src/tools` validates stable tool/version selection and
-strict input schemas before policy or handler execution. Capability grants bind mission/task/tool/
-operation/resource scope, call ceiling, and expiry. High-impact operations require matching unexpired
-approval evidence.
+No later layer may silently duplicate or bypass an earlier authority boundary.
 
-Side-effecting calls require idempotency keys. Matching replays return the prior result while mismatched
-replay fails. Handler attempts are bounded by runtime-owned timeout/cancellation and capability-call
-ceilings. Audit records retain typed metadata and hashes rather than raw inputs or resource paths.
+## Implemented M3 tool safeguards
+
+Model-proposed tool calls are untrusted. `src/tools` validates exact tool/version identity and strict
+input schemas before policy or handler execution. Capability grants bind mission/task/tool/operation/
+resource scope, call ceiling, and expiry. High-impact actions require matching unexpired approval.
+
+Side-effecting calls require idempotency keys. Matching replay returns the prior result; changed replay
+under the same key fails. Handler attempts are bounded by timeout/cancellation and capability-call
+ceilings. Audit records retain bounded typed metadata/hashes rather than raw sensitive payloads.
 
 Built-in repository operations accept normalized workspace-relative paths and stable quality-command
-IDs only. Arbitrary model-provided shell strings and network destinations are not accepted.
-
-M3 remains the capability/tool authority. M12-A/B add canonical-root and symlink-escape checks, a
-bounded trusted-command host-process runner, output/time/concurrency limits, and a fail-closed outbound
-destination policy. The host-process runner is still not kernel/container isolation, and the outbound
-policy alone is not transport-level DNS pinning.
+IDs. Arbitrary model-provided shell strings or network destinations are not accepted.
 
 ## Implemented M5 verification safeguards
 
-Planner/runtime assertions are not completion authority. M5 accepts bounded typed evidence with
-canonical timestamps, allowlisted kinds/producers/statuses, exact mission/task scope, hashes, freshness,
-and explicit coverage. Missing, foreign, stale, future, pre-change, failed, duplicated, contradictory,
-or weak evidence fails closed.
+Planner/runtime/model assertions are not completion authority. M5 validates bounded typed evidence,
+canonical timestamps, allowlisted producers/kinds/statuses, exact mission/task scope, hashes, freshness,
+and coverage. Missing, stale, future, foreign, failed, duplicated, contradictory, malformed, weak, or
+self-authored evidence fails closed.
 
-A separate non-mutating adversarial reviewer can `ACCEPT`, `BLOCK`, or request bounded repair. Malformed
-review output or reviewer failure blocks. The coding orchestrator cannot reach `COMPLETED` without an
-internally consistent verifier pass and reviewer acceptance. Stored decisions use concise evidence
-references and hashes rather than hidden reasoning.
+A separate adversarial reviewer is non-mutating and may ACCEPT, BLOCK, or request bounded repair.
+Malformed review output or reviewer failure blocks. Stored decisions use concise evidence references and
+hashes rather than hidden reasoning.
 
-## Implemented M6 memory and context safeguards
+## Implemented M6/M18/M24 memory and context safeguards
 
-Memory records are isolated by exact user/project scope, with exact mission scope for working memory.
-Records carry hashes, sensitivity, provenance, versions, expiry, and lifecycle state. Durable user
-preferences require explicit-user provenance. Optimistic versions reject competing updates;
-idempotency keys reject mismatched replay; tombstones remove raw content and prevent resurrection.
+M6 isolates records by exact user/project scope, with exact mission scope for working memory. Records
+carry hashes, sensitivity, provenance, versions, expiry, and lifecycle state. Durable user preferences
+require explicit-user provenance. Optimistic versions reject competing updates; idempotency rejects
+changed replay; tombstones remove raw content and prevent resurrection.
 
-Retrieved memory is always compiled as lower-authority memory context. Source/priority validation stops
-memory/history from impersonating system, mission, task, repository, or observation context. Current
-authoritative sources win semantic collisions. Mandatory P0–P2 context cannot be silently truncated,
-and sensitive compilations bypass cache. M6 memory remains an in-memory contract; encryption at rest,
-retention enforcement, and cross-process cache coherence remain future work.
+Context compilation keeps fixed source priority. Current authoritative repository/runtime/task evidence
+wins semantic collisions and mandatory P0–P2 context cannot be optimized away. Sensitive compilations
+bypass retained cache. M18 delta/reuse identity binds scope, profile, policy, source identity, and
+verification requirements.
 
-## Implemented M7 specialist safeguards
+M24 adds these fail-closed controls:
 
-Specialist workers are untrusted proposal producers. Registry discovery exposes bounded metadata, not
-handler authority. The coordinator selects dependency-ready M2 tasks, applies concurrency ceilings,
-and reserves expiring logical ownership before calling a worker. Repository/resource/state write
-claims conflict conservatively.
+- exact user/project scope and deterministic provenance on advanced retrieval;
+- future-dated current-source and remembered evidence rejection;
+- stale memory is marked/excluded from authoritative selection when current source differs;
+- conflicting current project conclusions are surfaced rather than silently tie-broken;
+- retention planning is bounded and refuses to claim complete coverage from a saturated retrieval page;
+- deletion delegates to exact tombstone semantics;
+- compression preserves exact source ids/hashes and strongest sensitivity;
+- compression output is lower-authority `model_summary` project memory only;
+- secret-like material is rejected;
+- a proposal must have been issued by the current runtime instance before commit;
+- exact replay is idempotent; tampered or foreign replay fails.
 
-Workers receive immutable assignments and abort signals but no peer messaging, mission mutation,
-repository adapter, policy, credential, or completion authority. Returned proposals use exact bounded
-schemas. Foreign identity, future/impossible time, duplicate/malformed references, private-reasoning
-fields, and writes outside ownership are blocked. A worker cannot self-certify independent evidence;
-runtime attestation is required before reconciliation can accept evidence references.
+Memory cannot create tools/grants, promote skills, raise budgets, lower routing quality, resolve
+credentials, or mark work complete.
 
-M7 ownership is single-process logical coordination, not a durable cross-host lock or sandbox.
+## Implemented M7/M8/M20 worker and recovery safeguards
 
-## Implemented M8 durable safeguards
+Specialist workers are untrusted proposal producers. M7 reserves logical ownership, bounds concurrency,
+validates structured proposals, and requires runtime-attested evidence before reconciliation.
 
-`src/durable` is a trusted local persistence boundary over Node 24 built-in SQLite with foreign keys,
-WAL, `synchronous=FULL`, bounded busy timeout, strict tables, and explicit schema versioning. Unknown
-newer schemas fail closed.
+M8 durable jobs use bounded attempts, expiring leases, fencing generations, opaque lease-token hashes,
+heartbeat/settlement scope checks, cancellation terminality, and integrity-checked lifecycle events.
+Stale generations cannot settle after reclaim. Local SQLite provides at-least-once restart durability,
+not cross-host exactly-once semantics.
 
-Canonical M2 event batches enforce mission identity, contiguous sequence/aggregate versions, canonical
-UTC time, mission-scoped idempotency fingerprints, bounded canonical JSON, and SHA-256 integrity.
-Checkpoints are derived artifacts and must reproduce from canonical events before acceptance.
-
-Durable jobs persist bounded orchestration metadata and artifact references/hashes, not raw prompts,
-repository contents, credentials, raw worker exceptions, or plaintext lease tokens. Claims create
-opaque random tokens but persist only their hashes. Heartbeat and settlement require exact job/
-mission/task/worker scope, generation, token, and unexpired lease. Stale generations cannot settle after
-reclaim. Retries are bounded; exhaustion blocks; cancellation defeats late success.
-
-Lifecycle events are typed, hash-addressed, mission-scoped, and read through a globally increasing
-cursor. Corrupt event hashes fail closed. M8 provides local at-least-once recovery, not exactly-once
-external effects, hosted queues, leader election, multi-region durability, or cross-host fencing.
+M20 logical soak observations are hash-chained runtime evidence. Restart checkpoints, recovered lease
+generation, cancellation, equivalent-failure ceilings, event shapes, budgets, and synthetic time are
+validated fail closed. Synthetic duration never becomes a production-uptime claim.
 
 ## Implemented M9 client safeguards
 
-`src/client` treats every client request and every protocol payload as untrusted at the protocol
-boundary. State and command requests use exact key sets, bounded identifiers/collections, canonical UTC
-timestamps, explicit protocol versions, and fail-closed decoding. Unsupported versions, commands,
-unknown fields, malformed counters, invalid states, and malformed lifecycle events are rejected.
+Client protocol input is untrusted and decoded with exact versions/key sets/bounds. Client capabilities
+are opaque runtime-resolved identifiers with exact session/mission scope and expiry. State reads require
+read authority; commands are limited to explicit pause/resume/cancel controls with expected mission
+version and durable idempotency.
 
-Client capability identifiers are opaque. The runtime resolves the actual grant and requires exact
-session and mission scope plus expiry. State reads require read authority. Commands are limited to
-`mission.pause`, `mission.resume`, and `mission.cancel`; they require an exact expected mission version
-and durable scoped idempotency. Clients cannot append arbitrary mission events, settle worker jobs,
-call providers/tools, verify tasks, or complete missions.
+Client projections exclude credentials, lease bearer tokens, raw repository contents, private reasoning,
+hidden policy, and raw worker exceptions. Reconnect consumes integrity-bound mission-scoped lifecycle
+pages. Unsafe continuity requires fresh bootstrap. The current web shell is a static reference client and
+is not evidence of public authentication/transport or native-app security.
 
-Client projections expose only bounded user-facing state. They exclude provider keys, credentials,
-lease bearer tokens, raw repository contents, definitions of done, failure signatures, private
-reasoning, raw worker exceptions, and hidden policy internals.
+## Implemented M10/M14/M15/M23 skill safeguards
 
-Reconnect uses M8 lifecycle event hashes plus exact mission/session scope and `afterCursor` chaining.
-Because M8 lifecycle cursors are global but reads are mission-scoped, numeric gaps inside a mission are
-valid. Unsafe continuity requires a fresh bootstrap.
+M10 separates compact discovery from bounded instruction loading. Learned/community packages start as
+candidates; content is immutable/hash-addressed; independent passing evidence must match exact content;
+activation/rollback require trusted actors. Required tools are declarations only and never create M3
+handlers or grants.
 
-The M9 web shell is a static reference fixture. It contains no live network transport, cookies,
-`localStorage`, or `sessionStorage`. Production authentication, transport security, CSP/security
-headers, push notifications, device administration, offline writes, and native application security
-remain future work.
+M14 treats external skill/plugin snapshots as hostile until bounded non-executing intake completes.
+Immutable source identity, file/byte/depth bounds, binaries/symlinks, scripts/hooks/workflows/MCP,
+prompt override, exfiltration, credential collection, destructive behavior, privilege escalation,
+self-promotion, and memory/policy poisoning are considered. Incomplete analysis cannot become safe.
+Only COMPLETE+ACCEPT can become an M10 community candidate and intake still grants no execution authority.
 
-## Implemented M10 skill safeguards
+M15 requires exact candidate/domain/task-class/procedure identity and independent measured evidence for
+community pack membership. Offline replay is proposal-only and receives no mutation authority.
 
-`src/skills` keeps compact discovery separate from full instruction loading. Normal resolution accepts
-only verified/active packages; learned/community packages start as candidates; package content is
-hash-addressed; independent passing evidence must bind the exact package hash; activation/rollback
-require trusted runtime or user-approved actors.
+M23 adds runtime Skill OS safeguards:
 
-Skill synthesis requires an injected solved-task attestation and can create only a learned candidate
-with exact mission/task provenance. Required-tool names are declarations only: M10 never registers an
-M3 handler, creates a capability grant, exposes credentials, or grants arbitrary host execution.
+- discovery exposes only compact eligible pack metadata;
+- selection binds exact pack id/version/hash and trusted member/task-class metadata;
+- a caller cannot relabel a member to another task class;
+- selection freshness is bounded and future/stale/tampered selection fails;
+- progressive load re-resolves M10/M15 exact identity and rejects revoked/changed/unloadable content;
+- runtime pin/history rollback returns to an observed exact revision only;
+- rollback does not activate/promote/verify/revoke or otherwise mutate skill lifecycle.
 
-## Implemented M11 routing and reasoning safeguards
+Skill OS cannot mint M3 authority, M5 evidence, credentials, memory authority, budget, or release claims.
 
-`src/routing` treats provider profiles, empirical evaluations, route requests, budgets, cache metadata,
-and reasoning evidence as validated runtime inputs. A route is selected only after capability checks,
-fresh independent evaluation evidence, and the effective quality floor are satisfied. Cost and latency
-are optimization criteria only among candidates that already meet the quality requirement.
+## Implemented M11/M21 routing safeguards
 
-Evaluation records bind exact provider/model/profile version, task class, and reasoning effort where
-applicable. Model-, worker-, and runtime-authored self-evaluations cannot establish routing quality.
-Stale, future, duplicate, conflicting, malformed, or hash-tampered evaluation data fails closed.
+Routing chooses only candidates with required capability and fresh independent empirical quality that
+meets the effective floor. Cost/latency optimize only among already-qualified routes. Risk/uncertainty may
+raise, never lower, the floor. Branch/critique/repair/escalation/call/token/cost/concurrency ceilings are
+runtime-owned.
 
-Risk and uncertainty can raise the effective quality floor but cannot lower it. Reasoning is bounded by
-explicit branch, critique, repair, model-call, parallel-call, estimated-cost, and estimated-token
-ceilings. Only independent, non-contradictory PASS evidence can accept a result.
+M21 recent failures are negative evidence bound to exact provider/model/profile/reasoning/task-class/
+signature identity. Fresh valid failure may remove only that exact route. It cannot create positive
+quality, add capability, resolve credentials, strengthen sandbox scope, or increase budget.
 
-Routing cannot mint M3 tool grants, M7 ownership, M10 skill promotion, credentials, or additional
-mission budget. Sensitive work disables routing cache. M11's evaluation harness is offline and
-deterministic; no live provider benchmark or production traffic experiment is claimed.
+## Implemented M12 execution/sandbox/release safeguards
 
-## Implemented M12-A/B execution and sandbox safeguards
+### Workspace/process
 
-`src/sandbox` treats workspace paths, subprocess outcomes, destination URLs, model/sandbox bindings,
-provider-managed session metadata, and lifecycle requests as validated runtime data.
+- trusted workspace roots are canonicalized;
+- lexical traversal, absolute paths, NUL/backslash ambiguity, prefix confusion, and symlink escape fail;
+- writes resolve via the nearest canonical existing parent;
+- executable/fixed arguments come from runtime registration, not model shell text;
+- subprocess uses `shell: false` and deny-by-default environment;
+- timeout, cancellation, stdout/stderr byte ceilings, and runtime concurrency are bounded.
 
-### Workspace and process
+This is a bounded host-process boundary, **not** kernel/container/VM isolation.
 
-- the trusted workspace root is canonicalized through the host filesystem;
-- lexical traversal, absolute paths, NUL/backslash ambiguity, root-prefix confusion, and canonical
-  symlink escapes are denied;
-- writes resolve through the nearest existing canonical parent;
-- models/workers select only runtime-registered command IDs; executable path and fixed arguments are
-  trusted configuration;
-- process execution uses `shell: false`;
-- child environment starts deny-by-default and inherits only explicitly allowlisted variables;
-- timeout and cancellation terminate the process;
-- stdout and stderr are independently byte-bounded and output flood terminates execution;
-- runtime concurrency is bounded, with the slot reserved before asynchronous cwd resolution and always
-  released in `finally`.
+### Network
 
-This is a bounded host-process boundary, **not** OS/kernel/container isolation. It does not prevent all
-host filesystem visibility or provide namespace/cgroup isolation for arbitrary untrusted code.
+HTTPS is the default. URL credentials/fragments/ambiguous syntax and unauthorized host/port destinations
+fail. Loopback/link-local/private/multicast/unspecified/mapped-private/reserved addresses fail. Every
+injected DNS answer must satisfy policy and destination changes require a fresh decision. A future real
+transport must preserve this decision against unsafe re-resolution before DNS-rebinding resistance can
+be claimed end to end.
 
-### Outbound destination policy
+### Sandbox lifecycle
 
-- HTTPS is the default;
-- URL credentials, fragments, ambiguous syntax, and unauthorized host/port destinations are denied;
-- loopback, link-local, private, multicast, unspecified, mapped-private, and other reserved addresses
-  are denied;
-- every injected DNS answer must satisfy policy;
-- redirects or destination changes require a fresh decision.
+Exact provider+model+profile identity selects configured backends. Credentials resolve only after exact
+binding checks. Create/release use deterministic idempotency identity; identical concurrent operations
+collapse, conflicting replay fails, cleanup is mandatory, and released sessions cannot silently revive.
+Current proof is provider-neutral/local contract behavior, not a live hosted sandbox.
 
-A future transport must consume the exact policy decision without unsafe re-resolution before DNS
-rebinding resistance can be claimed.
+### Observability/release
 
-### Provider/model-dependent sandbox lifecycle
-
-- exact `provider + model + profileVersion` identity selects the configured sandbox backend;
-- M11 primary or escalation routing provides that exact identity;
-- sandbox credentials are resolved only after exact binding checks and stay in the control plane;
-- remote create receives a deterministic allocation/idempotency key;
-- exact replay reuses the settled session and concurrent identical replay collapses to one create;
-- conflicting replay fails closed;
-- remote backends must implement deterministic cleanup at registry construction;
-- destroy receives a deterministic release idempotency key and exact mission/task/model/session scope;
-- release replay is idempotent and released sessions cannot be silently reused;
-- session expiry is canonical UTC when provided and omitted structurally when absent.
-
-Normal PR CI `33794095989` verified the M12-A/B local tranche with 237/237 tests. No hosted sandbox
-provider, live model provider, paid resource, production deployment, migration, billing change, or
-public traffic was exercised.
-
-## Implemented M12-C observability and release-proof safeguards
-
-`src/observability` rejects dangerous metadata keys and obvious secret-like values before event
-materialization. Events carry only bounded typed metadata, canonical timestamps, and deterministic
-identity; raw credentials, full environments, private reasoning, and unbounded process output are not
-valid event content.
-
-`src/release` binds evidence to exact producer, level, subject, status, timestamp, and content hash.
-Release manifests bind exact commit/config/suite/policy/evidence identities. Policy levels are monotonic:
-stronger claims retain lower-level requirements and must add evidence genuinely produced at the stronger
-level. Missing, stale, future, foreign, failed, tampered, duplicated, unreferenced, or weak evidence
-blocks. Backup/restore verification binds restored-state hash to the source-state hash and cannot claim
-cloud/production recovery without separately exercised infrastructure.
-
-Concurrent identical sandbox release now collapses to one remote cleanup call; a conflicting release
-reason fails closed. Normal PR CI `33796268313` passed 258/258 tests. The local end-to-end release proof
-explicitly passes `local` and blocks `integration`/`live` when only local evidence exists.
-
-## Implemented M12-D live-provider safeguards
-
-The M12-D runner resolves `NV_API_KEY` only inside GitHub Actions and only after exact
-`nvidia + moonshotai/kimi-k3` credential context checks. The key is not part of prompts, fixture state,
-result JSON, committed files, or persisted reasoning. The workflow reruns deterministic repository
-gates before any live request and caps the coding mission at two provider calls.
-
-Run `33837291528` used one provider call and completed first pass with deterministic quality and M5 PASS.
-The uploaded artifact is intentionally sanitized and the live workflow was changed to manual-only after
-the evidence run. This proves the credential/provider boundary for one task; it does not authorize or
-prove hosted sandbox access, customer data, public production traffic, repeated benchmark sweeps, or
-other provider credentials.
+`src/observability` rejects dangerous metadata keys and obvious secret-like values before persistence.
+`src/release` binds evidence to exact producer/level/subject/status/time/hash and enforces monotonic local,
+integration, and live claim policies. Local evidence cannot unlock integration/live claims. Backup/
+restore proof binds source/restored state hashes but does not manufacture cloud recovery evidence.
 
 ## Implemented M13 learning safeguards
 
-`src/learning` treats every proposed lesson as untrusted data. Before evidence lookup or persistence, proposal shape/scope/bounds are validated and obvious credential-like content is rejected across semantic key, lesson, source reference, and tags. The model-provided sensitivity label is never sufficient evidence that content is safe.
+Learning proposals are untrusted and secret-screened. Establishment requires repeated distinct
+independently verified mission/task support with exact scope/content/evidence hashes. Competing content
+conflicts and cannot become a nudge or M6 entry. Learned memory remains lower authority and cannot create
+tools, completion, skill promotion, credentials, budgets, routing quality, or durable user preferences.
 
-A learning attestation must be an exact independently backed PASS bound to user, project, mission, task, semantic-key SHA-256, lesson SHA-256, sensitivity, verification-result SHA-256, and non-empty evidence references. One task can count only once. Exact idempotent replay returns prior state without requiring a new attestation; changed input under the same replay key fails closed before evidence lookup, and the existing post-await replay check prevents asynchronous races from bypassing the replay contract.
+## Implemented M16/M17/M19 coding safety
 
-Three distinct verified mission/task pairs are required before a lesson becomes `ESTABLISHED`. Competing active content under the same scoped key forces `CONFLICTED`; conflicted records cannot be emitted as nudges or written to M6. Maintenance may archive stale conflicts only below the establishment-support threshold, then deterministically re-evaluate the surviving group. It never silently deletes established M6 memory.
+M16 binds surgical exact-edit proposals to runtime-trusted task/path/source/preimage and rejects absent,
+ambiguous, stale, no-op, scope-changing, or malformed edits.
 
-M13-created M6 memory has `verified_learning` provenance and remains lower authority: broad semantic retrieval excludes it unless `m13-learning` is explicitly requested. M13 cannot create M3 handlers/grants, mark M2/M5 work complete, activate M10 skills, resolve credentials, change M11 quality floors, increase budgets, or infer durable user preferences.
+M17 classifies bounded failure evidence and denies unsafe retry after unknown/irreversible side effects.
+Reversible repair requires trusted preimage evidence; recovery budgets and repeated-strategy signatures
+prevent loops.
 
-## Implemented M14 skill-intake safeguards
+M19 validates at most 100 canonical workspace-relative targets, exact pre/post hashes, ownership,
+dependencies, and forbidden surfaces before mutation. Any partial apply or post-mutation failure restores
+runtime-captured preimages before failing closed. The injected workspace contract is not proof of
+kernel/filesystem atomicity.
 
-External skills, plugins, catalogs, scripts, hooks, MCP files, and workflow definitions are untrusted data. M14 requires a trusted resolver to bind the requested repository/ref/path to one immutable commit and rejects source-identity confusion before candidate creation. Mutable catalog reputation or an official publisher name is provenance context, not runtime authority.
+## Implemented M22 evaluation safeguards
 
-Analysis is resource-bounded and non-executing: file count, file bytes, total bytes, path depth, and finding output are capped; no package install, subprocess, shell, browser, MCP execution, archive expansion, or third-party network execution is part of intake. Binary/symlink/oversize/incomplete inventory, unknown license state, malformed manifests, and finding truncation force explicit partial coverage and cannot yield a clean accept. Nested `.github/workflows`, hooks, MCP configuration, and executable surfaces are detected as risk-bearing content.
+Benchmark cases/results are untrusted evidence objects. Hidden acceptance metadata is absent from
+model-facing projections. Matched arms require equal provider/model/profile/reasoning/harness/budget
+identity and stay inside per-case ceilings. Duplicate/cherry-picked arms fail. Deterministic attributable
+task failures remain measurable negative outcomes; timeout/network/auth/rate-limit/unavailable/malformed/
+unknown infrastructure ambiguity remains incomplete. Zero complete pairs is INCONCLUSIVE with null lift.
+Evaluation output cannot mint M3/M5/M10/M11/M12/release authority.
 
-Risk findings use bounded rule identifiers, severity, file/content hashes, and stable fingerprints rather than storing matched raw snippets. Critical prompt-override, exfiltration, download-and-execute, or privilege-escalation patterns reject. High-risk credential collection, destructive mutation, self-promotion, policy/memory poisoning, MCP authority, hooks/workflows, or executable surfaces quarantine. Static M14 analysis proves only its bounded rules and completeness contract; it is not a universal proof that third-party code is safe.
+## Implemented M25 tool-ecosystem safeguards
 
-Only `COMPLETE + ACCEPT` can be handed to M10 as a `community` candidate with `requiredTools=[]`. M14 cannot activate a skill, register M3 tools, mint grants/approvals, resolve credentials, change routing/budgets, or create completion evidence. M10 independent verification and trusted promotion remain mandatory. Normal PR CI `33858888408` passed 290/290 tests with Biome, strict TypeScript, and secret-free Kimi dry smoke; dedicated regressions cover malformed manifests and nested workflow surfaces.
+`src/tools/ecosystem.ts` treats adapter descriptors as untrusted catalog metadata.
 
-## Implemented M15 capability-curation safeguards
+- every descriptor references an already-registered exact M3 tool name/version;
+- operation, risk, side-effect, timeout, retry, and trust fields must mirror the M3 manifest;
+- category is one of repository/browser/database/cloud/documents/data/CI-CD/API/research;
+- cost/network/credential/confirmation declarations cannot weaken M3 policy;
+- duplicate identity, unknown tool/category, descriptor/manifest mismatch, or unsafe confirmation fails;
+- side-effecting execution requires idempotency as M3 already requires;
+- full schema resolves from M3 only when needed;
+- execution delegates only to `ToolRuntime.execute`, preserving grants, approvals, timeout/retry,
+  cancellation, idempotency, handler dispatch, and audit.
 
-M15 treats distilled procedures, evaluation output, curation requests, pack metadata, and replay inputs as untrusted data unless a trusted runtime boundary validates them. Curation binds the exact M10 community-candidate hash and lifecycle, one domain, bounded task classes, context ceilings, and runtime-owned procedure keys. A trusted runtime clock—not caller-supplied time—controls evaluation freshness; future caller timestamps and stale-evidence rescue attempts fail closed.
+No current M25 fixture proves a real browser/database/cloud/API connection and none authorizes one.
 
-Procedure novelty is not self-declared authority. Requested keys must belong to the canonical runtime procedure set or the runtime-owned additive catalog for the selected domain. Independent PASS evidence must cover every requested task class and preserve quality, safety, authority, token, and latency floors. M15 may verify the exact M10 candidate but never activate it.
+## Prompt injection and untrusted-content rules
 
-Capability packs accept only integrity-valid passing M15 reports whose candidate/domain/task-class identity matches an exact M10 VERIFIED/ACTIVE community member and whose M10 verification history carries the same evidence references at the same evaluation time. Compact pack discovery omits instructions; full resolution remains behind M10 lifecycle checks. Offline replay receives no mutation interface and can only emit bounded recommendations.
-
-The bounded live A/B runner keeps provider credentials in the control plane, caps calls, and writes only sanitized evidence. Helper run `33866236138` verified the pre-merge boundaries with 319/319 tests. Authorized post-merge run `33870210502` then exposed an evidence-interpretation edge case: all six arms were incomplete, so the historical numeric zero summary could be mistaken for measured zero lift even though no matched pair completed. The raw evidence remains fail-closed and unpromoted; post-run hardening classifies zero complete pairs as `INCONCLUSIVE` with null quality/lift and records only bounded failure categories rather than raw exception text.
-
-Second authorized run `33879714040` used nine provider calls and again remained INCONCLUSIVE. All six bounded failures were `provider_timeout`. Candidate-overlay arms timed out before mutation on the first call; baseline arms mutated after planning and timed out on the second repair call. The review found that v1 used 180000 ms for both provider timeout and candidate latency acceptance, so a latency overrun could be aborted before becoming a complete measured failure. The v2 live profile requires measurement timeout to exceed acceptance by at least 30000 ms, caps timeout at 600000 ms, binds stable provider/model/profile identity and reasoning settings, and includes profile identity in evidence. Run `33882837781` verified the v2 profile offline with 329/329 tests and no provider secret/request. A third live provider request remains separately approval-gated.
-
-## Implemented M17–M19 reliability, efficiency, and multi-file safeguards
-
-M17 normalizes failure evidence into bounded categories without persisting raw provider/tool exceptions.
-Retry is denied after unknown or irreversible side effects; reversible mutations require runtime-owned
-preimage evidence. Recovery budgets and repeated-strategy signatures prevent unbounded retry/repair or
-escalation loops. The recovery controller cannot mint M3 grants or M5 completion evidence.
-
-M18 optimization cannot discard mandatory P0–P2 authority context or verification-critical evidence.
-Delta/cache identity binds mission/task scope, model profile, policy, stable source identity, and
-verification requirements. Sensitive context is excluded from retained reuse. Early exit requires fresh
-independent non-contradictory evidence; token reduction never lowers the M11 quality floor.
-
-M19 accepts at most 100 canonical workspace-relative targets and blocks duplicate/ancestor overlap,
-forbidden `.git`, workflow, dependency, or `.env` surfaces, stale preimages, tampered postimages,
-cycles, and ownership conflicts before mutation. Runtime-trusted preimages are captured before the
-workspace commit boundary. Any partial commit, post-commit verification exception, failed quality/M5
-gate, or cancellation after mutation enters fail-closed restoration. Restoration does not inherit an
-already-aborted task signal and its independent evidence must match the exact preimage snapshot hash.
-Even a misconfigured injected recovery authority cannot prevent restoration once mutation occurred; the
-runtime then reports `ROLLBACK_FAILED` rather than claiming success. The injected workspace adapter must
-supply its own atomic/staging semantics; current tests do not prove OS/filesystem atomicity for a future
-production adapter.
-
-Helper run `33949434835` passed 379/379 tests with all configured deterministic gates and no live
-provider credential/request.
-
-## Prompt injection and untrusted-content security
-
-Every context item carries origin/trust metadata. Tool results and external content are data, not
-instructions. Model output is schema-validated before requesting a transition or tool. Untrusted
-observations cannot modify policy, protected skills, credentials, sandbox bindings, or durable user
-preferences.
+Every context item carries origin/trust metadata. External content, repository text, skill instructions,
+tool output, memory, and model output are data unless the trusted runtime explicitly interprets a
+validated field. Untrusted observations cannot modify protected policy, credentials, sandbox bindings,
+skill lifecycle, durable user preferences, routing floors, budgets, or completion authority.
 
 ## Audit and privacy
 
-Consequential records should contain initiator, mission/task, action type, input hash, policy decision,
-result, side-effect summary, verification, and timestamp without private chain-of-thought. Durable job
-and client-facing records use typed statuses, reason codes, hashes, timestamps, and references rather
-than raw prompts, credentials, or worker exceptions.
+Consequential records should retain initiator, mission/task, action type, input hash, policy decision,
+result, side-effect summary, verification, and timestamp without private chain-of-thought. Durable job,
+client, skill, memory, and tool records use typed reason/status codes, hashes, timestamps, and references
+rather than secrets, raw environments, raw exceptions, or unbounded payloads.
 
-Memory must remain namespaced, versioned, exportable, selectively deletable, and retention-aware as
-persistence expands.
+Memory remains namespaced, versioned, exportable, selectively deletable, sensitivity-aware, and
+retention-aware as persistence expands.
 
-## Threats required in security tests
+## Required adversarial coverage
 
-- prompt injection requesting secrets or durable authority;
-- malicious client/tool arguments and malformed model/protocol JSON;
-- path traversal, symlink escape, and unsafe archive extraction;
-- SSRF, DNS rebinding, redirect bypass, and network exfiltration;
-- secrets in logs, errors, command lines, patches, artifacts, durable jobs, client payloads, or sandbox metadata;
-- replayed external writes and duplicated payments/messages/deployments/sandbox allocations;
-- stale/superseded worker settlement after lease expiry or recovery;
-- stale/conflicting/replayed client controls and confused-deputy client capability scope;
-- compromised plugin/skill packages, mutable upstream refs, transitive catalog trust, incomplete scans, and dependency substitution;
-- forged, replayed, hash-mismatched, secret-bearing, cross-scope, or conflicting post-task learning evidence;
-- forged, stale, future, self-authored, or tampered model-evaluation evidence;
-- sandbox binding confusion between provider/model/profile identities;
-- cleanup failure, replay, or released-session resurrection;
-- quality-floor downgrade or budget bypass through routing, fallback, retry, critique, repair, or cache;
-- privilege escalation through retries, repair loops, fallback providers, learned skills, or sandbox selection;
-- race conditions between cancellation, checkpointing, tools, leases, commands, sandbox allocation, cleanup, and completion;
-- budget bypass and denial-of-wallet;
-- recovery from tampered/incompatible events, lifecycle rows, checkpoints, client pages, routing data, and release evidence.
+Security tests must continue covering at least:
+
+- prompt injection requesting secrets, policy override, skill activation, or durable authority;
+- malformed client/model/tool/skill/memory JSON and unknown fields;
+- path traversal, symlink escape, unsafe archive/executable surfaces;
+- SSRF, DNS rebinding, redirect bypass, reserved-address access, and exfiltration;
+- credentials/secrets in prompts, logs, errors, command lines, patches, artifacts, memory, client data,
+  sandbox metadata, evaluation reports, and compression output;
+- replayed or duplicated external writes, payments/messages/deployments/sandbox allocations;
+- stale/superseded worker settlement and cleanup/released-session resurrection;
+- stale/conflicting client controls and confused-deputy capability scope;
+- malicious/mutable/community skills, incomplete intake, transitive trust, and dependency substitution;
+- forged/tampered/stale/future learning, model-evaluation, Skill OS selection, memory, and pack evidence;
+- task-class relabeling or revoked-content reuse in Skill OS;
+- memory conflict hiding, stale-source promotion, saturated-retention overclaim, compression tampering,
+  runtime-issuance bypass, secret leakage, or sensitivity downgrade;
+- tool descriptor/manifest mismatch, direct adapter execution, confirmation downgrade, idempotency bypass,
+  and catalog-based capability escalation;
+- provider/model/profile sandbox-binding confusion;
+- quality-floor downgrade or budget bypass through fallback/retry/critique/repair/cache;
+- race conditions across cancellation, checkpointing, tools, leases, client commands, sandbox allocation,
+  cleanup, memory compression, and completion;
+- denial-of-wallet and unbounded retry/tool/model/context growth;
+- recovery from tampered/incompatible events, checkpoints, lifecycle pages, routing data, memory,
+  capability packs, and release evidence.
+
+## M26–M28 security constraints
+
+The next package may implement repository-local/provider-neutral contracts but cannot claim live
+infrastructure without separately authorized evidence.
+
+- M26 must build on M3/M12 rather than create a new secret/tool/network path. Opaque secret brokering,
+  exact sandbox identity, quotas, timeout, network/filesystem scope, cleanup, and audit must remain
+  runtime-owned. Container/VM isolation claims require real isolated-backend evidence.
+- M27 must preserve M2/M8 canonical semantics. Authenticated hosted adapters must enforce tenant/scope,
+  idempotency, fencing, queue ownership, artifact isolation, audit, reconnect continuity, backup/recovery,
+  and failure injection. Local SQLite is not distributed correctness evidence.
+- M28 clients remain untrusted controllers. Offline cached state cannot authorize mutation; approval
+  flows require current server-side scope/version; credentials and canonical mission state stay server-side.
+
+No paid resource, deployment, production migration, live cloud/database/sandbox call, billing change, or
+public traffic is authorized by the current M23–M25 delivery.
 
 ## Vulnerability reporting
 
 Do not open a public issue containing an exploitable vulnerability, credential, or private user data.
-Use the repository owner's private security reporting channel when enabled. Until then, contact the
-owner privately and provide the smallest safe reproduction.
-
-## M15 live failure-evidence hardening — rerun 3
-
-Live candidate evaluation must not create survivorship bias by discarding deterministic failures. The runtime now treats only an explicit bounded set of terminal task failure codes as complete negative measurements. Transient or ambiguous provider failures—including timeout, network, authentication, quota/rate-limit, unavailable/unknown, and generic malformed-response categories—remain incomplete. This prevents both hiding a candidate failure and falsely blaming a model for an infrastructure/transport ambiguity.
-
-Failed arms keep fail-closed token/quality accounting, raw exception text is not persisted, and the historical live artifact is never rewritten. Rerun-3 derived evidence is PARTIAL rather than promoted: two complete pairs are 0 vs 0 and one remains incomplete. The candidate receives no M10 verification, activation, tool authority, credential access, routing privilege, or pack membership. Normal CI `33888060837` also proves the three fixture patterns succeed through the same deterministic M4/M5 path with valid scripted structured output.
-
-
-## M20–M22 autonomy, routing, and evaluation safeguards — active PR #32
-
-M20 soak observations are runtime data, not model-authored authority. The producer and replay paths both
-require the exact event-specific field set; unknown, missing, or misplaced fields fail closed. Every replay
-enforces a contiguous SHA-256 chain and monotonic synthetic time. Restarts must name the latest trusted
-checkpoint, recovered leases must strictly increase generation, stale settlement cannot win, cancellation
-blocks late success, repeated equivalent failure signatures are bounded, and profile/event/restart/
-recovery/budget ceilings are runtime-owned. M8 durable state remains canonical. Synthetic logical duration
-is not evidence of production uptime.
-
-M21 recent route failures are negative routing evidence only. They are exact provider/model/profile/
-reasoning/task-class/signature records with bounded age and hash integrity. Stale entries are ignored;
-future/tampered/malformed entries fail. The layer can remove an exact recently failing route but cannot
-invent positive evaluation quality, lower M11 quality floors, grant capability, increase budget, resolve
-credentials, or choose a stronger sandbox scope. The remaining candidates still pass normal M11 checks.
-
-M22 treats benchmark cases and results as untrusted evidence objects. Hidden acceptance metadata is
-excluded from the model-facing projection; result identity is bound to suite/case/arm/model/profile/
-reasoning/harness/budget and bounded execution metrics. Matched arms must have equal identity and budget,
-results beyond per-case ceilings fail, and multiple results for one arm cannot be cherry-picked. Only
-complete attributable outcomes are scored. Deterministic terminal task failures remain complete negative
-evidence, while timeout/network/auth/rate-limit/unavailable/malformed/unknown infrastructure ambiguity is
-INCOMPLETE and excluded from numeric lift. A zero-complete-pair report is INCONCLUSIVE with null numeric
-lift. These reports cannot mint M3/M5/M10/M11/M12/release authority, and this package performs no live
-provider or external-agent benchmark.
+Use the repository owner's private security reporting channel when enabled; otherwise contact the owner
+privately with the smallest safe reproduction.
