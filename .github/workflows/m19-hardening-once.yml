@@ -25,6 +25,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Format one-shot helper
+        run: npx biome check --write scripts/m19-hardening-once.mjs
       - name: Apply M19 hardening
         run: node scripts/m19-hardening-once.mjs
       - name: Format touched files
