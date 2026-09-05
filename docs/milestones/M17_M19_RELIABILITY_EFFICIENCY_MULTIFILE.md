@@ -1,8 +1,8 @@
 # M17–M19 — Reliability, context efficiency, and multi-file coding
 
-Status: **IMPLEMENTATION_VERIFIED_AWAITING_FINAL_EXACT_HEAD_CI**. This document is the delivery contract for one pull request containing three
-sequentially verified milestones. A checked item requires repository evidence; intent is never marked
-complete.
+Status: **IMPLEMENTATION_VERIFIED**. This status describes deterministic repository evidence for all
+three milestones; normal exact-head pull-request CI remains a mandatory merge gate. A checked item
+requires repository evidence; intent is never marked complete.
 
 ## Package objective
 
