@@ -1,6 +1,6 @@
 # M20–M22 — Long-running autonomy, multi-model routing, and frontier evaluation
 
-Status: **VERIFIED_AWAITING_FINAL_EXACT_HEAD_CI**. This document is the binding delivery contract for one pull request containing exactly three sequential milestones. A checked item requires repository evidence; intent is never marked complete.
+Status: **VERIFIED_AWAITING_FINAL_EXACT_HEAD_CI**. Implementation and governance verification are complete; normal exact-head PR CI is the remaining technical merge gate. This document is the binding delivery contract for one pull request containing exactly three sequential milestones. A checked item requires repository evidence; intent is never marked complete.
 
 ## Package objective
 
