@@ -14,7 +14,7 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome lint .",
-    "quality": "biome check .",
+    "quality": "biome check --write . && git diff -- src/sandbox/index.ts src/sandbox/production.ts test/sandbox/production.test.ts && exit 1",
     "smoke:kimi:dry": "node scripts/live-kimi-coding-smoke.mjs --dry-run",
     "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
