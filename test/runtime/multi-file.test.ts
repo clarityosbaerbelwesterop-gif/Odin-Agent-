@@ -7,18 +7,22 @@ import {
   EfficientContextCompiler,
 } from "../../src/context/index.js";
 import {
+  type MultiFileChange,
   MultiFileCodingCoordinator,
   MultiFileCodingError,
-  type MultiFileChange,
   type MultiFileQualityRunner,
   type MultiFileRestorationVerifier,
   type MultiFileWorkspace,
   type RuntimePreimage,
-  type StagedFileChange,
   reconcileMultiFileProposals,
+  type StagedFileChange,
 } from "../../src/runtime/multi-file.js";
 import { IndependentVerificationEngine } from "../../src/verification/engine.js";
-import type { VerificationAuthority, VerificationGateResult, VerificationRequest } from "../../src/verification/types.js";
+import type {
+  VerificationAuthority,
+  VerificationGateResult,
+  VerificationRequest,
+} from "../../src/verification/types.js";
 
 const NOW = "2026-09-05T06:00:00.000Z";
 const BEFORE = "2026-09-05T05:59:59.000Z";
@@ -30,7 +34,16 @@ function hash(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function candidate(id: string, priority: "P0" | "P1" | "P2" | "P4", content: string): ContextCandidate {
+function required<T>(value: T | undefined, label: string): T {
+  assert.ok(value !== undefined, label);
+  return value;
+}
+
+function candidate(
+  id: string,
+  priority: "P0" | "P1" | "P2" | "P4",
+  content: string,
+): ContextCandidate {
   const sourceByPriority = {
     P0: "system",
     P1: "mission",
@@ -96,6 +109,7 @@ class MemoryWorkspace implements MultiFileWorkspace {
   readonly commits: string[][] = [];
   readonly restores: string[][] = [];
   failCommitAfter: number | null = null;
+  abortOnCommitFailure: AbortController | null = null;
   canonicalOverride: ((path: string) => string) | null = null;
 
   constructor(files: Readonly<Record<string, string>>) {
@@ -122,6 +136,7 @@ class MemoryWorkspace implements MultiFileWorkspace {
       else this.files.set(change.path, change.content ?? "");
       applied.push(change.path);
       if (this.failCommitAfter !== null && applied.length === this.failCommitAfter) {
+        this.abortOnCommitFailure?.abort();
         throw new Error("fixture partial apply");
       }
     }
@@ -129,7 +144,8 @@ class MemoryWorkspace implements MultiFileWorkspace {
     return { committedAt: NOW, commitHash: hash(JSON.stringify(applied)) };
   }
 
-  async restore(preimages: readonly RuntimePreimage[]) {
+  async restore(preimages: readonly RuntimePreimage[], signal?: AbortSignal) {
+    if (signal?.aborted === true) throw new Error("rollback inherited aborted task signal");
     const restored: string[] = [];
     for (const preimage of preimages) {
       if (preimage.content === null) this.files.delete(preimage.path);
@@ -141,7 +157,9 @@ class MemoryWorkspace implements MultiFileWorkspace {
   }
 
   snapshot(): Record<string, string> {
-    return Object.fromEntries([...this.files.entries()].sort(([left], [right]) => left.localeCompare(right)));
+    return Object.fromEntries(
+      [...this.files.entries()].sort(([left], [right]) => left.localeCompare(right)),
+    );
   }
 }
 
@@ -151,7 +169,11 @@ class ExpectedQuality implements MultiFileQualityRunner {
   readonly #forceFail: boolean;
   readonly #observedAt: string;
 
-  constructor(workspace: MemoryWorkspace, expected: Readonly<Record<string, string>>, options: { forceFail?: boolean; observedAt?: string } = {}) {
+  constructor(
+    workspace: MemoryWorkspace,
+    expected: Readonly<Record<string, string>>,
+    options: { forceFail?: boolean; observedAt?: string } = {},
+  ) {
     this.#workspace = workspace;
     this.#expected = expected;
     this.#forceFail = options.forceFail ?? false;
@@ -160,7 +182,11 @@ class ExpectedQuality implements MultiFileQualityRunner {
 
   async run() {
     const actual = JSON.stringify(this.#workspace.snapshot());
-    const expected = JSON.stringify(Object.fromEntries(Object.entries(this.#expected).sort(([left], [right]) => left.localeCompare(right))));
+    const expected = JSON.stringify(
+      Object.fromEntries(
+        Object.entries(this.#expected).sort(([left], [right]) => left.localeCompare(right)),
+      ),
+    );
     return {
       contentHash: hash(actual),
       id: "m19-quality-fixture",
@@ -178,7 +204,9 @@ class ExactRestorationVerifier implements MultiFileRestorationVerifier {
   }
 
   async verify(input: { readonly preimages: readonly RuntimePreimage[] }) {
-    const restored = input.preimages.every((entry) => this.#workspace.read(entry.path) === entry.content);
+    const restored = input.preimages.every(
+      (entry) => this.#workspace.read(entry.path) === entry.content,
+    );
     return {
       evidenceHash: hash(JSON.stringify(input.preimages)),
       observedAt: NOW,
@@ -225,12 +253,21 @@ function fixture(count: number) {
   return { changes, expected, files };
 }
 
-function coordinator(workspace: MemoryWorkspace, expected: Readonly<Record<string, string>>, options: { forceQualityFail?: boolean; verification?: VerificationAuthority } = {}) {
+function coordinator(
+  workspace: MemoryWorkspace,
+  expected: Readonly<Record<string, string>>,
+  options: { forceQualityFail?: boolean; verification?: VerificationAuthority } = {},
+) {
   return new MultiFileCodingCoordinator({
     clock: () => NOW,
-    quality: new ExpectedQuality(workspace, expected, { forceFail: options.forceQualityFail }),
+    quality: new ExpectedQuality(
+      workspace,
+      expected,
+      options.forceQualityFail === undefined ? {} : { forceFail: options.forceQualityFail },
+    ),
     restoration: new ExactRestorationVerifier(workspace),
-    verification: options.verification ?? new IndependentVerificationEngine({ maxEvidenceAgeMs: 60_000 }),
+    verification:
+      options.verification ?? new IndependentVerificationEngine({ maxEvidenceAgeMs: 60_000 }),
     workspace,
   });
 }
@@ -279,7 +316,8 @@ test("M19 accepts the 100-file boundary and rejects 101 files before mutation", 
       changeSet: changeSet(tooMany.changes, context.resultHash),
       context,
     }),
-    (error: unknown) => error instanceof MultiFileCodingError && error.code === "INVALID_CHANGE_SET",
+    (error: unknown) =>
+      error instanceof MultiFileCodingError && error.code === "INVALID_CHANGE_SET",
   );
   assert.equal(rejectedWorkspace.commits.length, 0);
 });
@@ -290,27 +328,43 @@ test("cycles overlapping targets forbidden paths and noncanonical paths fail bef
 
   const cyclic = data.changes.map((change, index) => ({
     ...change,
-    dependsOn: [index === 0 ? data.changes[1]?.id ?? "change-1" : data.changes[0]?.id ?? "change-0"],
+    dependsOn: [
+      index === 0 ? (data.changes[1]?.id ?? "change-1") : (data.changes[0]?.id ?? "change-0"),
+    ],
   }));
   const cycleWorkspace = new MemoryWorkspace(data.files);
   await assert.rejects(
-    coordinator(cycleWorkspace, data.expected).execute({ changeSet: changeSet(cyclic, context.resultHash), context }),
+    coordinator(cycleWorkspace, data.expected).execute({
+      changeSet: changeSet(cyclic, context.resultHash),
+      context,
+    }),
     MultiFileCodingError,
   );
   assert.equal(cycleWorkspace.commits.length, 0);
 
-  const forbidden = [{ ...data.changes[0]!, path: ".github/workflows/evil.yml" }];
-  const forbiddenWorkspace = new MemoryWorkspace({ ".github/workflows/evil.yml": data.files[data.changes[0]!.path]! });
+  const forbidden = [
+    { ...required(data.changes[0], "fixture change 0"), path: ".github/workflows/evil.yml" },
+  ];
+  const forbiddenWorkspace = new MemoryWorkspace({
+    ".github/workflows/evil.yml": required(
+      data.files[required(data.changes[0], "fixture change 0").path],
+      "fixture file 0",
+    ),
+  });
   await assert.rejects(
-    coordinator(forbiddenWorkspace, {}).execute({ changeSet: changeSet(forbidden, context.resultHash), context }),
+    coordinator(forbiddenWorkspace, {}).execute({
+      changeSet: changeSet(forbidden, context.resultHash),
+      context,
+    }),
     (error: unknown) => error instanceof MultiFileCodingError && error.code === "UNSAFE_PATH",
   );
 
   const canonicalWorkspace = new MemoryWorkspace(data.files);
-  canonicalWorkspace.canonicalOverride = (path) => (path === data.changes[0]!.path ? "../outside.ts" : path);
+  canonicalWorkspace.canonicalOverride = (path) =>
+    path === required(data.changes[0], "fixture change 0").path ? "../outside.ts" : path;
   await assert.rejects(
     coordinator(canonicalWorkspace, data.expected).execute({
-      changeSet: changeSet([data.changes[0]!], context.resultHash),
+      changeSet: changeSet([required(data.changes[0], "fixture change 0")], context.resultHash),
       context,
     }),
     (error: unknown) => error instanceof MultiFileCodingError && error.code === "UNSAFE_PATH",
@@ -319,8 +373,22 @@ test("cycles overlapping targets forbidden paths and noncanonical paths fail bef
   assert.throws(
     () =>
       reconcileMultiFileProposals([
-        { specialistId: "a", changes: [{ ...data.changes[0]!, owner: "a", path: "src/group" }] },
-        { specialistId: "b", changes: [{ ...data.changes[1]!, owner: "b", path: "src/group/child.ts" }] },
+        {
+          specialistId: "a",
+          changes: [
+            { ...required(data.changes[0], "fixture change 0"), owner: "a", path: "src/group" },
+          ],
+        },
+        {
+          specialistId: "b",
+          changes: [
+            {
+              ...required(data.changes[1], "fixture change 1"),
+              owner: "b",
+              path: "src/group/child.ts",
+            },
+          ],
+        },
       ]),
     MultiFileCodingError,
   );
@@ -332,16 +400,25 @@ test("stale preimages and tampered postimages fail closed before commit", async 
   const context = efficientContext();
   await assert.rejects(
     coordinator(workspace, data.expected).execute({
-      changeSet: changeSet([{ ...data.changes[0]!, preimageHash: "f".repeat(64) }], context.resultHash),
+      changeSet: changeSet(
+        [{ ...required(data.changes[0], "fixture change 0"), preimageHash: "f".repeat(64) }],
+        context.resultHash,
+      ),
       context,
     }),
     (error: unknown) => error instanceof MultiFileCodingError && error.code === "STALE_PREIMAGE",
   );
   assert.equal(workspace.commits.length, 0);
 
-  const tampered = { ...data.changes[0]!, postimageHash: "e".repeat(64) };
+  const tampered = {
+    ...required(data.changes[0], "fixture change 0"),
+    postimageHash: "e".repeat(64),
+  };
   await assert.rejects(
-    coordinator(workspace, data.expected).execute({ changeSet: changeSet([tampered], context.resultHash), context }),
+    coordinator(workspace, data.expected).execute({
+      changeSet: changeSet([tampered], context.resultHash),
+      context,
+    }),
     MultiFileCodingError,
   );
   assert.equal(workspace.commits.length, 0);
@@ -370,7 +447,9 @@ test("quality or M5 verification failure rolls the complete tree back instead of
 
   const qualityWorkspace = new MemoryWorkspace(data.files);
   const qualityOriginal = qualityWorkspace.snapshot();
-  const qualityResult = await coordinator(qualityWorkspace, data.expected, { forceQualityFail: true }).execute({
+  const qualityResult = await coordinator(qualityWorkspace, data.expected, {
+    forceQualityFail: true,
+  }).execute({
     changeSet: changeSet(data.changes, context.resultHash),
     context,
   });
@@ -422,10 +501,87 @@ test("specialist reconciliation is deterministic and blocks conflicting ownershi
   assert.throws(
     () =>
       reconcileMultiFileProposals([
-        { specialistId: "specialist-a", changes: [{ ...data.changes[0]!, owner: "specialist-b" }] },
+        {
+          specialistId: "specialist-a",
+          changes: [{ ...required(data.changes[0], "fixture change 0"), owner: "specialist-b" }],
+        },
       ]),
     MultiFileCodingError,
   );
+});
+
+test("rollback ignores an aborted task signal after a partial mutation", async () => {
+  const data = fixture(10);
+  const workspace = new MemoryWorkspace(data.files);
+  const original = workspace.snapshot();
+  const controller = new AbortController();
+  workspace.failCommitAfter = 2;
+  workspace.abortOnCommitFailure = controller;
+  const context = efficientContext();
+  const result = await coordinator(workspace, data.expected).execute({
+    changeSet: changeSet(data.changes, context.resultHash),
+    context,
+    signal: controller.signal,
+  });
+  assert.equal(controller.signal.aborted, true);
+  assert.equal(result.status, "ROLLED_BACK");
+  assert.deepEqual(workspace.snapshot(), original);
+});
+
+test("thrown quality and verification failures after commit restore exact preimages", async () => {
+  const data = fixture(10);
+  const context = efficientContext();
+
+  for (const mode of ["quality", "verification"] as const) {
+    const workspace = new MemoryWorkspace(data.files);
+    const original = workspace.snapshot();
+    const quality: MultiFileQualityRunner =
+      mode === "quality"
+        ? {
+            run: async () => {
+              throw new Error("private quality failure detail");
+            },
+          }
+        : new ExpectedQuality(workspace, data.expected);
+    const verification: VerificationAuthority =
+      mode === "verification"
+        ? {
+            verify: () => {
+              throw new Error("private verifier failure detail");
+            },
+          }
+        : new IndependentVerificationEngine({ maxEvidenceAgeMs: 60_000 });
+    const runtime = new MultiFileCodingCoordinator({
+      clock: () => NOW,
+      quality,
+      restoration: new ExactRestorationVerifier(workspace),
+      verification,
+      workspace,
+    });
+    const result = await runtime.execute({
+      changeSet: changeSet(data.changes, context.resultHash),
+      context,
+    });
+    assert.equal(result.status, "ROLLED_BACK");
+    assert.deepEqual(workspace.snapshot(), original);
+  }
+});
+
+test("equivalent input ordering produces one deterministic change-set identity", async () => {
+  const data = fixture(10);
+  const context = efficientContext();
+  const firstWorkspace = new MemoryWorkspace(data.files);
+  const secondWorkspace = new MemoryWorkspace(data.files);
+  const first = await coordinator(firstWorkspace, data.expected).execute({
+    changeSet: changeSet(data.changes, context.resultHash),
+    context,
+  });
+  const second = await coordinator(secondWorkspace, data.expected).execute({
+    changeSet: changeSet([...data.changes].reverse(), context.resultHash),
+    context,
+  });
+  assert.equal(first.changeSetHash, second.changeSetHash);
+  assert.deepEqual(first.orderedChangeIds, second.orderedChangeIds);
 });
 
 test("M18 context identity cannot be swapped under a staged M19 plan", async () => {

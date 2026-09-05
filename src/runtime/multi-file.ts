@@ -1,7 +1,15 @@
 import { createHash } from "node:crypto";
 import type { EfficientContextResult } from "../context/efficient.js";
-import { classifyFailure, ReliabilityController, type FailureRecoveryAuthority } from "../reliability/index.js";
-import type { VerificationAuthority, VerificationGateResult } from "../verification/types.js";
+import {
+  classifyFailure,
+  type FailureRecoveryAuthority,
+  ReliabilityController,
+} from "../reliability/index.js";
+import type {
+  VerificationAuthority,
+  VerificationGateResult,
+  VerificationRequest,
+} from "../verification/types.js";
 
 const SHA256 = /^[a-f0-9]{64}$/u;
 const IDENTIFIER = /^[A-Za-z0-9_][A-Za-z0-9._:/@-]{0,127}$/u;
@@ -150,8 +158,11 @@ export class MultiFileCodingCoordinator {
     readonly context: EfficientContextResult;
     readonly signal?: AbortSignal;
   }): Promise<MultiFileRunResult> {
-    if (input.signal?.aborted === true) {
-      throw new MultiFileCodingError("CANCELLED", "Multi-file coding was cancelled before staging.");
+    if (isSignalAborted(input.signal)) {
+      throw new MultiFileCodingError(
+        "CANCELLED",
+        "Multi-file coding was cancelled before staging.",
+      );
     }
     validateContextBinding(input.changeSet, input.context);
     const normalized = await normalizeChangeSet(input.changeSet, this.#workspace);
@@ -159,7 +170,7 @@ export class MultiFileCodingCoordinator {
     const snapshotHash = hashJson(preimages);
     const staged = normalized.ordered.map(toStagedChange);
     await this.#workspace.validateStaged(staged);
-    if (input.signal?.aborted === true) {
+    if (isSignalAborted(input.signal)) {
       throw new MultiFileCodingError("CANCELLED", "Multi-file coding was cancelled before commit.");
     }
 
@@ -179,12 +190,11 @@ export class MultiFileCodingCoordinator {
         reasonCode: "partial_apply",
         source: "runtime",
         verificationResultHash: null,
-        signal: input.signal,
         originalError: error,
       });
     }
 
-    if (input.signal?.aborted === true) {
+    if (isSignalAborted(input.signal)) {
       return this.#rollbackAfterFailure({
         changeSet: normalized.changeSet,
         changeSetHash: normalized.changeSetHash,
@@ -195,22 +205,43 @@ export class MultiFileCodingCoordinator {
         reasonCode: "cancelled_after_commit",
         source: "runtime",
         verificationResultHash: null,
-        signal: undefined,
       });
     }
 
-    const quality = await this.#quality.run({
-      changeSetHash: normalized.changeSetHash,
-      missionId: normalized.changeSet.missionId,
-      signal: input.signal,
-      taskId: normalized.changeSet.taskId,
-    });
-    validateQualityEvidence(quality);
-    const evaluatedAt = this.#clock();
-    assertCanonicalTime(evaluatedAt, "evaluatedAt");
-    const gate = this.#verification.verify(
-      verificationRequest(normalized.changeSet, normalized.changeSetHash, commit.committedAt, quality, evaluatedAt),
-    );
+    let quality: MultiFileQualityEvidence;
+    let gate: VerificationGateResult;
+    try {
+      quality = await this.#quality.run({
+        changeSetHash: normalized.changeSetHash,
+        missionId: normalized.changeSet.missionId,
+        ...(input.signal === undefined ? {} : { signal: input.signal }),
+        taskId: normalized.changeSet.taskId,
+      });
+      validateQualityEvidence(quality);
+      const evaluatedAt = this.#clock();
+      assertCanonicalTime(evaluatedAt, "evaluatedAt");
+      gate = this.#verification.verify(
+        verificationRequest(
+          normalized.changeSet,
+          normalized.changeSetHash,
+          commit.committedAt,
+          quality,
+          evaluatedAt,
+        ),
+      );
+    } catch {
+      return this.#rollbackAfterFailure({
+        changeSet: normalized.changeSet,
+        changeSetHash: normalized.changeSetHash,
+        context: input.context,
+        orderedChangeIds: normalized.ordered.map((change) => change.id),
+        preimages,
+        snapshotHash,
+        reasonCode: "post_commit_verification_error",
+        source: "verification",
+        verificationResultHash: null,
+      });
+    }
 
     if (quality.status === "PASS" && gate.outcome === "PASS") {
       return Object.freeze({
@@ -235,7 +266,6 @@ export class MultiFileCodingCoordinator {
       reasonCode: quality.status === "FAIL" ? "quality_gate_failed" : "verification_failed",
       source: "verification",
       verificationResultHash: gate.resultHash,
-      signal: input.signal,
     });
   }
 
@@ -249,7 +279,6 @@ export class MultiFileCodingCoordinator {
     readonly reasonCode: string;
     readonly source: "runtime" | "verification";
     readonly verificationResultHash: string | null;
-    readonly signal?: AbortSignal;
     readonly originalError?: unknown;
   }): Promise<MultiFileRunResult> {
     const failure = classifyFailure({
@@ -289,16 +318,32 @@ export class MultiFileCodingCoordinator {
       );
     }
 
-    await this.#workspace.restore(input.preimages, input.signal);
-    const restoration = await this.#restoration.verify({
-      missionId: input.changeSet.missionId,
-      preimages: input.preimages,
-      snapshotHash: input.snapshotHash,
-      taskId: input.changeSet.taskId,
-    });
-    validateRestoration(restoration);
+    try {
+      // Rollback is a safety action and must not inherit an already-aborted task signal.
+      await this.#workspace.restore(input.preimages);
+    } catch {
+      throw new MultiFileCodingError("ROLLBACK_FAILED", "Runtime preimage restoration failed.");
+    }
+    let restoration: RestorationVerification;
+    try {
+      restoration = await this.#restoration.verify({
+        missionId: input.changeSet.missionId,
+        preimages: input.preimages,
+        snapshotHash: input.snapshotHash,
+        taskId: input.changeSet.taskId,
+      });
+      validateRestoration(restoration);
+    } catch {
+      throw new MultiFileCodingError(
+        "ROLLBACK_FAILED",
+        "Independent restoration verification could not complete.",
+      );
+    }
     if (restoration.status !== "PASS") {
-      throw new MultiFileCodingError("ROLLBACK_FAILED", "Independent restoration verification failed.");
+      throw new MultiFileCodingError(
+        "ROLLBACK_FAILED",
+        "Independent restoration verification failed.",
+      );
     }
     if (input.originalError instanceof MultiFileCodingError) throw input.originalError;
     return Object.freeze({
@@ -325,7 +370,10 @@ export function reconcileMultiFileProposals(
   for (const proposal of proposals) {
     assertIdentifier(proposal.specialistId, "specialistId");
     if (specialists.has(proposal.specialistId)) {
-      throw new MultiFileCodingError("INVALID_CHANGE_SET", "Specialist proposal identity is duplicated.");
+      throw new MultiFileCodingError(
+        "INVALID_CHANGE_SET",
+        "Specialist proposal identity is duplicated.",
+      );
     }
     specialists.add(proposal.specialistId);
     if (!Array.isArray(proposal.changes) || proposal.changes.length === 0) {
@@ -333,36 +381,60 @@ export function reconcileMultiFileProposals(
     }
     for (const change of proposal.changes) {
       if (change.owner !== proposal.specialistId) {
-        throw new MultiFileCodingError("INVALID_CHANGE_SET", "Specialist proposal cannot claim another owner.");
+        throw new MultiFileCodingError(
+          "INVALID_CHANGE_SET",
+          "Specialist proposal cannot claim another owner.",
+        );
       }
       merged.push(change);
     }
   }
   if (merged.length > MAX_FILES) {
-    throw new MultiFileCodingError("INVALID_CHANGE_SET", "Multi-file proposal exceeds 100 target files.");
+    throw new MultiFileCodingError(
+      "INVALID_CHANGE_SET",
+      "Multi-file proposal exceeds 100 target files.",
+    );
   }
-  const sorted = [...merged].sort((left, right) => left.path.localeCompare(right.path) || left.id.localeCompare(right.id));
+  const sorted = [...merged].sort(
+    (left, right) => left.path.localeCompare(right.path) || left.id.localeCompare(right.id),
+  );
   for (let index = 0; index < sorted.length; index += 1) {
     for (let other = index + 1; other < sorted.length; other += 1) {
       const left = sorted[index];
       const right = sorted[other];
       if (left !== undefined && right !== undefined && pathsOverlap(left.path, right.path)) {
-        throw new MultiFileCodingError("INVALID_CHANGE_SET", "Specialist proposals contain overlapping target paths.");
+        throw new MultiFileCodingError(
+          "INVALID_CHANGE_SET",
+          "Specialist proposals contain overlapping target paths.",
+        );
       }
     }
   }
-  return Object.freeze(sorted.map((change) => Object.freeze({ ...change, dependsOn: [...change.dependsOn] })));
+  return Object.freeze(
+    sorted.map((change) => Object.freeze({ ...change, dependsOn: [...change.dependsOn] })),
+  );
 }
 
 async function normalizeChangeSet(
   value: MultiFileChangeSet,
   workspace: MultiFileWorkspace,
-): Promise<{ readonly changeSet: MultiFileChangeSet; readonly changeSetHash: string; readonly ordered: readonly MultiFileChange[] }> {
+): Promise<{
+  readonly changeSet: MultiFileChangeSet;
+  readonly changeSetHash: string;
+  readonly ordered: readonly MultiFileChange[];
+}> {
   assertIdentifier(value.missionId, "missionId");
   assertIdentifier(value.taskId, "taskId");
   assertHash(value.contextResultHash, "contextResultHash");
-  if (!Array.isArray(value.changes) || value.changes.length === 0 || value.changes.length > MAX_FILES) {
-    throw new MultiFileCodingError("INVALID_CHANGE_SET", "Multi-file change set must target 1 to 100 files.");
+  if (
+    !Array.isArray(value.changes) ||
+    value.changes.length === 0 ||
+    value.changes.length > MAX_FILES
+  ) {
+    throw new MultiFileCodingError(
+      "INVALID_CHANGE_SET",
+      "Multi-file change set must target 1 to 100 files.",
+    );
   }
   const ids = new Set<string>();
   const paths = new Set<string>();
@@ -370,30 +442,47 @@ async function normalizeChangeSet(
   for (const change of value.changes) {
     assertIdentifier(change.id, "change id");
     assertIdentifier(change.owner, "change owner");
-    if (ids.has(change.id)) throw new MultiFileCodingError("INVALID_CHANGE_SET", "Change id is duplicated.");
+    if (ids.has(change.id))
+      throw new MultiFileCodingError("INVALID_CHANGE_SET", "Change id is duplicated.");
     ids.add(change.id);
     assertSafePath(change.path);
     const canonical = await workspace.canonicalize(change.path);
     if (canonical !== change.path) {
-      throw new MultiFileCodingError("UNSAFE_PATH", "Target path is not in canonical workspace form.");
+      throw new MultiFileCodingError(
+        "UNSAFE_PATH",
+        "Target path is not in canonical workspace form.",
+      );
     }
     if (isForbiddenPath(change.path)) {
-      throw new MultiFileCodingError("UNSAFE_PATH", "Target path is forbidden for multi-file coding.");
+      throw new MultiFileCodingError(
+        "UNSAFE_PATH",
+        "Target path is forbidden for multi-file coding.",
+      );
     }
-    if (paths.has(change.path)) throw new MultiFileCodingError("INVALID_CHANGE_SET", "Target path is duplicated.");
+    if (paths.has(change.path))
+      throw new MultiFileCodingError("INVALID_CHANGE_SET", "Target path is duplicated.");
     paths.add(change.path);
-    if (!Array.isArray(change.dependsOn) || new Set(change.dependsOn).size !== change.dependsOn.length) {
-      throw new MultiFileCodingError("INVALID_CHANGE_SET", "Change dependencies are malformed or duplicated.");
+    if (
+      !Array.isArray(change.dependsOn) ||
+      new Set(change.dependsOn).size !== change.dependsOn.length
+    ) {
+      throw new MultiFileCodingError(
+        "INVALID_CHANGE_SET",
+        "Change dependencies are malformed or duplicated.",
+      );
     }
     for (const dependency of change.dependsOn) assertIdentifier(dependency, "dependency");
     if (!new Set(["CREATE", "DELETE", "REPLACE"]).has(change.operation)) {
       throw new MultiFileCodingError("INVALID_CHANGE_SET", "Change operation is unsupported.");
     }
     if (change.verificationMethod !== "quality_gate") {
-      throw new MultiFileCodingError("INVALID_CHANGE_SET", "Change verification method is unsupported.");
+      throw new MultiFileCodingError(
+        "INVALID_CHANGE_SET",
+        "Change verification method is unsupported.",
+      );
     }
     validateOperationShape(change);
-    normalized.push(Object.freeze({ ...change, dependsOn: [...change.dependsOn] }));
+    normalized.push(Object.freeze({ ...change, dependsOn: [...change.dependsOn].sort() }));
   }
   for (let index = 0; index < normalized.length; index += 1) {
     for (let other = index + 1; other < normalized.length; other += 1) {
@@ -407,13 +496,16 @@ async function normalizeChangeSet(
   for (const change of normalized) {
     for (const dependency of change.dependsOn) {
       if (!ids.has(dependency) || dependency === change.id) {
-        throw new MultiFileCodingError("INVALID_CHANGE_SET", "Change dependency is missing or self-referential.");
+        throw new MultiFileCodingError(
+          "INVALID_CHANGE_SET",
+          "Change dependency is missing or self-referential.",
+        );
       }
     }
   }
   const ordered = topologicalOrder(normalized);
   const changeSet = Object.freeze({
-    changes: normalized,
+    changes: [...normalized].sort(compareChange),
     contextResultHash: value.contextResultHash,
     missionId: value.missionId,
     taskId: value.taskId,
@@ -430,7 +522,8 @@ async function readAndValidatePreimages(
     const current = await workspace.read(change.path);
     const currentHash = current === null ? null : hashText(current);
     if (change.operation === "CREATE") {
-      if (current !== null) throw new MultiFileCodingError("STALE_PREIMAGE", "Create target already exists.");
+      if (current !== null)
+        throw new MultiFileCodingError("STALE_PREIMAGE", "Create target already exists.");
     } else if (current === null || currentHash !== change.preimageHash) {
       throw new MultiFileCodingError("STALE_PREIMAGE", "Multi-file preimage is stale or missing.");
     }
@@ -439,17 +532,33 @@ async function readAndValidatePreimages(
   return Object.freeze(preimages.sort((left, right) => left.path.localeCompare(right.path)));
 }
 
-function validateContextBinding(changeSet: MultiFileChangeSet, context: EfficientContextResult): void {
+function validateContextBinding(
+  changeSet: MultiFileChangeSet,
+  context: EfficientContextResult,
+): void {
   if (context.resultHash !== changeSet.contextResultHash) {
-    throw new MultiFileCodingError("INVALID_CHANGE_SET", "M18 context result does not match the M19 change set.");
+    throw new MultiFileCodingError(
+      "INVALID_CHANGE_SET",
+      "M18 context result does not match the M19 change set.",
+    );
   }
-  if (!Number.isSafeInteger(context.savingsBps) || context.savingsBps < 0 || context.savingsBps > 10_000) {
-    throw new MultiFileCodingError("INVALID_CHANGE_SET", "M18 context savings metadata is invalid.");
+  if (
+    !Number.isSafeInteger(context.savingsBps) ||
+    context.savingsBps < 0 ||
+    context.savingsBps > 10_000
+  ) {
+    throw new MultiFileCodingError(
+      "INVALID_CHANGE_SET",
+      "M18 context savings metadata is invalid.",
+    );
   }
   const priorities = new Set(context.full.sections.map((section) => section.priority));
   for (const required of ["P0", "P1", "P2"] as const) {
     if (!priorities.has(required)) {
-      throw new MultiFileCodingError("INVALID_CHANGE_SET", "M18 context omitted mandatory P0-P2 authority context.");
+      throw new MultiFileCodingError(
+        "INVALID_CHANGE_SET",
+        "M18 context omitted mandatory P0-P2 authority context.",
+      );
     }
   }
 }
@@ -463,17 +572,27 @@ function validateOperationShape(change: MultiFileChange): void {
     if (change.preimageHash === null || change.content !== null || change.postimageHash !== null) {
       throw new MultiFileCodingError("INVALID_CHANGE_SET", "Delete operation shape is invalid.");
     }
-  } else if (change.preimageHash === null || change.content === null || change.postimageHash === null) {
+  } else if (
+    change.preimageHash === null ||
+    change.content === null ||
+    change.postimageHash === null
+  ) {
     throw new MultiFileCodingError("INVALID_CHANGE_SET", "Replace operation shape is invalid.");
   }
   if (change.preimageHash !== null) assertHash(change.preimageHash, "preimageHash");
   if (change.postimageHash !== null) assertHash(change.postimageHash, "postimageHash");
   if (change.content !== null) {
     if (Buffer.byteLength(change.content, "utf8") > MAX_FILE_BYTES) {
-      throw new MultiFileCodingError("INVALID_CHANGE_SET", "Proposed file exceeds the M19 byte bound.");
+      throw new MultiFileCodingError(
+        "INVALID_CHANGE_SET",
+        "Proposed file exceeds the M19 byte bound.",
+      );
     }
     if (hashText(change.content) !== change.postimageHash) {
-      throw new MultiFileCodingError("INVALID_CHANGE_SET", "Proposed postimage hash does not match content.");
+      throw new MultiFileCodingError(
+        "INVALID_CHANGE_SET",
+        "Proposed postimage hash does not match content.",
+      );
     }
   }
 }
@@ -489,9 +608,7 @@ function topologicalOrder(changes: readonly MultiFileChange[]): readonly MultiFi
       dependents.set(dependency, list);
     }
   }
-  const ready = [...changes]
-    .filter((change) => indegree.get(change.id) === 0)
-    .sort(compareChange);
+  const ready = [...changes].filter((change) => indegree.get(change.id) === 0).sort(compareChange);
   const ordered: MultiFileChange[] = [];
   while (ready.length > 0) {
     const current = ready.shift();
@@ -510,7 +627,10 @@ function topologicalOrder(changes: readonly MultiFileChange[]): readonly MultiFi
     }
   }
   if (ordered.length !== changes.length) {
-    throw new MultiFileCodingError("INVALID_CHANGE_SET", "Multi-file dependency graph contains a cycle.");
+    throw new MultiFileCodingError(
+      "INVALID_CHANGE_SET",
+      "Multi-file dependency graph contains a cycle.",
+    );
   }
   return Object.freeze(ordered);
 }
@@ -521,7 +641,7 @@ function verificationRequest(
   committedAt: string,
   quality: MultiFileQualityEvidence,
   evaluatedAt: string,
-) {
+): VerificationRequest {
   const suffix = changeSetHash.slice(0, 20);
   const claimId = `m19-claim-${suffix}`;
   const evidenceId = `m19-quality-${suffix}`;
@@ -568,7 +688,10 @@ function validateRestoration(value: RestorationVerification): void {
   assertHash(value.evidenceHash, "restoration evidenceHash");
   assertCanonicalTime(value.observedAt, "restoration observedAt");
   if (value.status !== "PASS" && value.status !== "FAIL") {
-    throw new MultiFileCodingError("ROLLBACK_FAILED", "Restoration verification status is invalid.");
+    throw new MultiFileCodingError(
+      "ROLLBACK_FAILED",
+      "Restoration verification status is invalid.",
+    );
   }
 }
 
@@ -605,7 +728,10 @@ function assertSafePath(path: string): void {
     path.startsWith("/") ||
     /^[A-Za-z]:/u.test(path)
   ) {
-    throw new MultiFileCodingError("UNSAFE_PATH", "Target path is not a safe workspace-relative path.");
+    throw new MultiFileCodingError(
+      "UNSAFE_PATH",
+      "Target path is not a safe workspace-relative path.",
+    );
   }
   const segments = path.split("/");
   if (segments.some((segment) => segment === "" || segment === "." || segment === "..")) {
@@ -621,8 +747,15 @@ function assertIdentifier(value: string, label: string): void {
 
 function assertHash(value: string, label: string): void {
   if (typeof value !== "string" || !SHA256.test(value)) {
-    throw new MultiFileCodingError("INVALID_CHANGE_SET", `${label} must be a lowercase SHA-256 digest.`);
+    throw new MultiFileCodingError(
+      "INVALID_CHANGE_SET",
+      `${label} must be a lowercase SHA-256 digest.`,
+    );
   }
+}
+
+function isSignalAborted(signal: AbortSignal | undefined): boolean {
+  return signal?.aborted === true;
 }
 
 function assertCanonicalTime(value: string, label: string): void {
@@ -636,7 +769,9 @@ function hashText(value: string): string {
 }
 
 function hashJson(value: unknown): string {
-  return createHash("sha256").update(JSON.stringify(canonicalize(value))).digest("hex");
+  return createHash("sha256")
+    .update(JSON.stringify(canonicalize(value)))
+    .digest("hex");
 }
 
 function canonicalize(value: unknown): unknown {
