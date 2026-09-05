@@ -326,23 +326,37 @@ The binding M17–M19 exit criteria and non-goals are defined in
 
 ## M20 — Long-running autonomy
 
-- [ ] Six-, twelve-, and twenty-four-hour soak profiles with bounded budgets and synthetic clocks where
-  appropriate.
-- [ ] Durable checkpoints, crash/lease recovery, cancellation, reconnect, and anti-loop enforcement.
-- [ ] No duration claim without preserved recovery and integrity evidence.
+- [x] Versioned six-, twelve-, and twenty-four-hour logical soak profiles with runtime-owned synthetic
+  clocks, hash-chained events, explicit checkpoint/restart/recovery/failure/budget ceilings, and
+  deterministic reports.
+- [x] Restart checkpoint binding, higher-generation lease recovery, stale-settlement fencing,
+  cancellation-terminal behavior, event-shape validation, and equivalent-failure anti-loop enforcement.
+- [x] Duration claims remain explicitly scoped to logical synthetic-clock coverage; no wall-clock or
+  hosted-runtime uptime claim is made.
 
 ## M21 — Multi-model router
 
-- [ ] Empirical task-specific profiles across configured Kimi, OpenAI, Anthropic, GLM, and OpenRouter
-  routes without assuming capabilities from model names.
-- [ ] Quality-floor, latency, cost, availability, and previous-failure-aware selection and escalation.
-- [ ] Every numeric comparison remains bound to provider, model, profile, task class, and evidence version.
+- [x] Empirical exact provider/model/profile/reasoning/task-class routing is exercised across offline
+  NVIDIA/Kimi, OpenAI, Anthropic, GLM, and OpenRouter-style identities without name-based capability
+  assumptions.
+- [x] Fresh M11 quality/capability floors remain upstream of cost/latency optimization; bounded recent
+  typed failures may exclude only the exact failed route and cannot lower quality or raise budget.
+- [x] Failure/evaluation/profile identities are hash/freshness bound; malformed, future, stale, tampered,
+  all-excluded, and input-container failure cases are deterministic and fail closed.
 
 ## M22 — Frontier evaluation suite
 
-- [ ] Reproducible 50–200 task suite covering coding, reasoning, tool use, recovery, and long missions.
-- [ ] Hidden/held-out fixtures and equal tool/budget conditions for model-alone versus model-plus-Odin.
-- [ ] Comparable external agent baselines only where their public interfaces and conditions are verifiable.
+- [x] Versioned 50–200 case protocol spans coding, reasoning, tool use, recovery, and long-mission task
+  classes; the verified fixture uses 60 held-out synthetic cases.
+- [x] Hidden acceptance metadata is omitted from model-facing projections and matched model-alone/Odin
+  arms require equal provider/model/profile/reasoning/harness/budget identity with per-case ceilings.
+- [x] COMPLETE/PARTIAL/INCONCLUSIVE aggregation excludes infrastructure ambiguity, preserves deterministic
+  task failures as negative evidence, blocks cherry-picking/duplicate arms, and creates no M5/M11
+  authority. External-agent baselines are not implemented or claimed by v1.
+
+Final adversarial hardening run `33951098718` passed **408/408 tests**, Biome, strict TypeScript,
+credential-free Kimi dry smoke, and build; aggregate coverage was **90.29% / 77.60% / 96.09%**.
+Normal exact-head PR CI remains required before merge.
 
 ## M23 — Skill OS
 

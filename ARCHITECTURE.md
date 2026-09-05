@@ -1,6 +1,6 @@
 # Odin architecture
 
-Status: M0–M15 are merged and verified on `main`. M12 remains partially verified for hosted-sandbox/public-production proof. The first post-merge Kimi K3 M15 comparison attempt is preserved as INCONCLUSIVE because no matched arm pair completed, 2026-09-04.
+Status: M0–M19 are merged and verified on `main`; M20–M22 are implemented on active PR #32 and await final exact-head CI before any merge claim. M12 remains partially verified for hosted-sandbox/public-production proof. The first post-merge Kimi K3 M15 comparison attempt is preserved as INCONCLUSIVE because no matched arm pair completed, 2026-09-04.
 
 ## Repository finding
 
@@ -335,3 +335,37 @@ Rerun-3 review establishes a sharper distinction inside the live comparison harn
 Failed arms retain conservative token accounting and cannot pass M15 quality/safety/authority gates merely because they terminate early. Historical raw evidence is immutable; corrected semantics create a separate derived interpretation rather than rewriting the original artifact.
 
 Third authorized Kimi run `33884808665` therefore derives to PARTIAL with 2/3 complete terminal-failure pairs and zero measured lift on those pairs. The exact-fixture offline control passed all three cases through M4/M5, so the next architecture focus is the live model/provider structured-output and plan/repair contract rather than bypassing M5 or relaxing fixture acceptance.
+
+
+## M20–M22 architecture extension — active PR #32
+
+### M20 — Long-running autonomy evidence
+
+`src/autonomy` is an integrity/evaluation layer over the existing M2/M8 durable runtime, not a second
+mission store. Runtime-owned versioned soak profiles define logical 6 h / 12 h / 24 h coverage and
+resource ceilings. Hash-chained exact-shape observations represent checkpoints, restarts, lease recovery,
+settlement, cancellation, bounded failures, budget consumption, and heartbeats. Replay rejects unknown
+fields, clock regression, foreign restart checkpoints, stale generations, late success after cancellation,
+and equivalent-failure loops. Existing M8 SQLite events/checkpoints/jobs remain canonical; synthetic
+soak time does not establish hosted wall-clock uptime.
+
+### M21 — Failure-aware multi-model routing
+
+`src/routing/multi-model.ts` adds a negative-evidence filter in front of the existing M11 empirical
+router. A recent typed failure is bound to exact provider/model/profile/reasoning/task-class identity and
+failure signature. It may exclude that exact route after runtime-owned rules, but it cannot create positive
+quality evidence, lower the M11 floor, add capability, or raise call/token/cost budget. The surviving set
+still passes through the existing M11 capability, freshness, independent-quality, cost, latency, and
+escalation logic. The configured provider names in tests are offline identities, not live capability proof.
+
+### M22 — Frontier evaluation protocol
+
+`src/frontier-evals` is a non-authoritative evidence protocol. Cases commit to public input, hidden
+acceptance metadata, task class, suite version, and an exact budget profile. Model-facing projections omit
+the hidden acceptance hash itself. Results bind arm, exact model profile/reasoning, harness, budget,
+completion attribution, verification, failure class, quality, tokens, latency, calls, tools, repairs, and
+recoveries. Numeric aggregates use only complete attributable matched pairs; infrastructure ambiguity is
+never coerced into zero. COMPLETE/PARTIAL/INCONCLUSIVE reports are benchmark evidence only and cannot
+become M5 completion or M11 quality evidence without a separate independent promotion path. M22 v1
+implements the model-alone/Odin protocol with synthetic offline fixtures; no real frontier-model or
+external-agent benchmark is claimed.

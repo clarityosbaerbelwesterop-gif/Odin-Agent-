@@ -2,19 +2,31 @@
 
 Updated: 2026-09-05.
 
-## Current state — M17–M19 package
+## Current state — M20–M22 package
 
-- Active PR: **#31**, branch `agent/m17-m19-reliability-efficiency-multifile`, packaging exactly M17, M18, and M19.
-- M17 reliability engine and M18 token-efficiency 2.0 are implemented with focused deterministic evidence; M19 is now implemented and hardened.
-- Final M19 helper run `33949434835` passed **379/379 tests**, Biome, strict TypeScript, `npm run build`, and credential-free Kimi dry smoke. Aggregate coverage: **90.31% lines / 77.67% branches / 95.87% functions**; M19 module: **86.88% / 75.46% / 95.56%**.
-- M19 proves verified 10-file and 100-file fixture refactors, rejects the 101-file boundary and unsafe/conflicting/stale inputs before mutation, and restores exact preimages after partial apply, post-commit quality/M5 failure, thrown verifier paths, or cancellation after mutation. Restoration is independently snapshot-hash-bound and is not cancelled by the failed task signal.
-- A misconfigured injected recovery authority cannot leave a partially mutated tree merely by refusing ROLLBACK: Odin restores first, then fails closed because policy attestation was unexpected.
-- M18 held-out deterministic fixture remains 50 vs 5,589 estimated context tokens (**99.10% lower**) with verifier parity. This is fixture-bound estimated context, not universal billed-token savings.
-- No live model call, deployment, paid resource, production migration, or public traffic was used for M17–M19.
-- Remaining gate: synchronize governance docs, obtain normal exact-head PR CI on the final user-authored head, then mark PR #31 ready. Merge remains separately approval-gated.
-- The M19 workspace is an injected transaction/staging contract. Do not claim production filesystem/kernel atomicity until a concrete adapter is implemented and independently failure-tested.
+- PR #31 (M17–M19) was squash-merged into `main` as
+  `090bfe3d68edd7b6cb0de0bad5e77bade7e14915` after normal exact-head CI passed.
+- Active PR: **#32**, branch `agent/m20-m22-autonomy-router-frontier-evals`, containing exactly M20,
+  M21, and M22.
+- M20 adds versioned 6 h / 12 h / 24 h logical soak profiles with synthetic-clock integrity,
+  checkpoint/restart binding, generation fencing, cancellation terminality, retry anti-looping, exact
+  event shapes, and deterministic reports. These are logical-duration proofs, not real wall-clock uptime.
+- M21 adds a bounded failure-aware layer over M11. Fresh typed failures may exclude only the exact
+  provider/model/profile/reasoning/task-class route; M11 still owns capability, quality-floor, cost,
+  latency, and escalation decisions. The five-provider matrix is offline fixture evidence only.
+- M22 adds a versioned matched-evaluation protocol for 50–200 cases. Hidden acceptance metadata is not
+  model-facing; arm identity and per-case budgets must match; deterministic task failures remain negative
+  evidence while infrastructure ambiguity remains incomplete. The verified 60-case fixture uses synthetic
+  outcomes and is not a live frontier benchmark.
+- Final adversarial hardening run `33951098718` passed **408/408 tests**, Biome, strict TypeScript,
+  credential-free Kimi dry smoke, and build. Aggregate coverage: **90.29% lines / 77.60% branches /
+  96.09% functions**.
+- No live provider call, deployment, paid resource, migration, billing change, or public traffic was used
+  for M20–M22.
+- Remaining gate: synchronized governance verification followed by normal exact-head PR CI. Merge remains
+  separately approval-gated.
 
-## Current state
+## Historical M15 state
 
 - Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).
 - `main` contains verified M0–M15 plus PR #21 post-run evidence hardening at merge commit `02d80898cd10416c0198007280aca7447bbb7573`.
