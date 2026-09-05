@@ -16,12 +16,7 @@ export interface SkillOsPackSummary {
 
 export interface SkillOsPackSource {
   listSummaries(): readonly SkillOsPackSummary[];
-  resolveMember(
-    packId: string,
-    packVersion: string,
-    name: string,
-    version: string,
-  ): SkillPackage;
+  resolveMember(packId: string, packVersion: string, name: string, version: string): SkillPackage;
 }
 
 export interface SkillOsPackMemberRef {

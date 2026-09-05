@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 import type { CapabilityDomain } from "../capability-packs/types.js";
 import type { SkillPackage } from "../skills/types.js";
 import {
-  SkillOsError,
   type SkillOsDiscoveryRequest,
+  SkillOsError,
   type SkillOsHistoryEvent,
   type SkillOsLimits,
   type SkillOsLoadedSelection,
@@ -65,15 +65,26 @@ export class SkillOsRuntime {
       .listSummaries()
       .find((summary) => summary.id === input.id && summary.version === input.version);
     if (sourceSummary === undefined) {
-      throw new SkillOsError("DENIED", "Skill OS accepts only packs known to the trusted pack source.");
+      throw new SkillOsError(
+        "DENIED",
+        "Skill OS accepts only packs known to the trusted pack source.",
+      );
     }
     assertSummaryMatches(input, sourceSummary);
 
     let contextBytes = 0;
     for (const member of input.members) {
-      const loaded = this.#source.resolveMember(input.id, input.version, member.name, member.version);
+      const loaded = this.#source.resolveMember(
+        input.id,
+        input.version,
+        member.name,
+        member.version,
+      );
       if (loaded.contentHash !== member.contentHash) {
-        throw new SkillOsError("CONFLICT", "Pack member hash changed during Skill OS registration.");
+        throw new SkillOsError(
+          "CONFLICT",
+          "Pack member hash changed during Skill OS registration.",
+        );
       }
       contextBytes += Buffer.byteLength(loaded.instructions, "utf8");
       if (contextBytes > this.#limits.maxContextBytes) {
@@ -81,7 +92,10 @@ export class SkillOsRuntime {
       }
     }
     if (contextBytes !== sourceSummary.contextBytes) {
-      throw new SkillOsError("CONFLICT", "Pack member instruction bytes do not match source metadata.");
+      throw new SkillOsError(
+        "CONFLICT",
+        "Pack member instruction bytes do not match source metadata.",
+      );
     }
 
     const key = packKey(input.id, input.version);
@@ -166,7 +180,8 @@ export class SkillOsRuntime {
       throw new SkillOsError("CONFLICT", "Skill OS selection integrity check failed.");
     }
     const pack = this.#packs.get(packKey(selection.packId, selection.packVersion));
-    if (pack === undefined) throw new SkillOsError("NOT_FOUND", "Selected capability pack is absent.");
+    if (pack === undefined)
+      throw new SkillOsError("NOT_FOUND", "Selected capability pack is absent.");
     if (
       pack.summary.packHash !== selection.packHash ||
       pack.summary.domain !== selection.domain ||
@@ -220,7 +235,10 @@ export class SkillOsRuntime {
         event.packHash === request.packHash,
     );
     if (!seenBefore) {
-      throw new SkillOsError("DENIED", "Rollback target was not previously pinned for this task route.");
+      throw new SkillOsError(
+        "DENIED",
+        "Rollback target was not previously pinned for this task route.",
+      );
     }
     return this.#recordPin("ROLLED_BACK", request, pack);
   }
@@ -231,13 +249,17 @@ export class SkillOsRuntime {
 
   #requirePinTarget(request: SkillOsPinRequest): RegisteredPack {
     const pack = this.#packs.get(packKey(request.packId, request.packVersion));
-    if (pack === undefined) throw new SkillOsError("NOT_FOUND", "Pinned capability pack is absent.");
+    if (pack === undefined)
+      throw new SkillOsError("NOT_FOUND", "Pinned capability pack is absent.");
     if (
       pack.summary.packHash !== request.packHash ||
       pack.summary.domain !== request.domain ||
       !pack.summary.taskClasses.includes(request.taskClass)
     ) {
-      throw new SkillOsError("CONFLICT", "Pin target does not match the exact pack route identity.");
+      throw new SkillOsError(
+        "CONFLICT",
+        "Pin target does not match the exact pack route identity.",
+      );
     }
     return pack;
   }
@@ -297,14 +319,23 @@ function normalizeRegistration(value: unknown, limits: SkillOsLimits): SkillOsPa
 function normalizeSummary(value: unknown, limits: SkillOsLimits): SkillOsPackSummary {
   const object = value as Record<string, unknown>;
   const domain = object.domain;
-  if (typeof domain !== "string" || !DOMAINS.has(domain as CapabilityDomain)) invalid("Pack domain is invalid.");
+  if (typeof domain !== "string" || !DOMAINS.has(domain as CapabilityDomain))
+    invalid("Pack domain is invalid.");
   const id = identifier(object.id, "pack id");
   const version = identifier(object.version, "pack version");
   const packHash = sha256(object.packHash, "pack hash");
   const contextBytes = positiveBounded(object.contextBytes, limits.maxContextBytes, "contextBytes");
   const memberCount = positiveBounded(object.memberCount, limits.maxMembers, "memberCount");
   const taskClasses = strings(object.taskClasses, limits.maxTaskClasses, "taskClasses");
-  return Object.freeze({ contextBytes, domain: domain as CapabilityDomain, id, memberCount, packHash, taskClasses, version });
+  return Object.freeze({
+    contextBytes,
+    domain: domain as CapabilityDomain,
+    id,
+    memberCount,
+    packHash,
+    taskClasses,
+    version,
+  });
 }
 
 function normalizeMember(value: unknown, limits: SkillOsLimits): SkillOsPackMemberRef {
@@ -318,21 +349,36 @@ function normalizeMember(value: unknown, limits: SkillOsLimits): SkillOsPackMemb
 }
 
 function normalizeDiscovery(value: unknown, limits: SkillOsLimits): SkillOsDiscoveryRequest {
-  const object = exactObject(value, ["domain", "maxContextBytes", "taskClass"], ["maxContextBytes"]);
+  const object = exactObject(
+    value,
+    ["domain", "maxContextBytes", "taskClass"],
+    ["maxContextBytes"],
+  );
   const domain = object.domain;
-  if (typeof domain !== "string" || !DOMAINS.has(domain as CapabilityDomain)) invalid("Discovery domain is invalid.");
+  if (typeof domain !== "string" || !DOMAINS.has(domain as CapabilityDomain))
+    invalid("Discovery domain is invalid.");
   const request: SkillOsDiscoveryRequest = {
     domain: domain as CapabilityDomain,
     taskClass: identifier(object.taskClass, "taskClass"),
     ...(object.maxContextBytes === undefined
       ? {}
-      : { maxContextBytes: positiveBounded(object.maxContextBytes, limits.maxContextBytes, "maxContextBytes") }),
+      : {
+          maxContextBytes: positiveBounded(
+            object.maxContextBytes,
+            limits.maxContextBytes,
+            "maxContextBytes",
+          ),
+        }),
   };
   return Object.freeze(request);
 }
 
 function normalizeSelection(value: unknown, limits: SkillOsLimits): SkillOsSelectionRequest {
-  const object = exactObject(value, ["domain", "maxContextBytes", "maxMembers", "taskClass"], ["maxContextBytes", "maxMembers"]);
+  const object = exactObject(
+    value,
+    ["domain", "maxContextBytes", "maxMembers", "taskClass"],
+    ["maxContextBytes", "maxMembers"],
+  );
   const discovery = normalizeDiscovery(
     {
       domain: object.domain,
@@ -362,12 +408,21 @@ function normalizeIssuedSelection(value: unknown): SkillOsSelection {
     "taskClass",
   ]);
   const domain = object.domain;
-  if (typeof domain !== "string" || !DOMAINS.has(domain as CapabilityDomain)) invalid("Selection domain is invalid.");
+  if (typeof domain !== "string" || !DOMAINS.has(domain as CapabilityDomain))
+    invalid("Selection domain is invalid.");
   return Object.freeze({
-    contextBytes: positiveBounded(object.contextBytes, Number.MAX_SAFE_INTEGER, "selection contextBytes"),
+    contextBytes: positiveBounded(
+      object.contextBytes,
+      Number.MAX_SAFE_INTEGER,
+      "selection contextBytes",
+    ),
     domain: domain as CapabilityDomain,
     issuedAt: canonicalTimestamp(object.issuedAt, "selection issuedAt"),
-    memberCount: positiveBounded(object.memberCount, Number.MAX_SAFE_INTEGER, "selection memberCount"),
+    memberCount: positiveBounded(
+      object.memberCount,
+      Number.MAX_SAFE_INTEGER,
+      "selection memberCount",
+    ),
     packHash: sha256(object.packHash, "selection packHash"),
     packId: identifier(object.packId, "selection packId"),
     packVersion: identifier(object.packVersion, "selection packVersion"),
@@ -377,10 +432,19 @@ function normalizeIssuedSelection(value: unknown): SkillOsSelection {
 }
 
 function normalizePin(value: unknown): SkillOsPinRequest {
-  const object = exactObject(value, ["actor", "domain", "packHash", "packId", "packVersion", "taskClass"]);
-  if (object.actor !== "trusted_runtime" && object.actor !== "user_approved") invalid("Pin actor is invalid.");
+  const object = exactObject(value, [
+    "actor",
+    "domain",
+    "packHash",
+    "packId",
+    "packVersion",
+    "taskClass",
+  ]);
+  if (object.actor !== "trusted_runtime" && object.actor !== "user_approved")
+    invalid("Pin actor is invalid.");
   const domain = object.domain;
-  if (typeof domain !== "string" || !DOMAINS.has(domain as CapabilityDomain)) invalid("Pin domain is invalid.");
+  if (typeof domain !== "string" || !DOMAINS.has(domain as CapabilityDomain))
+    invalid("Pin domain is invalid.");
   return Object.freeze({
     actor: object.actor,
     domain: domain as CapabilityDomain,
@@ -399,7 +463,10 @@ function assertSummaryMatches(input: SkillOsPackRegistration, source: SkillOsPac
     input.memberCount !== source.memberCount ||
     !equalStrings(input.taskClasses, source.taskClasses)
   ) {
-    throw new SkillOsError("CONFLICT", "Skill OS registration does not match trusted pack metadata.");
+    throw new SkillOsError(
+      "CONFLICT",
+      "Skill OS registration does not match trusted pack metadata.",
+    );
   }
 }
 
@@ -408,7 +475,8 @@ function exactObject(
   allowed: readonly string[],
   optional: readonly string[] = [],
 ): Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) invalid("Expected an object.");
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    invalid("Expected an object.");
   const object = value as Record<string, unknown>;
   const keys = Object.keys(object).sort();
   const allowedSet = new Set(allowed);
@@ -421,29 +489,38 @@ function exactObject(
 }
 
 function strings(value: unknown, max: number, name: string): readonly string[] {
-  if (!Array.isArray(value) || value.length === 0 || value.length > max) invalid(`${name} is malformed.`);
+  if (!Array.isArray(value) || value.length === 0 || value.length > max)
+    invalid(`${name} is malformed.`);
   const normalized = value.map((item) => identifier(item, name)).sort();
   if (new Set(normalized).size !== normalized.length) invalid(`${name} contains duplicates.`);
   return Object.freeze(normalized);
 }
 
 function identifier(value: unknown, name: string): string {
-  if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,199}$/u.test(value)) invalid(`${name} is invalid.`);
+  if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,199}$/u.test(value))
+    invalid(`${name} is invalid.`);
   return value;
 }
 
 function sha256(value: unknown, name: string): string {
-  if (typeof value !== "string" || !/^[a-f0-9]{64}$/u.test(value)) invalid(`${name} must be SHA-256.`);
+  if (typeof value !== "string" || !/^[a-f0-9]{64}$/u.test(value))
+    invalid(`${name} must be SHA-256.`);
   return value;
 }
 
 function positiveBounded(value: unknown, max: number, name: string): number {
-  if (!Number.isSafeInteger(value) || (value as number) < 1 || (value as number) > max) invalid(`${name} is outside its ceiling.`);
+  if (!Number.isSafeInteger(value) || (value as number) < 1 || (value as number) > max)
+    invalid(`${name} is outside its ceiling.`);
   return value as number;
 }
 
 function canonicalTimestamp(value: unknown, name: string): string {
-  if (typeof value !== "string" || Number.isNaN(Date.parse(value)) || new Date(value).toISOString() !== value) invalid(`${name} must be canonical UTC.`);
+  if (
+    typeof value !== "string" ||
+    Number.isNaN(Date.parse(value)) ||
+    new Date(value).toISOString() !== value
+  )
+    invalid(`${name} must be canonical UTC.`);
   return value;
 }
 

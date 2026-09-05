@@ -1,17 +1,18 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
-import type { SkillPackage } from "../../src/skills/index.js";
 import {
   SkillOsError,
   type SkillOsPackSource,
   type SkillOsPackSummary,
   SkillOsRuntime,
 } from "../../src/skill-os/index.js";
+import type { SkillPackage } from "../../src/skills/index.js";
 
 const T0 = "2026-09-05T08:00:00.000Z";
 const SMALL_INSTRUCTIONS = "Inspect current code, change only the target, verify the result.";
-const LARGE_INSTRUCTIONS = "Inspect repository context, preserve invariants, make one bounded change, run deterministic verification, and stop on any failed evidence.";
+const LARGE_INSTRUCTIONS =
+  "Inspect repository context, preserve invariants, make one bounded change, run deterministic verification, and stop on any failed evidence.";
 
 function hash(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -101,7 +102,10 @@ test("M23 discovers compact metadata and loads instructions only after exact tas
   runtime.registerPack(registration(source, "pack.small"));
 
   const discovered = runtime.discover({ domain: "coding", taskClass: "coding.patch" });
-  assert.deepEqual(discovered.map((item) => item.id), ["pack.small", "pack.large"]);
+  assert.deepEqual(
+    discovered.map((item) => item.id),
+    ["pack.small", "pack.large"],
+  );
   assert.equal(JSON.stringify(discovered).includes("Inspect current code"), false);
   assert.equal("members" in discovered[0]!, false);
 
@@ -134,7 +138,10 @@ test("M23 pin and rollback change only pack routing and preserve explicit histor
     packVersion: large.version,
     taskClass: "coding.patch",
   });
-  assert.equal(runtime.select({ domain: "coding", taskClass: "coding.patch" }).packId, "pack.large");
+  assert.equal(
+    runtime.select({ domain: "coding", taskClass: "coding.patch" }).packId,
+    "pack.large",
+  );
 
   const rollback = runtime.rollback({
     actor: "user_approved",
@@ -145,8 +152,14 @@ test("M23 pin and rollback change only pack routing and preserve explicit histor
     taskClass: "coding.patch",
   });
   assert.equal(rollback.action, "ROLLED_BACK");
-  assert.equal(runtime.select({ domain: "coding", taskClass: "coding.patch" }).packId, "pack.small");
-  assert.deepEqual(runtime.history().map((event) => event.action), ["PINNED", "PINNED", "ROLLED_BACK"]);
+  assert.equal(
+    runtime.select({ domain: "coding", taskClass: "coding.patch" }).packId,
+    "pack.small",
+  );
+  assert.deepEqual(
+    runtime.history().map((event) => event.action),
+    ["PINNED", "PINNED", "ROLLED_BACK"],
+  );
 });
 
 test("M23 rejects untrusted pack metadata, tampered selections, and stale member identity", () => {
