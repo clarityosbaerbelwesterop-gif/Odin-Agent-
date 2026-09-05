@@ -107,7 +107,9 @@ test("M23 discovers compact metadata and loads instructions only after exact tas
     ["pack.small", "pack.large"],
   );
   assert.equal(JSON.stringify(discovered).includes("Inspect current code"), false);
-  assert.equal("members" in discovered[0]!, false);
+  const firstDiscovered = discovered[0];
+  assert.ok(firstDiscovered);
+  assert.equal("members" in firstDiscovered, false);
 
   const selected = runtime.select({ domain: "coding", taskClass: "coding.patch" });
   assert.equal(selected.packId, "pack.small");
