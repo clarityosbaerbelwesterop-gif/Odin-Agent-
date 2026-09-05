@@ -64,10 +64,21 @@ const newPostCommit = `    let quality: MultiFileQualityEvidence;
     }`;
 source = replaceExact(source, oldPostCommit, newPostCommit, "post-commit verification rollback");
 
-source = source.replaceAll("        signal: input.signal,\n", "");
 source = source.replace(
   "    readonly signal?: AbortSignal;\n    readonly originalError?: unknown;",
   "    readonly originalError?: unknown;",
+);
+source = source.replaceAll(
+  "        verificationResultHash: null,\n        signal: input.signal,\n        originalError:",
+  "        verificationResultHash: null,\n        originalError:",
+);
+source = source.replaceAll(
+  "      verificationResultHash: gate.resultHash,\n      signal: input.signal,\n    });",
+  "      verificationResultHash: gate.resultHash,\n    });",
+);
+source = source.replaceAll(
+  "if (input.signal?.aborted === true)",
+  "if (isSignalAborted(input.signal))",
 );
 
 const oldRestore = `    await this.#workspace.restore(input.preimages, input.signal);
@@ -118,6 +129,16 @@ source = replaceExact(
   "  evaluatedAt: string,\n): VerificationRequest {",
   "verification request type",
 );
+source = replaceExact(
+  source,
+  `function assertCanonicalTime(value: string, label: string): void {`,
+  `function isSignalAborted(signal: AbortSignal | undefined): boolean {
+  return signal?.aborted === true;
+}
+
+function assertCanonicalTime(value: string, label: string): void {`,
+  "abort signal helper",
+);
 await writeFile(SOURCE, source, "utf8");
 
 let test = await readFile(TEST, "utf8");
@@ -136,8 +157,8 @@ function required<T>(value: T | undefined, label: string): T {
 }`,
   "required helper",
 );
-test = test.replaceAll('data.changes[0]!', 'required(data.changes[0], "fixture change 0")');
-test = test.replaceAll('data.changes[1]!', 'required(data.changes[1], "fixture change 1")');
+test = test.replaceAll("data.changes[0]!", 'required(data.changes[0], "fixture change 0")');
+test = test.replaceAll("data.changes[1]!", 'required(data.changes[1], "fixture change 1")');
 test = test.replace(
   'data.files[required(data.changes[0], "fixture change 0").path]!',
   'required(data.files[required(data.changes[0], "fixture change 0").path], "fixture file 0")',
@@ -170,6 +191,16 @@ test = replaceExact(
         throw new Error("fixture partial apply");
       }`,
   "abort during partial commit",
+);
+test = replaceExact(
+  test,
+  `    quality: new ExpectedQuality(workspace, expected, { forceFail: options.forceQualityFail }),`,
+  `    quality: new ExpectedQuality(
+      workspace,
+      expected,
+      options.forceQualityFail === undefined ? {} : { forceFail: options.forceQualityFail },
+    ),`,
+  "exact optional quality fixture",
 );
 
 const appendBefore = `test("M18 context identity cannot be swapped under a staged M19 plan", async () => {`;
