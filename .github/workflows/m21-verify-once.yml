@@ -7,6 +7,7 @@ on:
     paths:
       - src/routing/**
       - test/routing/**
+      - scripts/fix-m21-once.mjs
       - .github/workflows/m21-verify-once.yml
 
 permissions:
@@ -25,12 +26,13 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: node scripts/fix-m21-once.mjs
       - run: npx biome check --write src/routing/multi-model.ts src/routing/index.ts test/routing/multi-model.test.ts
       - run: npm run verify
       - run: npm run build
       - name: Commit verified M21 checkpoint and remove helper
         run: |
-          git rm -f .github/workflows/m21-verify-once.yml
+          git rm -f .github/workflows/m21-verify-once.yml scripts/fix-m21-once.mjs
           git add src/routing/multi-model.ts src/routing/index.ts test/routing/multi-model.test.ts
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
