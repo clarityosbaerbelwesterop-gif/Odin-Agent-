@@ -1,0 +1,42 @@
+name: M20-M22 adversarial final hardening once
+
+on:
+  push:
+    branches:
+      - agent/m20-m22-autonomy-router-frontier-evals
+    paths:
+      - scripts/m20-m22-final-hardening-once.mjs
+      - .github/workflows/m20-m22-final-hardening-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify-final-hardening:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m20-m22-autonomy-router-frontier-evals
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx biome check --write scripts/m20-m22-final-hardening-once.mjs
+      - name: Apply adversarial hardening
+        run: node scripts/m20-m22-final-hardening-once.mjs
+      - run: npx biome check --write src/autonomy/soak.ts test/autonomy/soak.test.ts src/routing/multi-model.ts test/routing/multi-model.test.ts test/frontier-evals/suite.test.ts
+      - name: Verify repository
+        run: npm run verify
+      - name: Build repository
+        run: npm run build
+      - name: Remove helpers and commit verified hardening
+        run: |
+          git rm -f scripts/m20-m22-final-hardening-once.mjs .github/workflows/m20-m22-final-hardening-once.yml
+          git add src/autonomy/soak.ts test/autonomy/soak.test.ts src/routing/multi-model.ts test/routing/multi-model.test.ts test/frontier-evals/suite.test.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(m20-m22): harden event routing and evaluation evidence"
+          git push origin HEAD:agent/m20-m22-autonomy-router-frontier-evals
