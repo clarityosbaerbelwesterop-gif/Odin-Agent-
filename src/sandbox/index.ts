@@ -47,10 +47,10 @@ export type {
   ProductionSecretBrokerRequest,
 } from "./production.js";
 export {
+  ProductionSandboxRuntime,
   productionIsolationAttestationHash,
   productionSandboxPolicyHash,
   productionSandboxSessionHash,
-  ProductionSandboxRuntime,
 } from "./production.js";
 export type {
   RoutedSandboxAllocationRequest,
