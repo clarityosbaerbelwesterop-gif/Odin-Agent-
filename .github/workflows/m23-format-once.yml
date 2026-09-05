@@ -1,0 +1,36 @@
+name: M23 format once
+
+on:
+  push:
+    branches:
+      - agent/m23-m25-skill-os-memory-tools
+    paths:
+      - .github/workflows/m23-format-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m23-m25-skill-os-memory-tools
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Format M23 files
+        run: npx biome check --write src/skill-os test/skill-os
+      - name: Remove helper and commit formatting
+        run: |
+          git rm -f .github/workflows/m23-format-once.yml
+          git add src/skill-os test/skill-os
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "style(m23): normalize Skill OS tranche"
+          git push origin HEAD:agent/m23-m25-skill-os-memory-tools
