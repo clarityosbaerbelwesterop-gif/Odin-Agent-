@@ -8,6 +8,7 @@ export {
   assertFrontierBudgetFitsProfile,
   createFrontierEvaluationProfile,
   FrontierProfileError,
+  validateFrontierEvaluationProfile,
 } from "./profile.js";
 export {
   createFrontierArmResult,
