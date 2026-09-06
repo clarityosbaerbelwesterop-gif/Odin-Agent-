@@ -171,7 +171,10 @@ export function createMobileOfflineSnapshot(
   assertStateResponse(response);
   const cachedAt = canonicalTimestamp(cachedAtInput, "cachedAt");
   if (Date.parse(cachedAt) < Date.parse(response.emittedAt)) {
-    throw new MobileExperienceError("MALFORMED", "Offline snapshot cannot predate server evidence.");
+    throw new MobileExperienceError(
+      "MALFORMED",
+      "Offline snapshot cannot predate server evidence.",
+    );
   }
   const base = {
     cachedAt,
@@ -220,13 +223,19 @@ export function resumeMobileExperience(
     response.missionId !== snapshot.missionId ||
     response.sessionId !== metadata.sessionId
   ) {
-    throw new MobileExperienceError("SCOPE_DENIED", "Resume response crossed mobile mission scope.");
+    throw new MobileExperienceError(
+      "SCOPE_DENIED",
+      "Resume response crossed mobile mission scope.",
+    );
   }
   if (
     response.projection.version < snapshot.projection.version ||
     response.nextCursor < snapshot.cursor
   ) {
-    throw new MobileExperienceError("RESYNC_REQUIRED", "Resume response is older than cached presentation.");
+    throw new MobileExperienceError(
+      "RESYNC_REQUIRED",
+      "Resume response is older than cached presentation.",
+    );
   }
   if (response.fromCursor === snapshot.cursor) {
     return Object.freeze({
@@ -265,7 +274,10 @@ export class MobileApprovalAuthority {
   issue(input: MobileApprovalChallengeInput): MobileApprovalChallenge {
     const challenge = normalizeChallenge(input);
     if (this.#challenges.has(challenge.challengeId) || this.#consumed.has(challenge.challengeId)) {
-      throw new MobileExperienceError("APPROVAL_REPLAYED", "Approval challenge id was already issued.");
+      throw new MobileExperienceError(
+        "APPROVAL_REPLAYED",
+        "Approval challenge id was already issued.",
+      );
     }
     const withHash: MobileApprovalChallenge = Object.freeze({
       ...challenge,
@@ -333,9 +345,7 @@ export function openMobileNotification(
   });
 }
 
-export function mobileApprovalChallengeHash(
-  challenge: MobileApprovalChallengeInput,
-): string {
+export function mobileApprovalChallengeHash(challenge: MobileApprovalChallengeInput): string {
   return sha256(
     canonicalPairs({
       actionId: challenge.actionId,
@@ -391,7 +401,10 @@ function normalizeChallenge(input: MobileApprovalChallengeInput): MobileApproval
   const expiresAt = canonicalTimestamp(input.expiresAt, "expiresAt");
   const lifetime = Date.parse(expiresAt) - Date.parse(issuedAt);
   if (lifetime <= 0 || lifetime > MAX_APPROVAL_LIFETIME_MS) {
-    throw new MobileExperienceError("APPROVAL_INVALID", "Approval lifetime is outside server bounds.");
+    throw new MobileExperienceError(
+      "APPROVAL_INVALID",
+      "Approval lifetime is outside server bounds.",
+    );
   }
   if (!Number.isSafeInteger(input.expectedVersion) || input.expectedVersion < 1) {
     throw new MobileExperienceError("APPROVAL_INVALID", "Approval expected version is invalid.");
@@ -462,7 +475,10 @@ function assertStateResponse(response: ClientStateResponse): void {
     !Number.isSafeInteger(response.nextCursor) ||
     response.nextCursor < response.fromCursor
   ) {
-    throw new MobileExperienceError("SCOPE_DENIED", "Client response is not a bounded mission projection.");
+    throw new MobileExperienceError(
+      "SCOPE_DENIED",
+      "Client response is not a bounded mission projection.",
+    );
   }
 }
 
@@ -472,7 +488,11 @@ function freezePresentation(value: MobileMissionPresentation): MobileMissionPres
     budgetLimits: Object.freeze({ ...value.budgetLimits }),
     budgetUsage: Object.freeze({ ...value.budgetUsage }),
     jobs: Object.freeze({ ...value.jobs }),
-    tasks: Object.freeze(value.tasks.map((task) => Object.freeze({ ...task, dependsOn: Object.freeze([...task.dependsOn]) }))),
+    tasks: Object.freeze(
+      value.tasks.map((task) =>
+        Object.freeze({ ...task, dependsOn: Object.freeze([...task.dependsOn]) }),
+      ),
+    ),
     verification: Object.freeze({
       ...value.verification,
       evidenceRefs: Object.freeze([...value.verification.evidenceRefs]),
@@ -481,7 +501,12 @@ function freezePresentation(value: MobileMissionPresentation): MobileMissionPres
 }
 
 function boundedString(value: string, label: string, max: number): string {
-  if (typeof value !== "string" || value.length < 1 || value.length > max || value.trim() !== value) {
+  if (
+    typeof value !== "string" ||
+    value.length < 1 ||
+    value.length > max ||
+    value.trim() !== value
+  ) {
     throw new MobileExperienceError("MALFORMED", `${label} is invalid.`);
   }
   for (const character of value) {
@@ -499,7 +524,11 @@ function identifier(value: string, label: string, max = MAX_IDENTIFIER): string 
 
 function canonicalTimestamp(value: string, label: string): string {
   const parsed = Date.parse(value);
-  if (typeof value !== "string" || Number.isNaN(parsed) || new Date(parsed).toISOString() !== value) {
+  if (
+    typeof value !== "string" ||
+    Number.isNaN(parsed) ||
+    new Date(parsed).toISOString() !== value
+  ) {
     throw new MobileExperienceError("MALFORMED", `${label} must be canonical UTC.`);
   }
   return value;

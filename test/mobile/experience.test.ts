@@ -6,8 +6,8 @@ import {
   assertMobileCommandAllowed,
   buildMobilePresentation,
   createMobileOfflineSnapshot,
-  type MobileApprovalChallenge,
   MobileApprovalAuthority,
+  type MobileApprovalChallenge,
   MobileExperienceError,
   type MobileExperienceMetadata,
   type MobilePlatformClass,
@@ -22,11 +22,31 @@ const EXPIRES = "2026-09-06T08:05:00.000Z";
 
 function projection(version = 7): ClientMissionProjection {
   return {
-    budgetLimits: { attempts: 8, costMicros: 5_000, inputTokens: 20_000, outputTokens: 10_000, toolCalls: 40 },
-    budgetUsage: { attempts: 2, costMicros: 800, inputTokens: 2_000, outputTokens: 600, toolCalls: 5 },
+    budgetLimits: {
+      attempts: 8,
+      costMicros: 5_000,
+      inputTokens: 20_000,
+      outputTokens: 10_000,
+      toolCalls: 40,
+    },
+    budgetUsage: {
+      attempts: 2,
+      costMicros: 800,
+      inputTokens: 2_000,
+      outputTokens: 600,
+      toolCalls: 5,
+    },
     checkpointVersion: 6,
     focus: "critical",
-    jobs: { BLOCKED: 0, CANCELLED: 0, CANCELLING: 0, PENDING: 1, RETRY_WAIT: 0, RUNNING: 1, SUCCEEDED: 4 },
+    jobs: {
+      BLOCKED: 0,
+      CANCELLED: 0,
+      CANCELLING: 0,
+      PENDING: 1,
+      RETRY_WAIT: 0,
+      RUNNING: 1,
+      SUCCEEDED: 4,
+    },
     missionId: "mission-1",
     objective: "Operate Odin from mobile",
     resumeState: null,
@@ -100,7 +120,8 @@ test("offline presentation is integrity-bound and strictly read-only", () => {
   assert.equal(view.mode, "OFFLINE_READ_ONLY");
   assert.throws(
     () => assertMobileCommandAllowed(view, "mission.cancel"),
-    (error: unknown) => error instanceof MobileExperienceError && error.code === "OFFLINE_MUTATION_DENIED",
+    (error: unknown) =>
+      error instanceof MobileExperienceError && error.code === "OFFLINE_MUTATION_DENIED",
   );
   assert.throws(
     () => readMobileOfflineSnapshot(metadata(), { ...snapshot, cursor: snapshot.cursor + 1 }),
@@ -154,7 +175,8 @@ test("approval is fresh, exact, one-use, and never becomes command authority its
         sessionId: challenge.sessionId,
         taskId: challenge.taskId,
       }),
-    (error: unknown) => error instanceof MobileExperienceError && error.code === "APPROVAL_REPLAYED",
+    (error: unknown) =>
+      error instanceof MobileExperienceError && error.code === "APPROVAL_REPLAYED",
   );
 });
 
@@ -175,7 +197,8 @@ test("approval denies offline, expired, and cross-mission decisions", () => {
         sessionId: offline.sessionId,
         taskId: offline.taskId,
       }),
-    (error: unknown) => error instanceof MobileExperienceError && error.code === "OFFLINE_MUTATION_DENIED",
+    (error: unknown) =>
+      error instanceof MobileExperienceError && error.code === "OFFLINE_MUTATION_DENIED",
   );
 
   const crossAuthority = new MobileApprovalAuthority();
@@ -237,5 +260,8 @@ test("responsive mobile fixture demonstrates progress, reconnect, and approval w
   assert.match(source, /Reconnect/u);
   assert.match(source, /approval/u);
   assert.match(source, /progress/u);
-  assert.doesNotMatch(source, /localStorage|sessionStorage|document\.cookie|Bearer\s|authorization/iu);
+  assert.doesNotMatch(
+    source,
+    /localStorage|sessionStorage|document\.cookie|Bearer\s|authorization/iu,
+  );
 });

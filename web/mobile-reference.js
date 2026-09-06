@@ -11,7 +11,8 @@ document.querySelector("#reconnect")?.addEventListener("click", () => {
 });
 
 document.querySelector("#approve")?.addEventListener("click", () => {
-  approvalResult.textContent = "Approval intent captured in memory only; a fresh server challenge and command validation are still required.";
+  approvalResult.textContent =
+    "Approval intent captured in memory only; a fresh server challenge and command validation are still required.";
 });
 
 document.querySelector("#deny")?.addEventListener("click", () => {
