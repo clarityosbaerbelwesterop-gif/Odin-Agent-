@@ -21,6 +21,38 @@ export { SandboxBackendRegistry } from "./backend.js";
 export { OutboundNetworkPolicy } from "./network.js";
 export { NodeProcessAdapter, SandboxProcessRunner } from "./process.js";
 export type {
+  ProductionIsolationAttestation,
+  ProductionIsolationClass,
+  ProductionIsolationVerifier,
+  ProductionSandboxAdapter,
+  ProductionSandboxAdapterAllocateRequest,
+  ProductionSandboxAdapterAllocateResult,
+  ProductionSandboxAdapterCleanupRequest,
+  ProductionSandboxAdapterExecuteRequest,
+  ProductionSandboxAdapterExecuteResult,
+  ProductionSandboxAuditAction,
+  ProductionSandboxAuditRecord,
+  ProductionSandboxBackendDescriptor,
+  ProductionSandboxBackendRegistration,
+  ProductionSandboxCleanupReason,
+  ProductionSandboxCleanupRequest,
+  ProductionSandboxExecuteRequest,
+  ProductionSandboxExecutionOutcome,
+  ProductionSandboxOpenRequest,
+  ProductionSandboxPolicy,
+  ProductionSandboxQuota,
+  ProductionSandboxSession,
+  ProductionSandboxUsage,
+  ProductionSecretBroker,
+  ProductionSecretBrokerRequest,
+} from "./production.js";
+export {
+  ProductionSandboxRuntime,
+  productionIsolationAttestationHash,
+  productionSandboxPolicyHash,
+  productionSandboxSessionHash,
+} from "./production.js";
+export type {
   RoutedSandboxAllocationRequest,
   RoutedSandboxSession,
   SandboxRouteChoice,

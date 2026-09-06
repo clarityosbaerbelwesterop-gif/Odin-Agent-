@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Odin Mobile Mission Reference</title>
+    <style>
+      :root { font-family: ui-sans-serif, system-ui, sans-serif; }
+      body { margin: 0; background: Canvas; color: CanvasText; }
+      main { width: min(100% - 2rem, 720px); margin: 0 auto; padding: 1.5rem 0 4rem; display: grid; gap: 1rem; }
+      header, section { border: 1px solid color-mix(in srgb, CanvasText 16%, transparent); border-radius: 18px; padding: 1rem; }
+      header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+      h1, h2, p { margin: 0; }
+      .muted { opacity: 0.68; }
+      .row { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; }
+      .metric { flex: 1 1 8rem; padding: .75rem; border-radius: 14px; background: color-mix(in srgb, CanvasText 6%, transparent); }
+      .progress { height: 10px; border-radius: 999px; background: color-mix(in srgb, CanvasText 10%, transparent); overflow: hidden; }
+      .progress > span { display: block; width: 62%; height: 100%; background: CanvasText; opacity: .75; }
+      button { min-height: 44px; border-radius: 12px; border: 1px solid currentColor; padding: .65rem 1rem; background: transparent; color: inherit; }
+      .approval { border-style: dashed; }
+      @media (max-width: 520px) { header { align-items: flex-start; flex-direction: column; } .row > button { flex: 1 1 100%; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="muted">Odin · responsive reference fixture</p>
+          <h1>Mission progress</h1>
+        </div>
+        <button id="reconnect" type="button">Reconnect</button>
+      </header>
+      <section aria-labelledby="status-title">
+        <div class="row">
+          <div class="metric"><p class="muted">State</p><h2 id="status-title">EXECUTING</h2></div>
+          <div class="metric"><p class="muted">Cursor</p><strong id="cursor">14</strong></div>
+          <div class="metric"><p class="muted">Verification</p><strong>PENDING</strong></div>
+        </div>
+        <div class="progress" role="progressbar" aria-label="Mission progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="62"><span></span></div>
+        <p id="connection" class="muted">Fixture only · canonical mission state stays server-side.</p>
+      </section>
+      <section class="approval" aria-labelledby="approval-title">
+        <p class="muted">Fresh server challenge required</p>
+        <h2 id="approval-title">High-impact approval</h2>
+        <p>Approval is bound to one mission, task, action, version and expiry. This fixture never stores credentials.</p>
+        <div class="row">
+          <button id="deny" type="button">Deny</button>
+          <button id="approve" type="button">Approve after server validation</button>
+        </div>
+        <p id="approval-result" class="muted" aria-live="polite">No decision submitted.</p>
+      </section>
+    </main>
+    <script type="module" src="./mobile-reference.js"></script>
+  </body>
+</html>

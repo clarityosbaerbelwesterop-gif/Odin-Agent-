@@ -1,4 +1,6 @@
 export type SandboxErrorCode =
+  | "ATTESTATION_INVALID"
+  | "AUDIT_INVALID"
   | "BACKEND_INVALID"
   | "BACKEND_NOT_FOUND"
   | "BINDING_NOT_FOUND"
@@ -11,7 +13,10 @@ export type SandboxErrorCode =
   | "NETWORK_DENIED"
   | "PATH_ESCAPE"
   | "PATH_INVALID"
+  | "POLICY_INVALID"
   | "PROCESS_SPAWN_FAILED"
+  | "QUOTA_EXCEEDED"
+  | "SECRET_DENIED"
   | "SESSION_INVALID";
 
 export class SandboxError extends Error {

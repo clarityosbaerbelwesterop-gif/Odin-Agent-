@@ -420,3 +420,13 @@ The binding M23–M25 contract is
 
 M30 targets are acceptance thresholds, not current product facts. Exact metric definitions, sample sizes,
 confidence treatment, and held-out datasets must be fixed before measurement.
+
+## M26–M28 — production-shaped service tranche (repository-local verified, 2026-09-06)
+
+Status: **CONTRACT_VERIFIED**.
+
+- M26 adds strong-isolation production sandbox contracts (`container` / `microvm` / `vm`), attestation, quotas, scoped secret brokering, deterministic cleanup, and secret-safe audit evidence without relabeling `host_process`.
+- M27 adds a provider-neutral authenticated hosted mission service over the existing M8/M9 semantics: exact tenant/project/mission scope, queue/worker leasing, artifacts, reconnect, audit, and backup/restore through injected adapters.
+- M28 adds platform-neutral mobile experience contracts for responsive web, iOS/iPadOS, Android, macOS, and desktop web with durable reconnect, fresh server-bound approvals, notifications as hints only, and strictly read-only offline presentation.
+- Repository verification and package-boundary adversarial tests are green. External real sandbox and hosted-infrastructure proof remain separate gates and are not claimed by this milestone.
+
