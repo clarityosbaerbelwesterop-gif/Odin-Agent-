@@ -204,7 +204,8 @@ test("domain mix and profile budget envelope fail closed before benchmark evalua
     }),
   });
   assert.throws(
-    () => createBenchmarkV2Suite({ cases: bounded, profile, suiteVersion: "benchmark-v2-suite-v1" }),
+    () =>
+      createBenchmarkV2Suite({ cases: bounded, profile, suiteVersion: "benchmark-v2-suite-v1" }),
     /output budget exceeds/u,
   );
 });

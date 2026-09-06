@@ -1,3 +1,13 @@
+export type {
+  BenchmarkV2Case,
+  BenchmarkV2CaseInput,
+  BenchmarkV2Domain,
+  BenchmarkV2DomainSummary,
+  BenchmarkV2ModelFacingCase,
+  BenchmarkV2Report,
+  BenchmarkV2Suite,
+  BenchmarkV2SuiteInput,
+} from "./benchmark-v2.js";
 export {
   BENCHMARK_V2_BLUEPRINT_VERSION,
   BENCHMARK_V2_DOMAIN_COUNTS,
@@ -8,16 +18,6 @@ export {
   evaluateBenchmarkV2,
   frontierTaskClassForBenchmarkV2Domain,
   modelFacingBenchmarkV2Case,
-} from "./benchmark-v2.js";
-export type {
-  BenchmarkV2Case,
-  BenchmarkV2CaseInput,
-  BenchmarkV2Domain,
-  BenchmarkV2DomainSummary,
-  BenchmarkV2ModelFacingCase,
-  BenchmarkV2Report,
-  BenchmarkV2Suite,
-  BenchmarkV2SuiteInput,
 } from "./benchmark-v2.js";
 export type {
   FrontierEvaluationProfile,

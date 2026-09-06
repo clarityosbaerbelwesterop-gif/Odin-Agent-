@@ -4,15 +4,12 @@ import {
   type FrontierEvaluationProfile,
   validateFrontierEvaluationProfile,
 } from "./profile.js";
-import {
-  evaluateFrontierSuite,
-  modelFacingFrontierCase,
-} from "./suite.js";
+import { evaluateFrontierSuite, modelFacingFrontierCase } from "./suite.js";
 import type {
   FrontierArmResult,
   FrontierCase,
-  FrontierEvidenceStatus,
   FrontierEvaluationReport,
+  FrontierEvidenceStatus,
   FrontierModelFacingCase,
   FrontierTaskClass,
 } from "./types.js";
@@ -42,27 +39,29 @@ export const BENCHMARK_V2_DOMAINS = Object.freeze<readonly BenchmarkV2Domain[]>(
   "long_mission",
 ]);
 
-export const BENCHMARK_V2_DOMAIN_COUNTS: Readonly<Record<BenchmarkV2Domain, number>> = Object.freeze({
-  coding: 25,
-  long_context: 5,
-  long_mission: 5,
-  math: 20,
-  reasoning: 20,
-  recovery: 5,
-  research: 10,
-  tool_use: 10,
-});
+export const BENCHMARK_V2_DOMAIN_COUNTS: Readonly<Record<BenchmarkV2Domain, number>> =
+  Object.freeze({
+    coding: 25,
+    long_context: 5,
+    long_mission: 5,
+    math: 20,
+    reasoning: 20,
+    recovery: 5,
+    research: 10,
+    tool_use: 10,
+  });
 
-const FRONTIER_CLASS_BY_DOMAIN: Readonly<Record<BenchmarkV2Domain, FrontierTaskClass>> = Object.freeze({
-  coding: "coding",
-  long_context: "reasoning",
-  long_mission: "long_mission",
-  math: "reasoning",
-  reasoning: "reasoning",
-  recovery: "recovery",
-  research: "tool_use",
-  tool_use: "tool_use",
-});
+const FRONTIER_CLASS_BY_DOMAIN: Readonly<Record<BenchmarkV2Domain, FrontierTaskClass>> =
+  Object.freeze({
+    coding: "coding",
+    long_context: "reasoning",
+    long_mission: "long_mission",
+    math: "reasoning",
+    reasoning: "reasoning",
+    recovery: "recovery",
+    research: "tool_use",
+    tool_use: "tool_use",
+  });
 
 export interface BenchmarkV2CaseInput {
   readonly domain: BenchmarkV2Domain;
@@ -117,7 +116,9 @@ export class BenchmarkV2Error extends Error {
   }
 }
 
-export function frontierTaskClassForBenchmarkV2Domain(domain: BenchmarkV2Domain): FrontierTaskClass {
+export function frontierTaskClassForBenchmarkV2Domain(
+  domain: BenchmarkV2Domain,
+): FrontierTaskClass {
   assertDomain(domain);
   return FRONTIER_CLASS_BY_DOMAIN[domain];
 }
@@ -186,7 +187,9 @@ export function createBenchmarkV2Suite(value: BenchmarkV2SuiteInput): BenchmarkV
 
   for (const domain of BENCHMARK_V2_DOMAINS) {
     if (counts[domain] !== BENCHMARK_V2_DOMAIN_COUNTS[domain]) {
-      throw new BenchmarkV2Error("Benchmark v2 domain mix does not match the locked 100-case blueprint.");
+      throw new BenchmarkV2Error(
+        "Benchmark v2 domain mix does not match the locked 100-case blueprint.",
+      );
     }
   }
 
@@ -274,10 +277,7 @@ export function evaluateBenchmarkV2(input: {
 function summarizeDomain(
   domain: BenchmarkV2Domain,
   cases: readonly BenchmarkV2Case[],
-  resultsByCase: ReadonlyMap<
-    string,
-    Partial<Record<"model_alone" | "odin", FrontierArmResult>>
-  >,
+  resultsByCase: ReadonlyMap<string, Partial<Record<"model_alone" | "odin", FrontierArmResult>>>,
 ): BenchmarkV2DomainSummary {
   let completePairs = 0;
   let incompletePairs = 0;
@@ -295,7 +295,12 @@ function summarizeDomain(
     ) {
       infrastructurePairs += 1;
     }
-    if (baseline === undefined || odin === undefined || !isMeasurable(baseline) || !isMeasurable(odin)) {
+    if (
+      baseline === undefined ||
+      odin === undefined ||
+      !isMeasurable(baseline) ||
+      !isMeasurable(odin)
+    ) {
       incompletePairs += 1;
       continue;
     }
