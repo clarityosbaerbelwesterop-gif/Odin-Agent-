@@ -338,3 +338,15 @@ public traffic is authorized by the current M23–M25 delivery.
 Do not open a public issue containing an exploitable vulnerability, credential, or private user data.
 Use the repository owner's private security reporting channel when enabled; otherwise contact the owner
 privately with the smallest safe reproduction.
+
+## M26–M28 repository-local security checkpoint (2026-09-06)
+
+The M26–M28 package is **CONTRACT_VERIFIED** under the existing fail-closed authority model:
+
+- strong sandbox isolation cannot be satisfied by `host_process`; exact isolation attestation and policy/session hashes are required; quotas, cleanup, workspace/network scope, and secret brokering are runtime-owned;
+- hosted requests are bound to exact session/tenant/project/mission scope, artifacts and backups are hash/scope checked, queue settlement is generation-fenced, reconnect gaps require resync, and audit events retain hashes rather than bearer tokens or secret values;
+- mobile/device metadata is never authentication authority; offline state is integrity-bound read-only presentation; offline commands/approvals cannot replay into authority; approval challenges are exact, expiring, one-use, and still require fresh server command validation; notification opens prove no mission state;
+- adversarial package tests statically forbid M28 imports of tool/sandbox/provider authority, direct M27 vendor/process/network coupling, M26 host-process isolation relabeling, and persistent credential/canonical-state storage in the mobile fixture.
+
+This checkpoint does **not** claim live container/microVM/VM isolation, a production database/queue/auth/realtime deployment, public-service availability, or a shipped App Store/Play Store binary. Those remain separately authorized external proof/release gates.
+

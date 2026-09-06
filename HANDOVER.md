@@ -160,3 +160,19 @@ approval-gated.
 5. Write the binding M26–M28 contract before implementation, then execute M26, M27, and M28
    sequentially with focused tests, full `npm run verify`, adversarial review, governance sync, and
    exact-head CI.
+
+## M26–M28 handover checkpoint — 2026-09-06
+
+PR #34 (`agent/m26-m28-production-sandbox-hosted-mobile`) now contains the completed repository-local M26–M28 package. M26 production sandbox, M27 hosted mission backend, and M28 mobile experience contracts are implemented and verified without weakening M3/M5/M8/M9/M12 authority boundaries.
+
+Verified evidence before governance synchronization:
+
+- M26 verification/build: run `34019649259`;
+- M27 verification/build: run `34019950376`;
+- M28 verification/build: run `34020075420`, including 451/451 passing tests and aggregate 90.02% line / 76.97% branch / 95.86% function coverage;
+- package-wide authority-boundary CI: run `34020225192` passed.
+
+The source package includes `src/sandbox/production.ts`, `src/hosted/service.ts`, `src/mobile/experience.ts`, their adversarial tests, and a responsive mobile reference fixture. No paid resource, public traffic, production migration, new external credential, live container/microVM/VM execution, or hosted database/queue/auth/realtime proof was used. M26/M27 external proof gates therefore remain open; do not relabel this checkpoint as a production deployment.
+
+Merge gate: after this governance synchronization, require one normal exact-head PR CI success before merging PR #34.
+

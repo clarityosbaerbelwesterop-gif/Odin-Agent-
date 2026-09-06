@@ -291,3 +291,15 @@ M26–M28 must extend existing boundaries rather than replace them:
 
 No paid resource, deployment, live sandbox/database/cloud service, production migration, billing change,
 or public traffic is authorized by the current M23–M25 package. Those proofs remain separately gated.
+
+## M26–M28 verified service boundaries (2026-09-06)
+
+The production-shaped tranche extends existing authorities instead of creating parallel control planes:
+
+- `src/sandbox/production.ts` is the M26 strong-isolation contract. Production isolation is limited to `container`, `microvm`, and `vm`; runtime attestation, exact policy/session binding, quotas, workspace/network restrictions, scoped secret resolution, cleanup fencing, and bounded audit evidence are mandatory. Adapters cannot turn host-process execution into production isolation.
+- `src/hosted/service.ts` is the M27 provider-neutral hosted service kernel. Authentication, artifact, realtime, queue, backup, and audit systems are injected. M8 lease/generation/fencing semantics and M9 state/command contracts remain canonical; hosted infrastructure does not mint a second mission state machine.
+- `src/mobile/experience.ts` is the M28 presentation/experience layer. It consumes M9 projections, does not import tool/sandbox/provider authority, treats cached state as read-only, and requires exact fresh server challenges plus fresh server command validation for high-impact approvals. Canonical long-running compute remains server-side.
+- `web/mobile-reference.*` is a responsive reference fixture only. It stores neither credentials nor canonical mission state and is not evidence of a shipped native application.
+
+These repository contracts are verified independently of vendor deployment. Real container/VM and hosted-service evidence remain external release gates.
+

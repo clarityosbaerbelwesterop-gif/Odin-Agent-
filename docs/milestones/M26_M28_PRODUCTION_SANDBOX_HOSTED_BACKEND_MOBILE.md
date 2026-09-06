@@ -1,7 +1,7 @@
 # M26–M28 — Production sandbox, hosted mission backend, and mobile experience
 
-Status: **IN_PROGRESS**. This is the binding contract for one pull request containing exactly three
-sequential milestones. Checked items require repository evidence; architecture names never imply live
+Status: **CONTRACT_VERIFIED**. Repository-local M26, M27, and M28 requirements are verified; the
+explicit M26/M27 external infrastructure proof gates remain open and are not production claims. Checked items require repository evidence; architecture names never imply live
 infrastructure proof.
 
 ## Package objective
@@ -41,22 +41,22 @@ exact scope, resource ceilings, secret policy, cleanup, and audit evidence.
 
 ### Required repository-local implementation
 
-- [ ] Define strong isolation classes (`container`, `microvm`, `vm`) separately from the existing
+- [x] Define strong isolation classes (`container`, `microvm`, `vm`) separately from the existing
   `host_process` / generic provider-managed M12 labels.
-- [ ] Require an integrity-bound runtime attestation for the exact sandbox backend policy version and
+- [x] Require an integrity-bound runtime attestation for the exact sandbox backend policy version and
   isolation class before a backend is considered production-eligible.
-- [ ] Bind session identity to mission/task/backend/policy/isolation and reject stale/tampered/foreign
+- [x] Bind session identity to mission/task/backend/policy/isolation and reject stale/tampered/foreign
   session or attestation replay.
-- [ ] Define runtime-owned CPU, memory, process, wall-time, output, filesystem-write, and network-request
+- [x] Define runtime-owned CPU, memory, process, wall-time, output, filesystem-write, and network-request
   quotas with bounded validation.
-- [ ] Bind filesystem scope to explicit workspace roots and network scope to M12-approved destinations;
+- [x] Bind filesystem scope to explicit workspace roots and network scope to M12-approved destinations;
   sandbox adapters cannot widen either scope.
-- [ ] Add an opaque secret broker contract: model/client payloads expose references only, broker release is
+- [x] Add an opaque secret broker contract: model/client payloads expose references only, broker release is
   task/session scoped and expiring, and audit evidence never persists secret values.
-- [ ] Require deterministic cleanup for every production session; cancellation/timeout/failure must enter
+- [x] Require deterministic cleanup for every production session; cancellation/timeout/failure must enter
   cleanup and released sessions cannot be reused.
-- [ ] Emit bounded secret-safe audit records for allocate/execute/cleanup decisions and resource usage.
-- [ ] Add adversarial tests for policy downgrade, isolation relabeling, quota bypass, stale session,
+- [x] Emit bounded secret-safe audit records for allocate/execute/cleanup decisions and resource usage.
+- [x] Add adversarial tests for policy downgrade, isolation relabeling, quota bypass, stale session,
   secret-reference confusion, cleanup replay/conflict, and audit secret leakage.
 
 ### External proof gate
@@ -74,23 +74,23 @@ persistence/queue/auth/realtime providers replaceable.
 
 ### Required repository-local implementation
 
-- [ ] Define strict hosted identity/session/tenant/project/mission scope contracts and an injected
+- [x] Define strict hosted identity/session/tenant/project/mission scope contracts and an injected
   authentication resolver; missing/expired/foreign sessions fail closed.
-- [ ] Define injected durable mission, queue/worker, artifact, audit, realtime, and backup adapters rather
+- [x] Define injected durable mission, queue/worker, artifact, audit, realtime, and backup adapters rather
   than hard-coding a cloud vendor.
-- [ ] Reuse M8 mission/job semantics for versions, idempotency, attempts, lease generations, fencing,
+- [x] Reuse M8 mission/job semantics for versions, idempotency, attempts, lease generations, fencing,
   cancellation, and lifecycle cursors instead of creating parallel semantics.
-- [ ] Add tenant-scoped artifact metadata with hash/size/content-type bounds and deny cross-tenant/
+- [x] Add tenant-scoped artifact metadata with hash/size/content-type bounds and deny cross-tenant/
   cross-mission lookup.
-- [ ] Add authenticated bootstrap/reconnect over canonical mission projection + lifecycle cursor with
+- [x] Add authenticated bootstrap/reconnect over canonical mission projection + lifecycle cursor with
   bounded pages and resync on continuity failure.
-- [ ] Add hosted command handling that preserves M9 expected-version/capability/idempotency rules.
-- [ ] Add secret-safe append-only hosted audit events for auth, reads, commands, queue claims,
+- [x] Add hosted command handling that preserves M9 expected-version/capability/idempotency rules.
+- [x] Add secret-safe append-only hosted audit events for auth, reads, commands, queue claims,
   artifact access, backup, recovery, and denials.
-- [ ] Add deterministic backup/recovery evidence bound to exact tenant/mission state identity.
-- [ ] Add injected failure scenarios for database unavailable, queue lease expiry, worker crash,
+- [x] Add deterministic backup/recovery evidence bound to exact tenant/mission state identity.
+- [x] Add injected failure scenarios for database unavailable, queue lease expiry, worker crash,
   artifact unavailable/corrupt, realtime disconnect, stale command, and backup/restore mismatch.
-- [ ] Prove repository-local adapters recover or fail closed without inventing successful public-service
+- [x] Prove repository-local adapters recover or fail closed without inventing successful public-service
   availability.
 
 ### External proof gate
@@ -105,21 +105,21 @@ Repository-local completion may be **CONTRACT_VERIFIED** while this external gat
 Goal: make Odin operable from phones/tablets/native shells without moving canonical long-running work or
 security authority onto devices.
 
-- [ ] Define supported platform classes for responsive web, iOS, iPadOS, Android, macOS, and desktop web.
-- [ ] Define bounded device/session experience metadata without device identifiers becoming auth
+- [x] Define supported platform classes for responsive web, iOS, iPadOS, Android, macOS, and desktop web.
+- [x] Define bounded device/session experience metadata without device identifiers becoming auth
   authority.
-- [ ] Define mission progress, task, budget, verification, worker/activity, and reconnect presentation
+- [x] Define mission progress, task, budget, verification, worker/activity, and reconnect presentation
   contracts using M9 bounded projections only.
-- [ ] Define approval cards for high-impact actions that require a fresh server-issued approval challenge,
+- [x] Define approval cards for high-impact actions that require a fresh server-issued approval challenge,
   exact mission/task/action/version binding, expiry, and explicit user decision.
-- [ ] Define suspension/background behavior: long-running compute stays server-side; client resume begins
+- [x] Define suspension/background behavior: long-running compute stays server-side; client resume begins
   from a durable cursor or full bootstrap.
-- [ ] Define offline behavior as read-only bounded cached presentation; no offline command or approval may
+- [x] Define offline behavior as read-only bounded cached presentation; no offline command or approval may
   later replay as authorized without fresh server validation.
-- [ ] Define notification hints as non-authoritative metadata; a push/open event never proves mission state.
-- [ ] Add deterministic tests across all platform classes for reconnect gaps, stale cached state, expired
+- [x] Define notification hints as non-authoritative metadata; a push/open event never proves mission state.
+- [x] Add deterministic tests across all platform classes for reconnect gaps, stale cached state, expired
   approvals, cross-mission confusion, suspension/resume, and offline mutation denial.
-- [ ] Provide/update a responsive web reference fixture that demonstrates mission progress, reconnect,
+- [x] Provide/update a responsive web reference fixture that demonstrates mission progress, reconnect,
   and approval UX without storing credentials or canonical state in browser persistence.
 
 M28 does not require shipping App Store/Play Store/native binaries in this package. Native shells must
@@ -138,6 +138,15 @@ For each milestone:
 After M28: perform package-wide adversarial review, synchronize `ROADMAP.md`, `HANDOVER.md`,
 `ARCHITECTURE.md`, and `SECURITY.md`, obtain one final normal exact-head CI, and leave merge separately
 approval-gated.
+
+## Verified repository evidence — 2026-09-06
+
+- M26 repair/verification run `34019649259`: repository formatting, full `npm run verify`, and `npm run build` passed.
+- M27 hosted-backend verification run `34019950376`: full repository verification and build passed after strict typing/quality repair.
+- M28 package run `34020075420`: **451/451 tests**, Biome, strict TypeScript, credential-free Kimi dry smoke, and build passed; aggregate coverage was **90.02% lines / 76.97% branches / 95.86% functions**.
+- Package authority-boundary CI run `34020225192` passed after adding static adversarial guards for M26 isolation relabeling, M27 vendor neutrality, M28 authority separation, and browser credential/state persistence.
+- No live provider request, paid resource, production migration, public traffic, new external credential use, real container/microVM/VM proof, or hosted database/queue/auth/realtime proof was introduced by this package.
+- Therefore M26–M28 are repository-local **CONTRACT_VERIFIED** only. The two explicit external M26/M27 proof checkboxes above remain intentionally unchecked.
 
 ## Explicit non-goals
 
