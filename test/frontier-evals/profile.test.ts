@@ -92,9 +92,14 @@ test("benchmark budgets cannot exceed exact profile output or context limits", (
   assert.doesNotThrow(() => assertFrontierBudgetFitsProfile(profile, valid));
 
   const tooMuchOutput = createFrontierBudgetProfile({
-    ...valid,
     id: "too-much-output",
+    maxInputTokens: 20_000,
+    maxLatencyMs: 240_000,
+    maxModelCalls: 4,
     maxOutputTokens: 70_000,
+    maxRecoveries: 1,
+    maxRepairs: 2,
+    maxToolCalls: 20,
   });
   assert.throws(
     () => assertFrontierBudgetFitsProfile(profile, tooMuchOutput),
