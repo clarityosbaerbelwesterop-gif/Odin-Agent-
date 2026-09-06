@@ -1,0 +1,54 @@
+name: M27 hosted backend repair
+
+on:
+  push:
+    branches:
+      - agent/m26-m28-production-sandbox-hosted-mobile
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m26-m28-production-sandbox-hosted-mobile
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Remove lint-hostile control-character regex
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('src/hosted/service.ts')
+          text = path.read_text()
+          old = ' || /[\\u0000-\\u001f\\u007f]/u.test(value)'
+          if old not in text:
+              raise SystemExit('control-character regex anchor not found')
+          text = text.replace(old, ' || hasControlCharacter(value)', 1)
+          anchor = '''function canonicalTimestamp(value: string, label: string): string {'''
+          helper = '''function hasControlCharacter(value: string): boolean {\n  for (const character of value) {\n    const code = character.charCodeAt(0);\n    if (code <= 31 || code == 127) return true;\n  }\n  return false;\n}\n\n'''
+          if anchor not in text:
+              raise SystemExit('timestamp anchor not found')
+          text = text.replace(anchor, helper + anchor, 1)
+          path.write_text(text)
+          PY
+      - name: Apply repository formatter and safe fixes
+        run: npx biome check --write src/hosted/service.ts test/hosted/service.test.ts
+      - name: Verify repository
+        run: npm run verify
+      - name: Build repository
+        run: npm run build
+      - name: Commit verified M27 repair
+        run: |
+          rm .github/workflows/m27-repair.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/hosted/service.ts test/hosted/service.test.ts .github/workflows/m27-repair.yml
+          git commit -m "fix(m27): verify hosted mission backend" || exit 0
+          git push origin HEAD:agent/m26-m28-production-sandbox-hosted-mobile
