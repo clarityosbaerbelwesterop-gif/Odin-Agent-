@@ -21,22 +21,49 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Remove lint-hostile control-character regex
+      - name: Repair hosted backend quality and strict test typing
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          path = Path('src/hosted/service.ts')
-          text = path.read_text()
+
+          service = Path('src/hosted/service.ts')
+          text = service.read_text()
           old = ' || /[\\u0000-\\u001f\\u007f]/u.test(value)'
           if old not in text:
               raise SystemExit('control-character regex anchor not found')
           text = text.replace(old, ' || hasControlCharacter(value)', 1)
-          anchor = '''function canonicalTimestamp(value: string, label: string): string {'''
-          helper = '''function hasControlCharacter(value: string): boolean {\n  for (const character of value) {\n    const code = character.charCodeAt(0);\n    if (code <= 31 || code == 127) return true;\n  }\n  return false;\n}\n\n'''
+          anchor = 'function canonicalTimestamp(value: string, label: string): string {'
+          helper = '''function hasControlCharacter(value: string): boolean {\n  for (const character of value) {\n    const code = character.charCodeAt(0);\n    if (code <= 31 || code === 127) return true;\n  }\n  return false;\n}\n\n'''
           if anchor not in text:
               raise SystemExit('timestamp anchor not found')
           text = text.replace(anchor, helper + anchor, 1)
-          path.write_text(text)
+          service.write_text(text)
+
+          tests = Path('test/hosted/service.test.ts')
+          text = tests.read_text()
+          replacements = [
+              (
+                  '  value.dependencies.authentication = { resolve: async () => identity({ missionScopes: [{ missionId: "mission-2", projectId: "project-1" }] }) };\n  const service = new HostedMissionBackend(value.dependencies);',
+                  '  const service = new HostedMissionBackend({\n    ...value.dependencies,\n    authentication: {\n      resolve: async () =>\n        identity({ missionScopes: [{ missionId: "mission-2", projectId: "project-1" }] }),\n    },\n  });',
+              ),
+              (
+                  '  value.dependencies.realtime = { continuity: async () => ({ observedCursor: 4, status: "RESYNC_REQUIRED" }) };\n  const service = new HostedMissionBackend(value.dependencies);',
+                  '  const service = new HostedMissionBackend({\n    ...value.dependencies,\n    realtime: {\n      continuity: async () => ({ observedCursor: 4, status: "RESYNC_REQUIRED" }),\n    },\n  });',
+              ),
+              (
+                  '  value.dependencies.artifacts = { metadata: async () => ({ ...value.artifact, tenantId: "tenant-2" }) };\n  const service = new HostedMissionBackend(value.dependencies);',
+                  '  const service = new HostedMissionBackend({\n    ...value.dependencies,\n    artifacts: { metadata: async () => ({ ...value.artifact, tenantId: "tenant-2" }) },\n  });',
+              ),
+              (
+                  '  value.dependencies.artifacts = { metadata: async () => { throw new Error("database unavailable"); } };\n  const service = new HostedMissionBackend(value.dependencies);',
+                  '  const service = new HostedMissionBackend({\n    ...value.dependencies,\n    artifacts: {\n      metadata: async () => {\n        throw new Error("database unavailable");\n      },\n    },\n  });',
+              ),
+          ]
+          for old_value, new_value in replacements:
+              if old_value not in text:
+                  raise SystemExit(f'test replacement anchor missing: {old_value[:48]}')
+              text = text.replace(old_value, new_value, 1)
+          tests.write_text(text)
           PY
       - name: Apply repository formatter and safe fixes
         run: npx biome check --write src/hosted/service.ts test/hosted/service.test.ts
@@ -50,5 +77,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/hosted/service.ts test/hosted/service.test.ts .github/workflows/m27-repair.yml
-          git commit -m "fix(m27): verify hosted mission backend" || exit 0
+          git commit -m "fix(m27): verify hosted mission backend"
           git push origin HEAD:agent/m26-m28-production-sandbox-hosted-mobile
