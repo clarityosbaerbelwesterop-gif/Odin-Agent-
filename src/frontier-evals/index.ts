@@ -1,3 +1,9 @@
+export type {
+  FrontierEvaluationProfile,
+  FrontierEvaluationProfileInput,
+  FrontierProfileProvenance,
+  FrontierProfileProvenanceKind,
+} from "./profile.js";
 export {
   assertFrontierBudgetFitsProfile,
   createFrontierEvaluationProfile,
@@ -11,9 +17,3 @@ export {
   modelFacingFrontierCase,
 } from "./suite.js";
 export * from "./types.js";
-export type {
-  FrontierEvaluationProfile,
-  FrontierEvaluationProfileInput,
-  FrontierProfileProvenance,
-  FrontierProfileProvenanceKind,
-} from "./profile.js";

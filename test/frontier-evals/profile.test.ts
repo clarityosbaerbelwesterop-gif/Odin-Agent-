@@ -98,25 +98,26 @@ test("benchmark budgets cannot exceed exact profile output or context limits", (
     contextWindowTokens: 25_000,
     maxOutputTokens: 10_000,
   });
-  assert.throws(
-    () => assertFrontierBudgetFitsProfile(smallContext, valid),
-    /context window/u,
-  );
+  assert.throws(() => assertFrontierBudgetFitsProfile(smallContext, valid), /context window/u);
 });
 
 test("tampered profile hashes, duplicate efforts, and malformed provenance are rejected", () => {
   const profile = kimiProfile();
   assert.throws(
-    () => assertFrontierBudgetFitsProfile({ ...profile, profileHash: sha("tampered") }, createFrontierBudgetProfile({
-      id: "tiny",
-      maxInputTokens: 100,
-      maxLatencyMs: 1_000,
-      maxModelCalls: 1,
-      maxOutputTokens: 100,
-      maxRecoveries: 0,
-      maxRepairs: 0,
-      maxToolCalls: 0,
-    })),
+    () =>
+      assertFrontierBudgetFitsProfile(
+        { ...profile, profileHash: sha("tampered") },
+        createFrontierBudgetProfile({
+          id: "tiny",
+          maxInputTokens: 100,
+          maxLatencyMs: 1_000,
+          maxModelCalls: 1,
+          maxOutputTokens: 100,
+          maxRecoveries: 0,
+          maxRepairs: 0,
+          maxToolCalls: 0,
+        }),
+      ),
     FrontierProfileError,
   );
   assert.throws(() => kimiProfile(["high", "high"]), /duplicates/u);

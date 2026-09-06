@@ -113,7 +113,9 @@ export function assertFrontierBudgetFitsProfile(
     throw new FrontierProfileError("Benchmark output budget exceeds the evaluation profile limit.");
   }
   if (budget.maxInputTokens + budget.maxOutputTokens > normalized.contextWindowTokens) {
-    throw new FrontierProfileError("Benchmark token budget exceeds the evaluation profile context window.");
+    throw new FrontierProfileError(
+      "Benchmark token budget exceeds the evaluation profile context window.",
+    );
   }
 }
 
@@ -140,7 +142,11 @@ function normalizeProvenance(value: FrontierProfileProvenance): FrontierProfileP
   if (!Number.isFinite(parsed)) {
     throw new FrontierProfileError("Profile provenance time is invalid.");
   }
-  if (typeof value.reference !== "string" || value.reference.length < 1 || value.reference.length > 512) {
+  if (
+    typeof value.reference !== "string" ||
+    value.reference.length < 1 ||
+    value.reference.length > 512
+  ) {
     throw new FrontierProfileError("Profile provenance reference is invalid.");
   }
   if (!SHA256.test(value.evidenceHash)) {
