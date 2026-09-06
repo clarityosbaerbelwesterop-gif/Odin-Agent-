@@ -6,14 +6,15 @@ import {
   createFrontierBudgetProfile,
   createFrontierEvaluationProfile,
   FrontierProfileError,
+  validateFrontierEvaluationProfile,
 } from "../../src/frontier-evals/index.js";
 
 function sha(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function kimiProfile(reasoningEfforts: readonly string[] = ["low", "high", "max"]) {
-  return createFrontierEvaluationProfile({
+function kimiProfileInput(reasoningEfforts: readonly string[] = ["low", "high", "max"]) {
+  return {
     contextWindowTokens: 1_048_576,
     imageInput: true,
     maxOutputTokens: 65_536,
@@ -22,7 +23,7 @@ function kimiProfile(reasoningEfforts: readonly string[] = ["low", "high", "max"
     provider: "nvidia",
     provenance: {
       evidenceHash: sha("nvidia-kimi-k3-provider-capability-profile"),
-      kind: "provider",
+      kind: "provider" as const,
       observedAt: "2026-09-04T00:00:00.000Z",
       reference: "https://docs.api.nvidia.com/nim/reference/moonshotai-kimi-k3-infer",
     },
@@ -33,7 +34,11 @@ function kimiProfile(reasoningEfforts: readonly string[] = ["low", "high", "max"
     structuredOutput: true,
     textInput: true,
     toolUse: true,
-  });
+  };
+}
+
+function kimiProfile(reasoningEfforts: readonly string[] = ["low", "high", "max"]) {
+  return createFrontierEvaluationProfile(kimiProfileInput(reasoningEfforts));
 }
 
 test("evaluation profile binds Kimi capability envelope without model-name inference", () => {
@@ -43,25 +48,28 @@ test("evaluation profile binds Kimi capability envelope without model-name infer
   assert.equal(profile.reasoningEffort, "max");
   assert.deepEqual(profile.reasoningEfforts, ["high", "low", "max"]);
   assert.match(profile.profileHash, /^[a-f0-9]{64}$/u);
+  assert.deepEqual(validateFrontierEvaluationProfile(profile), profile);
 
   const reordered = kimiProfile(["max", "low", "high"]);
   assert.equal(reordered.profileHash, profile.profileHash);
 
-  const arbitraryName = createFrontierEvaluationProfile({ ...profile, model: "model-fixture" });
+  const arbitraryName = createFrontierEvaluationProfile({
+    ...kimiProfileInput(),
+    model: "model-fixture",
+  });
   assert.equal(arbitraryName.contextWindowTokens, profile.contextWindowTokens);
   assert.notEqual(arbitraryName.profileHash, profile.profileHash);
 });
 
 test("unsupported reasoning effort and contradictory structured-output declarations fail closed", () => {
-  const profile = kimiProfile();
   assert.throws(
-    () => createFrontierEvaluationProfile({ ...profile, reasoningEffort: "ultra" }),
+    () => createFrontierEvaluationProfile({ ...kimiProfileInput(), reasoningEffort: "ultra" }),
     /reasoning effort is not supported/u,
   );
   assert.throws(
     () =>
       createFrontierEvaluationProfile({
-        ...profile,
+        ...kimiProfileInput(),
         strictStructuredOutput: true,
         structuredOutput: false,
       }),
@@ -94,7 +102,7 @@ test("benchmark budgets cannot exceed exact profile output or context limits", (
   );
 
   const smallContext = createFrontierEvaluationProfile({
-    ...profile,
+    ...kimiProfileInput(),
     contextWindowTokens: 25_000,
     maxOutputTokens: 10_000,
   });
@@ -118,15 +126,19 @@ test("tampered profile hashes, duplicate efforts, and malformed provenance are r
           maxToolCalls: 0,
         }),
       ),
-    FrontierProfileError,
+    /hash does not match/u,
   );
   assert.throws(() => kimiProfile(["high", "high"]), /duplicates/u);
   assert.throws(
     () =>
       createFrontierEvaluationProfile({
-        ...profile,
-        provenance: { ...profile.provenance, evidenceHash: "not-a-hash" },
+        ...kimiProfileInput(),
+        provenance: { ...kimiProfileInput().provenance, evidenceHash: "not-a-hash" },
       }),
     /evidence hash/u,
+  );
+  assert.throws(
+    () => validateFrontierEvaluationProfile({ ...profile, profileHash: "not-a-hash" }),
+    FrontierProfileError,
   );
 });
