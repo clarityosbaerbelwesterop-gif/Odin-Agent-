@@ -300,7 +300,10 @@ export class HostedMissionBackend {
       response.missionId !== context.missionId ||
       response.projection.missionId !== context.missionId
     ) {
-      throw new HostedServiceError("SCOPE_DENIED", "Hosted command response crossed mission scope.");
+      throw new HostedServiceError(
+        "SCOPE_DENIED",
+        "Hosted command response crossed mission scope.",
+      );
     }
     await this.#auditEvent(
       "mission.command",
@@ -329,7 +332,10 @@ export class HostedMissionBackend {
         "artifact_unavailable",
         artifactId,
       );
-      throw new HostedServiceError("SCOPE_DENIED", "Artifact is unavailable in the requested scope.");
+      throw new HostedServiceError(
+        "SCOPE_DENIED",
+        "Artifact is unavailable in the requested scope.",
+      );
     }
     const normalized = normalizeArtifact(metadata);
     if (
@@ -346,7 +352,10 @@ export class HostedMissionBackend {
         "artifact_scope_mismatch",
         artifactId,
       );
-      throw new HostedServiceError("SCOPE_DENIED", "Artifact is unavailable in the requested scope.");
+      throw new HostedServiceError(
+        "SCOPE_DENIED",
+        "Artifact is unavailable in the requested scope.",
+      );
     }
     await this.#auditEvent(
       "artifact.read",
@@ -620,12 +629,21 @@ export class HostedMissionBackend {
       tenantId: scope.tenantId,
     };
     await this.#audit.append(
-      auditRecord(action, context, sha256(scope.workerId), outcome, reasonCode, `${lease.jobId}:${detail}`),
+      auditRecord(
+        action,
+        context,
+        sha256(scope.workerId),
+        outcome,
+        reasonCode,
+        `${lease.jobId}:${detail}`,
+      ),
     );
   }
 }
 
-export function hostedBackupHash(snapshot: Omit<HostedBackupSnapshot, "backupHash"> | HostedBackupSnapshot): string {
+export function hostedBackupHash(
+  snapshot: Omit<HostedBackupSnapshot, "backupHash"> | HostedBackupSnapshot,
+): string {
   return sha256(
     canonicalPairs({
       backupId: snapshot.backupId,
@@ -647,7 +665,11 @@ function backupScope(context: HostedRequestContext): HostedBackupScope {
 }
 
 function normalizeContext(input: HostedRequestContext): HostedRequestContext {
-  if (typeof input.bearerToken !== "string" || input.bearerToken.length < 1 || input.bearerToken.length > MAX_TOKEN_LENGTH) {
+  if (
+    typeof input.bearerToken !== "string" ||
+    input.bearerToken.length < 1 ||
+    input.bearerToken.length > MAX_TOKEN_LENGTH
+  ) {
     throw new HostedServiceError("AUTH_DENIED", "Hosted bearer token is missing or malformed.");
   }
   return Object.freeze({
@@ -673,7 +695,11 @@ function normalizeIdentity(input: HostedIdentity): HostedIdentity {
   const seen = new Set<string>();
   for (const scope of missionScopes) {
     const key = `${scope.projectId}\u0000${scope.missionId}`;
-    if (seen.has(key)) throw new HostedServiceError("MALFORMED", "Hosted identity contains duplicate mission scope.");
+    if (seen.has(key))
+      throw new HostedServiceError(
+        "MALFORMED",
+        "Hosted identity contains duplicate mission scope.",
+      );
     seen.add(key);
   }
   return Object.freeze({
@@ -688,9 +714,16 @@ function normalizeIdentity(input: HostedIdentity): HostedIdentity {
 function normalizeArtifact(input: HostedArtifactMetadata): HostedArtifactMetadata {
   const contentType = boundedString(input.contentType, "contentType", MAX_CONTENT_TYPE);
   if (containsObviousSecret(contentType)) {
-    throw new HostedServiceError("ARTIFACT_INVALID", "Artifact content type contains forbidden material.");
+    throw new HostedServiceError(
+      "ARTIFACT_INVALID",
+      "Artifact content type contains forbidden material.",
+    );
   }
-  if (!Number.isSafeInteger(input.sizeBytes) || input.sizeBytes < 0 || input.sizeBytes > MAX_ARTIFACT_BYTES) {
+  if (
+    !Number.isSafeInteger(input.sizeBytes) ||
+    input.sizeBytes < 0 ||
+    input.sizeBytes > MAX_ARTIFACT_BYTES
+  ) {
     throw new HostedServiceError("ARTIFACT_INVALID", "Artifact size is outside hosted bounds.");
   }
   if (!SHA256.test(input.sha256)) {
@@ -769,7 +802,10 @@ function validateLease(lease: JobLease, scope: HostedWorkerScope): void {
     lease.attempt < 1 ||
     Date.parse(canonicalTimestamp(lease.expiresAt, "lease.expiresAt")) <= Date.parse(scope.now)
   ) {
-    throw new HostedServiceError("WORKER_LEASE_INVALID", "Hosted queue returned a stale or foreign lease.");
+    throw new HostedServiceError(
+      "WORKER_LEASE_INVALID",
+      "Hosted queue returned a stale or foreign lease.",
+    );
   }
 }
 
@@ -781,12 +817,24 @@ function auditRecord(
   reasonCode: string | null,
   detail: string,
 ): HostedAuditEvent {
-  if (!SHA256.test(subjectHash)) throw new HostedServiceError("MALFORMED", "Audit subject hash is invalid.");
+  if (!SHA256.test(subjectHash))
+    throw new HostedServiceError("MALFORMED", "Audit subject hash is invalid.");
   const occurredAt = canonicalTimestamp(context.requestedAt, "audit.occurredAt");
   const detailHash = sha256(detail);
   return Object.freeze({
     action,
-    auditId: sha256(canonicalPairs({ action, detailHash, missionId: context.missionId, occurredAt, outcome, projectId: context.projectId, sessionId: context.sessionId, tenantId: context.tenantId })),
+    auditId: sha256(
+      canonicalPairs({
+        action,
+        detailHash,
+        missionId: context.missionId,
+        occurredAt,
+        outcome,
+        projectId: context.projectId,
+        sessionId: context.sessionId,
+        tenantId: context.tenantId,
+      }),
+    ),
     detailHash,
     missionId: context.missionId,
     occurredAt,
@@ -804,15 +852,33 @@ function identifier(value: string, label: string, max = MAX_IDENTIFIER): string 
 }
 
 function boundedString(value: string, label: string, max: number): string {
-  if (typeof value !== "string" || value.length < 1 || value.length > max || value.trim() !== value || /[\u0000-\u001f\u007f]/u.test(value)) {
+  if (
+    typeof value !== "string" ||
+    value.length < 1 ||
+    value.length > max ||
+    value.trim() !== value ||
+    hasControlCharacter(value)
+  ) {
     throw new HostedServiceError("MALFORMED", `${label} is invalid.`);
   }
   return value;
 }
 
+function hasControlCharacter(value: string): boolean {
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (code <= 31 || code === 127) return true;
+  }
+  return false;
+}
+
 function canonicalTimestamp(value: string, label: string): string {
   const parsed = Date.parse(value);
-  if (typeof value !== "string" || Number.isNaN(parsed) || new Date(parsed).toISOString() !== value) {
+  if (
+    typeof value !== "string" ||
+    Number.isNaN(parsed) ||
+    new Date(parsed).toISOString() !== value
+  ) {
     throw new HostedServiceError("MALFORMED", `${label} must be canonical UTC.`);
   }
   return value;
@@ -830,7 +896,8 @@ function sha256(value: string): string {
 }
 
 function requireFunction(value: unknown, label: string): void {
-  if (typeof value !== "function") throw new HostedServiceError("MALFORMED", `${label} is required.`);
+  if (typeof value !== "function")
+    throw new HostedServiceError("MALFORMED", `${label} is required.`);
 }
 
 function assertNotAborted(signal: AbortSignal, message: string): void {

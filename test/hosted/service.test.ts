@@ -13,8 +13,8 @@ import {
   type HostedAuditEvent,
   type HostedBackupSnapshot,
   type HostedIdentity,
-  type HostedMissionBackendDependencies,
   HostedMissionBackend,
+  type HostedMissionBackendDependencies,
   HostedServiceError,
   hostedBackupHash,
 } from "../../src/hosted/index.js";
@@ -26,8 +26,20 @@ const SHA_B = "b".repeat(64);
 
 function projection(): ClientMissionProjection {
   return {
-    budgetLimits: { attempts: 10, costMicros: 1_000, inputTokens: 10_000, outputTokens: 5_000, toolCalls: 20 },
-    budgetUsage: { attempts: 1, costMicros: 100, inputTokens: 500, outputTokens: 100, toolCalls: 2 },
+    budgetLimits: {
+      attempts: 10,
+      costMicros: 1_000,
+      inputTokens: 10_000,
+      outputTokens: 5_000,
+      toolCalls: 20,
+    },
+    budgetUsage: {
+      attempts: 1,
+      costMicros: 100,
+      inputTokens: 500,
+      outputTokens: 100,
+      toolCalls: 2,
+    },
     checkpointVersion: 2,
     focus: "complex",
     jobs: {
@@ -43,7 +55,9 @@ function projection(): ClientMissionProjection {
     objective: "Ship hosted mission backend",
     resumeState: null,
     state: "EXECUTING",
-    tasks: [{ dependsOn: [], id: "task-1", priority: 1, status: "RUNNING", title: "Hosted backend" }],
+    tasks: [
+      { dependsOn: [], id: "task-1", priority: 1, status: "RUNNING", title: "Hosted backend" },
+    ],
     verification: { evidenceRefs: [], status: "PENDING" },
     version: 3,
   };
@@ -230,9 +244,22 @@ function fixture() {
     backups,
     gateway,
     queue,
-    realtime: { continuity: async ({ afterCursor }) => ({ observedCursor: afterCursor, status: "CONTIGUOUS" }) },
+    realtime: {
+      continuity: async ({ afterCursor }) => ({
+        observedCursor: afterCursor,
+        status: "CONTIGUOUS",
+      }),
+    },
   };
-  return { artifact, audits, backups, dependencies, gateway, queue, service: new HostedMissionBackend(dependencies) };
+  return {
+    artifact,
+    audits,
+    backups,
+    dependencies,
+    gateway,
+    queue,
+    service: new HostedMissionBackend(dependencies),
+  };
 }
 
 test("hosted bootstrap authenticates exact tenant/project/mission scope and keeps bearer token out of audit", async () => {
@@ -246,8 +273,13 @@ test("hosted bootstrap authenticates exact tenant/project/mission scope and keep
 
 test("hosted identity denies foreign project/mission combinations before client gateway access", async () => {
   const value = fixture();
-  value.dependencies.authentication = { resolve: async () => identity({ missionScopes: [{ missionId: "mission-2", projectId: "project-1" }] }) };
-  const service = new HostedMissionBackend(value.dependencies);
+  const service = new HostedMissionBackend({
+    ...value.dependencies,
+    authentication: {
+      resolve: async () =>
+        identity({ missionScopes: [{ missionId: "mission-2", projectId: "project-1" }] }),
+    },
+  });
   await assert.rejects(
     service.bootstrap(context(), stateRequest()),
     (error: unknown) => error instanceof HostedServiceError && error.code === "SCOPE_DENIED",
@@ -258,8 +290,12 @@ test("hosted identity denies foreign project/mission combinations before client 
 
 test("hosted reconnect fails closed on lifecycle continuity gaps", async () => {
   const value = fixture();
-  value.dependencies.realtime = { continuity: async () => ({ observedCursor: 4, status: "RESYNC_REQUIRED" }) };
-  const service = new HostedMissionBackend(value.dependencies);
+  const service = new HostedMissionBackend({
+    ...value.dependencies,
+    realtime: {
+      continuity: async () => ({ observedCursor: 4, status: "RESYNC_REQUIRED" }),
+    },
+  });
   await assert.rejects(
     service.reconnect(context(), stateRequest(5)),
     (error: unknown) => error instanceof HostedServiceError && error.code === "RESYNC_REQUIRED",
@@ -278,8 +314,10 @@ test("hosted command preserves M9 expected-version and idempotency request uncha
 
 test("hosted artifact lookup denies cross-tenant metadata without disclosing it", async () => {
   const value = fixture();
-  value.dependencies.artifacts = { metadata: async () => ({ ...value.artifact, tenantId: "tenant-2" }) };
-  const service = new HostedMissionBackend(value.dependencies);
+  const service = new HostedMissionBackend({
+    ...value.dependencies,
+    artifacts: { metadata: async () => ({ ...value.artifact, tenantId: "tenant-2" }) },
+  });
   await assert.rejects(
     service.artifact(context(), "artifact-1"),
     (error: unknown) => error instanceof HostedServiceError && error.code === "SCOPE_DENIED",
@@ -289,10 +327,22 @@ test("hosted artifact lookup denies cross-tenant metadata without disclosing it"
 
 test("hosted worker consumes exact M8-style lease and rejects stale settlement generation", async () => {
   const value = fixture();
-  const scope = { leaseMs: 30_000, missionId: "mission-1", now: NOW, projectId: "project-1", tenantId: "tenant-1", workerId: "worker-1" };
+  const scope = {
+    leaseMs: 30_000,
+    missionId: "mission-1",
+    now: NOW,
+    projectId: "project-1",
+    tenantId: "tenant-1",
+    workerId: "worker-1",
+  };
   const settled = await value.service.runWorkerOnce(
     scope,
-    { execute: async () => ({ outcome: "SUCCEEDED", result: { artifactId: "result-1", sha256: SHA_B } }) },
+    {
+      execute: async () => ({
+        outcome: "SUCCEEDED",
+        result: { artifactId: "result-1", sha256: SHA_B },
+      }),
+    },
     new AbortController().signal,
   );
   assert.equal(settled?.generation, 2);
@@ -302,20 +352,38 @@ test("hosted worker consumes exact M8-style lease and rejects stale settlement g
   await assert.rejects(
     value.service.runWorkerOnce(
       scope,
-      { execute: async () => ({ outcome: "SUCCEEDED", result: { artifactId: "result-2", sha256: SHA_B } }) },
+      {
+        execute: async () => ({
+          outcome: "SUCCEEDED",
+          result: { artifactId: "result-2", sha256: SHA_B },
+        }),
+      },
       new AbortController().signal,
     ),
-    (error: unknown) => error instanceof HostedServiceError && error.code === "WORKER_LEASE_INVALID",
+    (error: unknown) =>
+      error instanceof HostedServiceError && error.code === "WORKER_LEASE_INVALID",
   );
 });
 
 test("hosted worker rejects expired leases and records crash abandonment", async () => {
   const value = fixture();
-  const scope = { leaseMs: 30_000, missionId: "mission-1", now: NOW, projectId: "project-1", tenantId: "tenant-1", workerId: "worker-1" };
+  const scope = {
+    leaseMs: 30_000,
+    missionId: "mission-1",
+    now: NOW,
+    projectId: "project-1",
+    tenantId: "tenant-1",
+    workerId: "worker-1",
+  };
   value.queue.lease = value.queue.lease === null ? null : { ...value.queue.lease, expiresAt: NOW };
   await assert.rejects(
-    value.service.runWorkerOnce(scope, { execute: async () => ({ outcome: "CANCELLED" }) }, new AbortController().signal),
-    (error: unknown) => error instanceof HostedServiceError && error.code === "WORKER_LEASE_INVALID",
+    value.service.runWorkerOnce(
+      scope,
+      { execute: async () => ({ outcome: "CANCELLED" }) },
+      new AbortController().signal,
+    ),
+    (error: unknown) =>
+      error instanceof HostedServiceError && error.code === "WORKER_LEASE_INVALID",
   );
   assert.deepEqual(value.queue.abandoned, ["lease_invalid"]);
 
@@ -323,7 +391,11 @@ test("hosted worker rejects expired leases and records crash abandonment", async
   await assert.rejects(
     crash.service.runWorkerOnce(
       scope,
-      { execute: async () => { throw new Error("worker crashed"); } },
+      {
+        execute: async () => {
+          throw new Error("worker crashed");
+        },
+      },
       new AbortController().signal,
     ),
     (error: unknown) => error instanceof HostedServiceError && error.code === "WORKER_FAILED",
@@ -348,8 +420,17 @@ test("hosted backup and restore bind exact tenant mission and state hash", async
 
 test("hosted dependency failures never fabricate successful public-service evidence", async () => {
   const value = fixture();
-  value.dependencies.artifacts = { metadata: async () => { throw new Error("database unavailable"); } };
-  const service = new HostedMissionBackend(value.dependencies);
+  const service = new HostedMissionBackend({
+    ...value.dependencies,
+    artifacts: {
+      metadata: async () => {
+        throw new Error("database unavailable");
+      },
+    },
+  });
   await assert.rejects(service.artifact(context(), "artifact-1"), /database unavailable/u);
-  assert.equal(value.audits.some((event) => event.action === "artifact.read" && event.outcome === "ACCEPTED"), false);
+  assert.equal(
+    value.audits.some((event) => event.action === "artifact.read" && event.outcome === "ACCEPTED"),
+    false,
+  );
 });
