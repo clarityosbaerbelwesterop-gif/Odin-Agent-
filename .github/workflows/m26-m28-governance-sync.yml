@@ -1,0 +1,98 @@
+name: M26-M28 governance sync
+
+on:
+  push:
+    branches:
+      - agent/m26-m28-production-sandbox-hosted-mobile
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m26-m28-production-sandbox-hosted-mobile
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Synchronize verified M26-M28 governance
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          milestone = Path('docs/milestones/M26_M28_PRODUCTION_SANDBOX_HOSTED_BACKEND_MOBILE.md')
+          text = milestone.read_text()
+          text = text.replace(
+              'Status: **IN_PROGRESS**. This is the binding contract for one pull request containing exactly three\nsequential milestones.',
+              'Status: **CONTRACT_VERIFIED**. Repository-local M26, M27, and M28 requirements are verified; the\nexplicit M26/M27 external infrastructure proof gates remain open and are not production claims.',
+              1,
+          )
+          lines = text.splitlines()
+          section = None
+          external = False
+          out = []
+          for line in lines:
+              if line.startswith('## M26 —'):
+                  section = 'M26'
+                  external = False
+              elif line.startswith('## M27 —'):
+                  section = 'M27'
+                  external = False
+              elif line.startswith('## M28 —'):
+                  section = 'M28'
+                  external = False
+              elif line.startswith('## ') and section in {'M26', 'M27', 'M28'}:
+                  section = None
+                  external = False
+              elif line.startswith('### External proof gate') and section in {'M26', 'M27'}:
+                  external = True
+              elif line.startswith('### ') and not line.startswith('### External proof gate'):
+                  external = False
+              if line.startswith('- [ ]') and section == 'M28':
+                  line = line.replace('- [ ]', '- [x]', 1)
+              elif line.startswith('- [ ]') and section in {'M26', 'M27'} and not external:
+                  line = line.replace('- [ ]', '- [x]', 1)
+              out.append(line)
+          text = '\n'.join(out) + '\n'
+          marker = '## Verified repository evidence — 2026-09-06'
+          evidence = '''\n## Verified repository evidence — 2026-09-06\n\n- M26 repair/verification run `34019649259`: repository formatting, full `npm run verify`, and `npm run build` passed.\n- M27 hosted-backend verification run `34019950376`: full repository verification and build passed after strict typing/quality repair.\n- M28 package run `34020075420`: **451/451 tests**, Biome, strict TypeScript, credential-free Kimi dry smoke, and build passed; aggregate coverage was **90.02% lines / 76.97% branches / 95.86% functions**.\n- Package authority-boundary CI run `34020225192` passed after adding static adversarial guards for M26 isolation relabeling, M27 vendor neutrality, M28 authority separation, and browser credential/state persistence.\n- No live provider request, paid resource, production migration, public traffic, new external credential use, real container/microVM/VM proof, or hosted database/queue/auth/realtime proof was introduced by this package.\n- Therefore M26–M28 are repository-local **CONTRACT_VERIFIED** only. The two explicit external M26/M27 proof checkboxes above remain intentionally unchecked.\n'''
+          if marker not in text:
+              text = text.replace('\n## Explicit non-goals\n', evidence + '\n## Explicit non-goals\n', 1)
+          milestone.write_text(text)
+
+          sections = {
+              'ROADMAP.md': '''\n\n## M26–M28 — production-shaped service tranche (repository-local verified, 2026-09-06)\n\nStatus: **CONTRACT_VERIFIED**.\n\n- M26 adds strong-isolation production sandbox contracts (`container` / `microvm` / `vm`), attestation, quotas, scoped secret brokering, deterministic cleanup, and secret-safe audit evidence without relabeling `host_process`.\n- M27 adds a provider-neutral authenticated hosted mission service over the existing M8/M9 semantics: exact tenant/project/mission scope, queue/worker leasing, artifacts, reconnect, audit, and backup/restore through injected adapters.\n- M28 adds platform-neutral mobile experience contracts for responsive web, iOS/iPadOS, Android, macOS, and desktop web with durable reconnect, fresh server-bound approvals, notifications as hints only, and strictly read-only offline presentation.\n- Repository verification and package-boundary adversarial tests are green. External real sandbox and hosted-infrastructure proof remain separate gates and are not claimed by this milestone.\n''',
+              'ARCHITECTURE.md': '''\n\n## M26–M28 verified service boundaries (2026-09-06)\n\nThe production-shaped tranche extends existing authorities instead of creating parallel control planes:\n\n- `src/sandbox/production.ts` is the M26 strong-isolation contract. Production isolation is limited to `container`, `microvm`, and `vm`; runtime attestation, exact policy/session binding, quotas, workspace/network restrictions, scoped secret resolution, cleanup fencing, and bounded audit evidence are mandatory. Adapters cannot turn host-process execution into production isolation.\n- `src/hosted/service.ts` is the M27 provider-neutral hosted service kernel. Authentication, artifact, realtime, queue, backup, and audit systems are injected. M8 lease/generation/fencing semantics and M9 state/command contracts remain canonical; hosted infrastructure does not mint a second mission state machine.\n- `src/mobile/experience.ts` is the M28 presentation/experience layer. It consumes M9 projections, does not import tool/sandbox/provider authority, treats cached state as read-only, and requires exact fresh server challenges plus fresh server command validation for high-impact approvals. Canonical long-running compute remains server-side.\n- `web/mobile-reference.*` is a responsive reference fixture only. It stores neither credentials nor canonical mission state and is not evidence of a shipped native application.\n\nThese repository contracts are verified independently of vendor deployment. Real container/VM and hosted-service evidence remain external release gates.\n''',
+              'SECURITY.md': '''\n\n## M26–M28 repository-local security checkpoint (2026-09-06)\n\nThe M26–M28 package is **CONTRACT_VERIFIED** under the existing fail-closed authority model:\n\n- strong sandbox isolation cannot be satisfied by `host_process`; exact isolation attestation and policy/session hashes are required; quotas, cleanup, workspace/network scope, and secret brokering are runtime-owned;\n- hosted requests are bound to exact session/tenant/project/mission scope, artifacts and backups are hash/scope checked, queue settlement is generation-fenced, reconnect gaps require resync, and audit events retain hashes rather than bearer tokens or secret values;\n- mobile/device metadata is never authentication authority; offline state is integrity-bound read-only presentation; offline commands/approvals cannot replay into authority; approval challenges are exact, expiring, one-use, and still require fresh server command validation; notification opens prove no mission state;\n- adversarial package tests statically forbid M28 imports of tool/sandbox/provider authority, direct M27 vendor/process/network coupling, M26 host-process isolation relabeling, and persistent credential/canonical-state storage in the mobile fixture.\n\nThis checkpoint does **not** claim live container/microVM/VM isolation, a production database/queue/auth/realtime deployment, public-service availability, or a shipped App Store/Play Store binary. Those remain separately authorized external proof/release gates.\n''',
+              'HANDOVER.md': '''\n\n## M26–M28 handover checkpoint — 2026-09-06\n\nPR #34 (`agent/m26-m28-production-sandbox-hosted-mobile`) now contains the completed repository-local M26–M28 package. M26 production sandbox, M27 hosted mission backend, and M28 mobile experience contracts are implemented and verified without weakening M3/M5/M8/M9/M12 authority boundaries.\n\nVerified evidence before governance synchronization:\n\n- M26 verification/build: run `34019649259`;\n- M27 verification/build: run `34019950376`;\n- M28 verification/build: run `34020075420`, including 451/451 passing tests and aggregate 90.02% line / 76.97% branch / 95.86% function coverage;\n- package-wide authority-boundary CI: run `34020225192` passed.\n\nThe source package includes `src/sandbox/production.ts`, `src/hosted/service.ts`, `src/mobile/experience.ts`, their adversarial tests, and a responsive mobile reference fixture. No paid resource, public traffic, production migration, new external credential, live container/microVM/VM execution, or hosted database/queue/auth/realtime proof was used. M26/M27 external proof gates therefore remain open; do not relabel this checkpoint as a production deployment.\n\nMerge gate: after this governance synchronization, require one normal exact-head PR CI success before merging PR #34.\n''',
+          }
+          markers = {
+              'ROADMAP.md': '## M26–M28 — production-shaped service tranche (repository-local verified, 2026-09-06)',
+              'ARCHITECTURE.md': '## M26–M28 verified service boundaries (2026-09-06)',
+              'SECURITY.md': '## M26–M28 repository-local security checkpoint (2026-09-06)',
+              'HANDOVER.md': '## M26–M28 handover checkpoint — 2026-09-06',
+          }
+          for name, addition in sections.items():
+              path = Path(name)
+              current = path.read_text()
+              if markers[name] not in current:
+                  path.write_text(current.rstrip() + addition + '\n')
+          PY
+      - name: Verify synchronized repository
+        run: npm run verify
+      - name: Build synchronized repository
+        run: npm run build
+      - name: Commit verified governance synchronization
+        run: |
+          rm .github/workflows/m26-m28-governance-sync.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ROADMAP.md ARCHITECTURE.md SECURITY.md HANDOVER.md docs/milestones/M26_M28_PRODUCTION_SANDBOX_HOSTED_BACKEND_MOBILE.md .github/workflows/m26-m28-governance-sync.yml
+          git commit -m "docs(m26-m28): synchronize verified package governance"
+          git push origin HEAD:agent/m26-m28-production-sandbox-hosted-mobile
