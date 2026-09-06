@@ -216,18 +216,19 @@ export function evaluateBenchmarkV2(input: {
   exactKeys(input, ["benchmark", "harnessVersion", "results"]);
   const benchmark = normalizeBenchmark(input.benchmark);
   const harnessVersion = identifier(input.harnessVersion, "harnessVersion");
-  if (!Array.isArray(input.results)) {
+  const results: readonly FrontierArmResult[] = input.results;
+  if (!Array.isArray(results)) {
     throw new BenchmarkV2Error("Benchmark v2 results must be an array.");
   }
 
   const frontierReport = evaluateFrontierSuite({
     cases: benchmark.cases.map((current) => current.frontierCase),
     harnessVersion,
-    results: input.results,
+    results,
     suiteVersion: benchmark.suiteVersion,
   });
 
-  for (const result of input.results) {
+  for (const result of results) {
     if (
       result.provider !== benchmark.profile.provider ||
       result.model !== benchmark.profile.model ||
@@ -244,7 +245,7 @@ export function evaluateBenchmarkV2(input: {
     string,
     Partial<Record<"model_alone" | "odin", FrontierArmResult>>
   >();
-  for (const result of input.results) {
+  for (const result of results) {
     const pair = resultsByCase.get(result.caseHash) ?? {};
     pair[result.arm] = result;
     resultsByCase.set(result.caseHash, pair);
