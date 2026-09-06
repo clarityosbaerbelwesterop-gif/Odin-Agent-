@@ -4,6 +4,23 @@ import type { FrontierBudgetProfile } from "./types.js";
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$/u;
 const SHA256 = /^[a-f0-9]{64}$/u;
 const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u;
+const PROFILE_INPUT_FIELDS = [
+  "provider",
+  "model",
+  "profileVersion",
+  "reasoningEffort",
+  "contextWindowTokens",
+  "maxOutputTokens",
+  "reasoningEfforts",
+  "textInput",
+  "imageInput",
+  "toolUse",
+  "structuredOutput",
+  "strictStructuredOutput",
+  "streaming",
+  "provenance",
+] as const;
+const PROFILE_FIELDS = [...PROFILE_INPUT_FIELDS, "profileHash"] as const;
 
 export type FrontierProfileProvenanceKind = "provider" | "runtime" | "evaluation";
 
@@ -45,22 +62,7 @@ export class FrontierProfileError extends Error {
 export function createFrontierEvaluationProfile(
   value: FrontierEvaluationProfileInput,
 ): FrontierEvaluationProfile {
-  exactKeys(value, [
-    "provider",
-    "model",
-    "profileVersion",
-    "reasoningEffort",
-    "contextWindowTokens",
-    "maxOutputTokens",
-    "reasoningEfforts",
-    "textInput",
-    "imageInput",
-    "toolUse",
-    "structuredOutput",
-    "strictStructuredOutput",
-    "streaming",
-    "provenance",
-  ]);
+  exactKeys(value, PROFILE_INPUT_FIELDS);
 
   const reasoningEfforts = normalizeReasoningEfforts(value.reasoningEfforts);
   const reasoningEffort =
@@ -104,11 +106,25 @@ export function createFrontierEvaluationProfile(
   return Object.freeze({ ...body, profileHash: hashJson(body) });
 }
 
+export function validateFrontierEvaluationProfile(
+  profile: FrontierEvaluationProfile,
+): FrontierEvaluationProfile {
+  exactKeys(profile, PROFILE_FIELDS);
+  if (!SHA256.test(profile.profileHash)) {
+    throw new FrontierProfileError("Frontier profile hash must be SHA-256.");
+  }
+  const rebuilt = createFrontierEvaluationProfile(profileInput(profile));
+  if (profile.profileHash !== rebuilt.profileHash) {
+    throw new FrontierProfileError("Frontier profile hash does not match its capability envelope.");
+  }
+  return rebuilt;
+}
+
 export function assertFrontierBudgetFitsProfile(
   profile: FrontierEvaluationProfile,
   budget: FrontierBudgetProfile,
 ): void {
-  const normalized = createFrontierEvaluationProfile(profile);
+  const normalized = validateFrontierEvaluationProfile(profile);
   if (budget.maxOutputTokens > normalized.maxOutputTokens) {
     throw new FrontierProfileError("Benchmark output budget exceeds the evaluation profile limit.");
   }
@@ -117,6 +133,25 @@ export function assertFrontierBudgetFitsProfile(
       "Benchmark token budget exceeds the evaluation profile context window.",
     );
   }
+}
+
+function profileInput(profile: FrontierEvaluationProfile): FrontierEvaluationProfileInput {
+  return {
+    contextWindowTokens: profile.contextWindowTokens,
+    imageInput: profile.imageInput,
+    maxOutputTokens: profile.maxOutputTokens,
+    model: profile.model,
+    profileVersion: profile.profileVersion,
+    provider: profile.provider,
+    provenance: profile.provenance,
+    reasoningEffort: profile.reasoningEffort,
+    reasoningEfforts: profile.reasoningEfforts,
+    streaming: profile.streaming,
+    strictStructuredOutput: profile.strictStructuredOutput,
+    structuredOutput: profile.structuredOutput,
+    textInput: profile.textInput,
+    toolUse: profile.toolUse,
+  };
 }
 
 function normalizeReasoningEfforts(values: readonly string[]): readonly string[] {
