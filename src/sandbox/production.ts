@@ -487,14 +487,16 @@ export class ProductionSandboxRuntime {
     }
   }
 
-  async #executeOnce(input: Readonly<{
-    backend: RegisteredProductionBackend;
-    commandId: string;
-    idempotencyKey: string;
-    requestedAt: string;
-    session: ProductionSandboxSession;
-    signal: AbortSignal;
-  }>): Promise<ProductionSandboxAdapterExecuteResult> {
+  async #executeOnce(
+    input: Readonly<{
+      backend: RegisteredProductionBackend;
+      commandId: string;
+      idempotencyKey: string;
+      requestedAt: string;
+      session: ProductionSandboxSession;
+      signal: AbortSignal;
+    }>,
+  ): Promise<ProductionSandboxAdapterExecuteResult> {
     const secrets: Array<Readonly<{ ref: string; value: string }>> = [];
     for (const secretRefHash of input.session.secretRefHashes) {
       const originalRef = this.#secretReferenceForHash(input.session, secretRefHash);
