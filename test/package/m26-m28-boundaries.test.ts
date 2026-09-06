@@ -10,10 +10,7 @@ test("M28 mobile experience remains a bounded M9 presentation layer", async () =
   const mobile = await source("src/mobile/experience.ts");
 
   assert.match(mobile, /\.\.\/client\/types\.js/u);
-  assert.doesNotMatch(
-    mobile,
-    /\.\.\/(?:tools|sandbox|providers|durable|hosted|runtime)\//u,
-  );
+  assert.doesNotMatch(mobile, /\.\.\/(?:tools|sandbox|providers|durable|hosted|runtime)\//u);
   assert.doesNotMatch(
     mobile,
     /process\.env|node:child_process|\bfetch\s*\(|localStorage|sessionStorage|document\.cookie/u,
