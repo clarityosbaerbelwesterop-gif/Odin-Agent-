@@ -1,8 +1,20 @@
 import type { BenchmarkV2Domain, FrontierEvaluationProfile } from "../frontier-evals/index.js";
 import { validateFrontierEvaluationProfile } from "../frontier-evals/index.js";
-import { AMPLIFICATION_POLICY_VERSION, type ReasoningAmplificationPlan } from "./amplification.js";
+import {
+  type AmplificationStrategy,
+  AMPLIFICATION_POLICY_VERSION,
+  type ReasoningAmplificationPlan,
+} from "./amplification.js";
 import { normalizeEvaluation } from "./evaluations.js";
-import { canonicalTimestamp, exactKeys, objectValue, safeInteger, sha256Json } from "./internal.js";
+import {
+  assertSha256,
+  canonicalTimestamp,
+  exactKeys,
+  identifier,
+  objectValue,
+  safeInteger,
+  sha256Json,
+} from "./internal.js";
 import type { ModelEvaluation, RoutingTaskClass } from "./types.js";
 import { RoutingError } from "./types.js";
 
@@ -62,6 +74,20 @@ const TASK_CLASS_BY_DOMAIN: Readonly<Record<BenchmarkV2Domain, RoutingTaskClass>
   tool_use: "research",
 });
 
+const AMPLIFICATION_STRATEGIES = new Set<AmplificationStrategy>([
+  "backward_reason",
+  "constraint_solve",
+  "counterexample_search",
+  "decompose",
+  "direct",
+  "independent_critique",
+  "numeric_consistency",
+  "retrieve_context",
+  "strict_output",
+  "targeted_repair",
+  "tool_ground",
+]);
+
 export function createWeakModelScaffoldingPlan(
   value: WeakModelScaffoldingRequest,
 ): WeakModelScaffoldingPlan {
@@ -79,6 +105,12 @@ export function createWeakModelScaffoldingPlan(
     throw new RoutingError(
       "INVALID_INPUT",
       "Amplification plan is bound to a different task domain.",
+    );
+  }
+  if (amplification.contextTokenCeiling > profile.contextWindowTokens) {
+    throw new RoutingError(
+      "BUDGET_EXCEEDED",
+      "Amplification context ceiling exceeds the exact evaluation profile.",
     );
   }
 
@@ -291,24 +323,59 @@ function validateAmplificationPlan(value: ReasoningAmplificationPlan): Reasoning
   if (!Array.isArray(plan.strategies) || !Array.isArray(plan.reasonCodes)) {
     throw new RoutingError("INVALID_INPUT", "Amplification plan collections are malformed.");
   }
+  const strategies = plan.strategies.map((strategy, index) => {
+    if (typeof strategy !== "string" || !AMPLIFICATION_STRATEGIES.has(strategy as AmplificationStrategy)) {
+      throw new RoutingError(
+        "INVALID_INPUT",
+        `Amplification strategy at index ${index} is unsupported.`,
+      );
+    }
+    return strategy as AmplificationStrategy;
+  });
+  if (new Set(strategies).size !== strategies.length) {
+    throw new RoutingError("INVALID_INPUT", "Amplification strategies contain duplicates.");
+  }
+  const reasonCodes = plan.reasonCodes.map((reason, index) =>
+    identifier(reason, `amplification reasonCodes[${index}]`),
+  );
+  if (new Set(reasonCodes).size !== reasonCodes.length) {
+    throw new RoutingError("INVALID_INPUT", "Amplification reason codes contain duplicates.");
+  }
+  if (typeof plan.domain !== "string" || !(plan.domain in TASK_CLASS_BY_DOMAIN)) {
+    throw new RoutingError("INVALID_INPUT", "Amplification plan domain is unsupported.");
+  }
+  if (typeof plan.requiresIndependentVerification !== "boolean") {
+    throw new RoutingError("INVALID_INPUT", "Amplification verification flag must be boolean.");
+  }
   const body = {
-    benchmarkHash: plan.benchmarkHash,
-    branchCount: plan.branchCount,
-    contextTokenCeiling: plan.contextTokenCeiling,
-    critiquePasses: plan.critiquePasses,
-    domain: plan.domain,
-    maxEstimatedTokens: plan.maxEstimatedTokens,
-    maxModelCalls: plan.maxModelCalls,
+    benchmarkHash: assertSha256(plan.benchmarkHash, "amplification benchmarkHash"),
+    branchCount: safeInteger(plan.branchCount, "amplification branchCount", 1, 100),
+    contextTokenCeiling: safeInteger(
+      plan.contextTokenCeiling,
+      "amplification contextTokenCeiling",
+      1,
+      100_000_000,
+    ),
+    critiquePasses: safeInteger(plan.critiquePasses, "amplification critiquePasses", 0, 100),
+    domain: plan.domain as BenchmarkV2Domain,
+    maxEstimatedTokens: safeInteger(
+      plan.maxEstimatedTokens,
+      "amplification maxEstimatedTokens",
+      0,
+      100_000_000,
+    ),
+    maxModelCalls: safeInteger(plan.maxModelCalls, "amplification maxModelCalls", 1, 100),
     policyVersion: plan.policyVersion,
-    profileHash: plan.profileHash,
-    reasonCodes: plan.reasonCodes,
-    repairAttempts: plan.repairAttempts,
+    profileHash: assertSha256(plan.profileHash, "amplification profileHash"),
+    reasonCodes: Object.freeze(reasonCodes),
+    repairAttempts: safeInteger(plan.repairAttempts, "amplification repairAttempts", 0, 100),
     requiresIndependentVerification: plan.requiresIndependentVerification,
-    strategies: plan.strategies,
-    weaknessReportHash: plan.weaknessReportHash,
+    strategies: Object.freeze(strategies),
+    weaknessReportHash: assertSha256(plan.weaknessReportHash, "amplification weaknessReportHash"),
   } as const;
-  if (sha256Json(body) !== plan.planHash) {
+  const planHash = assertSha256(plan.planHash, "amplification planHash");
+  if (sha256Json(body) !== planHash) {
     throw new RoutingError("INVALID_INPUT", "Amplification plan hash does not match its contents.");
   }
-  return value;
+  return Object.freeze({ ...body, planHash }) as ReasoningAmplificationPlan;
 }
