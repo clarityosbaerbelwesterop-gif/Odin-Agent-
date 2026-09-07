@@ -195,7 +195,8 @@ function normalizeRequest(value: ReasoningAmplificationRequest): ReasoningAmplif
   );
   const domain = input.domain as BenchmarkV2Domain;
   const risk = input.risk as RoutingRisk;
-  if (!DOMAINS.has(domain)) throw new RoutingError("INVALID_INPUT", "Amplification domain is invalid.");
+  if (!DOMAINS.has(domain))
+    throw new RoutingError("INVALID_INPUT", "Amplification domain is invalid.");
   if (!RISKS.has(risk)) throw new RoutingError("INVALID_INPUT", "Amplification risk is invalid.");
   const expectedBenchmarkHash = assertSha256(input.expectedBenchmarkHash, "expectedBenchmarkHash");
   const expectedProfileHash = assertSha256(input.expectedProfileHash, "expectedProfileHash");
@@ -252,12 +253,18 @@ function normalizeReasoningPlan(planValue: ReasoningPlan): ReasoningPlan {
     parallelism: safeInteger(plan.parallelism, "base parallelism", 1, 100),
     repairAttempts: safeInteger(plan.repairAttempts, "base repairAttempts", 0, 100),
   } as const;
-  if (!Array.isArray(normalized.branches) || normalized.branches.length !== normalized.branchCount) {
+  if (
+    !Array.isArray(normalized.branches) ||
+    normalized.branches.length !== normalized.branchCount
+  ) {
     throw new RoutingError("INVALID_INPUT", "Base reasoning branch identity is malformed.");
   }
   const planHash = assertSha256(plan.planHash, "base reasoning planHash");
   if (sha256Json(normalized) !== planHash) {
-    throw new RoutingError("INVALID_INPUT", "Base reasoning plan hash does not match its contents.");
+    throw new RoutingError(
+      "INVALID_INPUT",
+      "Base reasoning plan hash does not match its contents.",
+    );
   }
   return Object.freeze({ ...normalized, planHash }) as ReasoningPlan;
 }
@@ -282,7 +289,11 @@ function normalizeWeaknessReport(value: WeaknessMiningReport): WeaknessMiningRep
     [],
     "weakness report",
   );
-  const attributableHeatmap = normalizeHeatmap(report.attributableHeatmap, "attributableHeatmap", false);
+  const attributableHeatmap = normalizeHeatmap(
+    report.attributableHeatmap,
+    "attributableHeatmap",
+    false,
+  );
   const infrastructureHeatmap = normalizeHeatmap(
     report.infrastructureHeatmap,
     "infrastructureHeatmap",
@@ -316,7 +327,11 @@ function normalizeWeaknessReport(value: WeaknessMiningReport): WeaknessMiningRep
   return Object.freeze({ ...normalizedBody, reportHash }) as WeaknessMiningReport;
 }
 
-function normalizeHeatmap(value: unknown, label: string, infrastructure: boolean): readonly WeaknessHeatmapEntry[] {
+function normalizeHeatmap(
+  value: unknown,
+  label: string,
+  infrastructure: boolean,
+): readonly WeaknessHeatmapEntry[] {
   if (!Array.isArray(value) || value.length > 2_000) {
     throw new RoutingError("INVALID_INPUT", `${label} exceeds its bounded collection size.`);
   }
@@ -337,24 +352,42 @@ function normalizeHeatmap(value: unknown, label: string, infrastructure: boolean
         throw new RoutingError("INVALID_INPUT", `${label}[${index}] weakness class is invalid.`);
       }
       if (infrastructure && weaknessClass !== "infrastructure" && weaknessClass !== "unknown") {
-        throw new RoutingError("INVALID_INPUT", "Infrastructure heatmap contains attributable weakness.");
+        throw new RoutingError(
+          "INVALID_INPUT",
+          "Infrastructure heatmap contains attributable weakness.",
+        );
       }
       if (!infrastructure && weaknessClass === "infrastructure") {
-        throw new RoutingError("INVALID_INPUT", "Attributable heatmap contains infrastructure weakness.");
+        throw new RoutingError(
+          "INVALID_INPUT",
+          "Attributable heatmap contains infrastructure weakness.",
+        );
       }
       return Object.freeze({
-        affectedResults: safeInteger(entry.affectedResults, `${label}[${index}] affectedResults`, 1, 10_000),
+        affectedResults: safeInteger(
+          entry.affectedResults,
+          `${label}[${index}] affectedResults`,
+          1,
+          10_000,
+        ),
         arm: entry.arm,
         code: identifier(entry.code, `${label}[${index}] code`),
         maxSeverity: safeInteger(entry.maxSeverity, `${label}[${index}] maxSeverity`, 1, 10),
-        severityPoints: safeInteger(entry.severityPoints, `${label}[${index}] severityPoints`, 1, 100_000),
+        severityPoints: safeInteger(
+          entry.severityPoints,
+          `${label}[${index}] severityPoints`,
+          1,
+          100_000,
+        ),
         weaknessClass,
       }) as WeaknessHeatmapEntry;
     }),
   );
 }
 
-function aggregateWeaknesses(entries: readonly WeaknessHeatmapEntry[]): ReadonlyMap<WeaknessClass, number> {
+function aggregateWeaknesses(
+  entries: readonly WeaknessHeatmapEntry[],
+): ReadonlyMap<WeaknessClass, number> {
   const totals = new Map<WeaknessClass, number>();
   for (const entry of entries) {
     totals.set(entry.weaknessClass, (totals.get(entry.weaknessClass) ?? 0) + entry.severityPoints);
@@ -442,7 +475,11 @@ function addDomainStrategies(
   }
 }
 
-function deriveContextCeiling(maxContextTokens: number, contextSeverity: number, domain: BenchmarkV2Domain): number {
+function deriveContextCeiling(
+  maxContextTokens: number,
+  contextSeverity: number,
+  domain: BenchmarkV2Domain,
+): number {
   if (contextSeverity > 0) return Math.max(1, Math.floor(maxContextTokens * 0.6));
   if (domain === "long_context") return Math.max(1, Math.floor(maxContextTokens * 0.8));
   return maxContextTokens;
