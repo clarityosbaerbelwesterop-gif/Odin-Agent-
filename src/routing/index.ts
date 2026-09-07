@@ -20,6 +20,19 @@ export {
   ModelEvaluationRegistry,
   normalizeEvaluation,
 } from "./evaluations.js";
+export type {
+  FrontierAmplificationCandidate,
+  FrontierAmplificationCandidateInput,
+  FrontierAmplificationComponent,
+  FrontierAmplificationDomainReport,
+  FrontierAmplificationReport,
+  FrontierWeaknessDelta,
+} from "./frontier-amplification.js";
+export {
+  createFrontierAmplificationCandidate,
+  evaluateFrontierAmplification,
+  FRONTIER_AMPLIFICATION_VERSION,
+} from "./frontier-amplification.js";
 export {
   createRouteFailure,
   FailureAwareModelRouter,
