@@ -1,3 +1,12 @@
+export type {
+  AmplificationStrategy,
+  ReasoningAmplificationPlan,
+  ReasoningAmplificationRequest,
+} from "./amplification.js";
+export {
+  AMPLIFICATION_POLICY_VERSION,
+  createReasoningAmplificationPlan,
+} from "./amplification.js";
 export { BoundedRoutingResultCache } from "./cache.js";
 export {
   evaluateRoutingFixture,
@@ -11,6 +20,19 @@ export {
   ModelEvaluationRegistry,
   normalizeEvaluation,
 } from "./evaluations.js";
+export type {
+  FrontierAmplificationCandidate,
+  FrontierAmplificationCandidateInput,
+  FrontierAmplificationComponent,
+  FrontierAmplificationDomainReport,
+  FrontierAmplificationReport,
+  FrontierWeaknessDelta,
+} from "./frontier-amplification.js";
+export {
+  createFrontierAmplificationCandidate,
+  evaluateFrontierAmplification,
+  FRONTIER_AMPLIFICATION_VERSION,
+} from "./frontier-amplification.js";
 export {
   createRouteFailure,
   FailureAwareModelRouter,
@@ -23,6 +45,18 @@ export {
 } from "./multi-model.js";
 export { AdaptiveReasoningController, createReasoningPlan } from "./reasoning.js";
 export { EmpiricalModelRouter, normalizeRouteRequest } from "./router.js";
+export type {
+  OutputDiscipline,
+  ScaffoldingMode,
+  ToolGroundingMode,
+  WeakModelScaffoldingPlan,
+  WeakModelScaffoldingRequest,
+  WeakModelThresholds,
+} from "./scaffolding.js";
+export {
+  createWeakModelScaffoldingPlan,
+  WEAK_MODEL_SCAFFOLDING_VERSION,
+} from "./scaffolding.js";
 export type {
   CachedRoutingResult,
   EmpiricalRouterConfig,

@@ -2,29 +2,26 @@
 
 Updated: 2026-09-07.
 
-## Current delivery state — M23–M25
+## Current delivery state — intelligence D–F
 
 Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).
 
-- `main` contains verified M0–M22. PR #32 (M20–M22) passed normal exact-head CI run
-  `33951326491` before merge.
-- Active PR: **#33**, branch `agent/m23-m25-skill-os-memory-tools`, containing exactly M23, M24,
-  and M25.
-- The binding package contract is
-  `docs/milestones/M23_M25_SKILL_OS_ADVANCED_MEMORY_TOOL_ECOSYSTEM.md`.
-- M23, M24, and M25 implementation gates are complete. The package hardening run `33954348383`
-  passed **427/427 tests**, strict TypeScript, credential-free Kimi dry smoke, and build. Aggregate
-  coverage was **90.30% lines / 77.62% branches / 95.75% functions**.
-- Warning-clean verification run `33954417440` passed after the adversarial hardening changes.
-- Normal PR CI `33954471567` passed on implementation head
-  `fddd8518a23782172d6a03fd9e5099839ee3f881` before governance synchronization.
-- Governance synchronization is the only repository-local delivery step after that implementation
-  evidence. A fresh normal exact-head CI run is required on the final governance head before merge.
-- The user has explicitly authorized merge of the completed three-milestone block in the current
-  delivery request. Merge still occurs only after final exact-head CI is green.
+- `main` contains the merged M0–M28 repository-local contracts plus intelligence A–C.
+- Active PR: **#36**, branch `agent/intelligence-d-e-f`, containing exactly Phase D, Phase E, and Phase F.
+- Binding contract: `docs/milestones/INTELLIGENCE_PHASE_D_F.md`.
+- Phase D CI `34091888679`, Phase E CI `34092487219`, and normal Phase F CI `34095946506` passed.
+- Package adversarial hardening run `34097050800` passed **492/492 tests**, Biome, strict TypeScript,
+  credential-free Kimi dry smoke, and aggregate **90.02% line / 76.67% branch / 96.05% function** coverage.
+- The review closed recomputed-hash semantic smuggling, unknown D/E policy values, exact D/E budget drift,
+  capability/profile mismatch, repair-policy mismatch, and analytics-to-routing escalation.
+- Governance synchronization is being committed now. One fresh normal CI on that exact governance head is
+  still mandatory before merge.
+- The user explicitly authorized merge of this three-phase block and exactly three bounded final live runs
+  after merge. Those live runs are evaluation evidence only, not routing/promotion/release authority.
 
-No live provider/browser/database/cloud/API request, deployment, paid resource, production migration,
-billing change, public traffic, or new credential use is part of M23–M25.
+D–F itself uses no new provider/model, live provider call, deployment, paid infrastructure, production
+migration, billing change, public traffic, or new credential. The separately authorized final runs may use
+the already configured NVIDIA Kimi K3 secret under existing call/time/token ceilings.
 
 ## M23 — Skill OS
 
@@ -223,3 +220,23 @@ Next package after PR #35 merge is exactly three phases on a fresh branch from t
 D–F must preserve all standing authority boundaries, remain no-new-model/no-live-spend by default, and
 receive focused tests, full verification per phase, adversarial review, governance synchronization, and a
 fresh exact-head CI before its merge.
+
+## Intelligence D–F handover checkpoint — 2026-09-07
+
+PR #36 (`agent/intelligence-d-e-f`) contains exactly the second three-phase intelligence package.
+
+- Phase D: bounded weakness-driven reasoning amplification;
+- Phase E: explicit capability/evidence-driven weak-model scaffolding;
+- Phase F: immutable evaluation-only frontier amplification candidate over Benchmark 2.0/M22 semantics.
+
+Repository evidence before the final merge gate:
+
+- D `34091888679` PASS; E `34092487219` PASS; F `34095946506` PASS;
+- adversarial hardening `34097050800` PASS with **492/492 tests** and **90.02% / 76.67% / 96.05%**
+  aggregate line/branch/function coverage.
+
+Final sequence: governance sync → one fresh normal exact-head CI → expected-head-pinned squash merge of PR
+#36 → exactly three separately authorized bounded live Kimi evaluations on the merged code. The live
+measurements must retain sanitized artifacts and may be described only as task/profile-specific evidence.
+They do not establish universal model superiority, production deployment, AGI/ASI, or automatic routing
+promotion.

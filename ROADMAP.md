@@ -480,20 +480,41 @@ Final A–C merge gates:
 - [ ] Fresh normal exact-head PR CI on the final governance head.
 - [ ] Merge PR #35 only after that exact-head CI is green and the PR remains mergeable.
 
-### Next merge package — Phase D, E, F
+### Merge package — Phase D, E, F
 
-Phase D–F starts only from the merged A–C `main` head:
+Status: **PACKAGE_VERIFIED — final exact-head merge gate pending** on PR #36.
 
-- [ ] **Phase D — intelligence/reasoning amplification:** consume attributable Phase C weakness evidence
-  to choose bounded runtime planning, critique, context, verification, and repair strategies without
-  lowering M11/M21 quality floors or bypassing M5.
-- [ ] **Phase E — weak-model amplification:** improve Odin scaffolding for lower-capability explicit
-  profiles through decomposition, context shaping, tool grounding, output contracts, and reserved repair
-  budgets without adding models/providers or inferring capability from names.
-- [ ] **Phase F — frontier amplification:** compose the strongest bounded D/E policy into an
-  evaluation-only candidate path and prove any claimed gain only through matched Benchmark 2.0 evidence
-  before it can have routing consequence.
+Phase D–F started from the merged A–C `main` head and remains provider-neutral.
 
-D–F remains provider-neutral and no-live-spend by default. Each phase requires focused tests plus full
-`npm run verify`; after F the package requires adversarial review, governance synchronization, one fresh
-exact-head CI, and only then its merge.
+- [x] **Phase D — intelligence/reasoning amplification:** attributable Phase C weakness evidence maps to
+  bounded deterministic planning/decomposition/context/tool-grounding/critique/verification/repair
+  strategies without lowering M11/M21 quality floors or bypassing M5.
+- [x] **Phase E — weak-model amplification:** explicit capability/profile plus independent evaluation
+  evidence drives decomposition, context shaping, tool grounding, output discipline, and repair reserves;
+  model/provider names never imply capability or weakness.
+- [x] **Phase F — frontier amplification:** exact D/E hashes compose into an immutable
+  `evaluation_only` candidate and Benchmark 2.0/M22 matched evidence remains the only measurement
+  authority; analytics cannot promote or route by themselves.
+- [x] Package-wide adversarial hardening rejects recomputed-hash semantic smuggling, unknown D/E policy
+  values, capability/profile mismatch, D/E budget drift, repair-policy mismatch, tool/sandbox/secret
+  authority imports, and analytics-to-routing escalation.
+
+Verification evidence:
+
+- Phase D exact-head CI `34091888679`;
+- Phase E exact-head CI `34092487219`;
+- Phase F normal CI `34095946506`;
+- package hardening run `34097050800`: **492/492 tests**, aggregate coverage **90.02% lines / 76.67%
+  branches / 96.05% functions**, Biome, strict TypeScript, and credential-free Kimi dry smoke all pass.
+
+Final D–F merge gates:
+
+- [x] focused Phase D/E/F tests and full verification;
+- [x] package-wide adversarial review;
+- [x] governance synchronization;
+- [ ] fresh normal exact-head PR CI on the final governance head;
+- [ ] merge PR #36 only after that CI is green and the PR remains mergeable.
+
+D–F itself performed no new live provider call, deployment, production migration, billing change, public
+traffic, or new credential use. Any post-merge live evaluation is a separately authorized bounded
+measurement and cannot be relabeled as universal provider/model superiority or production readiness.
