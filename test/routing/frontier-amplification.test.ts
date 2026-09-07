@@ -165,9 +165,9 @@ function scaffoldingPlan(
     mode: "AMPLIFIED" as const,
     outputDiscipline: "structured_validated" as const,
     profileHash: profile.profileHash,
-    rejectNoChangeRepair: true,
+    rejectNoChangeRepair: amplification.strategies.includes("targeted_repair"),
     requiresIndependentVerification: true,
-    surgicalRepairOnly: true,
+    surgicalRepairOnly: amplification.strategies.includes("targeted_repair"),
     toolGrounding:
       domain === "tool_use" || domain === "research"
         ? ("required_if_available" as const)
@@ -402,5 +402,112 @@ test("Phase F rejects profile/model mismatch before analytics can claim a gain",
         results,
       }),
     /same model profile/u,
+  );
+});
+
+test("recomputed Phase F component hashes cannot smuggle unknown D/E semantics", () => {
+  const original = components()[0];
+  assert.ok(original !== undefined);
+  const d = original.amplification;
+  const forgedDBody = {
+    benchmarkHash: d.benchmarkHash,
+    branchCount: d.branchCount,
+    contextTokenCeiling: d.contextTokenCeiling,
+    critiquePasses: d.critiquePasses,
+    domain: d.domain,
+    maxEstimatedTokens: d.maxEstimatedTokens,
+    maxModelCalls: d.maxModelCalls,
+    policyVersion: d.policyVersion,
+    profileHash: d.profileHash,
+    reasonCodes: d.reasonCodes,
+    repairAttempts: d.repairAttempts,
+    requiresIndependentVerification: d.requiresIndependentVerification,
+    strategies: ["direct", "mint_runtime_authority"],
+    weaknessReportHash: d.weaknessReportHash,
+  } as const;
+  const forgedD = {
+    ...forgedDBody,
+    planHash: hashJson(forgedDBody),
+  } as unknown as ReasoningAmplificationPlan;
+  const forgedDComponents = components().map((component) =>
+    component.domain === original.domain
+      ? {
+          amplification: forgedD,
+          domain: original.domain,
+          scaffolding: scaffoldingPlan(original.domain, forgedD),
+        }
+      : component,
+  );
+  assert.throws(
+    () => createFrontierAmplificationCandidate({ benchmark, components: forgedDComponents }),
+    /Phase D strategy.*unsupported/u,
+  );
+
+  const e = original.scaffolding;
+  const forgedEBody = {
+    amplificationPlanHash: e.amplificationPlanHash,
+    contextChunkBps: e.contextChunkBps,
+    decompositionDepth: e.decompositionDepth,
+    deficiencies: e.deficiencies,
+    directives: e.directives,
+    domain: e.domain,
+    evaluationHash: e.evaluationHash,
+    maxEstimatedTokens: e.maxEstimatedTokens,
+    maxModelCalls: e.maxModelCalls,
+    mode: "MAGIC_MODE",
+    outputDiscipline: e.outputDiscipline,
+    profileHash: e.profileHash,
+    rejectNoChangeRepair: e.rejectNoChangeRepair,
+    requiresIndependentVerification: e.requiresIndependentVerification,
+    surgicalRepairOnly: e.surgicalRepairOnly,
+    toolGrounding: e.toolGrounding,
+    version: e.version,
+  } as const;
+  const forgedE = {
+    ...forgedEBody,
+    planHash: hashJson(forgedEBody),
+  } as unknown as WeakModelScaffoldingPlan;
+  const forgedEComponents = components().map((component) =>
+    component.domain === original.domain ? { ...component, scaffolding: forgedE } : component,
+  );
+  assert.throws(
+    () => createFrontierAmplificationCandidate({ benchmark, components: forgedEComponents }),
+    /scaffolding mode is unsupported/u,
+  );
+});
+
+test("Phase F revalidates D/E capability and repair semantics against the benchmark profile", () => {
+  const original = components()[0];
+  assert.ok(original !== undefined);
+  const e = original.scaffolding;
+  const forgedBody = {
+    amplificationPlanHash: e.amplificationPlanHash,
+    contextChunkBps: e.contextChunkBps,
+    decompositionDepth: e.decompositionDepth,
+    deficiencies: e.deficiencies,
+    directives: e.directives,
+    domain: e.domain,
+    evaluationHash: e.evaluationHash,
+    maxEstimatedTokens: e.maxEstimatedTokens,
+    maxModelCalls: e.maxModelCalls,
+    mode: e.mode,
+    outputDiscipline: "text_contract",
+    profileHash: e.profileHash,
+    rejectNoChangeRepair: false,
+    requiresIndependentVerification: e.requiresIndependentVerification,
+    surgicalRepairOnly: false,
+    toolGrounding: e.toolGrounding,
+    version: e.version,
+  } as const;
+  const forged = {
+    ...forgedBody,
+    planHash: hashJson(forgedBody),
+  } as WeakModelScaffoldingPlan;
+  const forgedComponents = components().map((component) =>
+    component.domain === original.domain ? { ...component, scaffolding: forged } : component,
+  );
+  assert.throws(
+    () => createFrontierAmplificationCandidate({ benchmark, components: forgedComponents }),
+    /output discipline does not match/u,
   );
 });

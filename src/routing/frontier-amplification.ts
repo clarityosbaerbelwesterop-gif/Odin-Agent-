@@ -9,9 +9,26 @@ import {
   type FrontierEvidenceStatus,
   type FrontierFailureCategory,
 } from "../frontier-evals/index.js";
-import { AMPLIFICATION_POLICY_VERSION, type ReasoningAmplificationPlan } from "./amplification.js";
-import { assertSha256, exactKeys, objectValue, safeInteger, sha256Json } from "./internal.js";
-import { WEAK_MODEL_SCAFFOLDING_VERSION, type WeakModelScaffoldingPlan } from "./scaffolding.js";
+import {
+  AMPLIFICATION_POLICY_VERSION,
+  type AmplificationStrategy,
+  type ReasoningAmplificationPlan,
+} from "./amplification.js";
+import {
+  assertSha256,
+  exactKeys,
+  identifier,
+  objectValue,
+  safeInteger,
+  sha256Json,
+} from "./internal.js";
+import {
+  type OutputDiscipline,
+  type ScaffoldingMode,
+  type ToolGroundingMode,
+  WEAK_MODEL_SCAFFOLDING_VERSION,
+  type WeakModelScaffoldingPlan,
+} from "./scaffolding.js";
 import { RoutingError } from "./types.js";
 
 export const FRONTIER_AMPLIFICATION_VERSION = "intelligence-f-v1" as const;
@@ -81,6 +98,50 @@ const FAILURE_CATEGORIES: readonly FrontierFailureCategory[] = [
   "contract",
   "unknown",
 ];
+
+const AMPLIFICATION_STRATEGIES = new Set<AmplificationStrategy>([
+  "backward_reason",
+  "constraint_solve",
+  "counterexample_search",
+  "decompose",
+  "direct",
+  "independent_critique",
+  "numeric_consistency",
+  "retrieve_context",
+  "strict_output",
+  "targeted_repair",
+  "tool_ground",
+]);
+const SCAFFOLDING_MODES = new Set<ScaffoldingMode>(["AMPLIFIED", "STANDARD"]);
+const OUTPUT_DISCIPLINES = new Set<OutputDiscipline>([
+  "strict_structured",
+  "structured_validated",
+  "text_contract",
+]);
+const TOOL_GROUNDING_MODES = new Set<ToolGroundingMode>([
+  "required_if_available",
+  "unsupported",
+  "not_required",
+]);
+const DEFICIENCIES = new Set([
+  "context_window_below_floor",
+  "output_limit_below_floor",
+  "pass_rate_below_floor",
+  "quality_below_floor",
+  "sample_support_below_floor",
+]);
+const DIRECTIVES = new Set([
+  "bounded_context_chunks",
+  "decompose_before_execution",
+  "ground_claims_before_mutation",
+  "independent_verification_required",
+  "output_contract_guard",
+  "reject_no_change_repair",
+  "reserve_repair_headroom",
+  "surgical_repair_only",
+  "tool_grounding",
+  "tool_grounding_unavailable",
+]);
 
 export function createFrontierAmplificationCandidate(
   value: FrontierAmplificationCandidateInput,
@@ -273,12 +334,60 @@ function normalizeComponent(
     );
   }
   if (
-    scaffolding.maxModelCalls > amplification.maxModelCalls ||
-    scaffolding.maxEstimatedTokens > amplification.maxEstimatedTokens
+    scaffolding.maxModelCalls !== amplification.maxModelCalls ||
+    scaffolding.maxEstimatedTokens !== amplification.maxEstimatedTokens
   ) {
     throw new RoutingError(
       "BUDGET_EXCEEDED",
-      "Phase E scaffolding cannot increase Phase D runtime-owned ceilings.",
+      "Phase E scaffolding must preserve the exact Phase D runtime-owned ceilings.",
+    );
+  }
+  if (amplification.contextTokenCeiling > benchmark.profile.contextWindowTokens) {
+    throw new RoutingError(
+      "BUDGET_EXCEEDED",
+      "Phase D context ceiling exceeds the bound evaluation profile.",
+    );
+  }
+  const expectedOutputDiscipline: OutputDiscipline = benchmark.profile.strictStructuredOutput
+    ? "strict_structured"
+    : benchmark.profile.structuredOutput
+      ? "structured_validated"
+      : "text_contract";
+  if (scaffolding.outputDiscipline !== expectedOutputDiscipline) {
+    throw new RoutingError(
+      "INVALID_INPUT",
+      "Phase E output discipline does not match the bound capability profile.",
+    );
+  }
+  const expectedToolGrounding: ToolGroundingMode =
+    domain === "tool_use" || domain === "research"
+      ? benchmark.profile.toolUse
+        ? "required_if_available"
+        : "unsupported"
+      : "not_required";
+  if (scaffolding.toolGrounding !== expectedToolGrounding) {
+    throw new RoutingError(
+      "INVALID_INPUT",
+      "Phase E tool grounding does not match the bound capability profile.",
+    );
+  }
+  const targetedRepair = amplification.strategies.includes("targeted_repair");
+  if (
+    scaffolding.surgicalRepairOnly !== targetedRepair ||
+    scaffolding.rejectNoChangeRepair !== targetedRepair
+  ) {
+    throw new RoutingError(
+      "INVALID_INPUT",
+      "Phase E repair policy does not match the exact Phase D strategy set.",
+    );
+  }
+  if (
+    scaffolding.requiresIndependentVerification !==
+    (scaffolding.mode === "AMPLIFIED" || amplification.requiresIndependentVerification)
+  ) {
+    throw new RoutingError(
+      "INVALID_INPUT",
+      "Phase E verification policy does not match its D/E inputs.",
     );
   }
   return Object.freeze({ amplification, domain, scaffolding });
@@ -314,6 +423,31 @@ function normalizeAmplification(value: ReasoningAmplificationPlan): ReasoningAmp
   if (!Array.isArray(plan.strategies) || !Array.isArray(plan.reasonCodes)) {
     throw new RoutingError("INVALID_INPUT", "Phase D amplification collections are malformed.");
   }
+  const strategies = plan.strategies.map((strategy, index) => {
+    if (
+      typeof strategy !== "string" ||
+      !AMPLIFICATION_STRATEGIES.has(strategy as AmplificationStrategy)
+    ) {
+      throw new RoutingError("INVALID_INPUT", `Phase D strategy at index ${index} is unsupported.`);
+    }
+    return strategy as AmplificationStrategy;
+  });
+  if (new Set(strategies).size !== strategies.length) {
+    throw new RoutingError("INVALID_INPUT", "Phase D strategies contain duplicates.");
+  }
+  const reasonCodes = plan.reasonCodes.map((reason, index) =>
+    identifier(reason, `Phase D reasonCodes[${index}]`),
+  );
+  if (new Set(reasonCodes).size !== reasonCodes.length) {
+    throw new RoutingError("INVALID_INPUT", "Phase D reason codes contain duplicates.");
+  }
+  if (
+    typeof plan.domain !== "string" ||
+    !BENCHMARK_V2_DOMAINS.includes(plan.domain as BenchmarkV2Domain)
+  ) {
+    throw new RoutingError("INVALID_INPUT", "Phase D domain is unsupported.");
+  }
+  const domain = plan.domain as BenchmarkV2Domain;
   const body = {
     benchmarkHash: assertSha256(plan.benchmarkHash, "Phase D benchmarkHash"),
     branchCount: safeInteger(plan.branchCount, "Phase D branchCount", 1, 100),
@@ -324,7 +458,7 @@ function normalizeAmplification(value: ReasoningAmplificationPlan): ReasoningAmp
       100_000_000,
     ),
     critiquePasses: safeInteger(plan.critiquePasses, "Phase D critiquePasses", 0, 100),
-    domain: plan.domain,
+    domain,
     maxEstimatedTokens: safeInteger(
       plan.maxEstimatedTokens,
       "Phase D maxEstimatedTokens",
@@ -334,10 +468,10 @@ function normalizeAmplification(value: ReasoningAmplificationPlan): ReasoningAmp
     maxModelCalls: safeInteger(plan.maxModelCalls, "Phase D maxModelCalls", 1, 100),
     policyVersion: plan.policyVersion,
     profileHash: assertSha256(plan.profileHash, "Phase D profileHash"),
-    reasonCodes: Object.freeze([...plan.reasonCodes]),
+    reasonCodes: Object.freeze(reasonCodes),
     repairAttempts: safeInteger(plan.repairAttempts, "Phase D repairAttempts", 0, 100),
     requiresIndependentVerification: plan.requiresIndependentVerification,
-    strategies: Object.freeze([...plan.strategies]),
+    strategies: Object.freeze(strategies),
     weaknessReportHash: assertSha256(plan.weaknessReportHash, "Phase D weaknessReportHash"),
   } as const;
   if (typeof body.requiresIndependentVerification !== "boolean") {
@@ -383,16 +517,77 @@ function normalizeScaffolding(value: WeakModelScaffoldingPlan): WeakModelScaffol
   if (!Array.isArray(plan.deficiencies) || !Array.isArray(plan.directives)) {
     throw new RoutingError("INVALID_INPUT", "Phase E scaffolding collections are malformed.");
   }
+  if (
+    typeof plan.domain !== "string" ||
+    !BENCHMARK_V2_DOMAINS.includes(plan.domain as BenchmarkV2Domain)
+  ) {
+    throw new RoutingError("INVALID_INPUT", "Phase E domain is unsupported.");
+  }
+  const domain = plan.domain as BenchmarkV2Domain;
+  if (typeof plan.mode !== "string" || !SCAFFOLDING_MODES.has(plan.mode as ScaffoldingMode)) {
+    throw new RoutingError("INVALID_INPUT", "Phase E scaffolding mode is unsupported.");
+  }
+  const mode = plan.mode as ScaffoldingMode;
+  if (
+    typeof plan.outputDiscipline !== "string" ||
+    !OUTPUT_DISCIPLINES.has(plan.outputDiscipline as OutputDiscipline)
+  ) {
+    throw new RoutingError("INVALID_INPUT", "Phase E output discipline is unsupported.");
+  }
+  const outputDiscipline = plan.outputDiscipline as OutputDiscipline;
+  if (
+    typeof plan.toolGrounding !== "string" ||
+    !TOOL_GROUNDING_MODES.has(plan.toolGrounding as ToolGroundingMode)
+  ) {
+    throw new RoutingError("INVALID_INPUT", "Phase E tool grounding mode is unsupported.");
+  }
+  const toolGrounding = plan.toolGrounding as ToolGroundingMode;
+  const deficiencies = plan.deficiencies.map((value, index) => {
+    const normalized = identifier(value, `Phase E deficiencies[${index}]`);
+    if (!DEFICIENCIES.has(normalized)) {
+      throw new RoutingError("INVALID_INPUT", "Phase E deficiency is unsupported.");
+    }
+    return normalized;
+  });
+  const directives = plan.directives.map((value, index) => {
+    const normalized = identifier(value, `Phase E directives[${index}]`);
+    if (!DIRECTIVES.has(normalized)) {
+      throw new RoutingError("INVALID_INPUT", "Phase E directive is unsupported.");
+    }
+    return normalized;
+  });
+  if (
+    new Set(deficiencies).size !== deficiencies.length ||
+    new Set(directives).size !== directives.length
+  ) {
+    throw new RoutingError("INVALID_INPUT", "Phase E collections contain duplicates.");
+  }
+  if (
+    (mode === "STANDARD" && deficiencies.length !== 0) ||
+    (mode === "AMPLIFIED" && deficiencies.length === 0)
+  ) {
+    throw new RoutingError("INVALID_INPUT", "Phase E mode contradicts its deficiency evidence.");
+  }
+  const contextChunkBps = safeInteger(plan.contextChunkBps, "Phase E contextChunkBps", 1, 10_000);
+  if (contextChunkBps !== 5_000 && contextChunkBps !== 10_000) {
+    throw new RoutingError("INVALID_INPUT", "Phase E context chunk policy is unsupported.");
+  }
+  const decompositionDepth = safeInteger(
+    plan.decompositionDepth,
+    "Phase E decompositionDepth",
+    1,
+    3,
+  );
   const body = {
     amplificationPlanHash: assertSha256(
       plan.amplificationPlanHash,
       "Phase E amplificationPlanHash",
     ),
-    contextChunkBps: safeInteger(plan.contextChunkBps, "Phase E contextChunkBps", 1, 10_000),
-    decompositionDepth: safeInteger(plan.decompositionDepth, "Phase E decompositionDepth", 1, 3),
-    deficiencies: Object.freeze([...plan.deficiencies]),
-    directives: Object.freeze([...plan.directives]),
-    domain: plan.domain,
+    contextChunkBps,
+    decompositionDepth,
+    deficiencies: Object.freeze(deficiencies),
+    directives: Object.freeze(directives),
+    domain,
     evaluationHash: assertSha256(plan.evaluationHash, "Phase E evaluationHash"),
     maxEstimatedTokens: safeInteger(
       plan.maxEstimatedTokens,
@@ -401,13 +596,13 @@ function normalizeScaffolding(value: WeakModelScaffoldingPlan): WeakModelScaffol
       100_000_000,
     ),
     maxModelCalls: safeInteger(plan.maxModelCalls, "Phase E maxModelCalls", 1, 100),
-    mode: plan.mode,
-    outputDiscipline: plan.outputDiscipline,
+    mode,
+    outputDiscipline,
     profileHash: assertSha256(plan.profileHash, "Phase E profileHash"),
     rejectNoChangeRepair: plan.rejectNoChangeRepair,
     requiresIndependentVerification: plan.requiresIndependentVerification,
     surgicalRepairOnly: plan.surgicalRepairOnly,
-    toolGrounding: plan.toolGrounding,
+    toolGrounding,
     version: plan.version,
   } as const;
   if (

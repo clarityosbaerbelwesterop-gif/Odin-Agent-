@@ -1,8 +1,8 @@
 import type { BenchmarkV2Domain, FrontierEvaluationProfile } from "../frontier-evals/index.js";
 import { validateFrontierEvaluationProfile } from "../frontier-evals/index.js";
 import {
-  type AmplificationStrategy,
   AMPLIFICATION_POLICY_VERSION,
+  type AmplificationStrategy,
   type ReasoningAmplificationPlan,
 } from "./amplification.js";
 import { normalizeEvaluation } from "./evaluations.js";
@@ -324,7 +324,10 @@ function validateAmplificationPlan(value: ReasoningAmplificationPlan): Reasoning
     throw new RoutingError("INVALID_INPUT", "Amplification plan collections are malformed.");
   }
   const strategies = plan.strategies.map((strategy, index) => {
-    if (typeof strategy !== "string" || !AMPLIFICATION_STRATEGIES.has(strategy as AmplificationStrategy)) {
+    if (
+      typeof strategy !== "string" ||
+      !AMPLIFICATION_STRATEGIES.has(strategy as AmplificationStrategy)
+    ) {
       throw new RoutingError(
         "INVALID_INPUT",
         `Amplification strategy at index ${index} is unsupported.`,
