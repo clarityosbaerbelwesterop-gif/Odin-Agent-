@@ -28,21 +28,25 @@ function canonical(value: unknown): unknown {
 }
 
 function hashJson(value: unknown): string {
-  return createHash("sha256").update(JSON.stringify(canonical(value))).digest("hex");
+  return createHash("sha256")
+    .update(JSON.stringify(canonical(value)))
+    .digest("hex");
 }
 
 function sha(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function profile(options: {
-  model?: string;
-  context?: number;
-  output?: number;
-  toolUse?: boolean;
-  structured?: boolean;
-  strict?: boolean;
-} = {}): FrontierEvaluationProfile {
+function profile(
+  options: {
+    model?: string;
+    context?: number;
+    output?: number;
+    toolUse?: boolean;
+    structured?: boolean;
+    strict?: boolean;
+  } = {},
+): FrontierEvaluationProfile {
   return createFrontierEvaluationProfile({
     contextWindowTokens: options.context ?? 64_000,
     imageInput: false,
@@ -196,7 +200,10 @@ test("strong explicit envelope stays standard regardless of provider/model namin
 test("unsupported tool capability remains explicit and is never synthesized", () => {
   const current = profile({ toolUse: false });
   const plan = createWeakModelScaffoldingPlan({
-    amplification: amplification(current, { domain: "tool_use", strategies: ["direct", "tool_ground"] }),
+    amplification: amplification(current, {
+      domain: "tool_use",
+      strategies: ["direct", "tool_ground"],
+    }),
     domain: "tool_use",
     evaluatedAt: "2026-09-07T06:00:00.000Z",
     evaluation: evaluation(current, { taskClass: "research" }),
@@ -239,7 +246,10 @@ test("foreign, stale, and self-tampered evidence fails closed", () => {
     /stale/u,
   );
 
-  const tampered = { ...base, maxModelCalls: base.maxModelCalls + 10 } as ReasoningAmplificationPlan;
+  const tampered = {
+    ...base,
+    maxModelCalls: base.maxModelCalls + 10,
+  } as ReasoningAmplificationPlan;
   assert.throws(
     () =>
       createWeakModelScaffoldingPlan({
