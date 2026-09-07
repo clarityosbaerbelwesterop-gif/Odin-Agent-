@@ -1,0 +1,141 @@
+name: Paced Kimi live benchmark
+
+on:
+  push:
+    branches:
+      - agent/live-eval-rate-limit-recovery
+    paths:
+      - .github/workflows/paced-kimi-live-benchmark.yml
+
+permissions:
+  contents: write
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out evaluation branch
+        uses: actions/checkout@v5
+        with:
+          ref: agent/live-eval-rate-limit-recovery
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Re-run repository gate
+        run: npm run verify
+      - name: Build live evaluator dependencies
+        run: npm run build
+      - name: Require configured NVIDIA secret
+        env:
+          NV_API_KEY: ${{ secrets.NV_API_KEY }}
+        run: |
+          if [ -z "${NV_API_KEY:-}" ]; then
+            echo "::error::NV_API_KEY repository secret is missing"
+            exit 1
+          fi
+      - name: Paced acquisition 1
+        env:
+          NV_API_KEY: ${{ secrets.NV_API_KEY }}
+          ODIN_M16_RESULT_PATH: paced-kimi-acquisition-1.json
+        run: node scripts/live-m16-grounded-eval.mjs --suite=output
+      - name: Decide whether acquisition 2 is required
+        id: retry
+        run: |
+          STATUS=$(node -e 'const v=require("./paced-kimi-acquisition-1.json"); process.stdout.write(v.summary.status)')
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          if [ "$STATUS" = "COMPLETE" ]; then
+            echo "run_second=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_second=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Cool down before bounded second acquisition
+        if: steps.retry.outputs.run_second == 'true'
+        run: sleep 70
+      - name: Paced acquisition 2 after incomplete infrastructure evidence
+        if: steps.retry.outputs.run_second == 'true'
+        env:
+          NV_API_KEY: ${{ secrets.NV_API_KEY }}
+          ODIN_M16_RESULT_PATH: paced-kimi-acquisition-2.json
+        run: node scripts/live-m16-grounded-eval.mjs --suite=output
+      - name: Aggregate without cherry-picking
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from 'node:fs/promises';
+          const attempts = [];
+          for (const index of [1, 2]) {
+            try {
+              const value = JSON.parse(await readFile(`paced-kimi-acquisition-${index}.json`, 'utf8'));
+              attempts.push({ index, value });
+            } catch (error) {
+              if (index === 1) throw error;
+            }
+          }
+          const selected = attempts.find((entry) => entry.value.summary.status === 'COMPLETE') ?? null;
+          const summary = {
+            authority: 'measurement_only',
+            routingEligible: false,
+            promotionEligible: false,
+            acquisitionCount: attempts.length,
+            selectionRule: 'first_complete_acquisition_only; incomplete acquisitions retained',
+            complete: selected !== null,
+            selectedAcquisition: selected?.index ?? null,
+            selectedSummary: selected?.value.summary ?? null,
+            totalProviderCalls: attempts.reduce((sum, entry) => sum + entry.value.providerCalls, 0),
+            attempts: attempts.map((entry) => ({
+              acquisition: entry.index,
+              evaluatedAt: entry.value.evaluatedAt,
+              pacing: entry.value.pacing,
+              providerCalls: entry.value.providerCalls,
+              summary: entry.value.summary,
+              infrastructure: entry.value.results.map((result) => ({
+                id: result.id,
+                baselineErrorCode: result.baseline.errorCode,
+                baselineMeasurementComplete: result.baseline.measurementComplete,
+                optimizedErrorCode: result.optimized.errorCode,
+                optimizedMeasurementComplete: result.optimized.measurementComplete,
+              })),
+            })),
+          };
+          await writeFile('paced-kimi-benchmark-summary.json', `${JSON.stringify(summary, null, 2)}\n`, 'utf8');
+          console.log(JSON.stringify(summary));
+          NODE
+      - name: Upload sanitized benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paced-kimi-live-benchmark-evidence
+          path: |
+            paced-kimi-acquisition-1.json
+            paced-kimi-acquisition-2.json
+            paced-kimi-benchmark-summary.json
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Remove temporary live workflow
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/paced-kimi-live-benchmark.yml
+          git commit -m "ci(eval): remove temporary paced live benchmark"
+          git push origin HEAD:agent/live-eval-rate-limit-recovery
+      - name: Require a complete matched benchmark
+        if: always()
+        run: |
+          if [ ! -f paced-kimi-benchmark-summary.json ]; then
+            echo "::error::paced benchmark summary was not produced"
+            exit 1
+          fi
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          const summary = JSON.parse(await readFile('paced-kimi-benchmark-summary.json', 'utf8'));
+          if (summary.complete !== true) {
+            console.error('No complete matched acquisition was produced; evidence remains INCONCLUSIVE.');
+            process.exit(1);
+          }
+          console.log(JSON.stringify(summary.selectedSummary));
+          NODE
