@@ -529,9 +529,7 @@ function buildPairedDeltas(signals: readonly WeaknessSignal[]): WeaknessDeltaEnt
       (left, right) =>
         Math.abs(right.affectedDelta) - Math.abs(left.affectedDelta) ||
         Math.abs(right.severityDelta) - Math.abs(left.severityDelta) ||
-        right.odinAffected +
-          right.baselineAffected -
-          (left.odinAffected + left.baselineAffected) ||
+        right.odinAffected + right.baselineAffected - (left.odinAffected + left.baselineAffected) ||
         left.weaknessClass.localeCompare(right.weaknessClass) ||
         left.code.localeCompare(right.code),
     );
