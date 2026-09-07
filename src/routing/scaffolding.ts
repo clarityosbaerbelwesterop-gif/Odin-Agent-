@@ -1,18 +1,9 @@
 import type { BenchmarkV2Domain, FrontierEvaluationProfile } from "../frontier-evals/index.js";
 import { validateFrontierEvaluationProfile } from "../frontier-evals/index.js";
-import type { ModelEvaluation, RoutingTaskClass } from "./types.js";
-import {
-  AMPLIFICATION_POLICY_VERSION,
-  type ReasoningAmplificationPlan,
-} from "./amplification.js";
+import { AMPLIFICATION_POLICY_VERSION, type ReasoningAmplificationPlan } from "./amplification.js";
 import { normalizeEvaluation } from "./evaluations.js";
-import {
-  canonicalTimestamp,
-  exactKeys,
-  objectValue,
-  safeInteger,
-  sha256Json,
-} from "./internal.js";
+import { canonicalTimestamp, exactKeys, objectValue, safeInteger, sha256Json } from "./internal.js";
+import type { ModelEvaluation, RoutingTaskClass } from "./types.js";
 import { RoutingError } from "./types.js";
 
 export const WEAK_MODEL_SCAFFOLDING_VERSION = "intelligence-e-v1" as const;
@@ -85,7 +76,10 @@ export function createWeakModelScaffoldingPlan(
     throw new RoutingError("INVALID_INPUT", "Amplification plan is bound to a different profile.");
   }
   if (amplification.domain !== input.domain) {
-    throw new RoutingError("INVALID_INPUT", "Amplification plan is bound to a different task domain.");
+    throw new RoutingError(
+      "INVALID_INPUT",
+      "Amplification plan is bound to a different task domain.",
+    );
   }
 
   const deficiencies: string[] = [];
@@ -225,12 +219,7 @@ function normalizeThresholds(value: WeakModelThresholds): WeakModelThresholds {
     ),
     minOutputTokens: safeInteger(thresholds.minOutputTokens, "minOutputTokens", 1, 10_000_000),
     minPassRateBps: safeInteger(thresholds.minPassRateBps, "minPassRateBps", 0, 10_000),
-    minQualityScoreBps: safeInteger(
-      thresholds.minQualityScoreBps,
-      "minQualityScoreBps",
-      0,
-      10_000,
-    ),
+    minQualityScoreBps: safeInteger(thresholds.minQualityScoreBps, "minQualityScoreBps", 0, 10_000),
     minSamples: safeInteger(thresholds.minSamples, "minSamples", 1, 1_000_000),
   });
 }
@@ -248,17 +237,26 @@ function assertEvaluationBinding(
     evaluation.profileVersion !== profile.profileVersion ||
     evaluation.reasoningEffort !== profile.reasoningEffort
   ) {
-    throw new RoutingError("EVALUATION_INVALID", "Quality evidence does not match the exact profile.");
+    throw new RoutingError(
+      "EVALUATION_INVALID",
+      "Quality evidence does not match the exact profile.",
+    );
   }
   if (evaluation.taskClass !== TASK_CLASS_BY_DOMAIN[domain]) {
-    throw new RoutingError("EVALUATION_INVALID", "Quality evidence does not match the task domain.");
+    throw new RoutingError(
+      "EVALUATION_INVALID",
+      "Quality evidence does not match the task domain.",
+    );
   }
   const ageMs = Date.parse(evaluatedAt) - Date.parse(evaluation.observedAt);
   if (ageMs < 0) {
     throw new RoutingError("EVALUATION_INVALID", "Quality evidence is future-dated.");
   }
   if (ageMs > thresholds.maxEvaluationAgeMs) {
-    throw new RoutingError("EVALUATION_STALE", "Quality evidence is stale for weak-model amplification.");
+    throw new RoutingError(
+      "EVALUATION_STALE",
+      "Quality evidence is stale for weak-model amplification.",
+    );
   }
 }
 
