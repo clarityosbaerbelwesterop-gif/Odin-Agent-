@@ -1,3 +1,12 @@
+export type {
+  AmplificationStrategy,
+  ReasoningAmplificationPlan,
+  ReasoningAmplificationRequest,
+} from "./amplification.js";
+export {
+  AMPLIFICATION_POLICY_VERSION,
+  createReasoningAmplificationPlan,
+} from "./amplification.js";
 export { BoundedRoutingResultCache } from "./cache.js";
 export {
   evaluateRoutingFixture,
