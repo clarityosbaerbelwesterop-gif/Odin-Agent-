@@ -1,6 +1,6 @@
 # Intelligence amplification tranche — Phase D, E, F
 
-Status: **IN_PROGRESS**. This is the binding contract for one pull request containing exactly three sequential phases after the merged A–C intelligence tranche.
+Status: **PHASE_VERIFIED — package hardening/governance pending**. This is the binding contract for one pull request containing exactly three sequential phases after the merged A–C intelligence tranche.
 
 ## Objective
 
@@ -28,44 +28,50 @@ Improve Odin's own reasoning/scaffolding rather than adding model/provider integ
 
 Acceptance criteria:
 
-- [ ] strategy input binds exact Phase C weakness-report hash, benchmark/profile identity, task domain, and bounded risk/complexity signals;
-- [ ] deterministic strategy selection covers planning/decomposition, context retrieval, tool grounding, critique, verification, and repair reserves;
-- [ ] strategy ceilings can preserve or reduce existing budgets but never increase beyond caller/runtime-owned maxima;
-- [ ] infrastructure/unknown weaknesses cannot masquerade as attributable reasoning/coding/tool/context/model weaknesses;
-- [ ] absent or weak evidence yields a conservative bounded default rather than speculative amplification;
-- [ ] strategy output has no tool, route, completion, approval, skill, credential, sandbox, or release authority;
-- [ ] focused tests cover tampering, foreign profile/report, budget escalation, unknown/infra evidence, deterministic ordering, and known M16 weakness patterns;
-- [ ] full `npm run verify` passes before Phase D is declared complete.
+- [x] strategy input binds exact Phase C weakness-report hash, benchmark/profile identity, task domain, and bounded risk/complexity signals;
+- [x] deterministic strategy selection covers planning/decomposition, context retrieval, tool grounding, critique, verification, and repair reserves;
+- [x] strategy ceilings can preserve or reduce existing budgets but never increase beyond caller/runtime-owned maxima;
+- [x] infrastructure/unknown weaknesses cannot masquerade as attributable reasoning/coding/tool/context/model weaknesses;
+- [x] absent or weak evidence yields a conservative bounded default rather than speculative amplification;
+- [x] strategy output has no tool, route, completion, approval, skill, credential, sandbox, or release authority;
+- [x] focused tests cover tampering, foreign profile/report, budget escalation, unknown/infra evidence, deterministic ordering, and known M16 weakness patterns;
+- [x] full `npm run verify` passes before Phase D is declared complete.
+
+Phase D exact-head PR CI `34091888679` passed after the formatter-only repair.
 
 ## Phase E — weak-model amplification
 
 Acceptance criteria:
 
-- [ ] lower-capability classification is derived only from explicit evaluation-profile capability/context/output declarations plus independent quality evidence, never the model name;
-- [ ] a bounded amplification plan may strengthen decomposition, context shaping, tool grounding, structured-output framing, verification depth, and reserved repair capacity;
-- [ ] unsupported capabilities are never synthesized or claimed by Odin scaffolding;
-- [ ] amplification cannot lower M11/M21 quality floors, bypass route exclusion, increase runtime-owned budgets, or become positive routing evidence;
-- [ ] stronger profiles do not receive unnecessary scaffolding solely because of identity/provider names;
-- [ ] deterministic tests compare explicit lower/higher capability envelopes and prove fail-closed stale/tampered/insufficient quality evidence handling;
-- [ ] full `npm run verify` passes before Phase E is declared complete.
+- [x] lower-capability classification is derived only from explicit evaluation-profile capability/context/output declarations plus independent quality evidence, never the model name;
+- [x] a bounded amplification plan may strengthen decomposition, context shaping, tool grounding, structured-output framing, verification depth, and reserved repair capacity;
+- [x] unsupported capabilities are never synthesized or claimed by Odin scaffolding;
+- [x] amplification cannot lower M11/M21 quality floors, bypass route exclusion, increase runtime-owned budgets, or become positive routing evidence;
+- [x] stronger profiles do not receive unnecessary scaffolding solely because of identity/provider names;
+- [x] deterministic tests compare explicit lower/higher capability envelopes and prove fail-closed stale/tampered/insufficient quality evidence handling;
+- [x] full `npm run verify` passes before Phase E is declared complete.
+
+Phase E exact-head PR CI `34092487219` passed after the explicit runtime-domain type guard repair.
 
 ## Phase F — frontier amplification
 
 Acceptance criteria:
 
-- [ ] one immutable candidate configuration composes verified D/E policy components with exact hashes/versions/bounds;
-- [ ] candidate evaluation reuses Benchmark 2.0/M22 matched-arm semantics and cannot alter hidden acceptance, per-case budgets, provider/model/profile/reasoning identity, or infrastructure classification;
-- [ ] reports separate quality, token, latency, verification, recovery, and weakness deltas by domain without cherry-picking incomplete evidence;
-- [ ] candidate fixtures prove protocol behavior only and create no M11 route-quality or production-promotion authority;
-- [ ] any future live claim requires separately authorized immutable provider evidence under the same profile/configuration identity;
-- [ ] adversarial tests cover candidate tampering, component substitution, budget inflation, incomplete-arm hiding, profile mismatch, and analytics-to-routing authority escalation;
-- [ ] full `npm run verify` passes before Phase F is declared complete.
+- [x] one immutable candidate configuration composes verified D/E policy components with exact hashes/versions/bounds;
+- [x] candidate evaluation reuses Benchmark 2.0/M22 matched-arm semantics and cannot alter hidden acceptance, per-case budgets, provider/model/profile/reasoning identity, or infrastructure classification;
+- [x] reports separate quality, token, latency, verification, recovery, repair, and typed attributable-failure deltas by domain without cherry-picking incomplete evidence;
+- [x] candidate fixtures prove protocol behavior only and create no M11 route-quality or production-promotion authority;
+- [x] any future live claim requires separately authorized immutable provider evidence under the same profile/configuration identity;
+- [x] adversarial tests cover candidate tampering, component substitution, budget inflation, incomplete-arm preservation, profile mismatch, and analytics-to-routing authority escalation;
+- [x] full `npm run verify` passes before Phase F is declared complete.
+
+Phase F helper run `34095778033` applied Biome formatting and then passed full `npm run verify` on the exact formatted working tree before committing `fd07443142c7313568e611e35196a7e55d878e8a`; the helper deleted itself. The automatic PR run created by the bot-authored formatting commit returned `action_required` with no jobs, so it is not counted as the final normal exact-head merge gate.
 
 ## Delivery gate
 
-- [ ] Phase D focused tests + full verify complete;
-- [ ] Phase E focused tests + full verify complete;
-- [ ] Phase F focused tests + full verify complete;
+- [x] Phase D focused tests + full verify complete;
+- [x] Phase E focused tests + full verify complete;
+- [x] Phase F focused tests + full verify complete;
 - [ ] package-wide adversarial review complete;
 - [ ] `ARCHITECTURE.md`, `SECURITY.md`, `ROADMAP.md`, and `HANDOVER.md` synchronized;
 - [ ] one fresh normal exact-head PR CI after governance synchronization;
