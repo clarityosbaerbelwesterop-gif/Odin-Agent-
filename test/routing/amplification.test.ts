@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
-import type {
-  WeaknessHeatmapEntry,
-  WeaknessMiningReport,
-} from "../../src/frontier-evals/index.js";
+import type { WeaknessHeatmapEntry, WeaknessMiningReport } from "../../src/frontier-evals/index.js";
 import {
   createReasoningAmplificationPlan,
   type ReasoningAmplificationRequest,
@@ -25,7 +22,9 @@ function canonical(value: unknown): unknown {
 }
 
 function hashJson(value: unknown): string {
-  return createHash("sha256").update(JSON.stringify(canonical(value))).digest("hex");
+  return createHash("sha256")
+    .update(JSON.stringify(canonical(value)))
+    .digest("hex");
 }
 
 function sha(value: string): string {
@@ -67,12 +66,14 @@ function weakness(
   }) as WeaknessHeatmapEntry;
 }
 
-function report(options: {
-  attributable?: readonly WeaknessHeatmapEntry[];
-  infrastructure?: readonly WeaknessHeatmapEntry[];
-  comparablePairCount?: number;
-  profileHash?: string;
-} = {}): WeaknessMiningReport {
+function report(
+  options: {
+    attributable?: readonly WeaknessHeatmapEntry[];
+    infrastructure?: readonly WeaknessHeatmapEntry[];
+    comparablePairCount?: number;
+    profileHash?: string;
+  } = {},
+): WeaknessMiningReport {
   const body = {
     attributableHeatmap: Object.freeze([...(options.attributable ?? [])]),
     benchmarkHash: sha("benchmark-d"),
@@ -169,10 +170,7 @@ test("profile binding and report integrity fail closed", () => {
   const valid = report({ attributable: [weakness("model", "output_truncated", 4)] });
   const tampered = { ...valid, comparablePairCount: valid.comparablePairCount + 1 };
   assert.throws(
-    () =>
-      createReasoningAmplificationPlan(
-        request(tampered as WeaknessMiningReport),
-      ),
+    () => createReasoningAmplificationPlan(request(tampered as WeaknessMiningReport)),
     /report hash/u,
   );
 });
