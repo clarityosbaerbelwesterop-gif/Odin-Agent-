@@ -97,6 +97,6 @@ No gate was weakened and no new live-provider, secret, deployment, billing, or m
 
 - [x] each phase received focused tests and full `npm run verify` before being declared complete;
 - [x] package-wide adversarial review completed after Phase C;
-- [ ] `ARCHITECTURE.md`, `SECURITY.md`, `ROADMAP.md`, and `HANDOVER.md` synchronized;
+- [x] `ARCHITECTURE.md`, `SECURITY.md`, `ROADMAP.md`, and `HANDOVER.md` synchronized;
 - [ ] one fresh exact-head PR CI after governance synchronization;
 - [ ] merge only after the final exact-head CI is green.
