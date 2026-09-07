@@ -176,12 +176,13 @@ function normalizeRequest(value: WeakModelScaffoldingRequest): WeakModelScaffold
     [],
     "weak-model scaffolding request",
   );
-  if (!(input.domain in TASK_CLASS_BY_DOMAIN)) {
+  if (typeof input.domain !== "string" || !(input.domain in TASK_CLASS_BY_DOMAIN)) {
     throw new RoutingError("INVALID_INPUT", "Weak-model scaffolding domain is unsupported.");
   }
+  const domain = input.domain as BenchmarkV2Domain;
   return Object.freeze({
     amplification: input.amplification as ReasoningAmplificationPlan,
-    domain: input.domain as BenchmarkV2Domain,
+    domain,
     evaluatedAt: canonicalTimestamp(input.evaluatedAt, "scaffolding evaluatedAt"),
     evaluation: input.evaluation as ModelEvaluation,
     profile: input.profile as FrontierEvaluationProfile,
