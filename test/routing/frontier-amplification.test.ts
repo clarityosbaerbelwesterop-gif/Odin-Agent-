@@ -254,10 +254,7 @@ function completeResults(): readonly FrontierArmResult[] {
   return benchmark.cases.flatMap((current) => {
     const terminalQualityFailure = current.domain === "coding" && firstCoding;
     if (terminalQualityFailure) firstCoding = false;
-    return [
-      result(current, "model_alone", { terminalQualityFailure }),
-      result(current, "odin"),
-    ];
+    return [result(current, "model_alone", { terminalQualityFailure }), result(current, "odin")];
   });
 }
 

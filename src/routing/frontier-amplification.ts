@@ -9,15 +9,9 @@ import {
   type FrontierEvidenceStatus,
   type FrontierFailureCategory,
 } from "../frontier-evals/index.js";
-import {
-  AMPLIFICATION_POLICY_VERSION,
-  type ReasoningAmplificationPlan,
-} from "./amplification.js";
-import {
-  WEAK_MODEL_SCAFFOLDING_VERSION,
-  type WeakModelScaffoldingPlan,
-} from "./scaffolding.js";
+import { AMPLIFICATION_POLICY_VERSION, type ReasoningAmplificationPlan } from "./amplification.js";
 import { assertSha256, exactKeys, objectValue, safeInteger, sha256Json } from "./internal.js";
+import { WEAK_MODEL_SCAFFOLDING_VERSION, type WeakModelScaffoldingPlan } from "./scaffolding.js";
 import { RoutingError } from "./types.js";
 
 export const FRONTIER_AMPLIFICATION_VERSION = "intelligence-f-v1" as const;
@@ -123,7 +117,10 @@ export function createFrontierAmplificationCandidate(
   for (const current of benchmark.cases) {
     const component = components.find((entry) => entry.domain === current.domain);
     if (component === undefined) {
-      throw new RoutingError("INVALID_INPUT", "Frontier amplification domain component disappeared.");
+      throw new RoutingError(
+        "INVALID_INPUT",
+        "Frontier amplification domain component disappeared.",
+      );
     }
     if (component.scaffolding.maxModelCalls > current.frontierCase.budget.maxModelCalls) {
       throw new RoutingError(
@@ -224,7 +221,10 @@ function normalizeBenchmark(value: BenchmarkV2Suite): BenchmarkV2Suite {
     value.benchmarkHash !== rebuilt.benchmarkHash ||
     value.blueprintVersion !== rebuilt.blueprintVersion
   ) {
-    throw new RoutingError("INVALID_INPUT", "Frontier amplification benchmark identity is invalid.");
+    throw new RoutingError(
+      "INVALID_INPUT",
+      "Frontier amplification benchmark identity is invalid.",
+    );
   }
   return rebuilt;
 }
@@ -234,15 +234,25 @@ function normalizeComponent(
   benchmark: BenchmarkV2Suite,
 ): FrontierAmplificationComponent {
   const component = objectValue(value, "frontier amplification component");
-  exactKeys(component, ["domain", "amplification", "scaffolding"], [], "frontier amplification component");
+  exactKeys(
+    component,
+    ["domain", "amplification", "scaffolding"],
+    [],
+    "frontier amplification component",
+  );
   if (
     typeof component.domain !== "string" ||
     !BENCHMARK_V2_DOMAINS.includes(component.domain as BenchmarkV2Domain)
   ) {
-    throw new RoutingError("INVALID_INPUT", "Frontier amplification component domain is unsupported.");
+    throw new RoutingError(
+      "INVALID_INPUT",
+      "Frontier amplification component domain is unsupported.",
+    );
   }
   const domain = component.domain as BenchmarkV2Domain;
-  const amplification = normalizeAmplification(component.amplification as ReasoningAmplificationPlan);
+  const amplification = normalizeAmplification(
+    component.amplification as ReasoningAmplificationPlan,
+  );
   const scaffolding = normalizeScaffolding(component.scaffolding as WeakModelScaffoldingPlan);
   if (
     amplification.domain !== domain ||
@@ -307,10 +317,20 @@ function normalizeAmplification(value: ReasoningAmplificationPlan): ReasoningAmp
   const body = {
     benchmarkHash: assertSha256(plan.benchmarkHash, "Phase D benchmarkHash"),
     branchCount: safeInteger(plan.branchCount, "Phase D branchCount", 1, 100),
-    contextTokenCeiling: safeInteger(plan.contextTokenCeiling, "Phase D contextTokenCeiling", 1, 100_000_000),
+    contextTokenCeiling: safeInteger(
+      plan.contextTokenCeiling,
+      "Phase D contextTokenCeiling",
+      1,
+      100_000_000,
+    ),
     critiquePasses: safeInteger(plan.critiquePasses, "Phase D critiquePasses", 0, 100),
     domain: plan.domain,
-    maxEstimatedTokens: safeInteger(plan.maxEstimatedTokens, "Phase D maxEstimatedTokens", 0, 100_000_000),
+    maxEstimatedTokens: safeInteger(
+      plan.maxEstimatedTokens,
+      "Phase D maxEstimatedTokens",
+      0,
+      100_000_000,
+    ),
     maxModelCalls: safeInteger(plan.maxModelCalls, "Phase D maxModelCalls", 1, 100),
     policyVersion: plan.policyVersion,
     profileHash: assertSha256(plan.profileHash, "Phase D profileHash"),
@@ -364,14 +384,22 @@ function normalizeScaffolding(value: WeakModelScaffoldingPlan): WeakModelScaffol
     throw new RoutingError("INVALID_INPUT", "Phase E scaffolding collections are malformed.");
   }
   const body = {
-    amplificationPlanHash: assertSha256(plan.amplificationPlanHash, "Phase E amplificationPlanHash"),
+    amplificationPlanHash: assertSha256(
+      plan.amplificationPlanHash,
+      "Phase E amplificationPlanHash",
+    ),
     contextChunkBps: safeInteger(plan.contextChunkBps, "Phase E contextChunkBps", 1, 10_000),
     decompositionDepth: safeInteger(plan.decompositionDepth, "Phase E decompositionDepth", 1, 3),
     deficiencies: Object.freeze([...plan.deficiencies]),
     directives: Object.freeze([...plan.directives]),
     domain: plan.domain,
     evaluationHash: assertSha256(plan.evaluationHash, "Phase E evaluationHash"),
-    maxEstimatedTokens: safeInteger(plan.maxEstimatedTokens, "Phase E maxEstimatedTokens", 0, 100_000_000),
+    maxEstimatedTokens: safeInteger(
+      plan.maxEstimatedTokens,
+      "Phase E maxEstimatedTokens",
+      0,
+      100_000_000,
+    ),
     maxModelCalls: safeInteger(plan.maxModelCalls, "Phase E maxModelCalls", 1, 100),
     mode: plan.mode,
     outputDiscipline: plan.outputDiscipline,
@@ -422,7 +450,10 @@ function validateCandidate(
     candidate.routingEligible !== false ||
     candidate.promotionEligible !== false
   ) {
-    throw new RoutingError("INVALID_INPUT", "Frontier amplification candidate authority is invalid.");
+    throw new RoutingError(
+      "INVALID_INPUT",
+      "Frontier amplification candidate authority is invalid.",
+    );
   }
   const rebuilt = createFrontierAmplificationCandidate({
     benchmark,
@@ -433,17 +464,17 @@ function validateCandidate(
     candidate.benchmarkHash !== rebuilt.benchmarkHash ||
     candidate.profileHash !== rebuilt.profileHash
   ) {
-    throw new RoutingError("INVALID_INPUT", "Frontier amplification candidate hash/binding is invalid.");
+    throw new RoutingError(
+      "INVALID_INPUT",
+      "Frontier amplification candidate hash/binding is invalid.",
+    );
   }
   return rebuilt;
 }
 
 function pairResults(
   results: readonly FrontierArmResult[],
-): ReadonlyMap<
-  string,
-  Partial<Record<"model_alone" | "odin", FrontierArmResult>>
-> {
+): ReadonlyMap<string, Partial<Record<"model_alone" | "odin", FrontierArmResult>>> {
   const pairs = new Map<string, Partial<Record<"model_alone" | "odin", FrontierArmResult>>>();
   for (const result of results) {
     const pair = pairs.get(result.caseHash) ?? {};
@@ -457,10 +488,7 @@ function buildDomainReport(
   domain: BenchmarkV2Domain,
   benchmark: BenchmarkV2Suite,
   benchmarkReport: BenchmarkV2Report,
-  pairsByCase: ReadonlyMap<
-    string,
-    Partial<Record<"model_alone" | "odin", FrontierArmResult>>
-  >,
+  pairsByCase: ReadonlyMap<string, Partial<Record<"model_alone" | "odin", FrontierArmResult>>>,
 ): FrontierAmplificationDomainReport {
   const summary = benchmarkReport.domains.find((current) => current.domain === domain);
   if (summary === undefined) {
@@ -475,16 +503,18 @@ function buildDomainReport(
   let recoveryDelta = 0;
   let repairDelta = 0;
   let measurablePairs = 0;
-  const weaknessCounts = new Map<
-    FrontierFailureCategory,
-    { baseline: number; odin: number }
-  >();
+  const weaknessCounts = new Map<FrontierFailureCategory, { baseline: number; odin: number }>();
 
   for (const current of benchmark.cases.filter((entry) => entry.domain === domain)) {
     const pair = pairsByCase.get(current.frontierCase.caseHash);
     const baseline = pair?.model_alone;
     const odin = pair?.odin;
-    if (baseline === undefined || odin === undefined || !isMeasurable(baseline) || !isMeasurable(odin)) {
+    if (
+      baseline === undefined ||
+      odin === undefined ||
+      !isMeasurable(baseline) ||
+      !isMeasurable(odin)
+    ) {
       continue;
     }
     measurablePairs += 1;
@@ -520,8 +550,7 @@ function buildDomainReport(
     domain,
     incompletePairs: summary.incompletePairs,
     infrastructurePairs: summary.infrastructurePairs,
-    latencyDeltaBps:
-      measurablePairs === 0 ? null : relativeDeltaBps(baselineLatency, odinLatency),
+    latencyDeltaBps: measurablePairs === 0 ? null : relativeDeltaBps(baselineLatency, odinLatency),
     qualityLiftBps: summary.qualityLiftBps,
     recoveryDelta: measurablePairs === 0 ? null : recoveryDelta,
     repairDelta: measurablePairs === 0 ? null : repairDelta,
