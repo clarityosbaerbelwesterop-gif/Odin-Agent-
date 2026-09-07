@@ -430,3 +430,70 @@ Status: **CONTRACT_VERIFIED**.
 - M28 adds platform-neutral mobile experience contracts for responsive web, iOS/iPadOS, Android, macOS, and desktop web with durable reconnect, fresh server-bound approvals, notifications as hints only, and strictly read-only offline presentation.
 - Repository verification and package-boundary adversarial tests are green. External real sandbox and hosted-infrastructure proof remain separate gates and are not claimed by this milestone.
 
+## Intelligence amplification track — Phase A-last through F
+
+This named intelligence track is the current delivery sequence after the repository-local M26–M28
+package. It does not erase M29/M30: those remain later adversarial/release gates. The user-required rule is
+**exactly three phases per merge package**. No new model/provider integration is part of A–F; Kimi K3 is
+the existing reference identity while the implementation stays provider-neutral.
+
+### Merge package — Phase A-last, B, C
+
+Status: **PHASE_VERIFIED — final governance exact-head CI pending** on PR #35.
+
+#### Phase A-last — evaluation profile envelope
+
+- [x] Exact provider/model/profile/reasoning identity is hash-bound.
+- [x] Capability flags plus context/output ceilings are explicit and independent of model names.
+- [x] Unsupported reasoning effort, tampering, malformed provenance, and over-profile budgets fail closed.
+- [x] Exact phase-head CI `34052663699` passed on `8ccd3a55077487d9572e6d0765984d9fd902cf41`.
+
+#### Phase B — Benchmark 2.0
+
+- [x] Locked 100-case blueprint: coding 25, math 20, reasoning 20, tool use 10, research 10,
+  long context 5, recovery 5, long mission 5.
+- [x] Hidden acceptance stays outside model-facing projections.
+- [x] M22 matched identity, equal budgets, anti-cherry-picking, and infrastructure ambiguity remain canonical.
+- [x] Domain reports preserve COMPLETE/PARTIAL/INCONCLUSIVE rather than hiding incomplete evidence.
+- [x] Exact phase-head CI `34053195605` passed on `dbd76086073ddddd1167ab8a482279ca32974ace`.
+
+#### Phase C — weakness mining
+
+- [x] Bounded typed/hash-bound diagnostics map into stable weakness classes.
+- [x] Unknown remains `unknown`; infrastructure ambiguity remains separate from attributable weaknesses.
+- [x] Paired baseline-vs-Odin deltas use complete measurable matched pairs only while retaining explicit
+  incomplete-pair counts.
+- [x] Sanitized regressions cover M16 `repair_no_change`, `quality_failed_after_repair`, and
+  structured-output missing with `finishReason=length`.
+- [x] Package-wide adversarial review found no authority leak from benchmark/diagnostic output.
+- [x] Phase-head CI `34090422186` passed Foundation, Biome, strict TypeScript, **470/470 tests**, and
+  credential-free Kimi dry smoke on `7856c5c146b86efa12fe74455eafc058cd8ac15a`.
+
+A–C fixture evidence is protocol/analytics verification, not a live public Kimi benchmark or universal
+Odin quality claim. No live provider call, new model/provider, credential use, paid resource, deployment,
+migration, billing action, or public traffic is authorized or introduced by this package.
+
+Final A–C merge gates:
+
+- [x] `ARCHITECTURE.md`, `SECURITY.md`, `ROADMAP.md`, `HANDOVER.md`, and the binding milestone contract
+  are synchronized.
+- [ ] Fresh normal exact-head PR CI on the final governance head.
+- [ ] Merge PR #35 only after that exact-head CI is green and the PR remains mergeable.
+
+### Next merge package — Phase D, E, F
+
+Phase D–F starts only from the merged A–C `main` head:
+
+- [ ] **Phase D — intelligence/reasoning amplification:** consume attributable Phase C weakness evidence
+  to choose bounded runtime planning, critique, context, verification, and repair strategies without
+  lowering M11/M21 quality floors or bypassing M5.
+- [ ] **Phase E — weak-model amplification:** improve Odin scaffolding for lower-capability explicit
+  profiles through decomposition, context shaping, tool grounding, output contracts, and reserved repair
+  budgets without adding models/providers or inferring capability from names.
+- [ ] **Phase F — frontier amplification:** compose the strongest bounded D/E policy into an
+  evaluation-only candidate path and prove any claimed gain only through matched Benchmark 2.0 evidence
+  before it can have routing consequence.
+
+D–F remains provider-neutral and no-live-spend by default. Each phase requires focused tests plus full
+`npm run verify`; after F the package requires adversarial review, governance synchronization, one fresh
+exact-head CI, and only then its merge.
