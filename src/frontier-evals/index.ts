@@ -39,3 +39,4 @@ export {
   modelFacingFrontierCase,
 } from "./suite.js";
 export * from "./types.js";
+export * from "./weakness-mining.js";
