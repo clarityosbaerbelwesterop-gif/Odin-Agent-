@@ -33,6 +33,18 @@ export {
 export { AdaptiveReasoningController, createReasoningPlan } from "./reasoning.js";
 export { EmpiricalModelRouter, normalizeRouteRequest } from "./router.js";
 export type {
+  OutputDiscipline,
+  ScaffoldingMode,
+  ToolGroundingMode,
+  WeakModelScaffoldingPlan,
+  WeakModelScaffoldingRequest,
+  WeakModelThresholds,
+} from "./scaffolding.js";
+export {
+  createWeakModelScaffoldingPlan,
+  WEAK_MODEL_SCAFFOLDING_VERSION,
+} from "./scaffolding.js";
+export type {
   CachedRoutingResult,
   EmpiricalRouterConfig,
   EvaluationProducer,
