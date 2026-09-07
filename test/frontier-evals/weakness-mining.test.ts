@@ -118,8 +118,7 @@ function result(
     outputTokens: arm === "odin" ? 450 : 500,
     profileVersion: profile.profileVersion,
     provider: profile.provider,
-    qualityBps:
-      options.qualityBps ?? (infrastructure ? null : arm === "odin" ? 8_000 : 7_000),
+    qualityBps: options.qualityBps ?? (infrastructure ? null : arm === "odin" ? 8_000 : 7_000),
     reasoningEffort: profile.reasoningEffort,
     recoveries: 0,
     repairs: 0,
@@ -261,7 +260,9 @@ test("infrastructure ambiguity remains separate from attributable weakness heatm
   assert.equal(report.incompletePairCount, 1);
   assert.ok(report.infrastructureHeatmap.some((entry) => entry.code === "result_timeout"));
   assert.ok(report.infrastructureHeatmap.some((entry) => entry.code === "timeout"));
-  assert.ok(!report.attributableHeatmap.some((entry) => entry.arm === "odin" && entry.code === "timeout"));
+  assert.ok(
+    !report.attributableHeatmap.some((entry) => entry.arm === "odin" && entry.code === "timeout"),
+  );
   assert.ok(!report.pairedDeltas.some((entry) => entry.code === "timeout"));
 });
 
@@ -272,13 +273,7 @@ test("paired deltas use only complete comparable arms and preserve incomplete-pa
   const second = cases.filter((current) => current.domain === "coding")[1];
   assert.ok(second !== undefined);
   const results = completeResults(cases)
-    .filter(
-      (entry) =>
-        !(
-          entry.caseHash === target.frontierCase.caseHash &&
-          entry.arm === "odin"
-        ),
-    )
+    .filter((entry) => !(entry.caseHash === target.frontierCase.caseHash && entry.arm === "odin"))
     .map((entry) =>
       entry.caseHash === second.frontierCase.caseHash && entry.arm === "odin"
         ? result(second, "odin", {
@@ -366,7 +361,9 @@ test("heatmaps are deterministic and sorted by measured frequency before severit
     results: [...results].reverse(),
   });
   assert.deepEqual(reversed, report);
-  const repairIndex = report.attributableHeatmap.findIndex((entry) => entry.code === "repair_no_change");
+  const repairIndex = report.attributableHeatmap.findIndex(
+    (entry) => entry.code === "repair_no_change",
+  );
   const verificationIndex = report.attributableHeatmap.findIndex(
     (entry) => entry.code === "verification_failed",
   );
