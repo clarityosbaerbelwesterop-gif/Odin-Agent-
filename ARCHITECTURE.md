@@ -1,9 +1,10 @@
 # Odin architecture
 
-Status: M0–M22 are merged and verified on `main`. M23–M25 are implemented on active PR #33 and
-are governance-synchronized pending one fresh normal exact-head CI before merge. M12 remains
-**PARTIALLY_VERIFIED** for real hosted-sandbox/public-production proof; no repository-local contract or
-synthetic fixture may be relabeled as live infrastructure evidence.
+Status: M0–M28 are merged and repository-verified on `main`. The intelligence A–C tranche is
+implemented and phase-verified on PR #35, pending the final governance-synchronized exact-head CI before
+merge. M12/M26 remain **PARTIALLY_VERIFIED** for real hosted-sandbox/public-production proof; no
+repository-local contract, synthetic fixture, benchmark report, or weakness analysis may be relabeled as
+live infrastructure or live model-performance evidence.
 
 ## Architectural thesis
 
@@ -47,6 +48,8 @@ canonical even when models, skills, tools, clients, or providers change.
 19. M24 advanced memory cannot convert remembered conclusions or model summaries into current-source
     authority.
 20. M25 tool descriptors are catalog metadata only; all execution authority remains in M3.
+21. Intelligence evaluation and weakness analysis are evidence/analytics only: Phase A profile envelopes,
+    Benchmark 2.0 reports, and Phase C heatmaps cannot mint M3/M5/M10/M11/M12/release authority.
 
 ## Logical architecture
 
@@ -66,6 +69,7 @@ Web / future native clients
            -> M5 verifier + adversarial review / repair loop
         -> canonical events / checkpoints / durable jobs / artifacts
         -> scoped memory + learning + skill packages + evaluation evidence
+        -> A–C evaluation profile / Benchmark 2.0 / weakness analytics
 ```
 
 ## Trust and execution planes
@@ -90,8 +94,8 @@ Runs repository/filesystem/terminal/browser/database/cloud/document/data/API/res
 behind policy and isolation boundaries. M3 owns tool registration, grants, approvals, schema validation,
 idempotency, timeout/retry, cancellation, handler dispatch, and audit. M25 adds uniform discovery but no
 new execution authority. M12 supplies canonical workspace, process/network policy, and a provider-neutral
-remote-sandbox lifecycle. Real container/VM isolation remains an M26 proof target rather than a current
-claim.
+remote-sandbox lifecycle. M26 defines strong-isolation contracts, while real container/VM proof remains a
+separate external release gate.
 
 ### Knowledge and persistence plane
 
@@ -99,11 +103,13 @@ Stores canonical mission events, validated checkpoints, durable job state, lifec
 content-addressed artifacts, scoped memory, skill packages, provenance, and evaluation outcomes.
 Repository state and current primary evidence override remembered facts. M8 provides local SQLite
 restart durability; M24 adds bounded advanced retrieval/maintenance over M6 without changing authority.
+A–C evaluation profiles, benchmark reports, and weakness heatmaps live here as lower-authority evidence,
+not as runtime permission or completion records.
 
 ### Experience/client plane
 
 M9 defines strict bounded client projections and controller-only mission controls. Clients reconnect from
-M8 lifecycle cursors and never become canonical mission state. M28 will extend this to mobile/native
+M8 lifecycle cursors and never become canonical mission state. M28 extends this into bounded mobile/native
 experience contracts while keeping long-running compute server-side.
 
 ## Implemented capability map
@@ -225,12 +231,20 @@ M17 deterministically classifies failures and chooses bounded retry/repair/alter
 escalation/checkpoint actions under anti-loop and side-effect rules. M19 coordinates 1–100 file change-set
 DAGs with exact pre/post hashes, ownership, staging, verification, and preimage restoration on failure.
 
-### M22 — Frontier evaluation protocol
+### M22 + intelligence A–C — Frontier evaluation, Benchmark 2.0, weakness mining
 
-`src/frontier-evals` defines versioned 50–200 case model-alone versus model-plus-Odin matched evaluation
-with hidden acceptance metadata removed from model-facing input, equal identity/budget requirements,
-complete/partial/inconclusive aggregation, and explicit infrastructure ambiguity. Synthetic fixtures test
-the protocol; they are not live frontier-agent benchmark results.
+`src/frontier-evals` retains the M22 versioned model-alone versus model-plus-Odin matched evaluation
+protocol with hidden acceptance metadata removed from model-facing input, equal identity/budget
+requirements, complete/partial/inconclusive aggregation, and explicit infrastructure ambiguity.
+
+The A-last profile envelope adds explicit hash-bound provider/model/profile/reasoning identity,
+capability declarations, context/output ceilings, and bounded provenance without inferring capability from
+a model name. Benchmark 2.0 adds a locked 100-case domain mix across coding, math, reasoning, tool use,
+research, long context, recovery, and long missions while delegating matched-pair validity to M22. Phase C
+turns typed sanitized diagnostics and attributable result failures into deterministic weakness heatmaps
+and complete-pair baseline-vs-Odin deltas. None of these analytics can mint routing quality, completion,
+tool, skill, sandbox, approval, credential, or release authority. Current Benchmark 2.0 results in tests
+are fixtures, not a live Kimi benchmark claim.
 
 ### M25 — Tool ecosystem catalog
 
@@ -256,41 +270,24 @@ src/
   coordination/     M7 specialist ownership and reconciliation
   durable/          M8 SQLite events/checkpoints/jobs/lifecycle
   autonomy/         M20 logical soak/recovery evidence
-  client/           M9 protocol/controller/reconnect; M28 will extend experience contracts
+  client/           M9 protocol/controller/reconnect
+  mobile/           M28 bounded mobile/native presentation and approval experience
+  hosted/           M27 provider-neutral hosted service kernel
   skills/           M10 skill lifecycle and synthesis
   skill-intake/     M14 immutable bounded external-skill intake
   capability-packs/ M15 measured procedure curation and progressive packs
   skill-os/         M23 runtime pack discovery/selection/loading/rollback
   routing/          M11 empirical routing + M21 failure-aware route filtering
-  frontier-evals/   M22 matched evaluation protocol
-  sandbox/          M12 workspace/process/network/backend lifecycle; M26 extends production contract
+  frontier-evals/   M22 matched evaluation + A–C profile/Benchmark 2.0/weakness analytics
+  sandbox/          M12 workspace/process/network/backend lifecycle + M26 strong-isolation contract
   observability/    M12 secret-safe bounded events
   release/          M12 recovery/backup/release evidence gates
   learning/         M13 evidence-backed repeated learning
   security/         shared secret-text and cross-cutting primitives
   artifacts/        content-addressed artifact layer direction
   cli/              user-facing CLI direction
-web/                M9 static responsive reference client
+web/                M9/M28 static responsive reference clients
 ```
-
-## Next architecture package — M26–M28
-
-M26–M28 must extend existing boundaries rather than replace them:
-
-- **M26** builds on M12. It must not invent a second tool gateway or credential path. Production sandbox
-  work must preserve exact M3 policy, M12 destination/workspace rules, runtime-owned quotas/timeouts,
-  opaque secret references, idempotent allocation/cleanup, and auditable evidence. Deterministic adapter
-  proof is distinct from real container/VM isolation proof.
-- **M27** builds on M2/M8/M9. Canonical mission semantics remain unchanged while a hosted-service adapter
-  adds authenticated access, database/queue/worker/artifact boundaries, realtime reconnect, recovery,
-  fencing, idempotency, backup, and failure injection. Local SQLite behavior cannot be relabeled as
-  distributed correctness.
-- **M28** builds on M9. Mobile/native clients remain observers/controllers. They may cache bounded
-  projections/cursors for UX but never canonical mission state, credentials, tool authority, or offline
-  mutation authority. Long-running work stays server-side and reconnects from durable state.
-
-No paid resource, deployment, live sandbox/database/cloud service, production migration, billing change,
-or public traffic is authorized by the current M23–M25 package. Those proofs remain separately gated.
 
 ## M26–M28 verified service boundaries (2026-09-06)
 
@@ -303,3 +300,13 @@ The production-shaped tranche extends existing authorities instead of creating p
 
 These repository contracts are verified independently of vendor deployment. Real container/VM and hosted-service evidence remain external release gates.
 
+## Next intelligence package — Phase D–F
+
+The next three-phase merge starts only from the merged A–C `main` head and remains provider-neutral/no-new-model by default:
+
+- **Phase D — intelligence/reasoning amplification:** consume attributable weakness evidence to choose bounded runtime reasoning strategies while preserving M5 verification and M11/M21 quality floors.
+- **Phase E — weak-model amplification:** make Odin's planning/context/tool/repair scaffolding more helpful to lower-capability routes without adding providers, lowering quality thresholds, or claiming unsupported model capability.
+- **Phase F — frontier amplification:** combine the strongest bounded reasoning, context, verification, and repair policies into an evaluation-only candidate path, proving gains only through matched evidence before any routing consequence.
+
+No paid resource, live benchmark call, deployment, production migration, billing change, public traffic, or
+new credential is authorized by this package unless separately approved.
