@@ -1,10 +1,10 @@
 # Security model
 
-Status: deterministic safeguards through M28 are implemented and repository-verified on `main`.
-The intelligence A–C tranche is phase-verified on PR #35 pending final governance-synchronized exact-head
-CI before merge. M12/M26 remain **PARTIALLY_VERIFIED** for real hosted-sandbox/public-production
-isolation. Controls not explicitly identified as implemented remain future work and must not be inferred
-from names, synthetic fixtures, benchmark reports, or weakness analytics.
+Status: deterministic safeguards through M28 and intelligence A–C are repository-verified on `main`.
+The D–F amplification package is adversarially verified on PR #36 pending its final governance-head CI and
+merge. M12/M26 remain **PARTIALLY_VERIFIED** for real hosted-sandbox/public-production isolation. Controls
+not explicitly identified as implemented remain future work and must not be inferred from names,
+synthetic fixtures, benchmark reports, amplification candidates, or weakness analytics.
 
 ## Protected assets
 
@@ -80,6 +80,9 @@ acceptance text, and private chain-of-thought are not weakness-report fields.
   canonical-state authority.
 - **Intelligence A–C** may bind evaluation profiles, run M22-compatible Benchmark 2.0 analysis, and mine
   weaknesses; these remain analytics/evidence and cannot mint M3/M5/M10/M11/M12/release authority.
+- **Intelligence D–F** may derive bounded amplification/scaffolding policy and evaluation-only candidates
+  only after exact semantic/hash/profile/budget validation. D–F cannot mint tools, grants, credentials,
+  routing quality, promotion, completion, approvals, sandbox authority, or release evidence.
 
 No later layer may silently duplicate or bypass an earlier authority boundary.
 
@@ -390,3 +393,19 @@ The Phase A-last/B/C package is repository-verified under the same authority mod
   completion, or release authority;
 - no live provider call, new model/provider, secret use, deployment, migration, billing action, or public
   traffic was introduced.
+
+## Intelligence D–F amplification safeguards
+
+- A SHA-256 match proves object integrity only; D/E/F validators separately enforce closed semantic enums,
+  exact benchmark/profile/domain binding, bounded numeric fields, uniqueness, and capability consistency.
+- Phase E must preserve the exact Phase D call/token ceilings and cannot exceed the profile context window.
+- Tool grounding and output discipline must match the bound capability profile; unsupported capability is
+  represented explicitly rather than synthesized.
+- Repair flags must agree with the exact D strategy set, and independent verification requirements cannot
+  be weakened by a caller-crafted E object.
+- Phase F remains `evaluation_only`/`analytics_only` with routing and promotion eligibility hard-false.
+- Static package tests deny direct provider/tool/sandbox/secret/network authority in the D–F policy layer
+  and deny provider/model-name heuristics.
+
+Hardening run `34097050800` passed **492/492 tests**. Live runs authorized after merge are measurement
+inputs only and do not change these authority boundaries.

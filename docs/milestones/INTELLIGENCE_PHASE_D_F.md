@@ -1,6 +1,6 @@
 # Intelligence amplification tranche — Phase D, E, F
 
-Status: **PHASE_VERIFIED — package hardening/governance pending**. This is the binding contract for one pull request containing exactly three sequential phases after the merged A–C intelligence tranche.
+Status: **PACKAGE_VERIFIED — final exact-head merge gate pending**. This is the binding contract for one pull request containing exactly three sequential phases after the merged A–C intelligence tranche.
 
 ## Objective
 
@@ -65,14 +65,16 @@ Acceptance criteria:
 - [x] adversarial tests cover candidate tampering, component substitution, budget inflation, incomplete-arm preservation, profile mismatch, and analytics-to-routing authority escalation;
 - [x] full `npm run verify` passes before Phase F is declared complete.
 
-Phase F helper run `34095778033` applied Biome formatting and then passed full `npm run verify` on the exact formatted working tree before committing `fd07443142c7313568e611e35196a7e55d878e8a`; the helper deleted itself. The automatic PR run created by the bot-authored formatting commit returned `action_required` with no jobs, so it is not counted as the final normal exact-head merge gate.
+Phase F helper run `34095778033` applied Biome formatting and passed full `npm run verify`; the fresh normal Phase F PR CI `34095946506` then passed on a user-authored checkpoint. Package-wide semantic hardening run `34097050800` subsequently passed **492/492 tests**, Biome, strict TypeScript, credential-free Kimi dry smoke, and aggregate coverage **90.02% lines / 76.67% branches / 96.05% functions**. That adversarial review also closed recomputed-hash semantic smuggling, D/E budget drift, capability/profile mismatch, and repair-policy mismatch before governance synchronization.
 
 ## Delivery gate
 
 - [x] Phase D focused tests + full verify complete;
 - [x] Phase E focused tests + full verify complete;
 - [x] Phase F focused tests + full verify complete;
-- [ ] package-wide adversarial review complete;
-- [ ] `ARCHITECTURE.md`, `SECURITY.md`, `ROADMAP.md`, and `HANDOVER.md` synchronized;
+- [x] package-wide adversarial review complete;
+- [x] `ARCHITECTURE.md`, `SECURITY.md`, `ROADMAP.md`, and `HANDOVER.md` synchronized;
 - [ ] one fresh normal exact-head PR CI after governance synchronization;
 - [ ] merge only after the final exact-head CI is green and explicit merge authorization remains valid.
+
+Package adversarial evidence: run `34097050800`, **492/492 tests**, aggregate coverage **90.02% lines / 76.67% branches / 96.05% functions**. The final merge still requires a new normal CI on the exact governance head; this document does not pre-claim that result.

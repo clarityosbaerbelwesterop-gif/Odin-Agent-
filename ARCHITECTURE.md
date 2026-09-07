@@ -1,9 +1,9 @@
 # Odin architecture
 
-Status: M0–M28 are merged and repository-verified on `main`. The intelligence A–C tranche is
-implemented and phase-verified on PR #35, pending the final governance-synchronized exact-head CI before
-merge. M12/M26 remain **PARTIALLY_VERIFIED** for real hosted-sandbox/public-production proof; no
-repository-local contract, synthetic fixture, benchmark report, or weakness analysis may be relabeled as
+Status: M0–M28 and intelligence A–C are merged and repository-verified on `main`. Intelligence D–F
+is package-verified on PR #36 and awaits only the final governance-head CI plus merge. M12/M26 remain
+**PARTIALLY_VERIFIED** for real hosted-sandbox/public-production proof; no repository-local contract,
+synthetic fixture, benchmark report, amplification candidate, or weakness analysis may be relabeled as
 live infrastructure or live model-performance evidence.
 
 ## Architectural thesis
@@ -50,6 +50,9 @@ canonical even when models, skills, tools, clients, or providers change.
 20. M25 tool descriptors are catalog metadata only; all execution authority remains in M3.
 21. Intelligence evaluation and weakness analysis are evidence/analytics only: Phase A profile envelopes,
     Benchmark 2.0 reports, and Phase C heatmaps cannot mint M3/M5/M10/M11/M12/release authority.
+22. D–F amplification policy objects remain bounded runtime/evaluation data. Hash validity never substitutes
+    for semantic validation, and D/E/F cannot create tools, credentials, routing quality, promotion,
+    completion, approval, sandbox, or release authority.
 
 ## Logical architecture
 
@@ -300,13 +303,26 @@ The production-shaped tranche extends existing authorities instead of creating p
 
 These repository contracts are verified independently of vendor deployment. Real container/VM and hosted-service evidence remain external release gates.
 
-## Next intelligence package — Phase D–F
+## Intelligence package — Phase D–F (PR #36)
 
-The next three-phase merge starts only from the merged A–C `main` head and remains provider-neutral/no-new-model by default:
+D–F extends `src/routing` as a provider-neutral, bounded amplification/evaluation layer while preserving
+all earlier authorities:
 
-- **Phase D — intelligence/reasoning amplification:** consume attributable weakness evidence to choose bounded runtime reasoning strategies while preserving M5 verification and M11/M21 quality floors.
-- **Phase E — weak-model amplification:** make Odin's planning/context/tool/repair scaffolding more helpful to lower-capability routes without adding providers, lowering quality thresholds, or claiming unsupported model capability.
-- **Phase F — frontier amplification:** combine the strongest bounded reasoning, context, verification, and repair policies into an evaluation-only candidate path, proving gains only through matched evidence before any routing consequence.
+- **Phase D** consumes only hash-valid, profile/benchmark-bound attributable Phase C evidence and emits
+  bounded strategy recommendations. Unknown/infrastructure findings cannot masquerade as model reasoning
+  weakness and strategy ceilings cannot exceed the caller/runtime plan.
+- **Phase E** derives scaffolding only from explicit capability/profile declarations plus independent
+  quality evidence. It validates every D strategy semantically, binds context to the exact profile, and
+  cannot synthesize unsupported tool/structured-output capability or enlarge D budgets.
+- **Phase F** revalidates D/E semantics against Benchmark 2.0 and creates an immutable
+  `authority: evaluation_only`, `routingEligible: false`, `promotionEligible: false` candidate. It reports
+  quality, efficiency, verification, recovery, repair, and weakness deltas without hiding incomplete or
+  infrastructure evidence.
 
-No paid resource, live benchmark call, deployment, production migration, billing change, public traffic, or
-new credential is authorized by this package unless separately approved.
+Package hardening run `34097050800` passed **492/492 tests** and explicitly guards against provider/model
+name heuristics, direct tool/sandbox/provider/secret/network authority, recomputed-hash semantic smuggling,
+budget drift, and analytics-to-routing escalation. Aggregate coverage was **90.02% lines / 76.67%
+branches / 96.05% functions**. These are repository verification facts, not live model benchmark claims.
+
+The package performed no live provider spend. Separately authorized post-merge live runs remain evaluation
+evidence only until the existing M11/M21/M22/M5 authority and promotion requirements are satisfied.
