@@ -37,12 +37,7 @@ export type WeaknessDiagnosticCode =
   | "malformed_response"
   | "unknown";
 
-export type WeaknessFinishReason =
-  | "stop"
-  | "length"
-  | "tool_calls"
-  | "content_filter"
-  | "other";
+export type WeaknessFinishReason = "stop" | "length" | "tool_calls" | "content_filter" | "other";
 
 export type WeaknessSignalCode =
   | WeaknessDiagnosticCode
@@ -258,7 +253,9 @@ export function mineBenchmarkWeaknesses(input: {
     }
     const identity = `${diagnostic.resultHash}:${diagnostic.code}:${diagnostic.finishReason ?? "none"}`;
     if (diagnosticIdentities.has(identity)) {
-      throw new WeaknessMiningError("Duplicate weakness diagnostic identity is not valid evidence.");
+      throw new WeaknessMiningError(
+        "Duplicate weakness diagnostic identity is not valid evidence.",
+      );
     }
     diagnosticIdentities.add(identity);
   }
@@ -311,12 +308,16 @@ export function mineBenchmarkWeaknesses(input: {
   const attributableSignals = signals.filter((signal) => !signal.infrastructureAmbiguous);
   const infrastructureSignals = signals.filter((signal) => signal.infrastructureAmbiguous);
   const comparableResultHashes = comparableResultHashSet(input.benchmark, input.results);
-  const pairedSignals = attributableSignals.filter((signal) => comparableResultHashes.has(signal.resultHash));
+  const pairedSignals = attributableSignals.filter((signal) =>
+    comparableResultHashes.has(signal.resultHash),
+  );
 
   const attributableHeatmap = Object.freeze(buildHeatmap(attributableSignals));
   const infrastructureHeatmap = Object.freeze(buildHeatmap(infrastructureSignals));
   const pairedDeltas = Object.freeze(buildPairedDeltas(pairedSignals));
-  const diagnosticHashes = Object.freeze(diagnostics.map((diagnostic) => diagnostic.diagnosticHash));
+  const diagnosticHashes = Object.freeze(
+    diagnostics.map((diagnostic) => diagnostic.diagnosticHash),
+  );
   const body = {
     attributableHeatmap,
     benchmarkHash: input.benchmark.benchmarkHash,
@@ -352,7 +353,11 @@ function signalFromResultFailure(
 function classifyFailure(
   category: FrontierFailureCategory,
   domain: BenchmarkV2Domain,
-): { readonly weaknessClass: WeaknessClass; readonly code: WeaknessSignalCode; readonly severity: number } {
+): {
+  readonly weaknessClass: WeaknessClass;
+  readonly code: WeaknessSignalCode;
+  readonly severity: number;
+} {
   switch (category) {
     case "quality":
       return {
@@ -406,10 +411,7 @@ function comparableResultHashSet(
   benchmark: BenchmarkV2Suite,
   results: readonly FrontierArmResult[],
 ): ReadonlySet<string> {
-  const byCase = new Map<
-    string,
-    Partial<Record<FrontierArm, FrontierArmResult>>
-  >();
+  const byCase = new Map<string, Partial<Record<FrontierArm, FrontierArmResult>>>();
   for (const result of results) {
     const pair = byCase.get(result.caseHash) ?? {};
     pair[result.arm] = result;
@@ -433,7 +435,14 @@ function isMeasurable(result: FrontierArmResult): boolean {
 function buildHeatmap(signals: readonly WeaknessSignal[]): WeaknessHeatmapEntry[] {
   const buckets = new Map<
     string,
-    { arm: FrontierArm; weaknessClass: WeaknessClass; code: WeaknessSignalCode; results: Set<string>; severityPoints: number; maxSeverity: number }
+    {
+      arm: FrontierArm;
+      weaknessClass: WeaknessClass;
+      code: WeaknessSignalCode;
+      results: Set<string>;
+      severityPoints: number;
+      maxSeverity: number;
+    }
   >();
   for (const signal of signals) {
     const key = `${signal.arm}:${signal.weaknessClass}:${signal.code}`;
@@ -461,13 +470,14 @@ function buildHeatmap(signals: readonly WeaknessSignal[]): WeaknessHeatmapEntry[
       severityPoints: bucket.severityPoints,
       weaknessClass: bucket.weaknessClass,
     }))
-    .sort((left, right) =>
-      right.affectedResults - left.affectedResults ||
-      right.severityPoints - left.severityPoints ||
-      right.maxSeverity - left.maxSeverity ||
-      left.arm.localeCompare(right.arm) ||
-      left.weaknessClass.localeCompare(right.weaknessClass) ||
-      left.code.localeCompare(right.code),
+    .sort(
+      (left, right) =>
+        right.affectedResults - left.affectedResults ||
+        right.severityPoints - left.severityPoints ||
+        right.maxSeverity - left.maxSeverity ||
+        left.arm.localeCompare(right.arm) ||
+        left.weaknessClass.localeCompare(right.weaknessClass) ||
+        left.code.localeCompare(right.code),
     );
 }
 
@@ -515,12 +525,15 @@ function buildPairedDeltas(signals: readonly WeaknessSignal[]): WeaknessDeltaEnt
       severityDelta: bucket.odinSeverityPoints - bucket.baselineSeverityPoints,
       weaknessClass: bucket.weaknessClass,
     }))
-    .sort((left, right) =>
-      Math.abs(right.affectedDelta) - Math.abs(left.affectedDelta) ||
-      Math.abs(right.severityDelta) - Math.abs(left.severityDelta) ||
-      right.odinAffected + right.baselineAffected - (left.odinAffected + left.baselineAffected) ||
-      left.weaknessClass.localeCompare(right.weaknessClass) ||
-      left.code.localeCompare(right.code),
+    .sort(
+      (left, right) =>
+        Math.abs(right.affectedDelta) - Math.abs(left.affectedDelta) ||
+        Math.abs(right.severityDelta) - Math.abs(left.severityDelta) ||
+        right.odinAffected +
+          right.baselineAffected -
+          (left.odinAffected + left.baselineAffected) ||
+        left.weaknessClass.localeCompare(right.weaknessClass) ||
+        left.code.localeCompare(right.code),
     );
 }
 
