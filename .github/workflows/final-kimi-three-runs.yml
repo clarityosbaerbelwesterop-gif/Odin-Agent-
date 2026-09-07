@@ -1,0 +1,113 @@
+name: Final Kimi three-run live evaluation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/final-kimi-three-runs.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: final-kimi-three-run-live-eval
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out merged main
+        uses: actions/checkout@v5
+        with:
+          ref: main
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Re-run deterministic repository gate
+        run: npm run verify
+      - name: Build final evaluation dependencies
+        run: npm run build
+      - name: Require configured NVIDIA secret
+        env:
+          NV_API_KEY: ${{ secrets.NV_API_KEY }}
+        run: |
+          if [ -z "${NV_API_KEY:-}" ]; then
+            echo "::error::NV_API_KEY repository secret is missing"
+            exit 1
+          fi
+      - name: Final live run 1 of 3
+        env:
+          NV_API_KEY: ${{ secrets.NV_API_KEY }}
+          ODIN_M16_RESULT_PATH: final-kimi-run-1.json
+        run: node scripts/live-m16-grounded-eval.mjs --suite=output
+      - name: Final live run 2 of 3
+        env:
+          NV_API_KEY: ${{ secrets.NV_API_KEY }}
+          ODIN_M16_RESULT_PATH: final-kimi-run-2.json
+        run: node scripts/live-m16-grounded-eval.mjs --suite=output
+      - name: Final live run 3 of 3
+        env:
+          NV_API_KEY: ${{ secrets.NV_API_KEY }}
+          ODIN_M16_RESULT_PATH: final-kimi-run-3.json
+        run: node scripts/live-m16-grounded-eval.mjs --suite=output
+      - name: Aggregate sanitized three-run evidence
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile, writeFile } from 'node:fs/promises';
+          const runs = [];
+          for (let index = 1; index <= 3; index += 1) {
+            const value = JSON.parse(await readFile(`final-kimi-run-${index}.json`, 'utf8'));
+            runs.push({
+              run: index,
+              evaluatedAt: value.evaluatedAt,
+              provider: value.provider,
+              model: value.model,
+              providerCalls: value.providerCalls,
+              summary: value.summary,
+            });
+          }
+          const numeric = (key) => runs.map((entry) => entry.summary[key]).filter((value) => Number.isFinite(value));
+          const average = (values) => values.length === 0 ? null : Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+          const aggregate = {
+            authority: 'measurement_only',
+            routingEligible: false,
+            promotionEligible: false,
+            runCount: runs.length,
+            allComplete: runs.every((entry) => entry.summary.status === 'COMPLETE'),
+            totalProviderCalls: runs.reduce((sum, entry) => sum + entry.providerCalls, 0),
+            averageQualityLiftBps: average(numeric('qualityLiftBps')),
+            averageTokenReductionBps: average(numeric('tokenReductionBps')),
+            averageLatencyReductionBps: average(numeric('latencyReductionBps')),
+            averageCallReductionBps: average(numeric('callReductionBps')),
+            runs,
+          };
+          await writeFile('final-kimi-three-run-summary.json', `${JSON.stringify(aggregate, null, 2)}\n`, 'utf8');
+          console.log(JSON.stringify(aggregate));
+          NODE
+      - name: Upload sanitized final evidence
+        if: always() && hashFiles('final-kimi-run-1.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-kimi-three-run-evidence
+          path: |
+            final-kimi-run-1.json
+            final-kimi-run-2.json
+            final-kimi-run-3.json
+            final-kimi-three-run-summary.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Remove temporary final-run workflow
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/final-kimi-three-runs.yml
+          git commit -m "ci(eval): remove temporary three-run workflow"
+          git push origin HEAD:main
