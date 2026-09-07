@@ -1,6 +1,6 @@
 # Engineering handover
 
-Updated: 2026-09-05.
+Updated: 2026-09-07.
 
 ## Current delivery state — M23–M25
 
@@ -176,3 +176,50 @@ The source package includes `src/sandbox/production.ts`, `src/hosted/service.ts`
 
 Merge gate: after this governance synchronization, require one normal exact-head PR CI success before merging PR #34.
 
+## Intelligence A–C handover checkpoint — 2026-09-07
+
+Current active delivery is PR #35 (`agent/intelligence-a-b-c`), containing exactly **Phase A-last, Phase B,
+and Phase C**. `main` already contains the merged M0–M28 repository-local contracts. No new provider or
+model integration is part of this tranche; Kimi K3 remains the existing reference identity only.
+
+Verified phase evidence:
+
+- **A-last — evaluation profile envelope:** exact-head CI `34052663699` on
+  `8ccd3a55077487d9572e6d0765984d9fd902cf41` passed. Provider/model/profile/reasoning identity,
+  capability declarations, context/output ceilings, provenance, and budget compatibility are
+  deterministic and hash-bound without model-name capability inference.
+- **B — Benchmark 2.0:** exact-head CI `34053195605` on
+  `dbd76086073ddddd1167ab8a482279ca32974ace` passed. The locked 100-case blueprint covers coding 25,
+  math 20, reasoning 20, tool use 10, research 10, long context 5, recovery 5, and long mission 5 while
+  preserving M22 hidden-acceptance separation, matched identity/budgets, and incomplete infrastructure
+  semantics.
+- **C — weakness mining:** exact-head CI `34090422186` on
+  `7856c5c146b86efa12fe74455eafc058cd8ac15a` passed Foundation, Biome, strict TypeScript, **470/470
+  tests**, and the credential-free Kimi dry smoke. Typed/hash-bound sanitized diagnostics map into stable
+  weakness classes; unknown remains unknown; infrastructure ambiguity stays separate; paired deltas use
+  complete measurable arms only and retain incomplete-pair counts. M16 `repair_no_change`,
+  `quality_failed_after_repair`, and structured-output/length patterns have regression fixtures.
+
+Package-wide adversarial review after Phase C found no release-blocking authority leak. Benchmark and
+weakness output remains lower-authority evidence/data and cannot mint M3 tools/grants, M5 completion,
+M10 skill lifecycle, M11/M21 route quality, M12/M26 isolation, credentials, approvals, budgets, or release
+claims. Historical Kimi evidence is unchanged. No live provider call, secret use, paid resource,
+deployment, production migration, billing action, new credential, or public traffic was introduced.
+
+Current merge gate for PR #35:
+
+1. synchronize `ARCHITECTURE.md`, `SECURITY.md`, `ROADMAP.md`, `HANDOVER.md`, and the binding A–C contract;
+2. run one fresh normal exact-head PR CI on that governance head;
+3. merge only if that exact-head CI is green and PR #35 remains mergeable. The user explicitly authorized
+   this merge on 2026-09-07.
+
+Next package after PR #35 merge is exactly three phases on a fresh branch from the resulting `main` head:
+
+1. **Phase D — intelligence/reasoning amplification**;
+2. **Phase E — weak-model amplification**, provider-neutral and with no new model/provider integration;
+3. **Phase F — frontier amplification**, evaluation-first and unable to affect routing without separately
+   qualified evidence.
+
+D–F must preserve all standing authority boundaries, remain no-new-model/no-live-spend by default, and
+receive focused tests, full verification per phase, adversarial review, governance synchronization, and a
+fresh exact-head CI before its merge.
