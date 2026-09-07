@@ -326,3 +326,17 @@ branches / 96.05% functions**. These are repository verification facts, not live
 
 The package performed no live provider spend. Separately authorized post-merge live runs remain evaluation
 evidence only until the existing M11/M21/M22/M5 authority and promotion requirements are satisfied.
+
+## Chathub application boundary (G–I)
+
+`src/chat` connects the existing M2/M3/M5/M8/M12 contracts to an authenticated HTTP application.
+The engine awaits a common conversation repository and the canonical mission EventStore. Local storage
+uses SQLite; hosted storage uses Neon Postgres with forced RLS and verified managed Auth identities.
+Short advisory-locked transactions serialize mission mutations. Network inference occurs outside those
+transactions. Lease tokens fence late workers. Conversation history is bounded context, not mission authority.
+
+`web/chat.*` renders real event replay and final responses. `api/index.ts` is the Vercel entry point;
+`dist/public` is the deployed static output and `dist/web` preserves the original reference fixture.
+Hosted workspaces persist per tenant/conversation and support isolated static HTML previews and syntax
+checks. They are not an arbitrary-code backend or M26 container implementation. For security and
+deployment requirements, see `docs/CHATHUB_DEPLOYMENT.md`.

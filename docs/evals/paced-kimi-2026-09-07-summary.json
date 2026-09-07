@@ -1,0 +1,143 @@
+{
+  "source": {
+    "runId": 34101485590,
+    "jobId": 101676703404,
+    "head": "d3fb713c59db476cc8950ef5a22a1feaeab63812",
+    "artifactId": 10011332570,
+    "scope": "M16 full-file baseline versus surgical Odin; not a model-alone benchmark",
+    "extraction": "Sanitized aggregate JSON from authenticated GitHub job log"
+  },
+  "authority": "measurement_only",
+  "routingEligible": false,
+  "promotionEligible": false,
+  "acquisitionCount": 2,
+  "selectionRule": "first_complete_acquisition_only; incomplete acquisitions retained",
+  "complete": true,
+  "selectedAcquisition": 2,
+  "selectedSummary": {
+    "baselineCompleted": 0,
+    "baselineFirstPass": 0,
+    "candidateCompleted": 1,
+    "candidateFirstPass": 1,
+    "completePairs": 3,
+    "qualityLiftBps": 3333,
+    "status": "COMPLETE",
+    "tokenMatchedPairs": 3,
+    "tokenReductionBps": 4680,
+    "totalBaselineCalls": 5,
+    "totalBaselineLatencyMs": 280464,
+    "totalBaselineTokens": 5293,
+    "totalOptimizedCalls": 4,
+    "totalOptimizedLatencyMs": 91337,
+    "totalOptimizedTokens": 2816,
+    "callReductionBps": 2000,
+    "latencyReductionBps": 6743
+  },
+  "totalProviderCalls": 17,
+  "attempts": [
+    {
+      "acquisition": 1,
+      "evaluatedAt": "2026-09-07T08:36:58.511Z",
+      "pacing": {
+        "attempts": 8,
+        "minStartIntervalMs": 65000,
+        "waitedMs": 204286
+      },
+      "providerCalls": 8,
+      "summary": {
+        "baselineCompleted": 0,
+        "baselineFirstPass": 0,
+        "candidateCompleted": 1,
+        "candidateFirstPass": 1,
+        "completePairs": 2,
+        "qualityLiftBps": 5000,
+        "status": "PARTIAL",
+        "tokenMatchedPairs": 2,
+        "tokenReductionBps": 5425,
+        "totalBaselineCalls": 3,
+        "totalBaselineLatencyMs": 86218,
+        "totalBaselineTokens": 2944,
+        "totalOptimizedCalls": 2,
+        "totalOptimizedLatencyMs": 61803,
+        "totalOptimizedTokens": 1347,
+        "callReductionBps": 3333,
+        "latencyReductionBps": 2832
+      },
+      "infrastructure": [
+        {
+          "id": "canonical-user-id",
+          "baselineErrorCode": "repair_expected_sha_mismatch",
+          "baselineMeasurementComplete": true,
+          "optimizedErrorCode": null,
+          "optimizedMeasurementComplete": true
+        },
+        {
+          "id": "retry-429-surgical",
+          "baselineErrorCode": "quality_failed_after_repair",
+          "baselineMeasurementComplete": true,
+          "optimizedErrorCode": "provider_malformed_response",
+          "optimizedMeasurementComplete": false
+        },
+        {
+          "id": "safe-trim-existing-api",
+          "baselineErrorCode": "plan_expected_sha_mismatch",
+          "baselineMeasurementComplete": true,
+          "optimizedErrorCode": "grounded_plan_edit_missing",
+          "optimizedMeasurementComplete": true
+        }
+      ]
+    },
+    {
+      "acquisition": 2,
+      "evaluatedAt": "2026-09-07T08:46:34.655Z",
+      "pacing": {
+        "attempts": 9,
+        "minStartIntervalMs": 65000,
+        "waitedMs": 240686
+      },
+      "providerCalls": 9,
+      "summary": {
+        "baselineCompleted": 0,
+        "baselineFirstPass": 0,
+        "candidateCompleted": 1,
+        "candidateFirstPass": 1,
+        "completePairs": 3,
+        "qualityLiftBps": 3333,
+        "status": "COMPLETE",
+        "tokenMatchedPairs": 3,
+        "tokenReductionBps": 4680,
+        "totalBaselineCalls": 5,
+        "totalBaselineLatencyMs": 280464,
+        "totalBaselineTokens": 5293,
+        "totalOptimizedCalls": 4,
+        "totalOptimizedLatencyMs": 91337,
+        "totalOptimizedTokens": 2816,
+        "callReductionBps": 2000,
+        "latencyReductionBps": 6743
+      },
+      "infrastructure": [
+        {
+          "id": "canonical-user-id",
+          "baselineErrorCode": "quality_failed_after_repair",
+          "baselineMeasurementComplete": true,
+          "optimizedErrorCode": "grounded_plan_edit_missing",
+          "optimizedMeasurementComplete": true
+        },
+        {
+          "id": "retry-429-surgical",
+          "baselineErrorCode": "repair_no_change",
+          "baselineMeasurementComplete": true,
+          "optimizedErrorCode": null,
+          "optimizedMeasurementComplete": true
+        },
+        {
+          "id": "safe-trim-existing-api",
+          "baselineErrorCode": "plan_target_outside_discovery",
+          "baselineMeasurementComplete": true,
+          "optimizedErrorCode": "grounded_repair_edit_missing",
+          "optimizedMeasurementComplete": true
+        }
+      ]
+    }
+  ]
+}

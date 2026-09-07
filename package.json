@@ -8,7 +8,8 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "build": "npm run clean && tsc -p tsconfig.json",
+    "build": "npm run clean && tsc -p tsconfig.json && node scripts/copy-web-assets.mjs",
+    "start": "node dist/src/chat/main.js",
     "check:foundation": "node scripts/check-foundation.mjs",
     "clean": "node scripts/clean.mjs",
     "format": "biome format --write .",
@@ -18,11 +19,22 @@
     "smoke:kimi:dry": "node scripts/live-kimi-coding-smoke.mjs --dry-run",
     "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "verify": "npm run check:foundation && npm run quality && npm run typecheck && npm test && npm run smoke:kimi:dry"
+    "verify": "npm run check:foundation && npm run quality && npm run typecheck && npm test && npm run smoke:kimi:dry && npm run build",
+    "test:chat": "node --test dist/test/chat/*.test.js"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.11",
     "@types/node": "26.4.1",
+    "@types/pg": "8.23.1",
+    "@types/ws": "8.18.1",
     "typescript": "7.0.2"
+  },
+  "dependencies": {
+    "@vercel/functions": "3.9.5",
+    "acorn": "8.18.0",
+    "jose": "6.2.12",
+    "parse5": "8.0.1",
+    "pg": "8.23.0",
+    "ws": "8.21.3"
   }
 }

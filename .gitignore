@@ -7,3 +7,6 @@ coverage/
 *.log
 .DS_Store
 .odin/
+odin.config.json
+chathub-ab-result.json
+neon-integration-result.json

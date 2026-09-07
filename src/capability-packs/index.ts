@@ -2,6 +2,7 @@ export * from "./curator.js";
 export * from "./distilled.js";
 export * from "./evaluation-overlay.js";
 export * from "./live-evidence.js";
+export * from "./live-pacer.js";
 export * from "./live-profile.js";
 export * from "./procedures.js";
 export * from "./registry.js";
