@@ -40,8 +40,7 @@ export function createLiveProviderPacer(options: LiveProviderPacerOptions): Live
       try {
         assertNotAborted(signal);
         const observedAt = checkedClock(clock());
-        const requiredWaitMs =
-          nextStartAtMs === null ? 0 : Math.max(0, nextStartAtMs - observedAt);
+        const requiredWaitMs = nextStartAtMs === null ? 0 : Math.max(0, nextStartAtMs - observedAt);
         if (requiredWaitMs > 0) {
           await sleep(requiredWaitMs, signal);
           assertNotAborted(signal);
@@ -49,7 +48,9 @@ export function createLiveProviderPacer(options: LiveProviderPacerOptions): Live
 
         const startedAt = checkedClock(clock());
         if (startedAt < observedAt + requiredWaitMs) {
-          throw new RangeError("Live provider pacing clock did not advance through the required wait.");
+          throw new RangeError(
+            "Live provider pacing clock did not advance through the required wait.",
+          );
         }
         attempts += 1;
         waitedMs += requiredWaitMs;
@@ -88,6 +89,8 @@ function checkedClock(value: number): number {
 
 function assertNotAborted(signal?: AbortSignal): void {
   if (signal?.aborted === true) {
-    throw signal.reason instanceof Error ? signal.reason : new Error("Live provider pacing aborted.");
+    throw signal.reason instanceof Error
+      ? signal.reason
+      : new Error("Live provider pacing aborted.");
   }
 }
