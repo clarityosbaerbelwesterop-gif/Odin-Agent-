@@ -102,8 +102,8 @@ jobs:
               '    usage: run.usage,\n    wallLatencyMs: run.wallLatencyMs,\n    verification: run.verification,',
           )
           replace_once(
-              '      maxCallsPerArmCase: MAX_CALLS_PER_ARM_CASE,\n      maxProviderCalls,',
-              '      maxCallsPerArmCase: MAX_CALLS_PER_ARM_CASE,\n      maxProviderCalls,\n      minProviderStartIntervalMs: MIN_PROVIDER_START_INTERVAL_MS,',
+              '      maxCallsPerArmCase: MAX_CALLS_PER_ARM_CASE,\n      maxProviderCalls,\n      model: MODEL,',
+              '      maxCallsPerArmCase: MAX_CALLS_PER_ARM_CASE,\n      maxProviderCalls,\n      minProviderStartIntervalMs: MIN_PROVIDER_START_INTERVAL_MS,\n      model: MODEL,',
           )
           replace_once(
               '  const meteredProvider = createUsageMeter(rawProvider, callCounter);',
