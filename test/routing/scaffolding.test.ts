@@ -264,6 +264,82 @@ test("foreign, stale, and self-tampered evidence fails closed", () => {
   );
 });
 
+test("recomputed hashes cannot smuggle unknown Phase D strategies into Phase E", () => {
+  const current = profile();
+  const base = amplification(current);
+  const forgedBody = {
+    benchmarkHash: base.benchmarkHash,
+    branchCount: base.branchCount,
+    contextTokenCeiling: base.contextTokenCeiling,
+    critiquePasses: base.critiquePasses,
+    domain: base.domain,
+    maxEstimatedTokens: base.maxEstimatedTokens,
+    maxModelCalls: base.maxModelCalls,
+    policyVersion: base.policyVersion,
+    profileHash: base.profileHash,
+    reasonCodes: base.reasonCodes,
+    repairAttempts: base.repairAttempts,
+    requiresIndependentVerification: base.requiresIndependentVerification,
+    strategies: ["direct", "mint_runtime_authority"],
+    weaknessReportHash: base.weaknessReportHash,
+  } as const;
+  const forged = {
+    ...forgedBody,
+    planHash: hashJson(forgedBody),
+  } as unknown as ReasoningAmplificationPlan;
+
+  assert.throws(
+    () =>
+      createWeakModelScaffoldingPlan({
+        amplification: forged,
+        domain: "coding",
+        evaluatedAt: "2026-09-07T06:00:00.000Z",
+        evaluation: evaluation(current),
+        profile: current,
+        thresholds,
+      }),
+    /strategy.*unsupported/u,
+  );
+});
+
+test("Phase E rejects a validly rehashed context ceiling outside the exact profile", () => {
+  const current = profile({ context: 64_000 });
+  const base = amplification(current);
+  const forgedBody = {
+    benchmarkHash: base.benchmarkHash,
+    branchCount: base.branchCount,
+    contextTokenCeiling: 128_000,
+    critiquePasses: base.critiquePasses,
+    domain: base.domain,
+    maxEstimatedTokens: base.maxEstimatedTokens,
+    maxModelCalls: base.maxModelCalls,
+    policyVersion: base.policyVersion,
+    profileHash: base.profileHash,
+    reasonCodes: base.reasonCodes,
+    repairAttempts: base.repairAttempts,
+    requiresIndependentVerification: base.requiresIndependentVerification,
+    strategies: base.strategies,
+    weaknessReportHash: base.weaknessReportHash,
+  } as const;
+  const forged = {
+    ...forgedBody,
+    planHash: hashJson(forgedBody),
+  } as ReasoningAmplificationPlan;
+
+  assert.throws(
+    () =>
+      createWeakModelScaffoldingPlan({
+        amplification: forged,
+        domain: "coding",
+        evaluatedAt: "2026-09-07T06:00:00.000Z",
+        evaluation: evaluation(current),
+        profile: current,
+        thresholds,
+      }),
+    /context ceiling exceeds/u,
+  );
+});
+
 test("task-domain evidence mismatch and future evidence fail closed", () => {
   const current = profile();
   const base = amplification(current, { domain: "reasoning" });
