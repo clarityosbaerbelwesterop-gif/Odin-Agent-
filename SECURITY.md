@@ -1,9 +1,10 @@
 # Security model
 
-Status: deterministic safeguards through M25 are implemented or governance-synchronized on PR #33.
-M0–M22 are merged on `main`; M23–M25 await one fresh exact-head CI before merge. M12 remains
-**PARTIALLY_VERIFIED** for real hosted-sandbox/public-production isolation. Controls not explicitly
-identified as implemented remain future work and must not be inferred from names or fixture evidence.
+Status: deterministic safeguards through M28 are implemented and repository-verified on `main`.
+The intelligence A–C tranche is phase-verified on PR #35 pending final governance-synchronized exact-head
+CI before merge. M12/M26 remain **PARTIALLY_VERIFIED** for real hosted-sandbox/public-production
+isolation. Controls not explicitly identified as implemented remain future work and must not be inferred
+from names, synthetic fixtures, benchmark reports, or weakness analytics.
 
 ## Protected assets
 
@@ -22,8 +23,9 @@ verification authorities.
 
 Untrusted by default: user/client input, web/email/chat content, repositories under analysis, dependency
 metadata, model output, tool output, community skills/plugins, generated code, browsers, workers, memory
-content, compression proposals, capability-pack selection requests, and ecosystem adapter descriptors.
-An instruction embedded in untrusted content never becomes runtime authority.
+content, compression proposals, capability-pack selection requests, ecosystem adapter descriptors,
+benchmark results, evaluation profiles supplied from outside the trusted runtime, diagnostics, and
+weakness reports. An instruction embedded in untrusted content never becomes runtime authority.
 
 ## Default policy
 
@@ -38,8 +40,8 @@ high-impact-action: require-explicit-approval
 ```
 
 Denial is the fallback for malformed, missing, stale, foreign, ambiguous, or conflicting policy data.
-A model, worker, skill, client, memory record, or adapter cannot mint authority merely by returning a
-capability-shaped object.
+A model, worker, skill, client, memory record, adapter, benchmark, or diagnostic cannot mint authority
+merely by returning a capability-shaped or evidence-shaped object.
 
 ## Credential and secret handling
 
@@ -53,7 +55,9 @@ names and blank values only; real environment files remain ignored.
 
 M12 sandbox credentials use runtime-owned opaque `credentialRef`s. Public/session metadata may expose
 that a credential is required, but never the underlying reference or value. M24 compression additionally
-rejects obvious secret-like input and cannot lower source sensitivity.
+rejects obvious secret-like input and cannot lower source sensitivity. Phase C weakness evidence stores
+only bounded typed codes and hashes; raw provider/model messages, prompts, repository contents, hidden
+acceptance text, and private chain-of-thought are not weakness-report fields.
 
 ## Authority matrix
 
@@ -69,6 +73,13 @@ rejects obvious secret-like input and cannot lower source sensitivity.
 - **M23** may select/load already-eligible capability packs but cannot alter M10/M15 authority.
 - **M24** may retrieve/maintain lower-authority memory but cannot relabel it as current evidence.
 - **M25** may catalog registered M3 tools but cannot execute outside M3 or weaken its manifests.
+- **M26** defines repository-local strong-isolation contracts but cannot establish live isolation without
+  external proof.
+- **M27** composes hosted adapters around M2/M8/M9 semantics but cannot mint a second mission authority.
+- **M28** presents bounded mobile/client state and approvals but cannot become authentication, tool, or
+  canonical-state authority.
+- **Intelligence A–C** may bind evaluation profiles, run M22-compatible Benchmark 2.0 analysis, and mine
+  weaknesses; these remain analytics/evidence and cannot mint M3/M5/M10/M11/M12/release authority.
 
 No later layer may silently duplicate or bypass an earlier authority boundary.
 
@@ -246,7 +257,7 @@ dependencies, and forbidden surfaces before mutation. Any partial apply or post-
 runtime-captured preimages before failing closed. The injected workspace contract is not proof of
 kernel/filesystem atomicity.
 
-## Implemented M22 evaluation safeguards
+## Implemented M22 + intelligence A–C evaluation safeguards
 
 Benchmark cases/results are untrusted evidence objects. Hidden acceptance metadata is absent from
 model-facing projections. Matched arms require equal provider/model/profile/reasoning/harness/budget
@@ -254,6 +265,16 @@ identity and stay inside per-case ceilings. Duplicate/cherry-picked arms fail. D
 task failures remain measurable negative outcomes; timeout/network/auth/rate-limit/unavailable/malformed/
 unknown infrastructure ambiguity remains incomplete. Zero complete pairs is INCONCLUSIVE with null lift.
 Evaluation output cannot mint M3/M5/M10/M11/M12/release authority.
+
+The A-last evaluation profile requires exact hash-bound provider/model/profile/reasoning identity,
+explicit capability flags, context/output ceilings, and bounded provenance. Capability is never inferred
+from the model name. Benchmark 2.0 keeps a locked 100-case domain mix and delegates pair validity to M22.
+Phase C diagnostics are exact-schema and hash-bound; unknown stays unknown; infrastructure ambiguity is
+reported separately; paired weakness deltas include only complete measurable matched pairs and retain the
+incomplete-pair count. Weakness reports contain bounded codes/counts/severity/hashes rather than raw
+provider/model text, prompts, repository contents, hidden acceptance, or private reasoning. These reports
+cannot directly alter routes, quality floors, skills, tools, approvals, budgets, credentials, completion,
+or release state.
 
 ## Implemented M25 tool-ecosystem safeguards
 
@@ -274,16 +295,18 @@ No current M25 fixture proves a real browser/database/cloud/API connection and n
 ## Prompt injection and untrusted-content rules
 
 Every context item carries origin/trust metadata. External content, repository text, skill instructions,
-tool output, memory, and model output are data unless the trusted runtime explicitly interprets a
-validated field. Untrusted observations cannot modify protected policy, credentials, sandbox bindings,
-skill lifecycle, durable user preferences, routing floors, budgets, or completion authority.
+tool output, memory, model output, benchmark output, and weakness diagnostics are data unless the trusted
+runtime explicitly interprets a validated field. Untrusted observations cannot modify protected policy,
+credentials, sandbox bindings, skill lifecycle, durable user preferences, routing floors, budgets, or
+completion authority.
 
 ## Audit and privacy
 
 Consequential records should retain initiator, mission/task, action type, input hash, policy decision,
 result, side-effect summary, verification, and timestamp without private chain-of-thought. Durable job,
-client, skill, memory, and tool records use typed reason/status codes, hashes, timestamps, and references
-rather than secrets, raw environments, raw exceptions, or unbounded payloads.
+client, skill, memory, tool, evaluation, and weakness records use typed reason/status codes, hashes,
+timestamps, counts, and references rather than secrets, raw environments, raw exceptions, raw prompts,
+or unbounded payloads.
 
 Memory remains namespaced, versioned, exportable, selectively deletable, sensitivity-aware, and
 retention-aware as persistence expands.
@@ -293,45 +316,47 @@ retention-aware as persistence expands.
 Security tests must continue covering at least:
 
 - prompt injection requesting secrets, policy override, skill activation, or durable authority;
-- malformed client/model/tool/skill/memory JSON and unknown fields;
+- malformed client/model/tool/skill/memory/benchmark/diagnostic JSON and unknown fields;
 - path traversal, symlink escape, unsafe archive/executable surfaces;
 - SSRF, DNS rebinding, redirect bypass, reserved-address access, and exfiltration;
 - credentials/secrets in prompts, logs, errors, command lines, patches, artifacts, memory, client data,
-  sandbox metadata, evaluation reports, and compression output;
+  sandbox metadata, evaluation reports, weakness reports, and compression output;
 - replayed or duplicated external writes, payments/messages/deployments/sandbox allocations;
 - stale/superseded worker settlement and cleanup/released-session resurrection;
 - stale/conflicting client controls and confused-deputy capability scope;
 - malicious/mutable/community skills, incomplete intake, transitive trust, and dependency substitution;
-- forged/tampered/stale/future learning, model-evaluation, Skill OS selection, memory, and pack evidence;
-- task-class relabeling or revoked-content reuse in Skill OS;
+- forged/tampered/stale/future learning, model-evaluation, Skill OS selection, memory, pack, profile,
+  benchmark, and diagnostic evidence;
+- task-class/domain relabeling, model-profile substitution, benchmark cherry-picking, incomplete-arm
+  hiding, infrastructure-to-attributable relabeling, or revoked-content reuse;
 - memory conflict hiding, stale-source promotion, saturated-retention overclaim, compression tampering,
   runtime-issuance bypass, secret leakage, or sensitivity downgrade;
 - tool descriptor/manifest mismatch, direct adapter execution, confirmation downgrade, idempotency bypass,
   and catalog-based capability escalation;
 - provider/model/profile sandbox-binding confusion;
-- quality-floor downgrade or budget bypass through fallback/retry/critique/repair/cache;
+- quality-floor downgrade or budget bypass through fallback/retry/critique/repair/cache/weakness analysis;
 - race conditions across cancellation, checkpointing, tools, leases, client commands, sandbox allocation,
   cleanup, memory compression, and completion;
 - denial-of-wallet and unbounded retry/tool/model/context growth;
 - recovery from tampered/incompatible events, checkpoints, lifecycle pages, routing data, memory,
-  capability packs, and release evidence.
+  capability packs, evaluation data, and release evidence.
 
 ## M26–M28 security constraints
 
-The next package may implement repository-local/provider-neutral contracts but cannot claim live
+M26–M28 repository-local/provider-neutral contracts are implemented, but they cannot claim live
 infrastructure without separately authorized evidence.
 
-- M26 must build on M3/M12 rather than create a new secret/tool/network path. Opaque secret brokering,
-  exact sandbox identity, quotas, timeout, network/filesystem scope, cleanup, and audit must remain
+- M26 builds on M3/M12 rather than creating a new secret/tool/network path. Opaque secret brokering,
+  exact sandbox identity, quotas, timeout, network/filesystem scope, cleanup, and audit remain
   runtime-owned. Container/VM isolation claims require real isolated-backend evidence.
-- M27 must preserve M2/M8 canonical semantics. Authenticated hosted adapters must enforce tenant/scope,
+- M27 preserves M2/M8 canonical semantics. Authenticated hosted adapters enforce tenant/scope,
   idempotency, fencing, queue ownership, artifact isolation, audit, reconnect continuity, backup/recovery,
-  and failure injection. Local SQLite is not distributed correctness evidence.
+  and failure injection. Local/provider-neutral fixtures are not distributed correctness evidence.
 - M28 clients remain untrusted controllers. Offline cached state cannot authorize mutation; approval
   flows require current server-side scope/version; credentials and canonical mission state stay server-side.
 
-No paid resource, deployment, production migration, live cloud/database/sandbox call, billing change, or
-public traffic is authorized by the current M23–M25 delivery.
+No paid resource, deployment, production migration, live cloud/database/sandbox call, billing change,
+public traffic, or new credential is authorized by the intelligence A–C delivery.
 
 ## Vulnerability reporting
 
@@ -350,3 +375,18 @@ The M26–M28 package is **CONTRACT_VERIFIED** under the existing fail-closed au
 
 This checkpoint does **not** claim live container/microVM/VM isolation, a production database/queue/auth/realtime deployment, public-service availability, or a shipped App Store/Play Store binary. Those remain separately authorized external proof/release gates.
 
+## Intelligence A–C security checkpoint (2026-09-07)
+
+The Phase A-last/B/C package is repository-verified under the same authority model:
+
+- evaluation profile identity and declared capability/context/output bounds are exact and tamper-evident;
+- Benchmark 2.0 preserves M22 hidden-acceptance separation, equal-condition matching, budget checks, and
+  incomplete infrastructure semantics across its locked 100-case domain blueprint;
+- weakness mining accepts only bounded typed/hash-bound diagnostics, keeps unknown and infrastructure
+  ambiguity explicit, and excludes incomplete pairs from comparative deltas without hiding their count;
+- M16 `repair_no_change`, `quality_failed_after_repair`, and structured-output/length patterns are covered
+  by sanitized regression fixtures;
+- no benchmark/weakness result gains route, skill, tool, verification, sandbox, credential, approval,
+  completion, or release authority;
+- no live provider call, new model/provider, secret use, deployment, migration, billing action, or public
+  traffic was introduced.
