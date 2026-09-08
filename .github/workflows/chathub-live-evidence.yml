@@ -9,7 +9,7 @@ on:
         default: false
   push:
     branches: [agent/chathub-modes-evidence]
-    paths: [.github/workflows/chathub-live-evidence.yml, scripts/live-neon-integration.mjs]
+    paths: [.github/workflows/chathub-live-evidence.yml, scripts/live-neon-integration.mjs, src/chat/neon-auth.ts, src/chat/neon-database.ts, src/chat/neon-store.ts, src/chat/hosted.ts]
 
 permissions:
   contents: read

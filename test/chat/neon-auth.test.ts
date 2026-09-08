@@ -71,7 +71,7 @@ test("Neon sessions require current server session, verified email and matching 
   assert.equal(
     (
       await auth.session(
-        "__Secure-neonauth.session_token=fixture; unrelated=private",
+        "__Secure-neon-auth.session_token=fixture; unrelated=private",
         "https://odin.example",
       )
     ).id,
@@ -79,12 +79,12 @@ test("Neon sessions require current server session, verified email and matching 
   );
   assert.equal(
     (requests[0]?.headers as Record<string, string> | undefined)?.Cookie,
-    "__Secure-neonauth.session_token=fixture",
+    "__Secure-neon-auth.session_token=fixture",
   );
   for (const value of ["revoked", "different", "expired"] as const) {
     state = value;
     await assert.rejects(
-      auth.session("__Secure-neonauth.session_token=fixture", "https://odin.example"),
+      auth.session("__Secure-neon-auth.session_token=fixture", "https://odin.example"),
     );
   }
   await assert.rejects(auth.session("unrelated=private", "https://odin.example"));
@@ -102,7 +102,7 @@ test("Neon sessions require current server session, verified email and matching 
     keys,
   );
   await assert.rejects(
-    verifyRequired.session("__Secure-neonauth.session_token=fixture", "https://odin.example"),
+    verifyRequired.session("__Secure-neon-auth.session_token=fixture", "https://odin.example"),
     /Verify your email/u,
   );
 });
@@ -111,12 +111,13 @@ test("Auth broker forwards only session cookies and never follows arbitrary upst
   const headers = new Headers();
   headers.append(
     "set-cookie",
-    "__Secure-neonauth.session_token=fixture; Domain=.neon.tech; Path=/auth; Max-Age=999999999",
+    "__Secure-neon-auth.session_token=fixture; Domain=.neon.tech; Path=/auth; Max-Age=999999999",
   );
   headers.append("set-cookie", "unrelated=secret; Path=/");
+  headers.append("set-cookie", "__Secure-neonauth.session_token=wrong-prefix; Path=/");
   const cookies = auth.cookies(new Response("{}", { headers }));
   assert.deepEqual(cookies, [
-    "__Secure-neonauth.session_token=fixture; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800",
+    "__Secure-neon-auth.session_token=fixture; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800",
   ]);
   await assert.rejects(
     auth.upstream("../admin/delete-user", "POST", "https://odin.example"),

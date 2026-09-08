@@ -19,13 +19,24 @@ let services: ReturnType<typeof createServices> | undefined;
 function createServices() {
   const connection =
     process.env.ODIN_DATABASE_URL ?? process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
-  const authUrl = process.env.NEON_AUTH_BASE_URL ?? process.env.NEON_AUTH_URL;
-  if (!connection || !authUrl)
+  const authUrl =
+    process.env.NEON_AUTH_BASE_URL ?? process.env.NEON_AUTH_URL ?? process.env.VITE_NEON_AUTH_URL;
+  if (!connection || !authUrl) {
+    console.warn("Odin backend configuration", {
+      databaseConfigured: !!connection,
+      authConfigured: !!authUrl,
+      configuredVariableNames: Object.keys(process.env).filter((key) =>
+        /^(?:ODIN_DATABASE|DATABASE_|POSTGRES_|PG(?:HOST|USER|DATABASE|PASSWORD)|NEON_|VITE_NEON_)/u.test(
+          key,
+        ),
+      ),
+    });
     throw new ChatError(
       "BACKEND_CONFIG",
       "Neon database and Auth must be configured for this deployment.",
       503,
     );
+  }
   const pool = createNeonPool(connection);
   attachDatabasePool(pool);
   const auth = new NeonAuth(authUrl);

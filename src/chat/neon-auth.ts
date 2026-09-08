@@ -7,7 +7,7 @@ export interface NeonIdentity {
   readonly emailVerified: boolean;
 }
 const denied = () => new ChatError("UNAUTHORIZED", "Sign in to access Odin.", 401);
-const COOKIE_NAMES = new Set(["__Secure-neonauth.session_token", "neonauth.session_token"]);
+const COOKIE_NAMES = new Set(["__Secure-neon-auth.session_token", "neon-auth.session_token"]);
 
 /** Same-origin broker avoids third-party cookie failures on Safari. No password is stored. */
 export class NeonAuth {
