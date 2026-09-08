@@ -36,13 +36,19 @@ Required server-side Vercel environment variables:
 | Variable | Purpose |
 | --- | --- |
 | `ODIN_DATABASE_URL`, or `DATABASE_URL` / `POSTGRES_URL` | Connection to the intended Neon branch, with permission to assume `odin_runtime` |
-| `NEON_AUTH_BASE_URL`, or `NEON_AUTH_URL` | Managed Better Auth URL of that same branch |
+| `NEON_AUTH_BASE_URL`, `NEON_AUTH_URL`, or `VITE_NEON_AUTH_URL` | Managed Better Auth URL of that same branch |
 | `NV_API_KEY`, or `NVIDIA_API_KEY` | Existing NVIDIA model credential; never returned to the client |
 | `ODIN_PUBLIC_ORIGIN` | Optional exact custom application origin; Vercel's deployment/branch/production origins are also accepted |
 
 GitHub Actions secrets are not Vercel environment variables. The Neon integration and these values must
 refer to the same branch; a connected integration alone is not evidence that every variable is present.
 No credentials belong in `vercel.json`, repository files, build artifacts or browser storage.
+
+The connected integration was observed injecting only the database URLs on the G–I preview. A public
+endpoint registry in `src/chat/deployment.ts` therefore supplies the verified Auth URL for that exact
+preview database, only when `VERCEL_ENV=preview`. Explicit environment configuration takes precedence.
+Unknown branches, other databases and production have no fallback and fail closed. Recreated Neon
+branches require their matching Auth configuration; this registry never selects a database credential.
 
 Apply migrations `001_chathub_rls.sql` and `002_workspace_and_limits.sql` with a migration connection
 before serving that database branch. The runtime assumes the non-owner, non-superuser, non-BYPASSRLS

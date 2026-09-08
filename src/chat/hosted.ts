@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { attachDatabasePool } from "@vercel/functions";
 import { CapabilityRegistry, makeCapabilities } from "../providers/capabilities.js";
 import { NvidiaProvider } from "../providers/nvidia.js";
+import { resolveNeonAuthUrl } from "./deployment.js";
 import { ChatEngine } from "./engine.js";
 import { DEFAULT_CHAT_LIMITS } from "./modes.js";
 import { NeonAuth } from "./neon-auth.js";
@@ -19,8 +20,7 @@ let services: ReturnType<typeof createServices> | undefined;
 function createServices() {
   const connection =
     process.env.ODIN_DATABASE_URL ?? process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
-  const authUrl =
-    process.env.NEON_AUTH_BASE_URL ?? process.env.NEON_AUTH_URL ?? process.env.VITE_NEON_AUTH_URL;
+  const authUrl = resolveNeonAuthUrl(connection, process.env);
   if (!connection || !authUrl) {
     console.warn("Odin backend configuration", {
       databaseConfigured: !!connection,

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
@@ -7,6 +8,25 @@ import { hashText } from "../../src/chat/safety.js";
 import { ChatStore } from "../../src/chat/store.js";
 import { SqliteDurableStore } from "../../src/durable/store.js";
 import { fixture, provider, response, until } from "./helpers.js";
+
+test("background execution starts outside the committed mutation context", async () => {
+  const transaction = new AsyncLocalStorage<boolean>();
+  const model = provider(() => {
+    assert.equal(transaction.getStore(), undefined);
+    return response();
+  });
+  const f = await fixture(model, {
+    atomic: (action) => transaction.run(true, action),
+  });
+  try {
+    const turn = await f.submit();
+    await f.engine.idle();
+    assert.equal((await f.engine.view(turn.id)).state, "COMPLETED");
+    assert.equal(model.requests.length, 1);
+  } finally {
+    await f.close();
+  }
+});
 
 test("chat submits a real durable mission, stores response and survives reopening", async () => {
   const f = await fixture();

@@ -150,6 +150,7 @@ try {
         return action();
       }),
   });
+  stage = "durable mission submit and commit";
   const turn = await engine.submit({
     conversationId: conversation.id,
     text: "Check durable execution",
@@ -157,6 +158,7 @@ try {
     modelId: "fixture",
     requestId: randomUUID(),
   });
+  stage = "durable worker execution after commit";
   await engine.idle();
   assert.equal((await engine.view(turn.id)).state, "COMPLETED");
   assert.equal(
@@ -167,6 +169,7 @@ try {
     new NeonChatStore(b.db).conversation(conversation.id),
     (error) => error.status === 404,
   );
+  stage = "isolated workspace and worker fencing";
   const workspace = new NeonWorkspace(a.db, conversation.id, async () => {});
   await workspace.patch({
     path: "index.html",

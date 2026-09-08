@@ -13,7 +13,7 @@ export interface ActorDatabase {
 
 /** Never hold this transaction open during a provider or tool call. */
 export class NeonActorDatabase implements ActorDatabase {
-  readonly #transaction = new AsyncLocalStorage<PoolClient>();
+  readonly #transaction = new AsyncLocalStorage<{ client: PoolClient; active: boolean }>();
   constructor(
     readonly pool: Pool,
     readonly actor: VerifiedActor,
@@ -24,8 +24,9 @@ export class NeonActorDatabase implements ActorDatabase {
   }
   async transaction<T>(action: DatabaseAction<T>): Promise<T> {
     const current = this.#transaction.getStore();
-    if (current) return action(current);
+    if (current?.active) return action(current.client);
     const client = await this.pool.connect();
+    const context = { client, active: true };
     try {
       await client.query("BEGIN");
       await client.query("SET LOCAL ROLE odin_runtime");
@@ -44,13 +45,16 @@ export class NeonActorDatabase implements ActorDatabase {
             409,
           );
       }
-      const result = await this.#transaction.run(client, () => action(client));
+      const result = await this.#transaction.run(context, () => action(client));
+      context.active = false;
       await client.query("COMMIT");
       return result;
     } catch (error) {
+      context.active = false;
       await client.query("ROLLBACK").catch(() => {});
       throw error;
     } finally {
+      context.active = false;
       client.release();
     }
   }

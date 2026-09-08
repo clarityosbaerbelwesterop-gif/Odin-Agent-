@@ -203,9 +203,11 @@ export class ChatEngine {
       await this.store.addTurn(created, key, requestHash);
       await this.store.emit(created, "message.user", { text, mode });
       await this.#publishState(created);
-      if (this.#options.autoRun !== false) this.#schedule(created);
       return created;
     });
+    // Start after commit and outside the transaction's async context. A detached worker must
+    // never inherit a pooled client whose transaction/actor settings have already expired.
+    if (this.#options.autoRun !== false) this.#schedule(turn);
     return this.view(turn.id);
   }
   async steer(turnId: string, text: string): Promise<void> {
