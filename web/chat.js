@@ -278,8 +278,8 @@ function resetConversation() {
   updateControls();
 }
 function resetSession() {
-  resetConversation();
   config = null;
+  resetConversation();
   conversationId = null;
   pendingRequest = null;
   $("conversation-list").replaceChildren();

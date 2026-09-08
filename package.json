@@ -19,14 +19,17 @@
     "smoke:kimi:dry": "node scripts/live-kimi-coding-smoke.mjs --dry-run",
     "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "verify": "npm run check:foundation && npm run quality && npm run typecheck && npm test && npm run smoke:kimi:dry && npm run build",
+    "verify": "npm run check:foundation && npm run quality && npm run typecheck && npm test && npm run test:ui && npm run smoke:kimi:dry && npm run build",
+    "test:ui": "node --test scripts/chat-ui.test.mjs scripts/preview-config.test.mjs",
     "test:chat": "node --test dist/test/chat/*.test.js"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.11",
+    "@types/jsdom": "30.0.0",
     "@types/node": "26.4.1",
     "@types/pg": "8.23.1",
     "@types/ws": "8.18.1",
+    "jsdom": "30.0.1",
     "typescript": "7.0.2"
   },
   "dependencies": {
