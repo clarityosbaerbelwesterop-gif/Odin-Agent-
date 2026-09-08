@@ -8,7 +8,7 @@ import { NeonAuth } from "../dist/src/chat/neon-auth.js";
 import { createNeonPool, NeonActorDatabase } from "../dist/src/chat/neon-database.js";
 import { NeonChatStore, NeonMissionStore } from "../dist/src/chat/neon-store.js";
 import { NeonWorkspace } from "../dist/src/chat/neon-workspace.js";
-import { provider, response } from "../dist/test/chat/helpers.js";
+import { hostedRequest, provider, response } from "../dist/test/chat/helpers.js";
 
 // Deliberately pinned to the approved disposable preview branch; no production fallback.
 const project = "cold-mode-01560070";
@@ -138,7 +138,7 @@ try {
   const store = new NeonChatStore(a.db);
   const conversation = await store.createConversation("Synthetic live integration");
   const model = provider(() => response("Fixture response; not a live model benchmark."));
-  const engine = new ChatEngine({
+  const engineOptions = {
     store,
     events: new NeonMissionStore(a.db),
     models: [{ id: "fixture", label: "Fixture", model: "test-model", provider: model }],
@@ -149,7 +149,8 @@ try {
         ]);
         return action();
       }),
-  });
+  };
+  const engine = new ChatEngine(engineOptions);
   stage = "durable mission submit and commit";
   const turn = await engine.submit({
     conversationId: conversation.id,
@@ -202,18 +203,23 @@ try {
   server = createServer(hostedHandler);
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const port = server.address().port;
-  const request = async (path, cookie = "", method = "GET", body) =>
-    fetch(`http://127.0.0.1:${port}${path}`, {
+  const request = async (path, cookie = "", method = "GET", body) => {
+    const result = await hostedRequest(port, origin, path, cookie, method, body);
+    const error = result.ok
+      ? {}
+      : await result
+          .clone()
+          .json()
+          .catch(() => ({}));
+    report.lastHttp = {
       method,
-      headers: {
-        Host: new URL(origin).host,
-        Origin: origin,
-        Cookie: cookie,
-        "X-Odin-Request": "1",
-        "Content-Type": "application/json",
-      },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    });
+      route: path.replace(/[a-f0-9-]{36}/gu, ":id"),
+      status: result.status,
+      code:
+        typeof error.code === "string" && /^[A-Z_]{1,80}$/u.test(error.code) ? error.code : null,
+    };
+    return result;
+  };
   assert.equal((await request("/api/conversations")).status, 401);
   assert.equal((await request(`/api/conversations/${conversation.id}`, a.cookie)).status, 200);
   assert.equal((await request(`/api/conversations/${conversation.id}`, b.cookie)).status, 404);
@@ -232,6 +238,66 @@ try {
   const config = await request("/api/config", a.cookie);
   assert.equal(config.status, 200);
   assert.equal((await config.json()).execution, "request");
+  stage = "HTTP pause and cancellation fence active leases";
+  const queued = new ChatEngine({ ...engineOptions, autoRun: false });
+  const pending = await queued.submit({
+    conversationId: conversation.id,
+    text: "Controlled lease cancellation fixture",
+    mode: "chat",
+    modelId: "fixture",
+    requestId: randomUUID(),
+  });
+  const resource = `run:${pending.id}`;
+  const activeLease = await a.db.claim(resource);
+  assert(activeLease);
+  const fenced = new NeonActorDatabase(pool, a.identity, { resource, token: activeLease });
+  assert.equal(
+    (
+      await request(`/api/turns/${pending.id}/control`, a.cookie, "POST", {
+        command: "pause",
+        expectedVersion: pending.version + 1,
+      })
+    ).status,
+    409,
+  );
+  assert.equal(await fenced.transaction(async () => true), true);
+  const paused = await request(`/api/turns/${pending.id}/control`, a.cookie, "POST", {
+    command: "pause",
+    expectedVersion: pending.version,
+  });
+  assert.equal(paused.status, 200);
+  const pausedView = await paused.json();
+  assert.equal(pausedView.state, "PAUSED");
+  await assert.rejects(
+    fenced.transaction(async () => true),
+    (error) => error.code === "LEASE_EXPIRED",
+  );
+  const resumed = await request(`/api/turns/${pending.id}/control`, a.cookie, "POST", {
+    command: "resume",
+    expectedVersion: pausedView.version,
+  });
+  assert.equal(resumed.status, 200);
+  const resumedView = await resumed.json();
+  const nextLease = await a.db.claim(resource);
+  assert(nextLease);
+  assert.equal(
+    (
+      await request(`/api/turns/${pending.id}/control`, a.cookie, "POST", {
+        command: "cancel",
+        expectedVersion: resumedView.version,
+      })
+    ).status,
+    200,
+  );
+  await assert.rejects(
+    new NeonActorDatabase(pool, a.identity, { resource, token: nextLease }).transaction(
+      async () => true,
+    ),
+    (error) => error.code === "LEASE_EXPIRED",
+  );
+  record("Stale controls preserve the lease; pause/resume/cancel atomically fence old workers");
+  await queued.close();
+  stage = "HTTP session revocation";
   assert.equal((await request("/api/session", a.cookie, "DELETE", {})).status, 200);
   assert.equal((await request("/api/config", a.cookie)).status, 401);
   record(

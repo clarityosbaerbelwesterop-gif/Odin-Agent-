@@ -358,11 +358,17 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       }
       if (turn[2] === "control" && method === "POST") {
         const body = object(await jsonBody(req), ["command", "expectedVersion"]);
-        send(
-          res,
-          200,
-          await engine.control(id, String(body.command), Number(body.expectedVersion)),
-        );
+        const view = await db.withLeaseLock(`run:${id}`, async (client) => {
+          const updated = await engine.control(
+            id,
+            String(body.command),
+            Number(body.expectedVersion),
+          );
+          if (["PAUSED", "CANCELLED"].includes(updated.state))
+            await client.query("DELETE FROM odin_api.leases WHERE resource=$1", [`run:${id}`]);
+          return updated;
+        });
+        send(res, 200, view);
         return;
       }
       if (turn[2] === "run" && method === "POST") {

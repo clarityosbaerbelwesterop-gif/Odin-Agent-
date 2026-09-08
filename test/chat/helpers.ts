@@ -1,4 +1,5 @@
 import { mkdtemp, rm } from "node:fs/promises";
+import { request } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ChatEngine, type ChatEngineOptions } from "../../src/chat/engine.js";
@@ -11,6 +12,51 @@ import type {
   ProviderCallOptions,
 } from "../../src/providers/types.js";
 import { capabilityProfile } from "../providers/helpers.js";
+
+/** Node fetch replaces Host; this transport preserves the trusted deployment host in local tests. */
+export function hostedRequest(
+  port: number,
+  origin: string,
+  path: string,
+  cookie = "",
+  method = "GET",
+  body?: unknown,
+): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const call = request(
+      {
+        hostname: "127.0.0.1",
+        port,
+        path,
+        method,
+        headers: {
+          Host: new URL(origin).host,
+          Origin: origin,
+          Cookie: cookie,
+          "X-Odin-Request": "1",
+          "Content-Type": "application/json",
+        },
+      },
+      (incoming) => {
+        const chunks: Buffer[] = [];
+        incoming.on("data", (chunk: Buffer) => chunks.push(chunk));
+        incoming.on("error", reject);
+        incoming.on("end", () => {
+          const headers = new Headers();
+          for (const [key, value] of Object.entries(incoming.headers))
+            for (const item of Array.isArray(value) ? value : [value])
+              if (item !== undefined) headers.append(key, item);
+          resolve(
+            new Response(Buffer.concat(chunks), { status: incoming.statusCode ?? 500, headers }),
+          );
+        });
+      },
+    );
+    call.setTimeout(20000, () => call.destroy(new Error("Hosted test request timed out")));
+    call.on("error", reject);
+    call.end(body === undefined ? undefined : JSON.stringify(body));
+  });
+}
 
 export function response(
   text = "A checked response.",

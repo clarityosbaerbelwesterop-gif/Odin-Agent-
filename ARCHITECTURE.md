@@ -329,6 +329,11 @@ evidence only until the existing M11/M21/M22/M5 authority and promotion requirem
 
 ## Chathub application boundary (G–I)
 
+Background execution begins after the submission transaction commits. Nested actor operations share only
+an active transaction; detached async continuations obtain a new transaction and reapply the role and
+verified identity. Lease control uses a consistent resource → lease row → mission lock order. Pause and
+cancel commit their state change together with lease deletion, so subsequent worker writes fail fencing.
+
 `src/chat` connects the existing M2/M3/M5/M8/M12 contracts to an authenticated HTTP application.
 The engine awaits a common conversation repository and the canonical mission EventStore. Local storage
 uses SQLite; hosted storage uses Neon Postgres with forced RLS and verified managed Auth identities.

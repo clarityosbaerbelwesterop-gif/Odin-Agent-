@@ -1,6 +1,6 @@
 # Engineering handover
 
-Updated: 2026-09-07.
+Updated: 2026-09-08.
 
 ## Current delivery state — Chathub G–I
 
@@ -16,10 +16,18 @@ Binding contract: `docs/milestones/G_H_I_CHATHUB_MODES_EVIDENCE.md`.
 - Local deterministic verification and actual SQL RLS checks are distinct from hosted end-to-end acceptance.
 - Neon preview branch: `br-old-breeze-b1ncpy1i` (`preview-chathub-auth`) in project `cold-mode-01560070`.
   Both migrations were applied there. All eight tables have forced owner RLS; cross-user SQL checks passed.
-- Vercel project: `prj_GdWyUqh2FXRUAwCUZrewFwa0w4yl` (`odin-agent`), already linked to this repository.
-  Preview deployment, environment readiness, Auth trusted origins and real-user email delivery are being checked.
-- New live workflow results are pending. Do not present the implementation or deterministic provider fixtures
-  as a successful live model run. The old M16 run is a separate protocol comparison, with both acquisitions retained.
+- Actual Vercel database: `br-withered-shadow-b1q366c3` (`preview/agent/chathub-modes-evidence`).
+  Both migrations are applied; its public Auth URL is bound to the exact preview database in the endpoint registry.
+- Vercel project `prj_GdWyUqh2FXRUAwCUZrewFwa0w4yl` has a READY preview on code head
+  `4c563616638cc550cf31e0f538fca1e4050e9250`; CI run `34219293862` passed 524 tests and build.
+- Live Neon run `34219289617` passed real RLS, managed verified/unverified Auth, durable mission execution,
+  workspace checks and expired lease fencing. Its HTTP test failed because Node fetch replaced the test Host;
+  the test transport is corrected, with a local regression. Await the next real HTTP result.
+- Runs start after commit; expired async transaction contexts cannot reuse a released connection. Pause/cancel
+  now serialize lease control before mission changes and atomically revoke worker writes; live checks pending.
+- Model A/B run `34157218855` measured two of three complete pairs: raw Kimi 2/2 and Odin 2/2 correct,
+  with 840 versus 7225 tokens. Both arms of the third case hit provider infrastructure limits. No improvement
+  is demonstrated. The old M16 protocol comparison remains separate, with both acquisitions retained.
 - PR #37's pacing recovery changes are included in this branch; reconcile it after this block is merged.
 
 See `docs/CHATHUB_DEPLOYMENT.md` for the exact environment, security boundary and remaining limitations.

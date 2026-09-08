@@ -60,7 +60,8 @@ export class NeonActorDatabase implements ActorDatabase {
   }
   async claim(resource: string, seconds = 280): Promise<string | null> {
     const token = randomUUID();
-    const rows = await this.transaction(
+    const rows = await this.withLeaseLock(
+      resource,
       async (c) =>
         (
           await c.query(
@@ -72,6 +73,18 @@ export class NeonActorDatabase implements ActorDatabase {
         ).rows,
     );
     return rows.length ? token : null;
+  }
+  /** Lock order is resource, lease row, then mission. Workers lock lease before mission too. */
+  async withLeaseLock<T>(resource: string, action: DatabaseAction<T>): Promise<T> {
+    return this.transaction(async (client) => {
+      await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [
+        JSON.stringify(["odin-lease", this.actor.id, resource]),
+      ]);
+      await client.query("SELECT token FROM odin_api.leases WHERE resource=$1 FOR UPDATE", [
+        resource,
+      ]);
+      return action(client);
+    });
   }
   async release(resource: string, token: string): Promise<void> {
     await this.transaction(async (c) => {
