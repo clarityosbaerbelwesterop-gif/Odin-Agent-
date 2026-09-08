@@ -1,0 +1,137 @@
+{
+  "status": "INCOMPLETE",
+  "evaluatedAt": "2026-09-07T19:52:25.153Z",
+  "head": "e75e3dcdfa4067d2609f780b3e05f70572fa8bdb",
+  "runId": "34157218855",
+  "model": "moonshotai/kimi-k3",
+  "authority": "measurement_only",
+  "scope": "Three exact-answer arithmetic, scheduling and code-tracing cases; not SWE-bench or general intelligence evidence.",
+  "protocol": {
+    "acquisitions": 1,
+    "hiddenRetries": 0,
+    "reasoningEffort": "high",
+    "outputLimitPerCall": 4096,
+    "baselineCallsPerCase": 1,
+    "odinCallsPerCase": 4,
+    "odinMode": "thinking",
+    "equalCompute": false,
+    "ordering": "AB then BA alternating",
+    "grading": "exact FINAL answer; expected answers withheld from both model contexts"
+  },
+  "cases": [
+    {
+      "id": "integer-arithmetic",
+      "promptHash": "16011e47adbf1b3e6bd461f24d278fc782b25a3593c4668466bcc1d2d3ad476e",
+      "baseline": {
+        "complete": true,
+        "passed": true,
+        "state": "stop",
+        "calls": 1,
+        "usage": {
+          "cachedInputTokens": 0,
+          "inputTokens": 141,
+          "outputTokens": 361,
+          "reasoningOutputTokens": 0,
+          "totalTokens": 502
+        },
+        "wallMs": 12995,
+        "pacingMs": 0,
+        "elapsedExcludingPacingMs": 12995,
+        "responseHash": "858b36a2e09e154cb62a73cdb9dfbd553f78df6f6204071c63900402b940b754"
+      },
+      "odin": {
+        "complete": true,
+        "passed": true,
+        "state": "COMPLETED",
+        "calls": 4,
+        "usage": {
+          "inputTokens": 2117,
+          "outputTokens": 994,
+          "totalTokens": 3111
+        },
+        "wallMs": 248728,
+        "pacingMs": 187025,
+        "elapsedExcludingPacingMs": 61703,
+        "responseHash": "858b36a2e09e154cb62a73cdb9dfbd553f78df6f6204071c63900402b940b754"
+      }
+    },
+    {
+      "id": "dependency-schedule",
+      "promptHash": "65a77f463d8fc1e4decce639be1b74036b9edb50183eff0a4736bc78bb019176",
+      "odin": {
+        "complete": true,
+        "passed": true,
+        "state": "COMPLETED",
+        "calls": 4,
+        "usage": {
+          "inputTokens": 2795,
+          "outputTokens": 1319,
+          "totalTokens": 4114
+        },
+        "wallMs": 266630,
+        "pacingMs": 233633,
+        "elapsedExcludingPacingMs": 32997,
+        "responseHash": "9a27f53b47f169d083e95474cc0d0c84e43e00803010e40dd9a27f2380c8dc53"
+      },
+      "baseline": {
+        "complete": true,
+        "passed": true,
+        "state": "stop",
+        "calls": 1,
+        "usage": {
+          "cachedInputTokens": 0,
+          "inputTokens": 181,
+          "outputTokens": 157,
+          "reasoningOutputTokens": 0,
+          "totalTokens": 338
+        },
+        "wallMs": 67917,
+        "pacingMs": 56776,
+        "elapsedExcludingPacingMs": 11141,
+        "responseHash": "0e3e13c64426872b896689bb38ab653ead973039b5f0c549dc9b4899337888cd"
+      }
+    },
+    {
+      "id": "javascript-trace",
+      "promptHash": "b200c7a3b19f459de4359c95d5063d122ec9661bbdef08fd06674dd3526f0266",
+      "baseline": {
+        "complete": false,
+        "passed": false,
+        "state": "rate_limit",
+        "calls": 1,
+        "usage": null,
+        "wallMs": 54041,
+        "pacingMs": 53873,
+        "elapsedExcludingPacingMs": 168,
+        "responseHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "odin": {
+        "complete": false,
+        "passed": false,
+        "state": "BLOCKED",
+        "calls": 1,
+        "usage": null,
+        "wallMs": 65029,
+        "pacingMs": 64813,
+        "elapsedExcludingPacingMs": 216,
+        "responseHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "summary": {
+    "totalCases": 3,
+    "completePairs": 2,
+    "baselinePassed": 2,
+    "odinPassed": 2,
+    "providerCalls": 12,
+    "pacing": {
+      "attempts": 12,
+      "minStartIntervalMs": 65000,
+      "waitedMs": 596120
+    }
+  },
+  "source": {
+    "jobId": 101851437302,
+    "extraction": "Sanitized aggregate JSON from authenticated GitHub job log"
+  }
+}

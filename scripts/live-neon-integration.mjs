@@ -59,7 +59,8 @@ try {
   );
   pool = createNeonPool(connection.uri);
   const auth = new NeonAuth(authUrl);
-  const origin = auth.base.origin;
+  const origin =
+    "https://odin-agent-git-ag-55f873-clarityosbaerbelwesterop-gifs-projects.vercel.app";
   stage = "database RLS";
   const script = await readFile("scripts/test-neon-rls.sql", "utf8");
   const client = await pool.connect();
@@ -80,26 +81,46 @@ try {
       password,
       name: "Odin integration fixture",
     });
+    report.authHttpStatus = signup.status;
+    if (!signup.ok) {
+      const failure = await signup.json().catch(() => ({}));
+      report.authErrorCode =
+        typeof failure.code === "string" && /^[A-Z_]{1,80}$/u.test(failure.code)
+          ? failure.code
+          : "UNSPECIFIED";
+    }
     assert(signup.ok, `Managed signup status ${signup.status}`);
+    stage = `managed auth account persistence ${suffix}`;
     const row = (await pool.query('SELECT id FROM neon_auth."user" WHERE email=$1', [email]))
       .rows[0];
     assert(row?.id);
     users.push({ id: row.id, email });
+    stage = `managed auth session cookie ${suffix}`;
+    report.authCookieNames = signup.headers
+      .getSetCookie()
+      .map((cookie) => cookie.split("=")[0])
+      .filter((name) => /^[A-Za-z0-9_.-]{1,100}$/u.test(name));
     const signupCookie = auth
       .cookies(signup)
       .map((cookie) => cookie.split(";")[0])
       .join("; ");
     assert(signupCookie, "Expected managed session cookie");
-    await assert.rejects(
-      auth.session(signupCookie, origin),
-      (error) => error.code === "EMAIL_UNVERIFIED",
-    );
+    stage = `managed unverified session validation ${suffix}`;
+    let unverified;
+    try {
+      await auth.session(signupCookie, origin);
+    } catch (error) {
+      unverified = error.code;
+    }
+    report.unverifiedResult = unverified ?? "unexpected_success";
+    assert.equal(unverified, "EMAIL_UNVERIFIED");
     record(`Unverified synthetic user ${suffix} is refused by application Auth`);
     // Controlled test setup only, targeting the account just created above. This is not an email-delivery test.
     await pool.query('UPDATE neon_auth."user" SET "emailVerified"=true WHERE id=$1 AND email=$2', [
       row.id,
       email,
     ]);
+    stage = `managed verified login ${suffix}`;
     const login = await auth.upstream("sign-in/email", "POST", origin, "", { email, password });
     assert(login.ok, `Managed login status ${login.status}`);
     const cookie = auth

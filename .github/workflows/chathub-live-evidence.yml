@@ -2,9 +2,14 @@ name: Chathub live evidence
 
 on:
   workflow_dispatch:
+    inputs:
+      model_ab:
+        description: Run one additional live model acquisition
+        type: boolean
+        default: false
   push:
     branches: [agent/chathub-modes-evidence]
-    paths: [.github/workflows/chathub-live-evidence.yml]
+    paths: [.github/workflows/chathub-live-evidence.yml, scripts/live-neon-integration.mjs]
 
 permissions:
   contents: read
@@ -38,6 +43,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   model-ab:
+    if: github.event_name == 'workflow_dispatch' && inputs.model_ab
     name: Kimi alone versus Kimi with Odin
     runs-on: ubuntu-latest
     timeout-minutes: 30
