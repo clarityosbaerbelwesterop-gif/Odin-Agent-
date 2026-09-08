@@ -34,7 +34,10 @@ export async function startChatServer(options: ChatHttpOptions) {
   let origin = "";
   const connections = new Set<ServerResponse>();
   const allowedAssets: Record<string, [string, string]> = {
-    "/": ["chat.html", "text/html"],
+    "/": ["landing.html", "text/html"],
+    "/app": ["chat.html", "text/html"],
+    "/landing.js": ["landing.js", "text/javascript"],
+    "/landing.css": ["landing.css", "text/css"],
     "/chat.js": ["chat.js", "text/javascript"],
     "/chat.css": ["chat.css", "text/css"],
     "/reference": ["index.html", "text/html"],

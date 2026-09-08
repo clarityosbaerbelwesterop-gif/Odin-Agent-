@@ -16,6 +16,15 @@ test("real HTTP service enforces auth/CSRF, submits tasks and resumes durable ev
     port: 0,
   });
   try {
+    const landing = await fetch(app.origin);
+    assert.equal(landing.status, 200);
+    assert.match(await landing.text(), /id="hero-title"/u);
+    const workspace = await fetch(`${app.origin}/app?mode=coding`);
+    assert.equal(workspace.status, 200);
+    assert.match(await workspace.text(), /id="composer"/u);
+    assert.match(workspace.headers.get("Content-Security-Policy") ?? "", /frame-ancestors 'none'/u);
+    for (const path of ["/landing.css", "/landing.js", "/chat.css", "/chat.js"])
+      assert.equal((await fetch(`${app.origin}${path}`)).status, 200);
     const denied = await fetch(`${app.origin}/api/config`);
     assert.equal(denied.status, 401);
     const csrf = await fetch(`${app.origin}/api/session`, {

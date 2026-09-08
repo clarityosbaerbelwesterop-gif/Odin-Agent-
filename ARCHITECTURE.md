@@ -342,6 +342,10 @@ transactions. Lease tokens fence late workers. Conversation history is bounded c
 
 `web/chat.*` renders real event replay and final responses. `api/index.ts` is the Vercel entry point;
 `dist/public` is the deployed static output and `dist/web` preserves the original reference fixture.
+The marketing landing owns `/`; the authenticated client owns `/app`. Mode links preselect only a
+whitelisted mode and never dispatch a task. The landing renders no synthetic AI completions or live metrics.
+Branch-scoped Vercel secrets select the separate `odin_app` login and the matching Neon Auth endpoint.
+Its only role membership is non-inherited SET access to `odin_runtime`; no migration privileges are granted.
 Hosted workspaces persist per tenant/conversation and support isolated static HTML previews and syntax
 checks. They are not an arbitrary-code backend or M26 container implementation. For security and
 deployment requirements, see `docs/CHATHUB_DEPLOYMENT.md`.

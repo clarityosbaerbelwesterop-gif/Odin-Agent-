@@ -8,7 +8,7 @@ HTML preview. Model output is never substituted with fixture responses in the pr
 
 Use Node 24+, `npm ci`, then `npm run verify`. Copy `odin.config.example.json` to `odin.config.json`.
 Provide `ODIN_ACCESS_TOKEN` (at least 24 random characters) and the model credential through the process
-environment. `npm start` serves the Chathub at `http://127.0.0.1:4318`. The example references the existing
+environment. `npm start` serves the landing at `http://127.0.0.1:4318` and Chathub at `/app`. The example references the existing
 NVIDIA Kimi K3 adapter and `NV_API_KEY`; unavailable credentials leave the model list empty.
 
 The local access token authenticates a trusted operator, not multiple independent tenants. Browser
@@ -30,6 +30,11 @@ the previous `public`-directory failure is addressed by the build and explicit o
 original reference interface remains at `/reference`. Functions request Frankfurt and a 300-second
 ceiling. A worker stops after 240 seconds and can be resumed explicitly; the application is not an
 unbounded background-job service.
+
+The public landing at `/` is a static product introduction, with five interactive mode descriptions
+and links to `/app?mode=…`. These links select a mode without submitting a prompt or bypassing login.
+The page's benchmark numbers are tested against the checked-in live acquisition. Marketing content
+does not start model calls, set tracking cookies, accept payment or collect contact details.
 
 Required server-side Vercel environment variables:
 
@@ -56,6 +61,17 @@ role `odin_runtime`. Prefer a separate login role granted only membership in `od
 migration credential out of the application environment. The integration-provided owner connection
 is supported, but is more privileged than necessary even though every application transaction drops
 to the restricted role.
+
+Preview configuration workflow run `34254459226` created the SQL-only `odin_app` login on
+`br-withered-shadow-b1q366c3`. Its only membership is `odin_runtime` with INHERIT false, SET true and no
+admin option. Live checks proved authentication, denied Auth-table reads and empty results without a
+tenant context. `ODIN_DATABASE_URL`, `NEON_AUTH_BASE_URL` and `NV_API_KEY` are sensitive Vercel values
+scoped only to `agent/chathub-modes-evidence`. Reruns do not rotate existing passwords; missing role/value
+pairs require explicit recovery. No project or production variables are modified.
+
+The Neon integration still injects its own owner-level values. They are not used by the application when
+`ODIN_DATABASE_URL` is set, but they remain a credential-exposure risk if the function environment is
+compromised. Configure the integration itself with a restricted role before a production security claim.
 
 For every request, the backend checks the live managed session and its EdDSA JWT signature, issuer,
 audience, subject, age and expiry. Unverified email accounts are refused. Cookies are proxied on the
@@ -93,6 +109,16 @@ Model self-review and structural delivery validation do not prove factual correc
 uses the configured Wikipedia language, not unrestricted web browsing. Modes never grant new host
 permissions or raise the operator's global ceilings. Live events stream progress, tools, sources and
 state; final responses are displayed after generation and validation.
+
+Neon integration run `34220256588` passed all eight live Auth/RLS/HTTP/lease checks. Its provider is an
+explicit deterministic test boundary; it is not proof of a deployed live-model conversation. The separate
+`preview-http-evidence.yml` workflow exercises one actual Kimi task through the pinned configured Vercel
+preview, with a ten-minute deployment-only share link and fixture cleanup. Neither test proves email
+delivery. DOM tests use jsdom and actual local HTTP missions; they do not claim native browser layout,
+iframe execution or mobile-device validation.
+
+FreeLLMAPI is not automatically connected by a GitHub secret. The current key requires its approved API
+endpoint and provider identity; see `docs/FREELLM_READINESS.md`. No paid Pro offering is enabled.
 
 `scripts/live-chathub-ab.mjs` compares raw Kimi without Odin to Kimi with the actual Thinking engine on
 three exact-answer tasks. Each arm sees the same task and grading format. Odin has up to four calls;

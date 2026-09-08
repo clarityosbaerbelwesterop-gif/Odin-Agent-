@@ -18,13 +18,29 @@ Binding contract: `docs/milestones/G_H_I_CHATHUB_MODES_EVIDENCE.md`.
   Both migrations were applied there. All eight tables have forced owner RLS; cross-user SQL checks passed.
 - Actual Vercel database: `br-withered-shadow-b1q366c3` (`preview/agent/chathub-modes-evidence`).
   Both migrations are applied; its public Auth URL is bound to the exact preview database in the endpoint registry.
-- Vercel project `prj_GdWyUqh2FXRUAwCUZrewFwa0w4yl` has a READY preview on code head
-  `4c563616638cc550cf31e0f538fca1e4050e9250`; CI run `34219293862` passed 524 tests and build.
-- Live Neon run `34219289617` passed real RLS, managed verified/unverified Auth, durable mission execution,
-  workspace checks and expired lease fencing. Its HTTP test failed because Node fetch replaced the test Host;
-  the test transport is corrected, with a local regression. Await the next real HTTP result.
+- Vercel project `prj_GdWyUqh2FXRUAwCUZrewFwa0w4yl` has a READY configured preview on code head
+  `13623599e54ddfc5fcd2ec356672e8b46413d4b7`, deployment `dpl_uMex6JLEo8hjBnDijZa6nARAWo5t`.
+  Configuration run `34254459226` passed all gates and applied preview-branch-only sensitive environment
+  variables. `odin_app` is a SQL-created restricted login granted only SET access to `odin_runtime`;
+  live login tests deny Auth-table access and return no tenant rows without an actor. Vercel logs confirm
+  database, Auth and model configuration. Integration-managed owner variables remain present and require
+  separate integration hardening before production; the application uses `ODIN_DATABASE_URL`.
+- Live Neon run `34220256588` **passed all eight checks**, including real RLS, managed Auth, durable
+  execution, workspace isolation, worker fencing, two-user HTTP isolation and immediate logout revocation.
+  Evidence is retained in `docs/evals/neon-integration-2026-09-08.json`; synthetic accounts were removed.
 - Runs start after commit; expired async transaction contexts cannot reuse a released connection. Pause/cancel
-  now serialize lease control before mission changes and atomically revoke worker writes; live checks pending.
+  serialize lease control before mission changes and atomically revoke worker writes; live checks passed.
+- A real client logout bug (sending stayed enabled after sign-out) is fixed and covered by DOM/HTTP tests.
+- Landing page `/` now hands off to Chathub `/app`, including explicit mode selection without auto-submission.
+  Its mode descriptions are labeled examples, not live runs. No invented social proof, paid plans or model
+  improvement claims are displayed. Public benchmark values are checked against the preserved acquisition.
+- Twelve DOM/package/deployment checks cover six client flows, three landing checks and three deployment
+  safeguards. Native browser layout/CSP and real-user email delivery are separate acceptance gates.
+- `scripts/live-vercel-smoke.mjs` targets the pinned configured API deployment above, using one disposable
+  account and one bounded real Kimi task. It records a separate result, never synthetic model output.
+- `FREE_API_KEY` is present but its provider/endpoint cannot be identified from the documented prefixes.
+  The value was not exported or sent to a guessed endpoint. See `docs/FREELLM_READINESS.md`; a supplied
+  API URL and selected-provider commercial review are needed before enabling a FreeLLM/Pro integration.
 - Model A/B run `34157218855` measured two of three complete pairs: raw Kimi 2/2 and Odin 2/2 correct,
   with 840 versus 7225 tokens. Both arms of the third case hit provider infrastructure limits. No improvement
   is demonstrated. The old M16 protocol comparison remains separate, with both acquisitions retained.

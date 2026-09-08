@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="description" content="Odin ist dein Arbeitsplatz für KI-Aufgaben. Code bearbeiten, Gedanken prüfen, Quellen recherchieren – mit sichtbaren Schritten und kontrollierbaren Runs." />
+    <title>Odin — Ein Arbeitsplatz für deine nächste Idee.</title>
+    <link rel="stylesheet" href="/landing.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#inhalt">Zum Inhalt</a>
+    <header class="site-header">
+      <a class="wordmark" href="/" aria-label="Odin Startseite">odin<span aria-hidden="true">↗</span></a>
+      <nav aria-label="Hauptnavigation"><a href="#arbeitsweise">Arbeitsweise</a><a href="#nachweise">Nachweise</a></nav>
+      <a class="header-cta" href="/app">Workspace öffnen <span aria-hidden="true">↗</span></a>
+    </header>
+    <main id="inhalt">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-caption"><span>DEIN AGENT. DEIN ARBEITSPLATZ.</span><span class="preview-label">PREVIEW / 2026</span></div>
+        <h1 id="hero-title">Eine Idee.<br />Und dann<br /><span class="outline-word">an die Arbeit.</span></h1>
+        <div class="hero-bottom">
+          <p>Recherchieren, durchdenken, Code bearbeiten.<br class="desktop-break" /> Odin bringt deine Aufgabe und die Arbeit daran<br class="desktop-break" /> in einen gemeinsamen Workspace.</p>
+          <a class="button primary" href="/app">Mit Odin arbeiten <span aria-hidden="true">↗</span></a>
+          <span class="hero-note">Du gibst die Richtung vor.<br />Der Fortschritt bleibt sichtbar.</span>
+        </div>
+        <a class="section-jump" href="#arbeitsweise"><span aria-hidden="true">↓</span> So arbeitet Odin</a>
+        <span class="hero-index" aria-hidden="true">01—05</span>
+      </section>
+
+      <section class="work-section" id="arbeitsweise" aria-labelledby="work-title">
+        <div class="section-heading"><span class="eyebrow">01 / ARBEITSWEISE</span><h2 id="work-title">Die Aufgabe bestimmt<br />den Modus.</h2><p>Ein Gespräch als Ausgangspunkt.<br />Fünf Wege, daran weiterzuarbeiten.</p></div>
+        <div class="mode-workbench">
+          <fieldset class="mode-list"><legend class="visually-hidden">Arbeitsmodus auswählen</legend>
+            <button type="button" data-mode="chat" aria-pressed="false"><span class="mode-number">01</span><span>Chat</span><span class="mode-arrow" aria-hidden="true">↗</span></button>
+            <button type="button" data-mode="coding" aria-pressed="true"><span class="mode-number">02</span><span>Coding</span><span class="mode-arrow" aria-hidden="true">↗</span></button>
+            <button type="button" data-mode="thinking" aria-pressed="false"><span class="mode-number">03</span><span>Thinking</span><span class="mode-arrow" aria-hidden="true">↗</span></button>
+            <button type="button" data-mode="research" aria-pressed="false"><span class="mode-number">04</span><span>Research</span><span class="mode-arrow" aria-hidden="true">↗</span></button>
+            <button type="button" data-mode="ultra" aria-pressed="false"><span class="mode-number">05</span><span>Ultra</span><span class="mode-arrow" aria-hidden="true">↗</span></button>
+          </fieldset>
+          <div class="mode-detail" aria-live="polite" aria-atomic="true">
+            <div class="detail-topline"><span id="mode-label">CODING / 02</span><span>ABLAUFBEISPIEL · KEIN LIVE-RUN</span></div>
+            <h3 id="mode-title">Von der Änderung<br />zur Vorschau.</h3>
+            <p id="mode-copy">Dateien lesen, gezielt bearbeiten und die Änderungen nachvollziehen. Deine HTML-, CSS- und JavaScript-Seite erscheint in einer isolierten Vorschau.</p>
+            <ol id="mode-steps" class="mode-steps"><li><span>01</span>Dateien und Aufgabe prüfen</li><li><span>02</span>Änderungen im Workspace anwenden</li><li><span>03</span>Syntax prüfen, Vorschau ansehen</li></ol>
+            <div class="mode-detail-bottom"><p id="mode-boundary">Die gehostete Preview bearbeitet statische Web-Projekte. Sie installiert keine Pakete und startet keinen beliebigen Backend-Code.</p><a id="mode-open" href="/app?mode=coding">Coding öffnen <span aria-hidden="true">↗</span></a></div>
+          </div>
+        </div>
+        <noscript><p class="noscript-note">Die Modus-Auswahl ist interaktiv mit JavaScript. Alle fünf Modi findest du auch direkt im <a href="/app">Workspace</a>.</p></noscript>
+        <div class="control-strip"><span class="eyebrow">DU BLEIBST AM STEUER</span><p>Nachsteuern.<br />Pausieren. Fortsetzen.</p><p>Plan, Werkzeugaufrufe und Änderungen bleiben im Blick. Du kannst laufende Aufgaben lenken oder stoppen. Gespeicherte Ereignisse machen den Verlauf nachvollziehbar.</p></div>
+      </section>
+
+      <section class="evidence-section" id="nachweise" aria-labelledby="evidence-title">
+        <div class="section-heading"><span class="eyebrow">02 / NACHWEISE</span><h2 id="evidence-title">Ein Ergebnis braucht<br />einen Nachweis.</h2><p>Wir zeigen, was geprüft wurde.<br />Und was noch offen ist.</p></div>
+        <div class="evidence-grid">
+          <article class="security-evidence"><span class="eyebrow">NEON AUTH + POSTGRES RLS</span><h3>Dein Workspace.<br />Deine Daten.</h3><p>Der Server prüft die Anmeldung und setzt den Nutzerkontext für jede Datenbank-Transaktion. Row-Level Security trennt die Datensätze der Nutzer.</p><ul><li>Signierte Tokens und widerrufbare Sitzungen</li><li>Serverseitige Modell-Schlüssel</li><li>Fremdzugriffe auf acht Tabellen live getestet</li></ul><a href="https://github.com/clarityosbaerbelwesterop-gif/Odin-Agent-/actions/runs/34220256588" target="_blank" rel="noopener noreferrer">Neon-Testlauf ansehen <span aria-hidden="true">↗</span></a><p class="fine-print">Preview-Integration mit Testkonten. Kein unabhängiges Sicherheitsaudit. E-Mail-Zustellung ist noch nicht live bestätigt. GitHub-Zugriff erforderlich.</p></article>
+          <article class="benchmark-evidence"><div class="evidence-topline"><span class="eyebrow">KIMI / KIMI + ODIN</span><span class="incomplete-label">UNVOLLSTÄNDIG</span></div><h3>Gleiche Aufgaben.<br />Offene Ergebnisse.</h3><table><caption>Erster Modellvergleich · 7. September 2026</caption><thead><tr><th scope="col">Messung</th><th scope="col">Kimi</th><th scope="col">+ Odin</th></tr></thead><tbody><tr><th scope="row">Richtig / vollständige Paare</th><td>2 / 2</td><td>2 / 2</td></tr><tr><th scope="row">Tokens dieser Paare</th><td>840</td><td>7.225</td></tr></tbody></table><p>Das dritte Aufgabenpaar blieb am Anbieter-Limit hängen. Dieser Lauf zeigt keinen Genauigkeitsgewinn; Odin nutzte mehr Modellaufrufe und Tokens.</p><a href="https://github.com/clarityosbaerbelwesterop-gif/Odin-Agent-/actions/runs/34157218855" target="_blank" rel="noopener noreferrer">Original-Run ansehen <span aria-hidden="true">↗</span></a><p class="fine-print">Drei kleine Aufgaben, zwei vollständige Vergleiche. Kein allgemeiner Leistungsnachweis. GitHub-Zugriff erforderlich.</p></article>
+        </div>
+      </section>
+      <section class="closing" aria-labelledby="closing-title"><span class="eyebrow">DER NÄCHSTE SCHRITT IST DEINER.</span><h2 id="closing-title">Woran arbeiten<br />wir heute?</h2><a class="button" href="/app">Workspace öffnen <span aria-hidden="true">↗</span></a><p>Preview mit Neon-Anmeldung. Verfügbare Modelle hängen von den<br class="desktop-break" /> eingerichteten Anbietern und ihren aktuellen Limits ab.</p></section>
+    </main>
+    <footer class="site-footer"><a class="wordmark" href="/" aria-label="Odin Startseite">odin<span aria-hidden="true">↗</span></a><span>Ein Arbeitsplatz für überprüfbare Arbeit.</span><a href="#inhalt">Nach oben ↑</a></footer>
+    <script type="module" src="/landing.js"></script>
+  </body>
+</html>

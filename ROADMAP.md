@@ -527,5 +527,10 @@ preview. The implementation is on `agent/chathub-modes-evidence`; the acceptance
 managed Auth integration, real model A/B acquisition and hosted browser acceptance have separate
 evidence states. Existing protocol benchmarks do not establish the new orchestration's performance.
 
+The September 8 addition includes an editorial landing linked to `/app`, preview-only Vercel credential
+configuration, the least-privilege `odin_app` login, and a FreeLLM connection/commercial-readiness review.
+Neon run `34220256588` passes all live Auth/RLS/HTTP checks. Configuration run `34254459226` is green.
+FreeLLM inference remains blocked on endpoint/provider identity; no Pro subscription is enabled.
+
 No completion claim extends to arbitrary hosted backend execution, unrestricted research, OS/container
 isolation, production operations or native applications. Those gates remain open.

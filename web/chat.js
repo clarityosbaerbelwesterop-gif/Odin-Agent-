@@ -716,6 +716,9 @@ $("benchmark-view").onclick = async () => {
   }
 };
 
+const requestedMode = new URLSearchParams(window.location.search).get("mode");
+if (["chat", "coding", "thinking", "research", "ultra"].includes(requestedMode))
+  $("mode").value = requestedMode;
 updateControls();
 api("/api/auth/config")
   .then((result) => {

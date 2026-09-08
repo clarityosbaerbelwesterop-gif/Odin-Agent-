@@ -9,4 +9,4 @@ for (const directory of ["web", "public"]) {
   await cp(join(root, "web"), target, { recursive: true });
   await copyFile(join(root, "web/index.html"), join(target, "reference.html"));
 }
-await copyFile(join(root, "web/chat.html"), join(root, "dist/public/index.html"));
+await copyFile(join(root, "web/landing.html"), join(root, "dist/public/index.html"));

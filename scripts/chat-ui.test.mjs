@@ -5,15 +5,16 @@ import { JSDOM } from "jsdom";
 import { until } from "../dist/test/chat/helpers.js";
 import { startBrowserFixture } from "./chathub-browser-fixture.mjs";
 
-async function client({ unavailable = false } = {}) {
+async function client({ unavailable = false, mode = "" } = {}) {
   const app = await startBrowserFixture();
   const dom = new JSDOM(await readFile("web/chat.html", "utf8"), {
-    url: app.origin,
+    url: `${app.origin}/app?mode=${encodeURIComponent(mode)}`,
     runScripts: "outside-only",
     pretendToBeVisual: true,
   });
   const window = dom.window;
   const streams = new Set();
+  const lifetime = new AbortController();
   // DOM-level tests do not assert native dialog layout, browser CSP enforcement or rendering.
   if (!window.HTMLDialogElement.prototype.showModal)
     window.HTMLDialogElement.prototype.showModal = function () {
@@ -28,7 +29,7 @@ async function client({ unavailable = false } = {}) {
       ? Promise.resolve(
           new Response(JSON.stringify({ message: "Test backend unavailable" }), { status: 503 }),
         )
-      : fetch(new URL(path, app.origin), options);
+      : fetch(new URL(path, app.origin), { ...options, signal: lifetime.signal });
   window.EventSource = class {
     controller = new AbortController();
     constructor(path) {
@@ -39,7 +40,7 @@ async function client({ unavailable = false } = {}) {
       try {
         const result = await fetch(new URL(path, app.origin), {
           headers: { Accept: "text/event-stream" },
-          signal: this.controller.signal,
+          signal: AbortSignal.any([this.controller.signal, lifetime.signal]),
         });
         if (!result.ok) throw new Error("Event transport rejected");
         this.onopen?.();
@@ -81,12 +82,28 @@ async function client({ unavailable = false } = {}) {
     send,
     origin: app.origin,
     close: async () => {
+      lifetime.abort();
       for (const stream of streams) stream.close();
-      window.close();
       await app.close();
+      // Let aborted fetch/JSON promise handlers settle while their document still exists.
+      await new Promise((resolve) => setImmediate(resolve));
+      window.close();
     },
   };
 }
+
+test("landing links select a known mode without sending a task or accepting unknown modes", async () => {
+  for (const mode of ["coding", "research", "ultra", "untrusted-mode"]) {
+    const c = await client({ mode });
+    try {
+      await until(() => c.get("connection").textContent === "Connected");
+      assert.equal(c.get("mode").value, mode === "untrusted-mode" ? "chat" : mode);
+      assert.equal(c.get("messages").querySelectorAll("article").length, 0);
+    } finally {
+      await c.close();
+    }
+  }
+});
 
 test("shipped UI sends real HTTP missions, changes modes, reopens history and clears private state on logout", async () => {
   const c = await client();
