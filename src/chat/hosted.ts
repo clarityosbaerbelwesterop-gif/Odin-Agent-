@@ -1,9 +1,9 @@
-import { readFile } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { join } from "node:path";
 import { attachDatabasePool } from "@vercel/functions";
 import { CapabilityRegistry, makeCapabilities } from "../providers/capabilities.js";
 import { NvidiaProvider } from "../providers/nvidia.js";
+import { readBenchmarks } from "./benchmarks.js";
 import { resolveNeonAuthUrl } from "./deployment.js";
 import { ChatEngine } from "./engine.js";
 import { DEFAULT_CHAT_LIMITS } from "./modes.js";
@@ -42,6 +42,11 @@ function createServices() {
   const auth = new NeonAuth(authUrl);
   const models: ChatModel[] = [];
   const credential = () => process.env.NV_API_KEY ?? process.env.NVIDIA_API_KEY ?? "";
+  console.info("Odin backend readiness", {
+    databaseConfigured: true,
+    authConfigured: true,
+    modelConfigured: !!credential(),
+  });
   if (credential()) {
     const model = "moonshotai/kimi-k3";
     const capabilities = new CapabilityRegistry([
@@ -237,16 +242,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       return;
     }
     if (url.pathname === "/api/benchmarks" && method === "GET") {
-      send(
-        res,
-        200,
-        JSON.parse(
-          await readFile(
-            join(process.cwd(), "docs/evals/paced-kimi-2026-09-07-summary.json"),
-            "utf8",
-          ).catch(() => '{"status":"UNAVAILABLE"}'),
-        ),
-      );
+      send(res, 200, await readBenchmarks(join(process.cwd(), "docs/evals")));
       return;
     }
     if (url.pathname === "/api/conversations") {

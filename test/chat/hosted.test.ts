@@ -17,6 +17,15 @@ test("hosted request transport preserves origin and unauthenticated APIs remain 
     const denied = await hostedRequest(address.port, "https://odin.example", "/api/conversations");
     assert.equal(denied.status, 401);
     assert.equal((await denied.json()).code, "UNAUTHORIZED");
+    const deletion = await hostedRequest(
+      address.port,
+      "https://odin.example",
+      "/api/session",
+      "",
+      "DELETE",
+      {},
+    );
+    assert.equal(deletion.status, 401);
     const config = await hostedRequest(address.port, "https://odin.example", "/api/auth/config");
     assert.equal(config.status, 200);
     assert.deepEqual(await config.json(), { provider: "neon", emailVerificationRequired: true });

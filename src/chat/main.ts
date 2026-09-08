@@ -12,6 +12,7 @@ import { NodeProcessAdapter, SandboxProcessRunner } from "../sandbox/process.js"
 import type { SandboxCommandDefinition } from "../sandbox/types.js";
 import { CanonicalWorkspaceBoundary } from "../sandbox/workspace.js";
 import type { QualityCommandRunner } from "../tools/repository.js";
+import { readBenchmarks } from "./benchmarks.js";
 import { ChatEngine } from "./engine.js";
 import { startChatServer } from "./http.js";
 import { WikipediaResearchAdapter } from "./research.js";
@@ -115,17 +116,9 @@ async function main(): Promise<void> {
       : {}),
   });
   await engine.initialize();
-  let benchmark: unknown = { status: "UNAVAILABLE" };
-  try {
-    benchmark = JSON.parse(
-      await readFile(
-        new URL("../../../docs/evals/paced-kimi-2026-09-07-summary.json", import.meta.url),
-        "utf8",
-      ),
-    );
-  } catch {
-    /* Optional historical evidence only. */
-  }
+  const benchmark = await readBenchmarks(
+    fileURLToPath(new URL("../../../docs/evals/", import.meta.url)),
+  );
   const host = config.host;
   if (host !== undefined && !["127.0.0.1", "::1", "0.0.0.0"].includes(String(host)))
     throw new ChatError("HOST_CONFIG", "Unsupported listen host.");

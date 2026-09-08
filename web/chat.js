@@ -285,6 +285,7 @@ function resetSession() {
   $("conversation-list").replaceChildren();
   $("prompt").value = "";
   $("page-title").textContent = "Odin";
+  $("connection").textContent = "Sign in required";
   $("connection-details").close();
 }
 async function openConversation(id) {
@@ -588,11 +589,67 @@ $("benchmark-view").onclick = async () => {
   $("benchmark-view").classList.add("selected");
   $("chat-view").classList.remove("selected");
   try {
-    const result = await api("/api/benchmarks");
+    const evidence = await api("/api/benchmarks");
     const target = $("benchmark-content");
     target.replaceChildren();
-    if (!result.selectedSummary) {
-      target.append(element("p", "No verified live evidence has been connected.", "muted"));
+    const comparison = evidence.modelComparison;
+    target.append(element("h2", "Kimi alone and Kimi with Odin"));
+    if (comparison?.summary) {
+      const summary = comparison.summary;
+      const complete = comparison.cases.filter(
+        (item) => item.baseline.complete && item.odin.complete,
+      );
+      const tokens = (arm) =>
+        complete.reduce((total, item) => total + item[arm].usage.totalTokens, 0);
+      target.append(
+        element(
+          "p",
+          `${comparison.status} · ${summary.completePairs} of ${summary.totalCases} complete task pairs.`,
+          "muted",
+        ),
+        element(
+          "p",
+          `Correct answers: Kimi ${summary.baselinePassed}/${summary.completePairs}; Kimi with Odin ${summary.odinPassed}/${summary.completePairs}.`,
+        ),
+        element(
+          "p",
+          `Tokens on complete pairs: Kimi ${tokens("baseline").toLocaleString()}; Odin ${tokens("odin").toLocaleString()}. One baseline call versus up to four Odin calls per task.`,
+        ),
+        element(
+          "p",
+          "This acquisition shows no accuracy improvement. The third pair was blocked by provider limits. Three small exact-answer tasks cannot establish general coding or reasoning performance.",
+          "muted",
+        ),
+      );
+      const modelTable = element("table");
+      const modelHead = element("tr");
+      for (const label of ["Task", "Kimi alone", "Kimi with Odin"])
+        modelHead.append(element("th", label));
+      modelTable.append(modelHead);
+      for (const item of comparison.cases) {
+        const row = element("tr");
+        row.append(element("td", item.id));
+        for (const arm of [item.baseline, item.odin])
+          row.append(
+            element(
+              "td",
+              arm.complete ? (arm.passed ? "Correct" : "Incorrect") : `Not measured (${arm.state})`,
+            ),
+          );
+        modelTable.append(row);
+      }
+      target.append(
+        modelTable,
+        link(
+          `https://github.com/clarityosbaerbelwesterop-gif/Odin-Agent-/actions/runs/${comparison.runId}`,
+          "Open model comparison run",
+        ),
+      );
+    } else target.append(element("p", "No measured model comparison is available.", "muted"));
+    target.append(element("h2", "Earlier M16 coding protocol comparison"));
+    const result = evidence.protocolComparison;
+    if (!result?.selectedSummary) {
+      target.append(element("p", "No historical protocol evidence is available.", "muted"));
       return;
     }
     const value = result.selectedSummary;
@@ -659,6 +716,7 @@ $("benchmark-view").onclick = async () => {
   }
 };
 
+updateControls();
 api("/api/auth/config")
   .then((result) => {
     authProvider = result.provider;
@@ -666,5 +724,8 @@ api("/api/auth/config")
     return initialize();
   })
   .catch((error) => {
+    $("connection").textContent =
+      error.status === 401 ? "Sign in required" : "Connection unavailable";
+    updateControls();
     if (error.status !== 401) errorBanner(error);
   });

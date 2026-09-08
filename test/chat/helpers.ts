@@ -23,6 +23,7 @@ export function hostedRequest(
   body?: unknown,
 ): Promise<Response> {
   return new Promise((resolve, reject) => {
+    const encoded = body === undefined ? undefined : JSON.stringify(body);
     const call = request(
       {
         hostname: "127.0.0.1",
@@ -35,6 +36,7 @@ export function hostedRequest(
           Cookie: cookie,
           "X-Odin-Request": "1",
           "Content-Type": "application/json",
+          ...(encoded === undefined ? {} : { "Content-Length": Buffer.byteLength(encoded) }),
         },
       },
       (incoming) => {
@@ -54,7 +56,7 @@ export function hostedRequest(
     );
     call.setTimeout(20000, () => call.destroy(new Error("Hosted test request timed out")));
     call.on("error", reject);
-    call.end(body === undefined ? undefined : JSON.stringify(body));
+    call.end(encoded);
   });
 }
 

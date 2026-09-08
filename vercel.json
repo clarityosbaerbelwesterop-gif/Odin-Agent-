@@ -7,7 +7,7 @@
   "functions": {
     "api/index.ts": {
       "maxDuration": 300,
-      "includeFiles": "docs/evals/paced-kimi-2026-09-07-summary.json"
+      "includeFiles": "docs/evals/*.json"
     }
   },
   "rewrites": [
