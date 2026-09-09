@@ -518,3 +518,19 @@ Final D–F merge gates:
 D–F itself performed no new live provider call, deployment, production migration, billing change, public
 traffic, or new credential use. Any post-merge live evaluation is a separately authorized bounded
 measurement and cannot be relabeled as universal provider/model superiority or production readiness.
+
+## G–I: Chathub, modes and live evidence (2026-09-07)
+
+User scope adds real interactive chat, Coding/Thinking/Research/Ultra, Neon Auth + RLS and a Vercel
+preview. The implementation is on `agent/chathub-modes-evidence`; the acceptance checklist is
+`docs/milestones/G_H_I_CHATHUB_MODES_EVIDENCE.md`. Local regression checks, live SQL isolation,
+managed Auth integration, real model A/B acquisition and hosted browser acceptance have separate
+evidence states. Existing protocol benchmarks do not establish the new orchestration's performance.
+
+The September 8 addition includes an editorial landing linked to `/app`, preview-only Vercel credential
+configuration, the least-privilege `odin_app` login, and a FreeLLM connection/commercial-readiness review.
+Neon run `34220256588` passes all live Auth/RLS/HTTP checks. Configuration run `34254459226` is green.
+FreeLLM inference remains blocked on endpoint/provider identity; no Pro subscription is enabled.
+
+No completion claim extends to arbitrary hosted backend execution, unrestricted research, OS/container
+isolation, production operations or native applications. Those gates remain open.

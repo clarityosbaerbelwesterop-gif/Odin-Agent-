@@ -1,0 +1,68 @@
+name: Chathub live evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_ab:
+        description: Run one additional live model acquisition
+        type: boolean
+        default: false
+  push:
+    branches: [agent/chathub-modes-evidence]
+    paths: [.github/workflows/chathub-live-evidence.yml, scripts/live-neon-integration.mjs, src/chat/neon-auth.ts, src/chat/neon-database.ts, src/chat/neon-store.ts, src/chat/hosted.ts]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chathub-live-evidence
+  cancel-in-progress: false
+
+jobs:
+  neon:
+    name: Neon Auth and RLS integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Exercise the isolated Neon preview branch
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+        run: node scripts/live-neon-integration.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chathub-neon-evidence
+          path: neon-integration-result.json
+          if-no-files-found: error
+          retention-days: 14
+  model-ab:
+    if: github.event_name == 'workflow_dispatch' && inputs.model_ab
+    name: Kimi alone versus Kimi with Odin
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Run one paced acquisition with no hidden retries
+        env:
+          NV_API_KEY: ${{ secrets.NV_API_KEY }}
+        run: node scripts/live-chathub-ab.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chathub-model-ab
+          path: chathub-ab-result.json
+          if-no-files-found: error
+          retention-days: 14

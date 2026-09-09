@@ -1,27 +1,55 @@
 # Engineering handover
 
-Updated: 2026-09-07.
+Updated: 2026-09-08.
 
-## Current delivery state — intelligence D–F
+## Current delivery state — Chathub G–I
 
 Repository: `clarityosbaerbelwesterop-gif/Odin-Agent-` (private).
 
-- `main` contains the merged M0–M28 repository-local contracts plus intelligence A–C.
-- Active PR: **#36**, branch `agent/intelligence-d-e-f`, containing exactly Phase D, Phase E, and Phase F.
-- Binding contract: `docs/milestones/INTELLIGENCE_PHASE_D_F.md`.
-- Phase D CI `34091888679`, Phase E CI `34092487219`, and normal Phase F CI `34095946506` passed.
-- Package adversarial hardening run `34097050800` passed **492/492 tests**, Biome, strict TypeScript,
-  credential-free Kimi dry smoke, and aggregate **90.02% line / 76.67% branch / 96.05% function** coverage.
-- The review closed recomputed-hash semantic smuggling, unknown D/E policy values, exact D/E budget drift,
-  capability/profile mismatch, repair-policy mismatch, and analytics-to-routing escalation.
-- Governance synchronization is being committed now. One fresh normal CI on that exact governance head is
-  still mandatory before merge.
-- The user explicitly authorized merge of this three-phase block and exactly three bounded final live runs
-  after merge. Those live runs are evaluation evidence only, not routing/promotion/release authority.
+D–F was merged in PR #36. The current base is `151bac7b531679bea73e63ef5baa67fc162c08bd`.
+The active branch `agent/chathub-modes-evidence` contains exactly phases G, H and I.
+Binding contract: `docs/milestones/G_H_I_CHATHUB_MODES_EVIDENCE.md`.
 
-D–F itself uses no new provider/model, live provider call, deployment, paid infrastructure, production
-migration, billing change, public traffic, or new credential. The separately authorized final runs may use
-the already configured NVIDIA Kimi K3 secret under existing call/time/token ceilings.
+- G: real interactive Chathub, durable local/Neon repositories, task controls and isolated static preview.
+- H: Chat/Coding/Thinking/Research/Ultra policies, managed Neon Auth, transaction-scoped RLS and worker fencing.
+- I: regression tests, deployable Vercel output, preserved M16 measurements and separate live integration/A/B runners.
+- Local deterministic verification and actual SQL RLS checks are distinct from hosted end-to-end acceptance.
+- Neon preview branch: `br-old-breeze-b1ncpy1i` (`preview-chathub-auth`) in project `cold-mode-01560070`.
+  Both migrations were applied there. All eight tables have forced owner RLS; cross-user SQL checks passed.
+- Actual Vercel database: `br-withered-shadow-b1q366c3` (`preview/agent/chathub-modes-evidence`).
+  Both migrations are applied; its public Auth URL is bound to the exact preview database in the endpoint registry.
+- Vercel project `prj_GdWyUqh2FXRUAwCUZrewFwa0w4yl` has a READY configured preview on code head
+  `13623599e54ddfc5fcd2ec356672e8b46413d4b7`, deployment `dpl_uMex6JLEo8hjBnDijZa6nARAWo5t`.
+  Configuration run `34254459226` passed all gates and applied preview-branch-only sensitive environment
+  variables. `odin_app` is a SQL-created restricted login granted only SET access to `odin_runtime`;
+  live login tests deny Auth-table access and return no tenant rows without an actor. Vercel logs confirm
+  database, Auth and model configuration. Integration-managed owner variables remain present and require
+  separate integration hardening before production; the application uses `ODIN_DATABASE_URL`.
+- Live Neon run `34220256588` **passed all eight checks**, including real RLS, managed Auth, durable
+  execution, workspace isolation, worker fencing, two-user HTTP isolation and immediate logout revocation.
+  Evidence is retained in `docs/evals/neon-integration-2026-09-08.json`; synthetic accounts were removed.
+- Runs start after commit; expired async transaction contexts cannot reuse a released connection. Pause/cancel
+  serialize lease control before mission changes and atomically revoke worker writes; live checks passed.
+- A real client logout bug (sending stayed enabled after sign-out) is fixed and covered by DOM/HTTP tests.
+- Landing page `/` now hands off to Chathub `/app`, including explicit mode selection without auto-submission.
+  Its mode descriptions are labeled examples, not live runs. No invented social proof, paid plans or model
+  improvement claims are displayed. Public benchmark values are checked against the preserved acquisition.
+- Twelve DOM/package/deployment checks cover six client flows, three landing checks and three deployment
+  safeguards. Native browser layout/CSP and real-user email delivery are separate acceptance gates.
+- `scripts/live-vercel-smoke.mjs` targets the pinned configured API deployment above, using one disposable
+  account and one bounded real Kimi task. It records a separate result, never synthetic model output.
+- `FREE_API_KEY` is present but its provider/endpoint cannot be identified from the documented prefixes.
+  The value was not exported or sent to a guessed endpoint. See `docs/FREELLM_READINESS.md`; a supplied
+  API URL and selected-provider commercial review are needed before enabling a FreeLLM/Pro integration.
+- Model A/B run `34157218855` measured two of three complete pairs: raw Kimi 2/2 and Odin 2/2 correct,
+  with 840 versus 7225 tokens. Both arms of the third case hit provider infrastructure limits. No improvement
+  is demonstrated. The old M16 protocol comparison remains separate, with both acquisitions retained.
+- PR #37's pacing recovery changes are included in this branch; reconcile it after this block is merged.
+
+See `docs/CHATHUB_DEPLOYMENT.md` for the exact environment, security boundary and remaining limitations.
+No billing or paid-resource changes are authorized by this delivery. Production migrations have not been applied.
+M26 OS/container isolation, unrestricted hosted repository execution, full web research and native clients
+remain open; this work must not close those roadmap gates by implication.
 
 ## M23 — Skill OS
 

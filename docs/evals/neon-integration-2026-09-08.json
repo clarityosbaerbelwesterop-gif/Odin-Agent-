@@ -1,0 +1,57 @@
+{
+  "status": "PASS",
+  "project": "cold-mode-01560070",
+  "branch": "br-old-breeze-b1ncpy1i",
+  "head": "2b0d7b510bda94af102b987b1ed6effe1936982d",
+  "runId": "34220256588",
+  "evaluatedAt": "2026-09-08T11:21:43.070Z",
+  "checks": [
+    {
+      "name": "RLS denies foreign SELECT, UPDATE and DELETE on all eight tables; ownership forgery, foreign child and missing actor denied",
+      "status": "PASS"
+    },
+    {
+      "name": "Unverified synthetic user a is refused by application Auth",
+      "status": "PASS"
+    },
+    {
+      "name": "Managed session and EdDSA issuer/audience verification for user a",
+      "status": "PASS"
+    },
+    {
+      "name": "Unverified synthetic user b is refused by application Auth",
+      "status": "PASS"
+    },
+    {
+      "name": "Managed session and EdDSA issuer/audience verification for user b",
+      "status": "PASS"
+    },
+    {
+      "name": "Real PG mission lifecycle, nested atomic transactions, event integrity, private workspace and expired worker fencing",
+      "status": "PASS"
+    },
+    {
+      "name": "Stale controls preserve the lease; pause/resume/cancel atomically fence old workers",
+      "status": "PASS"
+    },
+    {
+      "name": "HTTP authentication, two-user isolation, forged owner rejection, preview CSP and immediate session revocation",
+      "status": "PASS"
+    }
+  ],
+  "boundaries": [
+    "Actual Neon database, managed Auth sessions and signed JWTs",
+    "Provider responses are deterministic test fixtures",
+    "Email delivery and real-user browser sign-in are not tested"
+  ],
+  "authHttpStatus": 200,
+  "authCookieNames": ["__Secure-neon-auth.session_token"],
+  "unverifiedResult": "EMAIL_UNVERIFIED",
+  "lastHttp": {
+    "method": "GET",
+    "route": "/api/config",
+    "status": 401,
+    "code": "UNAUTHORIZED"
+  },
+  "cleanup": "PASS"
+}

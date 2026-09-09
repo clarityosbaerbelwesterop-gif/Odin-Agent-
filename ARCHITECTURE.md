@@ -326,3 +326,26 @@ branches / 96.05% functions**. These are repository verification facts, not live
 
 The package performed no live provider spend. Separately authorized post-merge live runs remain evaluation
 evidence only until the existing M11/M21/M22/M5 authority and promotion requirements are satisfied.
+
+## Chathub application boundary (G–I)
+
+Background execution begins after the submission transaction commits. Nested actor operations share only
+an active transaction; detached async continuations obtain a new transaction and reapply the role and
+verified identity. Lease control uses a consistent resource → lease row → mission lock order. Pause and
+cancel commit their state change together with lease deletion, so subsequent worker writes fail fencing.
+
+`src/chat` connects the existing M2/M3/M5/M8/M12 contracts to an authenticated HTTP application.
+The engine awaits a common conversation repository and the canonical mission EventStore. Local storage
+uses SQLite; hosted storage uses Neon Postgres with forced RLS and verified managed Auth identities.
+Short advisory-locked transactions serialize mission mutations. Network inference occurs outside those
+transactions. Lease tokens fence late workers. Conversation history is bounded context, not mission authority.
+
+`web/chat.*` renders real event replay and final responses. `api/index.ts` is the Vercel entry point;
+`dist/public` is the deployed static output and `dist/web` preserves the original reference fixture.
+The marketing landing owns `/`; the authenticated client owns `/app`. Mode links preselect only a
+whitelisted mode and never dispatch a task. The landing renders no synthetic AI completions or live metrics.
+Branch-scoped Vercel secrets select the separate `odin_app` login and the matching Neon Auth endpoint.
+Its only role membership is non-inherited SET access to `odin_runtime`; no migration privileges are granted.
+Hosted workspaces persist per tenant/conversation and support isolated static HTML previews and syntax
+checks. They are not an arbitrary-code backend or M26 container implementation. For security and
+deployment requirements, see `docs/CHATHUB_DEPLOYMENT.md`.

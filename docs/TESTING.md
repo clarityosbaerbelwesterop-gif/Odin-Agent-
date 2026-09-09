@@ -42,3 +42,18 @@ documented waived integration check, but never a false `VERIFIED` status.
 The current test runner enforces aggregate minimums of 80% line coverage, 80% function coverage,
 and 60% branch coverage. Coverage is a regression signal, not evidence that behavior is correct;
 the scenario and contract assertions above remain authoritative.
+
+## Chathub and hosted security
+
+`npm run verify` now includes the production build in addition to the existing formatter, lint,
+typecheck, coverage suite and credential-free dry smoke. `test/chat` covers canonical lifecycle,
+concurrency, pause/cancel/recovery, late steering, bounded history, missing tool outcomes, mode/tool
+authority, actual local filesystem edits, registered quality evidence, HTTP sessions/CSRF, JWT
+cryptography/revocation, future schemas and isolated preview asset resolution.
+
+Run `scripts/test-neon-rls.sql` inside a transaction on the isolated migrated preview branch to exercise
+all eight tables as the actual non-owner role. Cross-user reads/updates/deletes and ownership forgery
+must fail; all synthetic rows are rolled back. `Chathub live evidence` separately exercises the actual
+Neon adapters and managed Auth using synthetic accounts, and runs real Kimi-vs-Odin exact-answer A/B
+cases. Read `docs/CHATHUB_DEPLOYMENT.md` before interpreting its artifacts. Aggregate repository
+coverage is not evidence that every hosted integration or browser path has been exercised.

@@ -4,6 +4,7 @@ import { performance } from "node:perf_hooks";
 import {
   classifyLiveFailure,
   createLiveProviderCallCounter,
+  createLiveProviderPacer,
   isTerminalLiveMeasurementFailure,
   M15_KIMI_CODING_AB_PROFILE,
 } from "../dist/src/capability-packs/index.js";
@@ -24,6 +25,7 @@ import { FixtureWorkspace } from "../dist/test/runtime/coding-fixtures.js";
 const PROFILE = M15_KIMI_CODING_AB_PROFILE;
 const MODEL = PROFILE.model;
 const MAX_CALLS_PER_ARM_CASE = 2;
+const MIN_PROVIDER_START_INTERVAL_MS = 65_000;
 const SUITE =
   process.argv.find((arg) => arg.startsWith("--suite="))?.slice("--suite=".length) ?? "output";
 const DRY_RUN = process.argv.includes("--dry-run");
@@ -251,7 +253,7 @@ function scoreCase(caseSpec, run) {
   return Math.min(10_000, score);
 }
 
-function createUsageMeter(rawProvider, callCounter) {
+function createUsageMeter(rawProvider, callCounter, pacer) {
   const state = {
     attemptedCalls: 0,
     cachedInputTokens: 0,
@@ -276,6 +278,7 @@ function createUsageMeter(rawProvider, callCounter) {
     id: rawProvider.id,
     capabilities: (model) => rawProvider.capabilities(model),
     generate: async (request, options) => {
+      await pacer.beforeAttempt(options?.signal);
       callCounter.consume();
       state.attemptedCalls += 1;
       try {
@@ -295,6 +298,7 @@ function createUsageMeter(rawProvider, callCounter) {
       }
     },
     stream: async function* (request, options) {
+      await pacer.beforeAttempt(options?.signal);
       callCounter.consume();
       state.attemptedCalls += 1;
       let completed = false;
@@ -317,6 +321,7 @@ function createUsageMeter(rawProvider, callCounter) {
         if (!completed) state.missingUsageCalls += 1;
       }
     },
+    pacingSnapshot: () => pacer.snapshot(),
     usageSnapshot: () => ({ ...state, finishReasons: { ...state.finishReasons } }),
   };
 }
@@ -341,6 +346,13 @@ function usageDelta(before, after) {
     reasoningOutputTokens: after.reasoningOutputTokens - before.reasoningOutputTokens,
     successfulCalls: after.successfulCalls - before.successfulCalls,
     totalTokens: after.totalTokens - before.totalTokens,
+  };
+}
+
+function pacingDelta(before, after) {
+  return {
+    attempts: after.attempts - before.attempts,
+    waitedMs: after.waitedMs - before.waitedMs,
   };
 }
 
@@ -371,6 +383,7 @@ async function runArm({ arm, meteredProvider, caseSpec, observedAt }) {
     verification: new IndependentVerificationEngine({ maxEvidenceAgeMs: 60_000 }),
   });
   const beforeUsage = meteredProvider.usageSnapshot();
+  const beforePacing = meteredProvider.pacingSnapshot();
   const started = performance.now();
   try {
     const result = await coding.start({
@@ -384,7 +397,9 @@ async function runArm({ arm, meteredProvider, caseSpec, observedAt }) {
       missionId: `m16-${SUITE}-${arm}-${caseSpec.id}-${Date.now()}`,
       objective: caseSpec.objective,
     });
-    const latencyMs = Math.round(performance.now() - started);
+    const wallLatencyMs = Math.round(performance.now() - started);
+    const pacing = pacingDelta(beforePacing, meteredProvider.pacingSnapshot());
+    const latencyMs = Math.max(0, wallLatencyMs - pacing.waitedMs);
     const usage = usageDelta(beforeUsage, meteredProvider.usageSnapshot());
     if (usage.attemptedCalls > MAX_CALLS_PER_ARM_CASE) {
       throw new Error("Per-arm provider-call ceiling exceeded.");
@@ -394,6 +409,7 @@ async function runArm({ arm, meteredProvider, caseSpec, observedAt }) {
     const run = {
       changedFiles: result.report.changedFiles,
       completed: result.report.state === "COMPLETED",
+      controlPlaneWaitMs: pacing.waitedMs,
       errorClass: null,
       errorCode: null,
       finalContent,
@@ -405,17 +421,21 @@ async function runArm({ arm, meteredProvider, caseSpec, observedAt }) {
       mutationObserved: finalContent !== initialContent,
       repaired: result.report.quality.firstFailureSignature !== null,
       usage,
+      wallLatencyMs,
       verification: result.report.verification.outcome,
     };
     return { ...run, qualityBps: scoreCase(caseSpec, run) };
   } catch (error) {
-    const latencyMs = Math.round(performance.now() - started);
+    const wallLatencyMs = Math.round(performance.now() - started);
+    const pacing = pacingDelta(beforePacing, meteredProvider.pacingSnapshot());
+    const latencyMs = Math.max(0, wallLatencyMs - pacing.waitedMs);
     const usage = usageDelta(beforeUsage, meteredProvider.usageSnapshot());
     const finalContent = workspace.content(caseSpec.targetPath);
     const diagnostic = classifyLiveFailure(error);
     const run = {
       changedFiles: [],
       completed: false,
+      controlPlaneWaitMs: pacing.waitedMs,
       errorClass: diagnostic.errorClass,
       errorCode: diagnostic.errorCode,
       finalContent,
@@ -427,6 +447,7 @@ async function runArm({ arm, meteredProvider, caseSpec, observedAt }) {
       mutationObserved: finalContent !== initialContent,
       repaired: false,
       usage,
+      wallLatencyMs,
       verification: "FAIL",
     };
     return { ...run, qualityBps: 0 };
@@ -438,6 +459,7 @@ function sanitizeRun(run) {
     acceptedFinalContent: run.acceptedFinalContent,
     changedFiles: run.changedFiles,
     completed: run.completed,
+    controlPlaneWaitMs: run.controlPlaneWaitMs,
     errorClass: run.errorClass,
     errorCode: run.errorCode,
     exactFinalContent: run.exactFinalContent,
@@ -449,6 +471,7 @@ function sanitizeRun(run) {
     qualityBps: run.qualityBps,
     repaired: run.repaired,
     usage: run.usage,
+    wallLatencyMs: run.wallLatencyMs,
     verification: run.verification,
   };
 }
@@ -527,6 +550,7 @@ async function main() {
       configured: true,
       maxCallsPerArmCase: MAX_CALLS_PER_ARM_CASE,
       maxProviderCalls,
+      minProviderStartIntervalMs: MIN_PROVIDER_START_INTERVAL_MS,
       model: MODEL,
       provider: "nvidia",
       secretPresent: false,
@@ -555,7 +579,10 @@ async function main() {
     defaultTimeoutMs: PROFILE.providerTimeoutMs,
     reasoningParameter: "reasoning_effort",
   });
-  const meteredProvider = createUsageMeter(rawProvider, callCounter);
+  const pacer = createLiveProviderPacer({
+    minStartIntervalMs: MIN_PROVIDER_START_INTERVAL_MS,
+  });
+  const meteredProvider = createUsageMeter(rawProvider, callCounter, pacer);
   const results = [];
   for (const caseSpec of cases) {
     const baseline = await runArm({ arm: "baseline", caseSpec, meteredProvider, observedAt });
@@ -573,12 +600,14 @@ async function main() {
       acceptanceLatencyMs: PROFILE.acceptanceLatencyMs,
       maxCallsPerArmCase: MAX_CALLS_PER_ARM_CASE,
       maxProviderCalls,
-      profileVersion: "m16-grounded-surgical-live-v2",
+      minProviderStartIntervalMs: MIN_PROVIDER_START_INTERVAL_MS,
+      profileVersion: "m16-grounded-surgical-live-v3-paced",
       providerTimeoutMs: PROFILE.providerTimeoutMs,
       reasoningEffort: PROFILE.reasoningEffort,
       temperature: PROFILE.temperature,
     },
     model: MODEL,
+    pacing: pacer.snapshot(),
     provider: "nvidia",
     providerCalls: callCounter.value,
     results,
