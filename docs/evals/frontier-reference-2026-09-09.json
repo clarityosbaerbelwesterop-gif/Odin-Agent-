@@ -11,18 +11,46 @@
   },
   "models": ["GPT-6 Astra", "GPT-5.6 Sol", "Claude Fable 5.1"],
   "benchmarks": [
-    {"name":"Terminal-Bench 4.0","category":"coding","scores":{"GPT-6 Astra":57.9,"GPT-5.6 Sol":37.3,"Claude Fable 5.1":55.8}},
-    {"name":"DeepSWE v1.1","category":"coding","scores":{"GPT-6 Astra":74.1,"GPT-5.6 Sol":72.7,"Claude Fable 5.1":67.4}},
-    {"name":"FrontierCode 1.1 Extended","category":"coding","scores":{"GPT-6 Astra":64.5,"GPT-5.6 Sol":60.6,"Claude Fable 5.1":63.6}},
-    {"name":"AutomationBench","category":"professional","scores":{"GPT-6 Astra":41.4,"GPT-5.6 Sol":18.1,"Claude Fable 5.1":31.4}},
-    {"name":"Terminal-Bench Science 0.1","category":"science","scores":{"GPT-6 Astra":64.6,"GPT-5.6 Sol":22.4,"Claude Fable 5.1":52.6}},
-    {"name":"FrontierMath Tier 4 v2","category":"math","scores":{"GPT-6 Astra":97.6,"GPT-5.6 Sol":83.0,"Claude Fable 5.1":87.8}},
-    {"name":"GPQA Diamond","category":"reasoning","scores":{"GPT-6 Astra":96.0,"GPT-5.6 Sol":94.6,"Claude Fable 5.1":93.7}}
+    {
+      "name": "Terminal-Bench 4.0",
+      "category": "coding",
+      "scores": { "GPT-6 Astra": 57.9, "GPT-5.6 Sol": 37.3, "Claude Fable 5.1": 55.8 }
+    },
+    {
+      "name": "DeepSWE v1.1",
+      "category": "coding",
+      "scores": { "GPT-6 Astra": 74.1, "GPT-5.6 Sol": 72.7, "Claude Fable 5.1": 67.4 }
+    },
+    {
+      "name": "FrontierCode 1.1 Extended",
+      "category": "coding",
+      "scores": { "GPT-6 Astra": 64.5, "GPT-5.6 Sol": 60.6, "Claude Fable 5.1": 63.6 }
+    },
+    {
+      "name": "AutomationBench",
+      "category": "professional",
+      "scores": { "GPT-6 Astra": 41.4, "GPT-5.6 Sol": 18.1, "Claude Fable 5.1": 31.4 }
+    },
+    {
+      "name": "Terminal-Bench Science 0.1",
+      "category": "science",
+      "scores": { "GPT-6 Astra": 64.6, "GPT-5.6 Sol": 22.4, "Claude Fable 5.1": 52.6 }
+    },
+    {
+      "name": "FrontierMath Tier 4 v2",
+      "category": "math",
+      "scores": { "GPT-6 Astra": 97.6, "GPT-5.6 Sol": 83.0, "Claude Fable 5.1": 87.8 }
+    },
+    {
+      "name": "GPQA Diamond",
+      "category": "reasoning",
+      "scores": { "GPT-6 Astra": 96.0, "GPT-5.6 Sol": 94.6, "Claude Fable 5.1": 93.7 }
+    }
   ],
   "gapsToAstraForSol": [
-    {"benchmark":"Terminal-Bench 4.0","percentagePoints":20.6},
-    {"benchmark":"AutomationBench","percentagePoints":23.3},
-    {"benchmark":"Terminal-Bench Science 0.1","percentagePoints":42.2}
+    { "benchmark": "Terminal-Bench 4.0", "percentagePoints": 20.6 },
+    { "benchmark": "AutomationBench", "percentagePoints": 23.3 },
+    { "benchmark": "Terminal-Bench Science 0.1", "percentagePoints": 42.2 }
   ],
   "notes": [
     "These numbers are not Odin benchmark results and cannot establish that Odin upgrades one named model to another.",

@@ -9,9 +9,9 @@
     "url": "https://openai.com/index/introducing-gpt-5-5/"
   },
   "benchmarks": [
-    {"name":"SWE-Bench Pro Public","score":58.6},
-    {"name":"Terminal-Bench 2.0","score":82.7},
-    {"name":"Expert-SWE (Internal)","score":73.1}
+    { "name": "SWE-Bench Pro Public", "score": 58.6 },
+    { "name": "Terminal-Bench 2.0", "score": 82.7 },
+    { "name": "Expert-SWE (Internal)", "score": 73.1 }
   ],
   "notes": [
     "GPT-5.5 Terminal-Bench 2.0 cannot be compared numerically with GPT-6 Astra Terminal-Bench 4.0 as if they were the same test.",

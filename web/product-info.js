@@ -48,13 +48,41 @@ function addList(parent, values, ordered = false) {
 }
 
 const workflow = [
-  ["01", "Aufgabe verstehen", "Ziel, Grenzen und gewünschtes Ergebnis werden in einen kontrollierten Auftrag übersetzt."],
-  ["02", "Kontext zusammenstellen", "Aktuelle Aufgabe, freigegebene Dateien, relevante Historie und Belege werden priorisiert statt blind alles mitzuschicken."],
-  ["03", "Modell auswählen", "Odin darf nur Routen nutzen, die Fähigkeiten und empirische Qualitätsgrenzen erfüllen. Kosten und Tempo zählen erst danach."],
-  ["04", "Planen", "Komplexe Aufgaben werden in begrenzte, überprüfbare Schritte zerlegt. Der Plan selbst erteilt keine Berechtigung."],
-  ["05", "Werkzeuge kontrolliert nutzen", "Datei-, Research- oder andere Aktionen laufen nur durch die freigegebene Tool-Policy mit Scope, Limits und Audit."],
-  ["06", "Prüfen und reparieren", "Ergebnisse werden gegen passende Evidenz geprüft. Bei einem begrenzten Fehler kann Odin gezielt reparieren oder eskalieren."],
-  ["07", "Fortsetzen und belegen", "Mission, Fortschritt und Events bleiben wiederaufnehmbar. Das Ergebnis zeigt Nachweise und offene Grenzen statt versteckter Erfolgsmeldungen."],
+  [
+    "01",
+    "Aufgabe verstehen",
+    "Ziel, Grenzen und gewünschtes Ergebnis werden in einen kontrollierten Auftrag übersetzt.",
+  ],
+  [
+    "02",
+    "Kontext zusammenstellen",
+    "Aktuelle Aufgabe, freigegebene Dateien, relevante Historie und Belege werden priorisiert statt blind alles mitzuschicken.",
+  ],
+  [
+    "03",
+    "Modell auswählen",
+    "Odin darf nur Routen nutzen, die Fähigkeiten und empirische Qualitätsgrenzen erfüllen. Kosten und Tempo zählen erst danach.",
+  ],
+  [
+    "04",
+    "Planen",
+    "Komplexe Aufgaben werden in begrenzte, überprüfbare Schritte zerlegt. Der Plan selbst erteilt keine Berechtigung.",
+  ],
+  [
+    "05",
+    "Werkzeuge kontrolliert nutzen",
+    "Datei-, Research- oder andere Aktionen laufen nur durch die freigegebene Tool-Policy mit Scope, Limits und Audit.",
+  ],
+  [
+    "06",
+    "Prüfen und reparieren",
+    "Ergebnisse werden gegen passende Evidenz geprüft. Bei einem begrenzten Fehler kann Odin gezielt reparieren oder eskalieren.",
+  ],
+  [
+    "07",
+    "Fortsetzen und belegen",
+    "Mission, Fortschritt und Events bleiben wiederaufnehmbar. Das Ergebnis zeigt Nachweise und offene Grenzen statt versteckter Erfolgsmeldungen.",
+  ],
 ];
 
 function workflowCard() {
@@ -212,14 +240,18 @@ function evidenceTable(headers, rows) {
 
 function renderModelComparison(target, comparison) {
   const section = node("section", undefined, "evidence-section-card");
-  section.append(node("span", "ODIN LIVE ACQUISITION", "info-eyebrow"), node("h2", "Kimi allein vs. Kimi + Odin"));
+  section.append(
+    node("span", "ODIN LIVE ACQUISITION", "info-eyebrow"),
+    node("h2", "Kimi allein vs. Kimi + Odin"),
+  );
   if (!comparison?.summary) {
     section.append(node("p", "Kein gemessener Modellvergleich verfügbar.", "muted"));
     target.append(section);
     return;
   }
   const complete = comparison.cases.filter((item) => item.baseline.complete && item.odin.complete);
-  const tokens = (arm) => complete.reduce((total, item) => total + (item[arm].usage?.totalTokens ?? 0), 0);
+  const tokens = (arm) =>
+    complete.reduce((total, item) => total + (item[arm].usage?.totalTokens ?? 0), 0);
   const summary = comparison.summary;
   const completePairs = summary.completePairs;
   const baselineAccuracy = completePairs ? (summary.baselinePassed / completePairs) * 100 : 0;
@@ -227,15 +259,27 @@ function renderModelComparison(target, comparison) {
   const grid = node("div", undefined, "benchmark-grid");
   grid.append(
     metric("Vollständige Paare", `${completePairs}/${summary.totalCases}`, comparison.status),
-    metric("Gemessener Accuracy-Lift", `${(odinAccuracy - baselineAccuracy).toFixed(1)} pp`, "Nur vollständige Paare"),
-    metric("Provider Calls", String(summary.providerCalls), "Eine Acquisition, keine versteckten Retries"),
+    metric(
+      "Gemessener Accuracy-Lift",
+      `${(odinAccuracy - baselineAccuracy).toFixed(1)} pp`,
+      "Nur vollständige Paare",
+    ),
+    metric(
+      "Provider Calls",
+      String(summary.providerCalls),
+      "Eine Acquisition, keine versteckten Retries",
+    ),
   );
   section.append(
     grid,
     progressChart(
       "Genauigkeit auf vollständigen Paaren",
       [
-        { label: "Kimi allein", value: baselineAccuracy, display: `${baselineAccuracy.toFixed(1)}%` },
+        {
+          label: "Kimi allein",
+          value: baselineAccuracy,
+          display: `${baselineAccuracy.toFixed(1)}%`,
+        },
         { label: "Kimi + Odin", value: odinAccuracy, display: `${odinAccuracy.toFixed(1)}%` },
       ],
       100,
@@ -244,7 +288,11 @@ function renderModelComparison(target, comparison) {
     progressChart(
       "Token-Aufwand auf vollständigen Paaren",
       [
-        { label: "Kimi allein", value: tokens("baseline"), display: tokens("baseline").toLocaleString() },
+        {
+          label: "Kimi allein",
+          value: tokens("baseline"),
+          display: tokens("baseline").toLocaleString(),
+        },
         { label: "Kimi + Odin", value: tokens("odin"), display: tokens("odin").toLocaleString() },
       ],
       Math.max(tokens("baseline"), tokens("odin"), 1),
@@ -253,8 +301,16 @@ function renderModelComparison(target, comparison) {
   );
   const rows = comparison.cases.map((item) => [
     item.id,
-    item.baseline.complete ? (item.baseline.passed ? "Korrekt" : "Falsch") : `Nicht gemessen (${item.baseline.state})`,
-    item.odin.complete ? (item.odin.passed ? "Korrekt" : "Falsch") : `Nicht gemessen (${item.odin.state})`,
+    item.baseline.complete
+      ? item.baseline.passed
+        ? "Korrekt"
+        : "Falsch"
+      : `Nicht gemessen (${item.baseline.state})`,
+    item.odin.complete
+      ? item.odin.passed
+        ? "Korrekt"
+        : "Falsch"
+      : `Nicht gemessen (${item.odin.state})`,
   ]);
   section.append(evidenceTable(["Aufgabe", "Kimi allein", "Kimi + Odin"], rows));
   if (comparison.runId)
@@ -270,7 +326,10 @@ function renderModelComparison(target, comparison) {
 
 function renderProtocolComparison(target, result) {
   const section = node("section", undefined, "evidence-section-card");
-  section.append(node("span", "HISTORISCHE M16-EVIDENZ", "info-eyebrow"), node("h2", "Grounded coding protocol"));
+  section.append(
+    node("span", "HISTORISCHE M16-EVIDENZ", "info-eyebrow"),
+    node("h2", "Grounded coding protocol"),
+  );
   const value = result?.selectedSummary;
   if (!value) {
     section.append(node("p", "Keine M16-Protokollevidenz verfügbar.", "muted"));
@@ -279,9 +338,21 @@ function renderProtocolComparison(target, result) {
   }
   const grid = node("div", undefined, "benchmark-grid");
   grid.append(
-    metric("Odin abgeschlossen", `${value.candidateCompleted}/${value.completePairs}`, `Baseline ${value.baselineCompleted}/${value.completePairs}`),
-    metric("Weniger Tokens", `${(value.tokenReductionBps / 100).toFixed(1)}%`, "Nur matched measurable tasks"),
-    metric("Qualitätsdifferenz", `+${(value.qualityLiftBps / 100).toFixed(1)} pp`, "Kleiner Coding-Protokollvergleich"),
+    metric(
+      "Odin abgeschlossen",
+      `${value.candidateCompleted}/${value.completePairs}`,
+      `Baseline ${value.baselineCompleted}/${value.completePairs}`,
+    ),
+    metric(
+      "Weniger Tokens",
+      `${(value.tokenReductionBps / 100).toFixed(1)}%`,
+      "Nur matched measurable tasks",
+    ),
+    metric(
+      "Qualitätsdifferenz",
+      `+${(value.qualityLiftBps / 100).toFixed(1)} pp`,
+      "Kleiner Coding-Protokollvergleich",
+    ),
   );
   section.append(
     grid,
@@ -393,7 +464,9 @@ async function openBenchmarks() {
     renderBlueprint(target, evidence.benchmarkBlueprint);
     renderFrontier(target, evidence.externalFrontier, evidence.gpt55Reference);
   } catch (error) {
-    target.replaceChildren(node("p", `Benchmark-Evidenz konnte nicht geladen werden: ${error.message}`, "muted"));
+    target.replaceChildren(
+      node("p", `Benchmark-Evidenz konnte nicht geladen werden: ${error.message}`, "muted"),
+    );
   }
 }
 

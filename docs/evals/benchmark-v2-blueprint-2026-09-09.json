@@ -3,14 +3,14 @@
   "authority": "evaluation_blueprint",
   "totalCases": 100,
   "domains": [
-    {"name":"Coding","cases":25},
-    {"name":"Math","cases":20},
-    {"name":"Reasoning","cases":20},
-    {"name":"Tool use","cases":10},
-    {"name":"Research","cases":10},
-    {"name":"Long context","cases":5},
-    {"name":"Recovery","cases":5},
-    {"name":"Long missions","cases":5}
+    { "name": "Coding", "cases": 25 },
+    { "name": "Math", "cases": 20 },
+    { "name": "Reasoning", "cases": 20 },
+    { "name": "Tool use", "cases": 10 },
+    { "name": "Research", "cases": 10 },
+    { "name": "Long context", "cases": 5 },
+    { "name": "Recovery", "cases": 5 },
+    { "name": "Long missions", "cases": 5 }
   ],
   "note": "This is the locked Benchmark 2.0 domain mix verified in the Odin repository. It describes coverage only. No live 100-case Kimi/GPT/Claude score is implied."
 }

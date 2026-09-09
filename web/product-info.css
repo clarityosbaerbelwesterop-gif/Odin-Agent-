@@ -54,7 +54,9 @@
 }
 .workflow-number {
   color: #879bc0;
-  font: 10px ui-monospace, monospace;
+  font:
+    10px ui-monospace,
+    monospace;
 }
 .workflow-list strong,
 .plan-card strong,

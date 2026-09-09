@@ -38,12 +38,23 @@ test("benchmark dashboard separates live, protocol, blueprint and external refer
   const blueprint = JSON.parse(blueprintRaw);
   assert.equal(frontier.status, "EXTERNAL_REFERENCE_ONLY");
   assert.equal(frontier.comparableToOdinLiveRuns, false);
-  assert.equal(frontier.benchmarks.find((item) => item.name === "Terminal-Bench 4.0").scores["GPT-6 Astra"], 57.9);
-  assert.equal(frontier.benchmarks.find((item) => item.name === "Terminal-Bench 4.0").scores["Claude Fable 5.1"], 55.8);
+  assert.equal(
+    frontier.benchmarks.find((item) => item.name === "Terminal-Bench 4.0").scores["GPT-6 Astra"],
+    57.9,
+  );
+  assert.equal(
+    frontier.benchmarks.find((item) => item.name === "Terminal-Bench 4.0").scores[
+      "Claude Fable 5.1"
+    ],
+    55.8,
+  );
   assert.equal(gpt55.comparableToAstraTerminalBench4, false);
   assert.equal(gpt55.benchmarks.find((item) => item.name === "Terminal-Bench 2.0").score, 82.7);
   assert.equal(blueprint.totalCases, 100);
-  assert.equal(blueprint.domains.reduce((sum, domain) => sum + domain.cases, 0), 100);
+  assert.equal(
+    blueprint.domains.reduce((sum, domain) => sum + domain.cases, 0),
+    100,
+  );
   assert.match(script, /ZIELHYPOTHESE · NICHT BEWIESEN/u);
   assert.match(script, /Unterschiedliche Benchmark-Versionen/u);
 });
