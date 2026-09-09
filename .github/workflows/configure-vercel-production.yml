@@ -1,0 +1,46 @@
+name: Configure Odin production
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/configure-vercel-production.yml
+      - scripts/configure-vercel-production.mjs
+      - migrations/004_reconcile_product_control_plane.sql
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: odin-production-setup
+  cancel-in-progress: false
+
+jobs:
+  configure:
+    if: github.repository == 'clarityosbaerbelwesterop-gif/Odin-Agent-' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Verify merged product before touching production
+        run: npm run verify
+      - name: Configure production Neon/Vercel and deploy exact main SHA
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_ODIN_TOKEN }}
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NV_API_KEY: ${{ secrets.NV_API_KEY }}
+          NV_API_KEY_2: ${{ secrets.NV_API_KEY_2 }}
+        run: node scripts/configure-vercel-production.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: odin-production-setup-evidence
+          path: production-setup-result.json
+          if-no-files-found: warn
+          retention-days: 14
