@@ -4,7 +4,10 @@ on:
   workflow_dispatch:
   push:
     branches: [agent/chathub-modes-evidence]
-    paths: [.github/workflows/configure-vercel-preview.yml, scripts/configure-vercel-preview.mjs]
+    paths:
+      - .github/workflows/configure-vercel-preview.yml
+      - scripts/configure-vercel-preview.mjs
+      - scripts/sync-vercel-runtime-secrets.mjs
 
 permissions:
   contents: read
@@ -26,17 +29,25 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run verify
-      - name: Configure only the approved preview branch
+      - name: Synchronize runtime secrets and configure only the approved preview branch
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_ODIN_TOKEN }}
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-          NV_API_KEY: ${{ secrets.NV_API_KEY }}
+          NV_API_KEY: ${{ secrets.NV_API_KEY || secrets.NVIDIA_API_KEY }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           FREE_API_KEY: ${{ secrets.FREE_API_KEY }}
-        run: node scripts/configure-vercel-preview.mjs
+        run: |
+          node scripts/sync-vercel-runtime-secrets.mjs
+          node scripts/configure-vercel-preview.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: odin-vercel-preview-configuration
-          path: vercel-preview-result.json
+          path: |
+            vercel-secret-sync-result.json
+            vercel-preview-result.json
           if-no-files-found: warn
           retention-days: 14
