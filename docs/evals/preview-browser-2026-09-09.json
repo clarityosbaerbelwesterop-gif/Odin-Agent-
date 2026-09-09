@@ -1,0 +1,23 @@
+{
+  "status": "PARTIALLY_VERIFIED",
+  "evaluatedAt": "2026-09-09T06:13:00Z",
+  "deploymentId": "dpl_Gb5fgd6vjppYKjBPuxD1Q5QGcYH4",
+  "deploymentHead": "cdc52f01b57176f06db6aad67eadcca5ecaa3599",
+  "landingUrl": "https://odin-agent-opk9qmojv-clarityosbaerbelwesterop-gifs-projects.vercel.app/",
+  "appUrl": "https://odin-agent-opk9qmojv-clarityosbaerbelwesterop-gifs-projects.vercel.app/app?mode=research",
+  "surface": "Actual hosted deployment in Chrome; desktop viewport",
+  "checks": [
+    "Landing page renders its typography, navigation, mode panel and evidence sections",
+    "All five mode buttons update the selected state, description and matching workspace link",
+    "Landing document width equals viewport width: 1348 CSS pixels, no horizontal overflow",
+    "Research workspace link opens /app?mode=research and selects Research",
+    "Anonymous workspace settles into Sign in required and displays the Neon account dialog",
+    "Sending remains disabled before successful authentication"
+  ],
+  "limitations": [
+    "No credentials were entered in this browser; email delivery and human login remain unverified",
+    "No live model or coding task was submitted through this browser",
+    "No mobile viewport or physical iPad/Safari interaction was tested",
+    "Browser extension metadata errors were observed; they originated from chrome-extension URLs"
+  ]
+}

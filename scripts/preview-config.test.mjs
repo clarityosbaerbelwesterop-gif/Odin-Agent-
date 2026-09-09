@@ -6,6 +6,7 @@ import {
   scope,
   validateInvocation,
 } from "./configure-vercel-preview.mjs";
+import { temporaryDeploymentShare } from "./preview-access.mjs";
 
 test("deployment workflow rejects foreign repositories, production and missing credentials", () => {
   const env = {
@@ -47,4 +48,33 @@ test("FreeLLM key classification never mistakes catalog licensing for inference 
   assert.equal(classifyFreeKey("fla_synthetic"), "CATALOG_LICENSE_NOT_INFERENCE");
   assert.equal(classifyFreeKey("freellmapi-synthetic"), "ROUTER_KEY_ENDPOINT_REQUIRED");
   assert.equal(classifyFreeKey("synthetic-other"), "UNRECOGNIZED_PROVIDER_ENDPOINT_REQUIRED");
+});
+
+test("hosted smoke reuses only a short-lived share belonging to the pinned deployment", () => {
+  const now = 1800000000000;
+  const entries = {
+    "synthetic-short-share": { scope: "shareable-link", expires: now + 3600000 },
+    "synthetic-longer-share": { scope: "shareable-link", expires: now + 82800000 },
+  };
+  assert.deepEqual(temporaryDeploymentShare(entries, now), {
+    secret: "synthetic-short-share",
+    expires: now + 3600000,
+  });
+  for (const entry of [
+    { scope: "automation-bypass", expires: now + 3600000 },
+    { scope: "user", access: "granted", expires: now + 3600000 },
+    { scope: "alias-protection-override", expires: now + 3600000 },
+    { scope: "shareable-link" },
+    { scope: "shareable-link", expires: now - 1 },
+    { scope: "shareable-link", expires: now + 300000 },
+    { scope: "shareable-link", expires: now + 86400001 },
+    { scope: "shareable-link", expires: "tomorrow" },
+  ])
+    assert.equal(temporaryDeploymentShare({ "synthetic-share": entry }, now), undefined);
+  assert.equal(temporaryDeploymentShare(undefined, now), undefined);
+  assert.equal(temporaryDeploymentShare(entries, Number.NaN), undefined);
+  assert.equal(
+    temporaryDeploymentShare({ "synthetic\nheader": entries["synthetic-short-share"] }, now),
+    undefined,
+  );
 });

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomBytes, randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { createNeonPool, NeonActorDatabase } from "../dist/src/chat/neon-database.js";
+import { temporaryDeploymentShare } from "./preview-access.mjs";
 
 // One explicitly pinned READY preview. This is not a production test or an open-ended model loop.
 const deploymentId = "dpl_Gb5fgd6vjppYKjBPuxD1Q5QGcYH4";
@@ -24,7 +25,7 @@ const report = {
     "One synthetic account and one actual Kimi chat task on the pinned preview",
     "Chat policy permits at most four provider calls; no retries of the task",
     "Email verification is set only on the new fixture account; no email delivery claim",
-    "Temporary deployment-specific share access expires after ten minutes",
+    "An existing deployment-specific temporary share is reused without changing its expiry",
   ],
 };
 let stage = "scope";
@@ -55,14 +56,15 @@ try {
   assert.equal(deployment.readyState, "READY");
   assert.equal(`https://${deployment.url}`, origin);
   assert.equal(deployment.gitSource?.sha ?? deployment.meta?.githubCommitSha, deploymentHead);
-  stage = "temporary preview share access";
-  const share = await management(`/aliases/${deploymentId}/protection-bypass`, "PATCH", {
-    ttl: 600,
-  });
-  stage = "preview share response shape";
-  report.shareResponseType = share === null ? "null" : typeof share;
-  const shareValue = typeof share === "string" ? share : share?.value;
-  assert(typeof shareValue === "string" && shareValue.length > 10);
+  stage = "existing temporary preview share";
+  report.shareMetadataPresent = typeof deployment.protectionBypass === "object";
+  const share = temporaryDeploymentShare(deployment.protectionBypass);
+  if (!share)
+    throw Object.assign(new Error("Temporary preview share required"), {
+      code: "PREVIEW_SHARE_REQUIRED",
+    });
+  const shareValue = share.secret;
+  report.shareExpiresAt = new Date(share.expires).toISOString();
   // Keep Vercel's share token/cookie entirely inside this job. Never disable project protection.
   const protection = new Map();
   let url = `${origin}/?_vercel_share=${encodeURIComponent(shareValue)}`;
