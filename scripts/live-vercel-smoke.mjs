@@ -56,9 +56,16 @@ try {
   assert.equal(deployment.readyState, "READY");
   assert.equal(`https://${deployment.url}`, origin);
   assert.equal(deployment.gitSource?.sha ?? deployment.meta?.githubCommitSha, deploymentHead);
+  stage = "pinned preview URL metadata";
+  // Vercel exposes share metadata on its URL alias resource, not the reduced deployment view.
+  // https://vercel.com/docs/rest-api/aliases/get-an-alias
+  const alias = await management(`/v4/aliases/${new URL(origin).hostname}`);
+  assert.equal(alias.alias, new URL(origin).hostname);
+  assert.equal(alias.projectId, project);
+  assert.equal(alias.deploymentId ?? alias.deployment?.id, deploymentId);
   stage = "existing temporary preview share";
-  report.shareMetadataPresent = typeof deployment.protectionBypass === "object";
-  const share = temporaryDeploymentShare(deployment.protectionBypass);
+  report.shareMetadataPresent = typeof alias.protectionBypass === "object";
+  const share = temporaryDeploymentShare(alias.protectionBypass);
   if (!share)
     throw Object.assign(new Error("Temporary preview share required"), {
       code: "PREVIEW_SHARE_REQUIRED",
