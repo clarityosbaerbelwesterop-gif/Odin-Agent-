@@ -2,9 +2,11 @@ name: Odin hosted API evidence
 
 on:
   workflow_dispatch:
-  push:
-    branches: [agent/chathub-modes-evidence]
-    paths: [.github/workflows/preview-http-evidence.yml, scripts/live-vercel-smoke.mjs, scripts/preview-access.mjs]
+    inputs:
+      live_model:
+        description: Run one bounded live Kimi task after hosted auth checks
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -26,10 +28,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - name: One bounded live task on the pinned preview
+      - name: Exercise the exact current preview
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_ODIN_TOKEN }}
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          ODIN_LIVE_MODEL: ${{ inputs.live_model && '1' || '0' }}
         run: node scripts/live-vercel-smoke.mjs
       - uses: actions/upload-artifact@v4
         if: always()
