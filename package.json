@@ -8,8 +8,9 @@
     "node": "24.x"
   },
   "scripts": {
+    "prepare:product": "node scripts/prepare-product.mjs",
     "build:base": "npm run clean && tsc -p tsconfig.json && node scripts/copy-web-assets.mjs",
-    "build": "node scripts/mno-product-patch.mjs && node scripts/mno-product-postfix.mjs && node scripts/mno-product-runtime-postfix.mjs && npm run build:base",
+    "build": "npm run prepare:product && npm run build:base",
     "start": "node dist/src/chat/main.js",
     "check:foundation": "node scripts/check-foundation.mjs",
     "clean": "node scripts/clean.mjs",
@@ -20,7 +21,7 @@
     "smoke:kimi:dry": "node scripts/live-kimi-coding-smoke.mjs --dry-run",
     "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "verify": "npm run check:foundation && npm run quality && npm run typecheck && npm test && npm run test:ui && npm run smoke:kimi:dry && npm run build:base",
+    "verify": "npm run prepare:product && npm run check:foundation && npm run quality && npm run typecheck && npm test && npm run test:ui && npm run smoke:kimi:dry && npm run build:base",
     "test:ui": "node --test scripts/chat-ui.test.mjs scripts/landing.test.mjs scripts/preview-config.test.mjs scripts/product-info.test.mjs",
     "test:chat": "node --test dist/test/chat/*.test.js"
   },
