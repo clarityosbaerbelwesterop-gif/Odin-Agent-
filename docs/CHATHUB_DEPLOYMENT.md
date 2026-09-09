@@ -25,11 +25,21 @@ work is reported as unverified.
 
 ## Hosted operation
 
-`api/index.ts` runs the same engine with awaited Postgres repositories. Vercel serves `dist/public`;
-the previous `public`-directory failure is addressed by the build and explicit output directory. The
-original reference interface remains at `/reference`. Functions request Frankfurt and a 300-second
-ceiling. A worker stops after 240 seconds and can be resumed explicitly; the application is not an
-unbounded background-job service.
+`api/index.mjs` is a JavaScript-only Vercel function entry and imports the already typechecked
+`dist/src/chat/hosted.js` build artifact. This keeps `npm run build` as the canonical TypeScript
+compilation path and avoids a second isolated Vercel TypeScript-function compilation with a different
+type environment. Vercel serves `dist/public`; the previous `public`-directory failure is addressed by
+the build and explicit output directory. The original reference interface remains at `/reference`.
+Functions request Frankfurt and a 300-second ceiling. A worker stops after 240 seconds and can be resumed
+explicitly; the application is not an unbounded background-job service.
+
+The deployment boundary is covered by `scripts/preview-config.test.mjs`: `vercel.json` must expose only
+`api/index.mjs`, and that wrapper must import from `dist`, not directly from the TypeScript source tree.
+Evidence snapshot `c50e52dd1dab4e8ae6fcb562f703b75e1647486b` built successfully in exact-head CI run
+`34320927996` and Vercel preview deployment `dpl_HsLZyUXdSsRrmii6zy4v17kwkrFa` reached `READY` in
+`fra1`. Its build logs no longer contain the former `TS2688` Node type-definition failure. Vercel still
+warns that the package engine range `>=24.0.0` may automatically select a future Node major; this is a
+runtime-version hardening item, not a successful pinning claim.
 
 The public landing at `/` is a static product introduction, with five interactive mode descriptions
 and links to `/app?mode=…`. These links select a mode without submitting a prompt or bypassing login.
@@ -112,10 +122,22 @@ state; final responses are displayed after generation and validation.
 
 Neon integration run `34220256588` passed all eight live Auth/RLS/HTTP/lease checks. Its provider is an
 explicit deterministic test boundary; it is not proof of a deployed live-model conversation. The separate
-`preview-http-evidence.yml` workflow exercises one actual Kimi task through the pinned configured Vercel
-preview, with a ten-minute deployment-only share link and fixture cleanup. Neither test proves email
-delivery. DOM tests use jsdom and actual local HTTP missions; they do not claim native browser layout,
-iframe execution or mobile-device validation.
+`preview-http-evidence.yml` workflow is manual-only. It resolves a `READY` preview whose Git SHA must
+exactly match the workflow head, then exercises anonymous rejection, managed signup, unverified-account
+rejection, verified session access, hosted conversation persistence and logout revocation. By default it
+makes **no model-provider call**. A dispatcher may explicitly set `live_model=true` to add at most one
+bounded Kimi task after those checks. The job reuses an existing short-lived deployment share and removes
+its synthetic Auth/application rows afterward. It never disables project protection and does not prove
+email delivery.
+
+The actual hosted desktop-browser record in `docs/evals/preview-browser-2026-09-09.json` verifies the
+landing, all five mode selectors, the Research handoff, anonymous sign-in state and disabled unauthenticated
+sending. It does not claim human login, email delivery, a browser-submitted model/coding task, mobile
+layout acceptance or physical iPad/Safari behavior. Those remain user-facing acceptance gates.
+
+DOM tests use jsdom and actual local HTTP missions; they do not claim native browser layout, iframe
+execution or mobile-device validation. Exact-head CI and exact-head Vercel build readiness also do not
+replace the manual hosted Auth smoke or the user's end-to-end product acceptance.
 
 FreeLLMAPI is not automatically connected by a GitHub secret. The current key requires its approved API
 endpoint and provider identity; see `docs/FREELLM_READINESS.md`. No paid Pro offering is enabled.
@@ -134,7 +156,7 @@ integration tests. It creates synthetic accounts, verifies that unverified accou
 sets only those fixture accounts' verification flags for subsequent signed-session/API checks. This
 does not attest real email delivery. All fixtures are removed after the test; secrets and raw upstream
 responses are withheld from logs and artifacts. Provider transport in that integration job is a fixture;
-the separate model A/B job uses real inference.
+the separate model A/B job uses real inference only when explicitly dispatched.
 
 References: [Neon JWT verification](https://neon.com/docs/auth/guides/plugins/jwt),
 [Neon Auth management API](https://neon.com/docs/auth/guides/manage-auth-api),
