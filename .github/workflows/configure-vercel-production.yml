@@ -7,6 +7,7 @@ on:
       - .github/workflows/configure-vercel-production.yml
       - scripts/configure-vercel-production.mjs
       - migrations/004_reconcile_product_control_plane.sql
+      - migrations/005_developer_plan.sql
   workflow_dispatch:
 
 permissions:
@@ -20,7 +21,7 @@ jobs:
   configure:
     if: github.repository == 'clarityosbaerbelwesterop-gif/Odin-Agent-' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -34,8 +35,13 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_ODIN_TOKEN }}
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_AUTH_URL: ${{ secrets.NEON_AUTH_URL }}
           NV_API_KEY: ${{ secrets.NV_API_KEY }}
           NV_API_KEY_2: ${{ secrets.NV_API_KEY_2 }}
+          OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
         run: node scripts/configure-vercel-production.mjs
       - uses: actions/upload-artifact@v4
         if: always()

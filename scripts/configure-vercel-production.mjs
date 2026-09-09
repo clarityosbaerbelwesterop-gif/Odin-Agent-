@@ -12,11 +12,24 @@ const scope = Object.freeze({
   neonBranch: "br-muddy-boat-b1po0mwo",
   origin: "https://odin-agent-xi.vercel.app",
   role: "odin_prod_app",
+  githubMcpUrl: "https://api.githubcopilot.com/mcp/readonly",
+  stripePrices: Object.freeze({
+    pro: "price_1UDr55EmDA2oLCpoQJNERPTA",
+    developer: "price_1UDr5HEmDA2oLCpoTuUlXUH0",
+    ultra: "price_1UDr5REmDA2oLCpoiETsQLQf",
+  }),
 });
 
 function requireSecret(name) {
   const value = process.env[name] ?? "";
   assert(value && !/[\r\n]/u.test(value), `MISSING_${name}`);
+  return value;
+}
+
+function optionalSecret(name) {
+  const value = process.env[name] ?? "";
+  if (!value) return undefined;
+  assert(!/[\r\n]/u.test(value), `INVALID_${name}`);
   return value;
 }
 
@@ -84,6 +97,40 @@ async function waitForDeployment(id) {
   throw new Error("DEPLOYMENT_TIMEOUT");
 }
 
+async function ensureDeveloperPlan(ownerPool, report) {
+  const current = await ownerPool.query(
+    `SELECT pg_get_constraintdef(oid) AS definition
+     FROM pg_constraint
+     WHERE conrelid='odin_api.accounts'::regclass AND conname='accounts_plan_check'`,
+  );
+  const definition = String(current.rows[0]?.definition ?? "");
+  if (!definition.includes("developer")) {
+    const client = await ownerPool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("ALTER TABLE odin_api.accounts DROP CONSTRAINT IF EXISTS accounts_plan_check");
+      await client.query(
+        "ALTER TABLE odin_api.accounts ADD CONSTRAINT accounts_plan_check CHECK (plan IN ('free','pro','developer','ultra'))",
+      );
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => {});
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  const verified = await ownerPool.query(
+    `SELECT pg_get_constraintdef(oid) AS definition
+     FROM pg_constraint
+     WHERE conrelid='odin_api.accounts'::regclass AND conname='accounts_plan_check'`,
+  );
+  const finalDefinition = String(verified.rows[0]?.definition ?? "");
+  for (const plan of ["free", "pro", "developer", "ultra"])
+    assert(finalDefinition.includes(plan), `PLAN_CONSTRAINT_${plan.toUpperCase()}`);
+  report.checks.push("Production Neon accepts exactly the four Odin product tiers including Developer");
+}
+
 async function configure() {
   const report = {
     status: "INCOMPLETE",
@@ -91,6 +138,13 @@ async function configure() {
     head: process.env.GITHUB_SHA,
     checks: [],
     operatorGates: [],
+    catalog: {
+      currency: "usd",
+      billing: "monthly",
+      pro: { amount: 999, priceId: scope.stripePrices.pro },
+      developer: { amount: 1999, priceId: scope.stripePrices.developer },
+      ultra: { amount: 4999, priceId: scope.stripePrices.ultra },
+    },
   };
   let ownerPool;
   try {
@@ -135,11 +189,11 @@ async function configure() {
       assert.equal(row.relforcerowsecurity, true, `FORCE_RLS_${row.relname}`);
       assert.equal(row.owner_policies, 1, `OWNER_POLICY_${row.relname}`);
     }
-    report.checks.push("Production product schema matches PR #42 with FORCE RLS owner isolation");
+    report.checks.push("Production product schema has FORCE RLS owner isolation");
+    await ensureDeveloperPlan(ownerPool, report);
 
     const envs = await currentProductionEnv();
     const has = (key) => envs.some((entry) => entry.key === key);
-    let appUri;
     const role = (await ownerPool.query("SELECT * FROM pg_roles WHERE rolname=$1", [scope.role])).rows[0];
     if (!has("ODIN_DATABASE_URL")) {
       const password = randomBytes(32).toString("base64url");
@@ -165,8 +219,7 @@ async function configure() {
       const uri = new URL(ownerUri.toString());
       uri.username = scope.role;
       uri.password = password;
-      appUri = uri.toString();
-      await upsertProductionVariable("ODIN_DATABASE_URL", appUri);
+      await upsertProductionVariable("ODIN_DATABASE_URL", uri.toString());
     }
 
     const checked = (await ownerPool.query("SELECT * FROM pg_roles WHERE rolname=$1", [scope.role])).rows[0];
@@ -192,31 +245,62 @@ async function configure() {
     report.checks.push("Production DB login is restricted and cannot bypass RLS");
 
     const auth = await management("neon", `branches/${scope.neonBranch}/auth`);
-    const authUrl = auth.base_url ?? auth.auth?.base_url;
-    assert.equal(typeof authUrl, "string", "NEON_AUTH_URL");
-    assert(authUrl.startsWith("https://") && authUrl.includes(".neonauth."), "NEON_AUTH_URL");
+    const managedAuthUrl = auth.base_url ?? auth.auth?.base_url;
+    assert.equal(typeof managedAuthUrl, "string", "NEON_AUTH_URL");
+    assert(
+      managedAuthUrl.startsWith("https://") && managedAuthUrl.includes(".neonauth."),
+      "NEON_AUTH_URL",
+    );
+    const configuredAuthUrl = optionalSecret("NEON_AUTH_URL");
+    if (configuredAuthUrl) {
+      assert(configuredAuthUrl.startsWith("https://"), "NEON_AUTH_SECRET_URL");
+      assert.equal(
+        new URL(configuredAuthUrl).origin,
+        new URL(managedAuthUrl).origin,
+        "NEON_AUTH_SECRET_MISMATCH",
+      );
+    }
 
-    await upsertProductionVariable("NEON_AUTH_BASE_URL", authUrl);
+    await upsertProductionVariable("NEON_AUTH_BASE_URL", managedAuthUrl);
     await upsertProductionVariable("ODIN_PUBLIC_ORIGIN", scope.origin);
     await upsertProductionVariable("NV_API_KEY", process.env.NV_API_KEY);
     await upsertProductionVariable("NV_API_KEY_2", process.env.NV_API_KEY_2);
+    await upsertProductionVariable("GITHUB_MCP_URL", scope.githubMcpUrl);
+    await upsertProductionVariable("STRIPE_PRO_PRICE_ID", scope.stripePrices.pro);
+    await upsertProductionVariable("STRIPE_DEVELOPER_PRICE_ID", scope.stripePrices.developer);
+    await upsertProductionVariable("STRIPE_ULTRA_PRICE_ID", scope.stripePrices.ultra);
+
+    const oauthClientId = optionalSecret("OAUTH_CLIENT_ID");
+    const oauthClientSecret = optionalSecret("CLIENT_SECRET");
+    if (oauthClientId && oauthClientSecret) {
+      await upsertProductionVariable("GITHUB_OAUTH_CLIENT_ID", oauthClientId);
+      await upsertProductionVariable("GITHUB_OAUTH_CLIENT_SECRET", oauthClientSecret);
+      report.checks.push("GitHub OAuth credentials are mapped from repository secrets into Vercel Production");
+    } else {
+      report.operatorGates.push("OAUTH_CLIENT_ID/CLIENT_SECRET repository secrets");
+    }
+
+    const stripeSecret = optionalSecret("STRIPE_SECRET_KEY");
+    const stripeWebhookSecret = optionalSecret("STRIPE_WEBHOOK_SECRET");
+    if (stripeSecret) await upsertProductionVariable("STRIPE_SECRET_KEY", stripeSecret);
+    else if (!has("STRIPE_SECRET_KEY")) report.operatorGates.push("STRIPE_SECRET_KEY");
+    if (stripeWebhookSecret)
+      await upsertProductionVariable("STRIPE_WEBHOOK_SECRET", stripeWebhookSecret);
+    else if (!has("STRIPE_WEBHOOK_SECRET")) report.operatorGates.push("STRIPE_WEBHOOK_SECRET");
+
     if (!has("ODIN_CREDENTIAL_ENCRYPTION_KEY"))
       await upsertProductionVariable(
         "ODIN_CREDENTIAL_ENCRYPTION_KEY",
         randomBytes(32).toString("base64url"),
       );
-    report.checks.push("Production Neon/Auth/origin/encryption/NVIDIA variables are configured server-side");
+    report.checks.push(
+      "Production Neon/Auth/origin/encryption/NVIDIA/GitHub-MCP/Stripe-price variables are configured server-side",
+    );
 
-    for (const key of [
-      "GITHUB_OAUTH_CLIENT_ID",
-      "GITHUB_OAUTH_CLIENT_SECRET",
-      "STRIPE_SECRET_KEY",
-      "STRIPE_WEBHOOK_SECRET",
-      "STRIPE_PRO_PRICE_ID",
-      "STRIPE_ULTRA_PRICE_ID",
-    ]) {
-      if (!has(key)) report.operatorGates.push(key);
-    }
+    if (optionalSecret("FREE_API_KEY"))
+      report.checks.push(
+        "FREE_API_KEY exists in GitHub Secrets but is intentionally not copied until a reviewed runtime consumer is merged",
+      );
 
     const deployment = await management("vercel", "/v13/deployments", "POST", {
       name: "odin-agent",
@@ -245,7 +329,9 @@ async function configure() {
       signal: AbortSignal.timeout(15_000),
     });
     assert.equal(configSmoke.status, 401, "UNAUTHENTICATED_CONFIG_MUST_BE_401");
-    report.checks.push("Fresh production deployment is READY; Auth config works and protected API fails closed with 401");
+    report.checks.push(
+      "Fresh production deployment is READY; Auth config works and protected API fails closed with 401",
+    );
 
     report.status = report.operatorGates.length ? "READY_WITH_OPERATOR_GATES" : "READY";
   } catch (error) {
