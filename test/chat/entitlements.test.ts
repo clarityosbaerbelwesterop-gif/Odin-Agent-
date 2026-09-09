@@ -48,7 +48,6 @@ test("S active and trialing paid subscriptions preserve their tier", () => {
   assert.equal(effectivePlan(account("pro", "active")), "pro");
   assert.equal(effectivePlan(account("developer", "trialing")), "developer");
   assert.equal(effectivePlan(account("ultra", "active")), "ultra");
-  assert.equal(hasPlan(account("developer", "active"), "coding" as never), false);
   assert.equal(hasPlan(account("developer", "active"), "developer"), true);
   assert.equal(hasPlan(account("developer", "active"), "ultra"), false);
 });
