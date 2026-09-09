@@ -68,13 +68,27 @@ test("runtime secret sync allowlists provider credentials and excludes control-p
     variables.map(({ key, type, target, gitBranch }) => ({ key, type, target, gitBranch })),
     [
       { key: "OPENAI_API_KEY", type: "sensitive", target: ["preview"], gitBranch: scope.gitBranch },
-      { key: "ANTHROPIC_API_KEY", type: "sensitive", target: ["preview"], gitBranch: scope.gitBranch },
-      { key: "OPENROUTER_API_KEY", type: "sensitive", target: ["preview"], gitBranch: scope.gitBranch },
+      {
+        key: "ANTHROPIC_API_KEY",
+        type: "sensitive",
+        target: ["preview"],
+        gitBranch: scope.gitBranch,
+      },
+      {
+        key: "OPENROUTER_API_KEY",
+        type: "sensitive",
+        target: ["preview"],
+        gitBranch: scope.gitBranch,
+      },
       { key: "NV_API_KEY", type: "sensitive", target: ["preview"], gitBranch: scope.gitBranch },
       { key: "NVIDIA_API_KEY", type: "sensitive", target: ["preview"], gitBranch: scope.gitBranch },
     ],
   );
-  assert(!variables.some((variable) => ["VERCEL_TOKEN", "NEON_API_KEY", "FREE_API_KEY"].includes(variable.key)));
+  assert(
+    !variables.some((variable) =>
+      ["VERCEL_TOKEN", "NEON_API_KEY", "FREE_API_KEY"].includes(variable.key),
+    ),
+  );
   assert.throws(() => collectRuntimeSecrets({ OPENAI_API_KEY: "synthetic\nheader" }));
 });
 
