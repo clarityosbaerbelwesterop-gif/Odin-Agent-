@@ -1,0 +1,21 @@
+{
+  "status": "EXTERNAL_REFERENCE_ONLY_DIFFERENT_SUITES",
+  "observedAt": "2026-09-09",
+  "authority": "display_reference_only",
+  "comparableToAstraTerminalBench4": false,
+  "source": {
+    "publisher": "OpenAI",
+    "title": "Introducing GPT-5.5",
+    "url": "https://openai.com/index/introducing-gpt-5-5/"
+  },
+  "benchmarks": [
+    {"name":"SWE-Bench Pro Public","score":58.6},
+    {"name":"Terminal-Bench 2.0","score":82.7},
+    {"name":"Expert-SWE (Internal)","score":73.1}
+  ],
+  "notes": [
+    "GPT-5.5 Terminal-Bench 2.0 cannot be compared numerically with GPT-6 Astra Terminal-Bench 4.0 as if they were the same test.",
+    "Odin has no live GPT-5.5 credential/evidence in this repository at this observation date.",
+    "The statement 'GPT-5.5 + Odin reaches GPT-6 Astra quality' remains a target hypothesis, not measured evidence."
+  ]
+}
