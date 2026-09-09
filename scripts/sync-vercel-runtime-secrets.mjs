@@ -8,7 +8,10 @@ export const runtimeSecretMappings = Object.freeze([
   Object.freeze({ target: "ANTHROPIC_API_KEY", sources: Object.freeze(["ANTHROPIC_API_KEY"]) }),
   Object.freeze({ target: "OPENROUTER_API_KEY", sources: Object.freeze(["OPENROUTER_API_KEY"]) }),
   Object.freeze({ target: "NV_API_KEY", sources: Object.freeze(["NV_API_KEY", "NVIDIA_API_KEY"]) }),
-  Object.freeze({ target: "NVIDIA_API_KEY", sources: Object.freeze(["NVIDIA_API_KEY", "NV_API_KEY"]) }),
+  Object.freeze({
+    target: "NVIDIA_API_KEY",
+    sources: Object.freeze(["NVIDIA_API_KEY", "NV_API_KEY"]),
+  }),
 ]);
 
 const forbiddenRuntimeKeys = new Set(["VERCEL_TOKEN", "NEON_API_KEY", "FREE_API_KEY"]);
