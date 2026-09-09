@@ -1,0 +1,39 @@
+name: J–L one-shot formatter
+
+on:
+  push:
+    branches: [agent/jkl-legal-benchmarks-subscriptions]
+    paths: [.github/workflows/jkl-one-shot-format.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: jkl-one-shot-format
+  cancel-in-progress: false
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/jkl-legal-benchmarks-subscriptions
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run format
+      - name: Commit formatter-only changes
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/evals/benchmark-v2-blueprint-2026-09-09.json docs/evals/frontier-reference-2026-09-09.json docs/evals/gpt-5-5-reference-2026-09-09.json scripts/product-info.test.mjs web/product-info.css web/product-info.js
+          git commit -m "chore(j-l): format legal benchmark delivery"
+          git push origin HEAD:agent/jkl-legal-benchmarks-subscriptions
