@@ -1,46 +1,103 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
-    <title>Odin — Workspace</title>
+    <meta name="description" content="Odin ist ein kontrollierter Agent-Workspace für Missionen, Modelle, Coding, Research und überprüfbare Ergebnisse." />
+    <title>Odin — Agent Workspace</title>
     <link rel="stylesheet" href="/chat.css" />
     <link rel="stylesheet" href="/product-info.css" />
   </head>
   <body>
     <div class="shell">
-      <aside class="sidebar" aria-label="Conversations">
-        <a class="brand" href="/" aria-label="Odin home"><span class="brand-mark">O</span><span>odin<span class="brand-dot">.</span></span></a>
-        <button id="new-chat" class="new-chat" type="button"><span>+</span> New conversation</button>
-        <div class="side-label">WORKSPACE</div>
-        <button id="chat-view" type="button" class="nav-item selected">Chathub <span>01</span></button>
-        <button id="benchmark-view" type="button" class="nav-item">Benchmarks <span>02</span></button>
-        <div class="history-heading"><span class="side-label">RECENT</span><span id="conversation-count">0</span></div>
-        <nav id="conversation-list" aria-label="Conversation history"></nav>
-        <div class="sidebar-footer"><span class="status-dot"></span><span id="workspace-status">Connect your workspace</span><button id="settings" type="button" aria-label="Settings and information">↗</button></div>
+      <aside class="sidebar" aria-label="Odin Navigation">
+        <a class="brand" href="/" aria-label="Odin Startseite"><span class="brand-mark">O</span><span>odin<span class="brand-dot">.</span></span></a>
+        <button id="new-chat" class="new-chat" type="button"><span aria-hidden="true">+</span> Neue Mission</button>
+
+        <div class="side-label">PRODUKT</div>
+        <button id="chat-view" type="button" class="nav-item selected">Missionen <span>01</span></button>
+        <button id="models-view" type="button" class="nav-item">Modelle <span id="model-count-nav">0</span></button>
+        <button id="system-view" type="button" class="nav-item">Odin System <span>03</span></button>
+        <button id="benchmark-view" type="button" class="nav-item">Benchmarks <span>04</span></button>
+
+        <div class="history-heading"><span class="side-label">LETZTE MISSIONEN</span><span id="conversation-count">0</span></div>
+        <nav id="conversation-list" aria-label="Missionsverlauf"></nav>
+        <div class="sidebar-footer"><span class="status-dot" aria-hidden="true"></span><span id="workspace-status">Workspace wird geprüft</span><button id="settings" type="button" aria-label="Einstellungen und Informationen">Einstellungen</button></div>
       </aside>
+
       <main class="main">
-        <header class="topbar"><button id="history-toggle" type="button" aria-expanded="false">Chats</button><div><span class="breadcrumb">Workspace /</span> <strong id="page-title">Chathub</strong></div><div class="top-actions"><span id="connection" role="status">Connecting</span><button id="activity-toggle" type="button" aria-expanded="true">Activity</button></div></header>
+        <header class="topbar">
+          <button id="history-toggle" type="button" aria-expanded="false">Missionen</button>
+          <div><span class="breadcrumb">Arbeitsbereich /</span> <strong id="page-title">Mission</strong></div>
+          <div class="top-actions"><span id="connection" role="status">Verbindung wird geprüft</span><button id="activity-toggle" type="button" aria-expanded="true">Run-Details</button></div>
+        </header>
         <div id="error-banner" role="alert" hidden></div>
+
         <div id="chat-layout" class="chat-layout">
-          <section class="conversation" aria-label="Chat conversation">
+          <section class="conversation" aria-label="Odin Mission">
             <div id="messages" class="messages" role="log" aria-live="polite">
-              <div id="welcome" class="welcome"><span class="welcome-tag">YOUR AGENT WORKSPACE</span><h1>Make room for<br /><span>your next big idea.</span></h1><p>Think it through. Build it. Check the result.<br />One conversation, with the work in view.</p><div class="suggestions"><button type="button" data-prompt="Inspect the connected repository and propose a plan to fix its most important bugs." data-mode="coding"><span>BUILD</span>Improve my codebase ↗</button><button type="button" data-prompt="Help me reason through a difficult decision. Start by asking what I need to decide." data-mode="thinking"><span>THINK</span>Work through a problem ↗</button><button type="button" data-prompt="Research the history and main principles of artificial intelligence, using retrieved sources." data-mode="research"><span>RESEARCH</span>Explore a topic ↗</button></div></div>
+              <div id="welcome" class="welcome">
+                <span class="welcome-tag">ODIN AGENT WORKSPACE</span>
+                <h1>Eine Mission.<br /><span>Odin erledigt die Arbeit.</span></h1>
+                <p>Plane, recherchiere, bearbeite Dateien, nutze Werkzeuge und prüfe das Ergebnis. Du siehst Modell, Run, Änderungen und Evidenz an einem Ort.</p>
+                <div class="suggestions">
+                  <button type="button" data-prompt="Prüfe die verbundene Codebasis, priorisiere die wichtigsten Fehler und setze die sinnvollen Korrekturen kontrolliert um." data-mode="coding"><span>CODING</span>Codebasis bearbeiten</button>
+                  <button type="button" data-prompt="Analysiere dieses Problem strukturiert, prüfe Annahmen und liefere eine verifizierbare Empfehlung." data-mode="thinking"><span>THINKING</span>Problem analysieren</button>
+                  <button type="button" data-prompt="Recherchiere dieses Thema mit den verbundenen Quellen und trenne Belege klar von Schlussfolgerungen." data-mode="research"><span>RESEARCH</span>Quellen recherchieren</button>
+                </div>
+              </div>
             </div>
+
             <div class="composer-wrap">
-              <div id="task-controls" class="task-controls" hidden><span id="active-state">Working</span><div><button id="pause" type="button">Pause</button><button id="resume" type="button" hidden>Resume</button><button id="cancel" type="button">Stop</button></div></div>
-              <form id="composer" class="composer"><label class="sr-only" for="prompt">Message Odin</label><textarea id="prompt" rows="2" placeholder="What are we working on?" maxlength="16000"></textarea><div class="composer-bottom"><div class="selectors"><label class="sr-only" for="mode">Work mode</label><select id="mode"><option value="chat">Chat</option><option value="coding">Coding</option><option value="thinking">Thinking</option><option value="research">Research</option><option value="ultra">Ultra</option></select><span class="selector-divider"></span><label class="sr-only" for="model">Model</label><select id="model"><option value="">No model connected</option></select></div><button id="send" type="submit" aria-label="Send message">↑</button></div></form>
-              <div class="composer-meta"><span id="mode-description">Choose how Odin approaches the work.</span><span>Enter to send · Shift + Enter for a new line</span></div>
+              <div id="task-controls" class="task-controls" hidden><span id="active-state">Run aktiv</span><div><button id="pause" type="button">Pausieren</button><button id="resume" type="button" hidden>Fortsetzen</button><button id="cancel" type="button">Stoppen</button></div></div>
+              <form id="composer" class="composer">
+                <label class="sr-only" for="prompt">Aufgabe für Odin</label>
+                <textarea id="prompt" rows="2" placeholder="Was soll Odin erledigen?" maxlength="16000"></textarea>
+                <div class="composer-bottom">
+                  <div class="selectors">
+                    <label class="sr-only" for="mode">Arbeitsmodus</label>
+                    <select id="mode"><option value="chat">Chat</option><option value="coding">Coding</option><option value="thinking">Thinking</option><option value="research">Research</option><option value="ultra">Ultra</option></select>
+                    <span class="selector-divider"></span>
+                    <label class="sr-only" for="model">Modell</label>
+                    <select id="model"><option value="">Kein Modell verbunden</option></select>
+                  </div>
+                  <button id="send" type="submit" aria-label="Mission senden"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 19V5M6.5 10.5 12 5l5.5 5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg></button>
+                </div>
+              </form>
+              <div class="composer-meta"><span id="mode-description">Wähle, wie Odin die Aufgabe bearbeitet.</span><span>Enter sendet · Umschalt + Enter fügt eine neue Zeile ein</span></div>
             </div>
           </section>
-          <aside id="inspector" class="inspector" aria-label="Task details"><div class="inspector-heading"><span class="status-dot"></span><h2>Work in progress</h2><span id="call-count">—</span></div><div class="inspector-tabs" role="tablist"><button type="button" role="tab" aria-selected="true" data-tab="activity">Activity</button><button type="button" role="tab" aria-selected="false" data-tab="files">Files</button><button type="button" role="tab" aria-selected="false" data-tab="preview">Preview</button></div><div class="inspector-body"><section id="activity-panel" role="tabpanel"><div class="inspector-note" id="activity-empty">Your plan, tool activity and verification will appear here when a task starts.</div><ol id="plan" class="plan"></ol><div id="activity" class="activity"></div><div id="sources" class="sources"></div><div id="verification" class="verification" hidden></div></section><section id="files-panel" role="tabpanel" hidden><p class="inspector-note">Actual workspace changes appear here.</p><div id="files"></div><pre id="diff"></pre></section><section id="preview-panel" role="tabpanel" hidden><p class="inspector-note">HTML changes can be previewed in an isolated frame. External requests are blocked.</p><select id="preview-file" aria-label="Preview file"><option value="">Choose an HTML file</option></select><iframe id="preview" title="Generated page preview" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe></section></div><div class="inspector-footer"><span>Tokens <strong id="token-count">0</strong></span><span id="cost-status">Cost not reported</span></div></aside>
+
+          <aside id="inspector" class="inspector" aria-label="Run-Details">
+            <div class="inspector-heading"><span class="status-dot" aria-hidden="true"></span><h2>Run-Status</h2><span id="call-count">—</span></div>
+            <div class="inspector-tabs" role="tablist"><button type="button" role="tab" aria-selected="true" data-tab="activity">Ablauf</button><button type="button" role="tab" aria-selected="false" data-tab="files">Dateien</button><button type="button" role="tab" aria-selected="false" data-tab="preview">Vorschau</button></div>
+            <div class="inspector-body">
+              <section id="activity-panel" role="tabpanel"><div class="inspector-note" id="activity-empty">Plan, Werkzeugaufrufe und Verifikation erscheinen hier, sobald eine Mission startet.</div><ol id="plan" class="plan"></ol><div id="activity" class="activity"></div><div id="sources" class="sources"></div><div id="verification" class="verification" hidden></div></section>
+              <section id="files-panel" role="tabpanel" hidden><p class="inspector-note">Tatsächliche Workspace-Änderungen werden hier als Diff angezeigt.</p><div id="files"></div><pre id="diff"></pre></section>
+              <section id="preview-panel" role="tabpanel" hidden><p class="inspector-note">HTML-Änderungen werden in einem isolierten Frame dargestellt. Externe Requests sind blockiert.</p><select id="preview-file" aria-label="Vorschau-Datei"><option value="">HTML-Datei auswählen</option></select><iframe id="preview" title="Generierte Seitenvorschau" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe></section>
+            </div>
+            <div class="inspector-footer"><span>Tokens <strong id="token-count">0</strong></span><span id="cost-status">Kosten nicht gemeldet</span></div>
+          </aside>
         </div>
-        <section id="benchmarks" class="benchmarks" hidden><span class="welcome-tag">MEASURED EVIDENCE</span><h1>Every improvement<br />needs a result.</h1><p class="muted">Live Odin runs, historical protocol evidence and external frontier references stay separate.</p><div id="benchmark-content"></div></section>
+
+        <section id="models-panel" class="product-surface" hidden aria-labelledby="models-title">
+          <header class="product-surface-header"><div><span class="welcome-tag">SERVERSEITIG VERBUNDEN</span><h1 id="models-title">Modelle, die Odin wirklich nutzen kann.</h1></div><p class="muted">Die Liste kommt aus dem Backend. Ein Modell erscheint nur, wenn sein Provider-Credential im Deployment vorhanden ist.</p></header>
+          <div id="model-cards" class="product-card-grid"></div>
+        </section>
+
+        <section id="system-panel" class="product-surface" hidden aria-labelledby="system-title">
+          <header class="product-surface-header"><div><span class="welcome-tag">CONTROL PLANE</span><h1 id="system-title">Das Produkt hinter dem Chat.</h1></div><p class="muted">Mission Runtime, Modelle, Workspace, Tools, Verification, Research, Auth und RLS bleiben getrennte kontrollierte Systeme.</p></header>
+          <div id="system-content"></div>
+        </section>
+
+        <section id="benchmarks" class="benchmarks" hidden><span class="welcome-tag">GEMESSENE EVIDENZ</span><h1>Jede Verbesserung<br />braucht ein Ergebnis.</h1><p class="muted">Live-Odin-Runs, historische Protokollevidenz und externe Frontier-Referenzen bleiben getrennt.</p><div id="benchmark-content"></div></section>
       </main>
     </div>
-    <dialog id="login" aria-labelledby="login-title"><form id="login-form"><span class="brand-mark">O</span><h2 id="login-title">Welcome to Odin</h2><p id="auth-help">Sign in to your workspace.</p><div id="neon-auth-fields" hidden><label for="auth-action">Account action</label><select id="auth-action"><option value="login">Sign in</option><option value="signup">Create account</option><option value="verify">Verify email</option><option value="forgot">Request password reset</option><option value="reset">Reset password</option></select><label for="auth-email">Email</label><input id="auth-email" type="email" autocomplete="username" maxlength="254" /><div id="auth-name-field" hidden><label for="auth-name">Name</label><input id="auth-name" autocomplete="name" maxlength="100" /></div><div id="auth-code-field" hidden><label for="auth-code">Email code</label><input id="auth-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" /><button id="auth-send-code" type="button">Send verification code</button></div></div><div id="auth-password-field"><label id="password-label" for="access-token">Server access token</label><input id="access-token" type="password" autocomplete="current-password" maxlength="128" required /></div><p id="login-error" role="alert"></p><button id="auth-submit" type="submit" class="primary">Open workspace</button></form></dialog>
-    <dialog id="connection-details" aria-labelledby="details-title"><h2 id="details-title">Settings & information</h2><div id="details-body"></div><div class="dialog-actions"><button id="sign-out" type="button">Sign out</button><button id="close-details" type="button" class="primary">Close</button></div></dialog>
+
+    <dialog id="login" aria-labelledby="login-title"><form id="login-form"><span class="brand-mark">O</span><h2 id="login-title">Bei Odin anmelden</h2><p id="auth-help">Melde dich in deinem Workspace an.</p><div id="neon-auth-fields" hidden><label for="auth-action">Kontoaktion</label><select id="auth-action"><option value="login">Anmelden</option><option value="signup">Konto erstellen</option><option value="verify">E-Mail bestätigen</option><option value="forgot">Passwort zurücksetzen anfordern</option><option value="reset">Neues Passwort setzen</option></select><label for="auth-email">E-Mail</label><input id="auth-email" type="email" autocomplete="username" maxlength="254" /><div id="auth-name-field" hidden><label for="auth-name">Name</label><input id="auth-name" autocomplete="name" maxlength="100" /></div><div id="auth-code-field" hidden><label for="auth-code">E-Mail-Code</label><input id="auth-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" /><button id="auth-send-code" type="button">Bestätigungscode senden</button></div></div><div id="auth-password-field"><label id="password-label" for="access-token">Server-Zugriffstoken</label><input id="access-token" type="password" autocomplete="current-password" maxlength="128" required /></div><p id="login-error" role="alert"></p><button id="auth-submit" type="submit" class="primary">Workspace öffnen</button></form></dialog>
+
+    <dialog id="connection-details" aria-labelledby="details-title"><h2 id="details-title">Einstellungen & Informationen</h2><div id="details-body"></div><div class="dialog-actions"><button id="sign-out" type="button">Abmelden</button><button id="close-details" type="button" class="primary">Schließen</button></div></dialog>
     <script type="module" src="/chat.js"></script>
     <script type="module" src="/product-info.js"></script>
   </body>
