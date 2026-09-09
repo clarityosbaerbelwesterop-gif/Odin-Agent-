@@ -8,6 +8,11 @@ import {
   validateInvocation,
 } from "./configure-vercel-preview.mjs";
 import { temporaryDeploymentShare } from "./preview-access.mjs";
+import {
+  collectRuntimeSecrets,
+  runtimeSecretMappings,
+  validateSecretSyncInvocation,
+} from "./sync-vercel-runtime-secrets.mjs";
 
 test("deployment workflow rejects foreign repositories, production and missing credentials", () => {
   const env = {
@@ -42,6 +47,53 @@ test("secret writes are narrow, sensitive and preview-branch scoped", () => {
   }
   assert.throws(() => previewVariable("VERCEL_TOKEN", "synthetic"));
   assert.throws(() => previewVariable("FREE_API_KEY", "synthetic"));
+});
+
+test("runtime secret sync allowlists provider credentials and excludes control-plane secrets", () => {
+  assert.deepEqual(
+    runtimeSecretMappings.map((mapping) => mapping.target),
+    ["OPENAI_API_KEY", "ANTHROPIC_API_KEY", "OPENROUTER_API_KEY", "NV_API_KEY", "NVIDIA_API_KEY"],
+  );
+  const env = {
+    OPENAI_API_KEY: "openai-synthetic",
+    ANTHROPIC_API_KEY: "anthropic-synthetic",
+    OPENROUTER_API_KEY: "openrouter-synthetic",
+    NV_API_KEY: "nvidia-synthetic",
+    VERCEL_TOKEN: "must-not-copy",
+    NEON_API_KEY: "must-not-copy",
+    FREE_API_KEY: "must-not-copy",
+  };
+  const variables = collectRuntimeSecrets(env);
+  assert.deepEqual(
+    variables.map(({ key, type, target, gitBranch }) => ({ key, type, target, gitBranch })),
+    [
+      { key: "OPENAI_API_KEY", type: "sensitive", target: ["preview"], gitBranch: scope.gitBranch },
+      { key: "ANTHROPIC_API_KEY", type: "sensitive", target: ["preview"], gitBranch: scope.gitBranch },
+      { key: "OPENROUTER_API_KEY", type: "sensitive", target: ["preview"], gitBranch: scope.gitBranch },
+      { key: "NV_API_KEY", type: "sensitive", target: ["preview"], gitBranch: scope.gitBranch },
+      { key: "NVIDIA_API_KEY", type: "sensitive", target: ["preview"], gitBranch: scope.gitBranch },
+    ],
+  );
+  assert(!variables.some((variable) => ["VERCEL_TOKEN", "NEON_API_KEY", "FREE_API_KEY"].includes(variable.key)));
+  assert.throws(() => collectRuntimeSecrets({ OPENAI_API_KEY: "synthetic\nheader" }));
+});
+
+test("runtime secret sync is pinned to the approved preview branch", () => {
+  const env = {
+    GITHUB_REPOSITORY: scope.repository,
+    GITHUB_REF: `refs/heads/${scope.gitBranch}`,
+    GITHUB_SHA: "b".repeat(40),
+    VERCEL_TOKEN: "synthetic-vercel",
+  };
+  assert.doesNotThrow(() => validateSecretSyncInvocation(env));
+  for (const changes of [
+    { GITHUB_REPOSITORY: "foreign/repository" },
+    { GITHUB_REF: "refs/heads/main" },
+    { GITHUB_SHA: "" },
+    { VERCEL_TOKEN: "" },
+    { VERCEL_TOKEN: "synthetic\nheader" },
+  ])
+    assert.throws(() => validateSecretSyncInvocation({ ...env, ...changes }));
 });
 
 test("FreeLLM key classification never mistakes catalog licensing for inference quota", () => {
