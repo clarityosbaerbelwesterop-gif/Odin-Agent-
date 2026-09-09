@@ -87,7 +87,10 @@ try {
   assert.equal(deployment.projectId, project);
   assert.equal(deployment.target ?? null, null);
   assert.equal(deployment.readyState, "READY");
-  assert.equal(deployment.gitSource?.sha ?? deployment.meta?.githubCommitSha, process.env.GITHUB_SHA);
+  assert.equal(
+    deployment.gitSource?.sha ?? deployment.meta?.githubCommitSha,
+    process.env.GITHUB_SHA,
+  );
   const deploymentId = deployment.id ?? deployment.uid;
   const deploymentHead = process.env.GITHUB_SHA;
   const origin = `https://${deployment.url}`;
@@ -256,7 +259,9 @@ try {
     assert.equal(replayResponse.status, 200);
     const { events } = await replayResponse.json();
     assert(
-      events.some((event) => event.type === "answer" && event.data.text?.includes("ODIN_PREVIEW_OK")),
+      events.some(
+        (event) => event.type === "answer" && event.data.text?.includes("ODIN_PREVIEW_OK"),
+      ),
     );
     report.checks.push(
       "One actual Kimi task completes in the deployed Odin runtime and its answer replays from Neon",
