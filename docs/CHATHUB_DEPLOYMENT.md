@@ -6,7 +6,7 @@ HTML preview. Model output is never substituted with fixture responses in the pr
 
 ## Local operation
 
-Use Node 24+, `npm ci`, then `npm run verify`. Copy `odin.config.example.json` to `odin.config.json`.
+Use Node 24.x, `npm ci`, then `npm run verify`. Copy `odin.config.example.json` to `odin.config.json`.
 Provide `ODIN_ACCESS_TOKEN` (at least 24 random characters) and the model credential through the process
 environment. `npm start` serves the landing at `http://127.0.0.1:4318` and Chathub at `/app`. The example references the existing
 NVIDIA Kimi K3 adapter and `NV_API_KEY`; unavailable credentials leave the model list empty.
@@ -35,11 +35,11 @@ explicitly; the application is not an unbounded background-job service.
 
 The deployment boundary is covered by `scripts/preview-config.test.mjs`: `vercel.json` must expose only
 `api/index.mjs`, and that wrapper must import from `dist`, not directly from the TypeScript source tree.
-Evidence snapshot `c50e52dd1dab4e8ae6fcb562f703b75e1647486b` built successfully in exact-head CI run
-`34320927996` and Vercel preview deployment `dpl_HsLZyUXdSsRrmii6zy4v17kwkrFa` reached `READY` in
-`fra1`. Its build logs no longer contain the former `TS2688` Node type-definition failure. Vercel still
-warns that the package engine range `>=24.0.0` may automatically select a future Node major; this is a
-runtime-version hardening item, not a successful pinning claim.
+Implementation snapshot `40c6ba4c2097cc2bc6ad6606bfe528d3532e629c` passed exact-head CI run
+`34322374078` and Vercel preview deployment `dpl_Du5imBV7aXaLBH115caAbbWoxwbw` reached `READY` in
+`fra1`. Its build logs contain neither the former `TS2688` Node type-definition failure nor the former
+future-major Node warning. The package engine is pinned to Node `24.x` rather than an open-ended
+`>=24.0.0` range.
 
 The public landing at `/` is a static product introduction, with five interactive mode descriptions
 and links to `/app?mode=…`. These links select a mode without submitting a prompt or bypassing login.
@@ -78,6 +78,18 @@ admin option. Live checks proved authentication, denied Auth-table reads and emp
 tenant context. `ODIN_DATABASE_URL`, `NEON_AUTH_BASE_URL` and `NV_API_KEY` are sensitive Vercel values
 scoped only to `agent/chathub-modes-evidence`. Reruns do not rotate existing passwords; missing role/value
 pairs require explicit recovery. No project or production variables are modified.
+
+Provider-secret synchronization is intentionally a separate workflow:
+`.github/workflows/sync-vercel-runtime-secrets.yml` runs full verification, validates the exact repository,
+branch, Vercel team and project, then copies only allowlisted runtime provider credentials that actually
+exist in GitHub Actions. The allowlist is `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`,
+`NV_API_KEY` and `NVIDIA_API_KEY`, all written as sensitive values scoped only to this Preview branch.
+The workflow never copies `VERCEL_ODIN_TOKEN` or `NEON_API_KEY` into the application runtime and keeps
+`FREE_API_KEY` excluded until an approved HTTPS inference endpoint plus exact provider/model identity are
+known. It creates a fresh Preview deployment after environment writes so the new deployment receives the
+current values. Run `34322036524` synchronized the available NVIDIA credential aliases, skipped absent
+OpenAI/Anthropic/OpenRouter credentials, and created `dpl_6Nb6R525TktLqySzDNuVywCZcaPM`, which reached
+`READY`. Reports contain variable names/status only, never secret values.
 
 The Neon integration still injects its own owner-level values. They are not used by the application when
 `ODIN_DATABASE_URL` is set, but they remain a credential-exposure risk if the function environment is
