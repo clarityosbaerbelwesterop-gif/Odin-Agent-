@@ -1,5 +1,14 @@
 # Engineering handover
 
+## P–R product completion checkpoint — 2026-09-09
+
+The current branch materializes the previously build-time M–O patch and adds exactly Phase P identity /
+GitHub workspace, Phase Q Stripe/server entitlements, and Phase R encrypted BYOK/account settings.
+Repository verification is required before checkpointing. Production migration 003 is recorded for
+schema parity only and was not executed from this workspace because the operator states it is already
+applied. GitHub, Vercel, Neon and Stripe live proof are externally blocked here by absent sessions and
+credentials; do not relabel deterministic tests as production evidence.
+
 Updated: 2026-09-08.
 
 ## Current delivery state — Chathub G–I

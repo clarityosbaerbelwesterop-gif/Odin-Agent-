@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build:base": "npm run clean && tsc -p tsconfig.json && node scripts/copy-web-assets.mjs",
-    "build": "node scripts/mno-product-patch.mjs && node scripts/mno-product-postfix.mjs && node scripts/mno-product-runtime-postfix.mjs && npm run build:base",
+    "build": "npm run build:base",
     "start": "node dist/src/chat/main.js",
     "check:foundation": "node scripts/check-foundation.mjs",
     "clean": "node scripts/clean.mjs",

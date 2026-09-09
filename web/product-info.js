@@ -24,14 +24,193 @@ function safeLink(url, text, className) {
   return item;
 }
 
-async function request(path) {
+async function request(path, body, method = body === undefined ? "GET" : "POST") {
   const response = await fetch(path, {
     credentials: "same-origin",
-    headers: { "X-Odin-Request": "1" },
+    method,
+    headers: {
+      "X-Odin-Request": "1",
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.message ?? "Request failed");
   return data;
+}
+
+function actionButton(label, action) {
+  const button = node("button", label);
+  button.type = "button";
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    try {
+      await action();
+    } catch (error) {
+      window.alert(error.message);
+    } finally {
+      button.disabled = false;
+    }
+  });
+  return button;
+}
+
+function accountCard(config) {
+  const item = card("Konto", "ACCOUNT");
+  addList(item, [
+    `E-Mail: ${config?.user?.email ?? "nicht verfügbar"}`,
+    `Plan: ${(config?.account?.plan ?? "free").toUpperCase()}`,
+    `Abo-Status: ${config?.account?.subscriptionStatus ?? "free"}`,
+    config?.account?.cancelAtPeriodEnd
+      ? "Kündigung zum Periodenende vorgemerkt"
+      : "Keine Kündigung vorgemerkt",
+  ]);
+  item.append(
+    actionButton("Daten exportieren", async () => {
+      const exported = await request("/api/account/export");
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(
+        new Blob([JSON.stringify(exported, null, 2)], { type: "application/json" }),
+      );
+      link.download = "odin-data-export.json";
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }),
+    actionButton("Konto-Daten löschen", async () => {
+      if (!window.confirm("Alle Odin-Daten unwiderruflich löschen und abmelden?")) return;
+      await request("/api/account", {}, "DELETE");
+      window.location.assign("/app");
+    }),
+  );
+  return item;
+}
+
+function githubCard(config) {
+  const item = card("GitHub Workspace", "GITHUB");
+  const github = config?.github;
+  addList(
+    item,
+    github?.connected
+      ? [
+          `Verbunden als ${github.login}`,
+          `Repository: ${github.repository ?? "noch nicht gewählt"}`,
+          `Branch: ${github.defaultBranch ?? "—"}`,
+          "Coding schreibt ausschließlich auf einen isolierten odin/* Arbeitsbranch.",
+        ]
+      : ["Nicht verbunden", "OAuth fordert Repository-Zugriff nur nach deiner Freigabe an."],
+  );
+  item.append(
+    actionButton(github?.connected ? "Repositories laden" : "GitHub verbinden", async () => {
+      if (!github?.connected) {
+        window.location.assign("/api/github/connect");
+        return;
+      }
+      const result = await request("/api/github/repositories");
+      const select = node("select");
+      for (const repository of result.repositories) {
+        const option = node(
+          "option",
+          `${repository.fullName}${repository.private ? " · privat" : ""}`,
+        );
+        option.value = repository.fullName;
+        option.dataset.branch = repository.defaultBranch;
+        select.append(option);
+      }
+      const save = actionButton("Repository auswählen", async () => {
+        const option = select.selectedOptions[0];
+        await request(
+          "/api/github/repository",
+          { repository: select.value, branch: option.dataset.branch },
+          "PUT",
+        );
+        await openSettings();
+      });
+      item.append(select, save);
+    }),
+  );
+  if (github?.connected)
+    item.append(
+      actionButton("GitHub trennen", async () => {
+        await request("/api/github", {}, "DELETE");
+        await openSettings();
+      }),
+    );
+  return item;
+}
+
+function providersCard(config) {
+  const item = card("Model Provider", "SECURE BYOK");
+  const connected = new Map((config?.providers ?? []).map((entry) => [entry.provider, entry]));
+  for (const id of ["openai", "anthropic", "openrouter", "nvidia", "google"]) {
+    const row = node("div", undefined, "provider-row");
+    const known = connected.get(id);
+    row.append(
+      node("strong", id.toUpperCase()),
+      node("span", known ? `Verbunden · …${known.fingerprint}` : "Nicht verbunden"),
+    );
+    const input = node("input");
+    input.type = "password";
+    input.autocomplete = "off";
+    input.placeholder = known ? "Neuen Schlüssel einsetzen" : "API-Schlüssel";
+    input.setAttribute("aria-label", `${id} API key`);
+    row.append(
+      input,
+      actionButton(known ? "Ersetzen" : "Verbinden", async () => {
+        await request(`/api/providers/${id}`, { key: input.value }, "PUT");
+        input.value = "";
+        await openSettings();
+      }),
+    );
+    if (known)
+      row.append(
+        actionButton("Entfernen", async () => {
+          await request(`/api/providers/${id}`, {}, "DELETE");
+          await openSettings();
+        }),
+      );
+    item.append(row);
+  }
+  item.append(
+    node(
+      "p",
+      "Schlüssel werden vor dem Speichern über einen nicht-generierenden Provider-Endpunkt geprüft, verschlüsselt gespeichert und nie wieder an den Browser ausgegeben.",
+      "muted",
+    ),
+  );
+  return item;
+}
+
+function billingCard(config) {
+  const item = card("Billing", "FREE / PRO / ULTRA");
+  item.append(
+    node(
+      "p",
+      "Der Webhook und die Datenbank bestimmen den Plan. Eine Rückkehr von Checkout schaltet keine Berechtigung frei.",
+      "info-lead",
+    ),
+  );
+  for (const plan of ["pro", "ultra"]) {
+    const configured = config?.billing?.[`${plan}CheckoutConfigured`];
+    item.append(
+      actionButton(
+        configured
+          ? `${plan.toUpperCase()} wählen`
+          : `${plan.toUpperCase()} · Checkout nicht konfiguriert`,
+        async () => {
+          const result = await request("/api/billing/checkout", { plan });
+          window.location.assign(result.url);
+        },
+      ),
+    );
+    item.lastElementChild.disabled = !configured;
+  }
+  item.append(
+    actionButton("Billing verwalten", async () => {
+      const result = await request("/api/billing/portal", {});
+      window.location.assign(result.url);
+    }),
+  );
+  return item;
 }
 
 function card(title, eyebrow) {
@@ -121,48 +300,6 @@ function connectionCard(config) {
   return item;
 }
 
-const plans = [
-  {
-    name: "Free",
-    audience: "Ausprobieren, Lernen und gelegentliche Aufgaben",
-    copy: "Kompakte Nutzung mit grundlegenden Modi und den jeweils verfügbaren günstigen oder freien Routen. Harte Limits schützen Kosten und Kapazität.",
-  },
-  {
-    name: "Pro",
-    audience: "Regelmäßiges Coding, Research und anspruchsvollere Projekte",
-    copy: "Geplant mit höheren Budgets, stärkerem Routing und mehr Spielraum für Coding-, Thinking- und Research-Workflows.",
-  },
-  {
-    name: "Ultra",
-    audience: "Power-User und komplexe, lange Aufgaben",
-    copy: "Geplant für die höchsten erlaubten Budgets, Ultra-Workflows und stärkere Frontier-Routen, sofern Provider und Entitlements tatsächlich verfügbar sind.",
-  },
-];
-
-function plansCard() {
-  const item = card("Welche Stufe passt?", "ABOS / NOCH NICHT BUCHBAR");
-  item.append(
-    node(
-      "p",
-      "Free, Pro und Ultra sind derzeit Produktstufen in Planung. Es gibt noch keine aktiven Odin-Preise, Stripe-Entitlements, automatische Verlängerung oder Kaufstrecke.",
-      "info-lead",
-    ),
-  );
-  const grid = node("div", undefined, "plan-grid");
-  for (const plan of plans) {
-    const planCard = node("article", undefined, "plan-card");
-    planCard.append(
-      node("span", "GEPLANT", "plan-status"),
-      node("h4", plan.name),
-      node("strong", plan.audience),
-      node("p", plan.copy),
-    );
-    grid.append(planCard);
-  }
-  item.append(grid);
-  return item;
-}
-
 function legalCard() {
   const item = card("Datenschutz & Recht", "TRANSPARENZ");
   item.append(
@@ -180,7 +317,7 @@ function legalCard() {
     ["/gdpr.html", "DSGVO-Readiness"],
     ["/imprint.html", "Impressum – noch zu vervollständigen"],
   ])
-    links.append(safeLink(url, `${label} ↗`));
+    links.append(safeLink(url, `${label}`));
   item.append(links);
   return item;
 }
@@ -195,7 +332,15 @@ async function openSettings() {
   } catch {
     // The explanatory and legal surfaces stay available even if a connection is temporarily unavailable.
   }
-  body.replaceChildren(workflowCard(), connectionCard(config), plansCard(), legalCard());
+  body.replaceChildren(
+    accountCard(config),
+    githubCard(config),
+    providersCard(config),
+    billingCard(config),
+    workflowCard(),
+    connectionCard(config),
+    legalCard(),
+  );
 }
 
 function metric(title, value, detail) {
@@ -317,7 +462,7 @@ function renderModelComparison(target, comparison) {
     section.append(
       safeLink(
         `https://github.com/clarityosbaerbelwesterop-gif/Odin-Agent-/actions/runs/${comparison.runId}`,
-        "Original-Run öffnen ↗",
+        "Original-Run öffnen",
         "evidence-source",
       ),
     );
@@ -421,7 +566,7 @@ function renderFrontier(target, reference, gpt55) {
         Math.max(...gaps.map((gap) => gap.percentagePoints), 1),
         "Das ist die zu schließende Differenz in derselben veröffentlichten Tabelle – kein Nachweis, dass Odin sie bereits schließt.",
       ),
-      safeLink(reference.source.url, "Quelle: OpenAI GPT-6 Astra ↗", "evidence-source"),
+      safeLink(reference.source.url, "Quelle: OpenAI GPT-6 Astra", "evidence-source"),
     );
   }
   const targetCard = node("div", undefined, "target-card");
@@ -434,17 +579,21 @@ function renderFrontier(target, reference, gpt55) {
     ),
   );
   if (gpt55?.source?.url)
-    targetCard.append(safeLink(gpt55.source.url, "Quelle: OpenAI GPT-5.5 ↗", "evidence-source"));
+    targetCard.append(safeLink(gpt55.source.url, "Quelle: OpenAI GPT-5.5", "evidence-source"));
   section.append(targetCard);
   target.append(section);
 }
 
 async function openBenchmarks() {
   byId("chat-layout").hidden = true;
+  byId("models-panel").hidden = true;
+  byId("system-panel").hidden = true;
   byId("benchmarks").hidden = false;
   byId("page-title").textContent = "Benchmarks";
   byId("benchmark-view").classList.add("selected");
   byId("chat-view").classList.remove("selected");
+  byId("models-view").classList.remove("selected");
+  byId("system-view").classList.remove("selected");
   const target = byId("benchmark-content");
   target.replaceChildren(node("p", "Lade verifizierbare Evidenz …", "muted"));
   try {
@@ -477,3 +626,130 @@ if (settings) {
 }
 const benchmark = byId("benchmark-view");
 if (benchmark) benchmark.onclick = () => void openBenchmarks();
+
+function surface(id, title, nav) {
+  byId("chat-layout").hidden = true;
+  byId("benchmarks").hidden = true;
+  byId("models-panel").hidden = id !== "models-panel";
+  byId("system-panel").hidden = id !== "system-panel";
+  byId("page-title").textContent = title;
+  for (const buttonId of ["chat-view", "models-view", "system-view", "benchmark-view"])
+    byId(buttonId)?.classList.toggle("selected", buttonId === nav);
+}
+
+function modelCard(model) {
+  const item = node("article", undefined, "product-model-card");
+  const top = node("div", undefined, "product-card-top");
+  top.append(
+    node("span", (model.plan ?? "model").toUpperCase(), "plan-status"),
+    node("span", model.provider.toUpperCase(), "info-eyebrow"),
+  );
+  item.append(top, node("h3", model.label), node("code", model.model));
+  if (model.summary) item.append(node("p", model.summary, "muted"));
+  const capabilities = [];
+  const profile = model.profile?.capabilities ?? {};
+  if (profile.contextWindowTokens)
+    capabilities.push(`Kontext: ${profile.contextWindowTokens.toLocaleString()} Tokens`);
+  if (profile.imageInput) capabilities.push("Bild + Text");
+  if (profile.toolUse) capabilities.push("Tool-Nutzung");
+  if (profile.streaming) capabilities.push("Streaming");
+  if (profile.reasoningEfforts?.length)
+    capabilities.push(`Reasoning: ${profile.reasoningEfforts.join(", ")}`);
+  if (model.recommendedFor?.length)
+    capabilities.push(`Geeignet für: ${model.recommendedFor.join(", ")}`);
+  addList(item, capabilities.length ? capabilities : ["Capability-Profil ist verbunden."]);
+  const use = node("button", "In Mission verwenden", "model-use");
+  use.type = "button";
+  use.onclick = () => {
+    byId("model").value = model.id;
+    byId("chat-view").click();
+    byId("prompt").focus();
+  };
+  item.append(use);
+  return item;
+}
+
+async function openModels() {
+  surface("models-panel", "Modelle", "models-view");
+  const target = byId("model-cards");
+  target.replaceChildren(node("p", "Lade serverseitig verbundene Modelle …", "muted"));
+  try {
+    const config = await request("/api/config");
+    target.replaceChildren();
+    if (!config.models?.length) {
+      target.append(
+        node(
+          "p",
+          "Kein Modell ist serverseitig verbunden. Provider-Schlüssel bleiben ausschließlich im Control Plane.",
+          "empty-product-state",
+        ),
+      );
+      return;
+    }
+    for (const model of config.models) target.append(modelCard(model));
+  } catch (error) {
+    target.replaceChildren(
+      node("p", `Modelle konnten nicht geladen werden: ${error.message}`, "empty-product-state"),
+    );
+  }
+}
+
+function statusCard(name, state, copy) {
+  const item = node("article", undefined, "system-card");
+  item.append(node("span", state, "plan-status"), node("h3", name), node("p", copy, "muted"));
+  return item;
+}
+
+async function openSystem() {
+  surface("system-panel", "Odin System", "system-view");
+  const target = byId("system-content");
+  target.replaceChildren(node("p", "Prüfe Produktstatus …", "muted"));
+  let config = null;
+  try {
+    config = await request("/api/config");
+  } catch {}
+  target.replaceChildren(
+    statusCard(
+      "Mission Runtime",
+      "LIVE",
+      "Plan, Zustände, Budgets, Pause, Fortsetzen, Stoppen und wiederaufnehmbare Missionen.",
+    ),
+    statusCard(
+      "Model Control",
+      config?.models?.length ? "LIVE" : "NICHT VERBUNDEN",
+      config?.models?.length
+        ? `${config.models.length} Modellroute(n) sind serverseitig verbunden.`
+        : "Keine Provider-Credentials sind in diesem Deployment aktiv.",
+    ),
+    statusCard(
+      "Coding Workspace",
+      config?.workspace?.writable ? "LIVE" : "BEGRENZT",
+      "Dateiänderungen, Diffs und isolierte HTML-Vorschau mit serverseitiger Workspace-Grenze.",
+    ),
+    statusCard(
+      "Verification",
+      "LIVE",
+      "Qualitätsgates, Review und Evidenz bleiben vom Modelloutput getrennt.",
+    ),
+    statusCard(
+      "Research",
+      config?.research ? "LIVE" : "NICHT VERBUNDEN",
+      config?.research
+        ? `Aktiver Adapter: ${config.research}.`
+        : "Kein Research-Adapter verbunden.",
+    ),
+    statusCard(
+      "Auth + RLS",
+      config?.user ? "LIVE" : "ANMELDUNG ERFORDERLICH",
+      "Neon Auth, serverseitige Sessions, nutzergebundener Postgres-Kontext und Row-Level Security.",
+    ),
+    statusCard(
+      "Skills + Memory + Tool OS",
+      "CORE",
+      "Die verifizierten Odin-Kernmodule bleiben unter Runtime-Autorität. Diese Preview zeigt ihren Status, ohne Client oder Modell zusätzliche Berechtigungen zu geben.",
+    ),
+  );
+}
+
+byId("models-view")?.addEventListener("click", () => void openModels());
+byId("system-view")?.addEventListener("click", () => void openSystem());

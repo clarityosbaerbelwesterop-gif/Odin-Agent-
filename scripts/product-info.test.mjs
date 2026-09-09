@@ -4,21 +4,23 @@ import test from "node:test";
 
 const read = (path) => readFile(path, "utf8");
 
-test("settings ships step-by-step runtime education, planned tiers and legal links", async () => {
+test("settings ships product controls, runtime education and legal links", async () => {
   const [html, script] = await Promise.all([read("web/chat.html"), read("web/product-info.js")]);
   assert.match(html, /product-info\.css/u);
   assert.match(html, /product-info\.js/u);
-  assert.match(html, /Settings & information/u);
+  assert.match(html, /Einstellungen & Informationen/u);
   for (const phrase of [
     "Aufgabe verstehen",
     "Kontext zusammenstellen",
     "Modell auswählen",
     "Werkzeuge kontrolliert nutzen",
     "Prüfen und reparieren",
-    "Free",
-    "Pro",
-    "Ultra",
-    "NOCH NICHT BUCHBAR",
+    "FREE",
+    "PRO",
+    "ULTRA",
+    "Checkout nicht konfiguriert",
+    "GitHub Workspace",
+    "Model Provider",
     "Datenschutzerklärung",
     "Impressum",
   ])
@@ -65,7 +67,7 @@ test("public legal surfaces keep incomplete operator and compliance gates visibl
   );
   assert.match(pages[0], /PREVIEW-ENTWURF/u);
   assert.match(pages[0], /\[BETREIBERNAME/u);
-  assert.match(pages[1], /noch keine verbindlichen Odin-Preise/u);
+  assert.match(pages[1], /Verbindliche Preise werden ausschließlich im Stripe Checkout angezeigt/u);
   assert.match(pages[2], /PARTIALLY VERIFIED/u);
   assert.match(pages[3], /BLOCKED · BETREIBERANGABEN FEHLEN/u);
   for (const page of pages) {

@@ -1,5 +1,14 @@
 # Security model
 
+## P–R hosted product additions
+
+User provider and GitHub tokens use AES-256-GCM under the server-only
+`ODIN_CREDENTIAL_ENCRYPTION_KEY`; APIs expose connection metadata and an eight-hex fingerprint only.
+GitHub OAuth state is random, hashed, tenant-bound, expiring and one-time. Repository writes use a fresh
+`odin/*` branch and never target the selected default branch. Stripe signatures have a five-minute
+tolerance; event IDs are idempotent and older subscription events cannot overwrite newer account state.
+Paid routes fail closed without operator Price IDs. These controls still require live deployment proof.
+
 Status: deterministic safeguards through M28 and intelligence A–C are repository-verified on `main`.
 The D–F amplification package is adversarially verified on PR #36 pending its final governance-head CI and
 merge. M12/M26 remain **PARTIALLY_VERIFIED** for real hosted-sandbox/public-production isolation. Controls

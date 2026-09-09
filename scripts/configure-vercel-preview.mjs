@@ -7,7 +7,7 @@ import { createNeonPool } from "../dist/src/chat/neon-database.js";
 export const scope = Object.freeze({
   repository: "clarityosbaerbelwesterop-gif/Odin-Agent-",
   repoId: 1355059364,
-  gitBranch: "agent/chathub-modes-evidence",
+  gitBranch: "agent/mno-product-workspace-pro-preview",
   team: "team_5KyyWAPW9vLU4EiaKaYZuhaG",
   project: "prj_GdWyUqh2FXRUAwCUZrewFwa0w4yl",
   neonProject: "cold-mode-01560070",
@@ -21,10 +21,11 @@ export function validateInvocation(env) {
   assert.match(env.GITHUB_SHA ?? "", /^[a-f0-9]{40}$/u, "HEAD_REQUIRED");
   for (const key of ["VERCEL_TOKEN", "NEON_API_KEY", "NV_API_KEY"])
     assert(env[key] && !/[\r\n]/u.test(env[key]), `MISSING_${key}`);
+  if (env.NV_API_KEY_2) assert(!/[\r\n]/u.test(env.NV_API_KEY_2), "INVALID_NV_API_KEY_2");
 }
 
 export function previewVariable(key, value) {
-  assert(["ODIN_DATABASE_URL", "NEON_AUTH_BASE_URL", "NV_API_KEY"].includes(key));
+  assert(["ODIN_DATABASE_URL", "NEON_AUTH_BASE_URL", "NV_API_KEY", "NV_API_KEY_2"].includes(key));
   assert.equal(typeof value, "string");
   assert(value.length > 0);
   return { key, value, type: "sensitive", target: ["preview"], gitBranch: scope.gitBranch };
@@ -111,7 +112,7 @@ async function configure() {
     );
     stage = "restricted application login";
     pool = createNeonPool(connection.uri);
-    const role = (await pool.query("SELECT * FROM pg_roles WHERE rolname='odin_app'")).rows[0];
+    const role = (await pool.query("SELECT * FROM pg_roles WHERE rolname='odin_mno_app'")).rows[0];
     assert.equal(
       Boolean(existing),
       Boolean(role),
@@ -126,9 +127,9 @@ async function configure() {
       try {
         await client.query("BEGIN");
         await client.query(
-          `CREATE ROLE odin_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS NOREPLICATION PASSWORD '${password}'`,
+          `CREATE ROLE odin_mno_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS NOREPLICATION PASSWORD '${password}'`,
         );
-        await client.query("GRANT odin_runtime TO odin_app WITH INHERIT FALSE, SET TRUE");
+        await client.query("GRANT odin_runtime TO odin_mno_app WITH INHERIT FALSE, SET TRUE");
         await client.query("COMMIT");
       } catch (error) {
         await client.query("ROLLBACK");
@@ -136,11 +137,12 @@ async function configure() {
       } finally {
         client.release();
       }
-      uri.username = "odin_app";
+      uri.username = "odin_mno_app";
       uri.password = password;
       appUri = uri.toString();
     }
-    const checked = (await pool.query("SELECT * FROM pg_roles WHERE rolname='odin_app'")).rows[0];
+    const checked = (await pool.query("SELECT * FROM pg_roles WHERE rolname='odin_mno_app'"))
+      .rows[0];
     assert(checked?.rolcanlogin);
     for (const field of [
       "rolsuper",
@@ -153,7 +155,7 @@ async function configure() {
       assert.equal(checked[field], false, `ROLE_${field}`);
     const memberships = (
       await pool.query(
-        "SELECT r.rolname, m.admin_option, m.inherit_option, m.set_option FROM pg_auth_members m JOIN pg_roles r ON r.oid=m.roleid WHERE m.member='odin_app'::regrole",
+        "SELECT r.rolname, m.admin_option, m.inherit_option, m.set_option FROM pg_auth_members m JOIN pg_roles r ON r.oid=m.roleid WHERE m.member='odin_mno_app'::regrole",
       )
     ).rows;
     assert.deepEqual(memberships, [
@@ -166,7 +168,7 @@ async function configure() {
         try {
           assert.equal(
             (await client.query("SELECT current_user")).rows[0].current_user,
-            "odin_app",
+            "odin_mno_app",
           );
           await assert.rejects(client.query('SELECT id FROM neon_auth."user" LIMIT 1'), {
             code: "42501",
@@ -193,6 +195,7 @@ async function configure() {
       ...(appUri ? [previewVariable("ODIN_DATABASE_URL", appUri)] : []),
       previewVariable("NEON_AUTH_BASE_URL", authUrl),
       previewVariable("NV_API_KEY", process.env.NV_API_KEY),
+      previewVariable("NV_API_KEY_2", process.env.NV_API_KEY_2),
     ];
     for (const value of values) {
       const result = await api(
@@ -204,7 +207,7 @@ async function configure() {
       assert.equal(result.failed?.length ?? 0, 0, "ENV_WRITE_FAILED");
     }
     report.checks.push(
-      "Database, Auth and NVIDIA credentials set only for the approved preview branch",
+      "Database, Auth and both NVIDIA credentials set only for the approved preview branch",
     );
     stage = "preview deployment";
     const deployment = await api("vercel", "/v13/deployments", "POST", {

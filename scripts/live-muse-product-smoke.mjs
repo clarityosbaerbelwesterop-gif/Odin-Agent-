@@ -25,7 +25,8 @@ try {
       messages: [
         {
           role: "user",
-          content: "Return one short sentence confirming that this model endpoint can answer a text request.",
+          content:
+            "Return one short sentence confirming that this model endpoint can answer a text request.",
         },
       ],
       temperature: 0.95,

@@ -166,7 +166,7 @@ function renderEvent(event) {
       row.append(
         element(
           "span",
-          step.status === "done" ? "✓" : step.status === "active" ? "→" : "·",
+          step.status === "done" ? "DONE" : step.status === "active" ? "RUN" : "WAIT",
           "step-marker",
         ),
         element("span", step.title),
@@ -322,9 +322,13 @@ async function openConversation(id) {
 }
 function showChat() {
   $("benchmarks").hidden = true;
+  $("models-panel").hidden = true;
+  $("system-panel").hidden = true;
   $("chat-layout").hidden = false;
   $("chat-view").classList.add("selected");
   $("benchmark-view").classList.remove("selected");
+  $("models-view").classList.remove("selected");
+  $("system-view").classList.remove("selected");
 }
 async function initialize() {
   config = await api("/api/config");
@@ -335,15 +339,17 @@ async function initialize() {
     $("model").append(option);
   }
   for (const model of config.models) {
-    const option = element("option", model.label);
+    const tier = model.plan ? model.plan.toUpperCase() : "MODEL";
+    const option = element("option", `${model.label} · ${tier}`);
     option.value = model.id;
     $("model").append(option);
   }
   $("workspace-status").textContent = config.workspace
     ? config.workspace.writable
-      ? "Workspace connected"
-      : "Workspace · read only"
-    : "No workspace connected";
+      ? "Workspace verbunden"
+      : "Workspace · nur lesen"
+    : "Workspace nicht verbunden";
+  $("model-count-nav").textContent = String(config.models.length);
   $("connection").textContent = "Connected";
   updateControls();
   updateMode();
@@ -407,7 +413,7 @@ $("new-chat").onclick = () => {
   pendingRequest = null;
   resetConversation();
   showChat();
-  $("page-title").textContent = "Chathub";
+  $("page-title").textContent = "Mission";
   $("prompt").focus();
 };
 $("chat-view").onclick = showChat;

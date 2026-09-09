@@ -1,5 +1,14 @@
 # Odin architecture
 
+## P–R product control plane (2026-09-09)
+
+The hosted product reuses Neon Auth and the transaction-local `odin_runtime` identity boundary. Product
+accounts, encrypted BYOK credentials, GitHub connections, one-time OAuth state and Stripe event records
+are tenant-scoped persistence, not new mission or permission authorities. GitHub coding implements the
+existing repository workspace contract and writes through a newly created `odin/*` branch; GitHub checks
+are observed as quality evidence and absent checks remain incomplete. Stripe webhooks, never browser
+redirects, update entitlements with event replay and ordering guards. M3, M5 and M11 remain authoritative.
+
 Status: M0–M28 and intelligence A–C are merged and repository-verified on `main`. Intelligence D–F
 is package-verified on PR #36 and awaits only the final governance-head CI plus merge. M12/M26 remain
 **PARTIALLY_VERIFIED** for real hosted-sandbox/public-production proof; no repository-local contract,
