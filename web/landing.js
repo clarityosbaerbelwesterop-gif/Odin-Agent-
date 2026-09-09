@@ -91,6 +91,6 @@ for (const button of document.querySelectorAll("[data-mode]")) {
     });
     const open = document.getElementById("mode-open");
     open.href = `/app?mode=${id}`;
-    open.textContent = `${mode.cta} ↗`;
+    open.textContent = `${mode.cta}`;
   });
 }

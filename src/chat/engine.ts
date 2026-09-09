@@ -79,6 +79,9 @@ export class ChatEngine {
         label: model.label,
         provider: model.provider.id,
         model: model.model,
+        plan: model.plan ?? "free",
+        summary: model.summary ?? "",
+        recommendedFor: [...(model.recommendedFor ?? [])],
         profile: model.provider.capabilities(model.model),
       })),
       modes: Object.entries(MODE_POLICIES).map(([id, policy]) => ({

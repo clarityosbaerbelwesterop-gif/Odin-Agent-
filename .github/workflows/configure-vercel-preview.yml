@@ -3,7 +3,7 @@ name: Configure Odin Vercel preview
 on:
   workflow_dispatch:
   push:
-    branches: [agent/chathub-modes-evidence]
+    branches: [agent/mno-product-workspace-pro-preview]
     paths: [.github/workflows/configure-vercel-preview.yml, scripts/configure-vercel-preview.mjs]
 
 permissions:
@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   preview:
-    if: github.repository == 'clarityosbaerbelwesterop-gif/Odin-Agent-' && github.ref == 'refs/heads/agent/chathub-modes-evidence'
+    if: github.repository == 'clarityosbaerbelwesterop-gif/Odin-Agent-' && github.ref == 'refs/heads/agent/mno-product-workspace-pro-preview'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -31,6 +31,7 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_ODIN_TOKEN }}
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
           NV_API_KEY: ${{ secrets.NV_API_KEY }}
+          NV_API_KEY_2: ${{ secrets.NV_API_KEY_2 }}
           FREE_API_KEY: ${{ secrets.FREE_API_KEY }}
         run: node scripts/configure-vercel-preview.mjs
       - uses: actions/upload-artifact@v4

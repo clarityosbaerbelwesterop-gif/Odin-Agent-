@@ -1,17 +1,23 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { join } from "node:path";
 import { attachDatabasePool } from "@vercel/functions";
+import { AnthropicProvider } from "../providers/anthropic.js";
 import { CapabilityRegistry, makeCapabilities } from "../providers/capabilities.js";
 import { NvidiaProvider } from "../providers/nvidia.js";
+import { OpenAIProvider } from "../providers/openai.js";
+import { OpenAICompatibleProvider } from "../providers/openai-compatible.js";
+import { OpenRouterProvider } from "../providers/openrouter.js";
 import { readBenchmarks } from "./benchmarks.js";
 import { resolveNeonAuthUrl } from "./deployment.js";
 import { ChatEngine } from "./engine.js";
+import { GitHubWorkspace } from "./github-workspace.js";
 import { DEFAULT_CHAT_LIMITS } from "./modes.js";
 import { NeonAuth } from "./neon-auth.js";
 import { createNeonPool, NeonActorDatabase } from "./neon-database.js";
 import { NeonChatStore, NeonMissionStore } from "./neon-store.js";
 import { NeonWorkspace } from "./neon-workspace.js";
 import { PREVIEW_CSP } from "./preview.js";
+import { CredentialVault, ProductStore, provider, verifyStripeSignature } from "./product.js";
 import { WikipediaResearchAdapter } from "./research.js";
 import { hashText, identifier, integer, object, publicError } from "./safety.js";
 import { ChatError, type ChatModel } from "./types.js";
@@ -41,46 +47,101 @@ function createServices() {
   attachDatabasePool(pool);
   const auth = new NeonAuth(authUrl);
   const models: ChatModel[] = [];
-  const credential = () => process.env.NV_API_KEY ?? process.env.NVIDIA_API_KEY ?? "";
-  console.info("Odin backend readiness", {
-    databaseConfigured: true,
-    authConfigured: true,
-    modelConfigured: !!credential(),
-  });
-  if (credential()) {
-    const model = "moonshotai/kimi-k3";
+  const addNvidiaModel = (input: {
+    id: string;
+    label: string;
+    model: string;
+    plan: "free" | "pro" | "ultra";
+    summary: string;
+    recommendedFor: readonly string[];
+    credential: () => string;
+    version: string;
+    reference: string;
+    capabilities: ReturnType<typeof makeCapabilities>;
+    timeoutMs: number;
+  }) => {
+    if (!input.credential()) return;
     const capabilities = new CapabilityRegistry([
       {
-        model,
+        model: input.model,
         provider: "nvidia",
-        version: "nvidia-build-2026-09-04",
+        version: input.version,
         provenance: {
           kind: "provider",
-          observedAt: "2026-09-04T00:00:00.000Z",
-          reference: "https://docs.api.nvidia.com/nim/reference/moonshotai-kimi-k3-infer",
+          observedAt: "2026-09-09T00:00:00.000Z",
+          reference: input.reference,
         },
-        capabilities: makeCapabilities({
-          textInput: true,
-          toolUse: true,
-          streaming: true,
-          reasoningEfforts: ["low", "high", "max"],
-          contextWindowTokens: 1048576,
-          maxOutputTokens: 65536,
-        }),
+        capabilities: input.capabilities,
       },
     ]);
     models.push({
-      id: "kimi",
-      label: "Kimi K3",
-      model,
+      id: input.id,
+      label: input.label,
+      model: input.model,
+      plan: input.plan,
+      summary: input.summary,
+      recommendedFor: input.recommendedFor,
       provider: new NvidiaProvider({
         capabilities,
-        credential,
+        credential: input.credential,
         reasoningParameter: "reasoning_effort",
-        defaultTimeoutMs: 180000,
+        defaultTimeoutMs: input.timeoutMs,
       }),
     });
-  }
+  };
+  addNvidiaModel({
+    id: "kimi",
+    label: "Kimi K3",
+    model: "moonshotai/kimi-k3",
+    plan: "free",
+    summary: "Großer Kontext für Coding, Reasoning und lange Aufgaben.",
+    recommendedFor: ["Coding", "Thinking", "Long context"],
+    credential: () => process.env.NV_API_KEY ?? process.env.NVIDIA_API_KEY ?? "",
+    version: "nvidia-build-2026-09-04",
+    reference: "https://docs.api.nvidia.com/nim/reference/moonshotai-kimi-k3-infer",
+    capabilities: makeCapabilities({
+      textInput: true,
+      toolUse: true,
+      streaming: true,
+      reasoningEfforts: ["low", "high", "max"],
+      contextWindowTokens: 1048576,
+      maxOutputTokens: 65536,
+    }),
+    timeoutMs: 180000,
+  });
+  addNvidiaModel({
+    id: "muse-glimmer",
+    label: "Muse Glimmer 30B",
+    model: "meta/muse-glimmer-30b",
+    plan: "pro",
+    summary: "Multimodales Reasoning-Modell für agentische Aufgaben, Coding und Tool-Nutzung.",
+    recommendedFor: ["Pro", "Coding", "Agents", "Vision", "Tool use"],
+    credential: () =>
+      process.env.NV_API_KEY_2 ??
+      process.env.NV_PRO_API_KEY ??
+      process.env.NV_API_KEY ??
+      process.env.NVIDIA_API_KEY ??
+      "",
+    version: "nvidia-build-2026-09-09",
+    reference: "https://docs.api.nvidia.com/nim/re/reference/meta-muse-glimmer-30b-infer",
+    capabilities: makeCapabilities({
+      textInput: true,
+      imageInput: true,
+      toolUse: true,
+      streaming: true,
+      temperature: true,
+      reasoningEfforts: ["minimal", "low", "medium", "high", "max"],
+      contextWindowTokens: 131072,
+      maxOutputTokens: 8192,
+    }),
+    timeoutMs: 120000,
+  });
+  console.info("Odin backend readiness", {
+    databaseConfigured: true,
+    authConfigured: true,
+    modelCount: models.length,
+    modelIds: models.map((model) => model.id),
+  });
   return { pool, auth, models };
 }
 export async function hostedHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -113,7 +174,11 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
     const url = new URL(req.url ?? "/", origin);
     if (url.pathname === "/api" && url.searchParams.has("odin_path"))
       url.pathname = `/api/${url.searchParams.get("odin_path")}`;
-    if (!["GET", "HEAD"].includes(method) && req.headers["x-odin-request"] !== "1")
+    if (
+      !["GET", "HEAD"].includes(method) &&
+      url.pathname !== "/api/stripe/webhook" &&
+      req.headers["x-odin-request"] !== "1"
+    )
       throw new ChatError("CSRF_DENIED", "Missing same-origin request header.", 403);
     if (url.pathname === "/api/auth/config") {
       send(res, 200, { provider: "neon", emailVerificationRequired: true });
@@ -121,6 +186,63 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
     }
     services ??= createServices();
     const { auth, pool, models } = services;
+    if (url.pathname === "/api/stripe/webhook" && method === "POST") {
+      const raw = await rawBody(req);
+      verifyStripeSignature(
+        raw,
+        String(req.headers["stripe-signature"] ?? ""),
+        process.env.STRIPE_WEBHOOK_SECRET,
+      );
+      const event = JSON.parse(raw.toString("utf8")) as {
+        id?: string;
+        created?: number;
+        type?: string;
+        data?: { object?: Record<string, unknown> };
+      };
+      const item = event.data?.object;
+      const metadata = item?.metadata as Record<string, unknown> | undefined;
+      const owner = metadata?.odin_owner_id;
+      if (!event.id || !Number.isSafeInteger(event.created) || typeof owner !== "string")
+        throw new ChatError("STRIPE_EVENT", "Invalid Stripe event.");
+      const webhookDb = new NeonActorDatabase(pool, { id: owner });
+      await webhookDb.transaction(async (client) => {
+        const accepted = await client.query(
+          "INSERT INTO odin_api.stripe_events(event_id,created) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING event_id",
+          [event.id, event.created],
+        );
+        if (!accepted.rows.length) return;
+        const encoded = JSON.stringify(item?.items ?? {});
+        const plan =
+          process.env.STRIPE_ULTRA_PRICE_ID && encoded.includes(process.env.STRIPE_ULTRA_PRICE_ID)
+            ? "ultra"
+            : process.env.STRIPE_PRO_PRICE_ID && encoded.includes(process.env.STRIPE_PRO_PRICE_ID)
+              ? "pro"
+              : "free";
+        const status = String(
+          item?.status ?? (event.type === "customer.subscription.deleted" ? "canceled" : "free"),
+        );
+        await client.query(
+          `INSERT INTO odin_api.accounts(plan,subscription_status,stripe_customer_id,stripe_subscription_id,stripe_event_created,cancel_at_period_end)
+           VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(owner_id) DO UPDATE SET
+           plan=CASE WHEN excluded.stripe_event_created>=odin_api.accounts.stripe_event_created THEN excluded.plan ELSE odin_api.accounts.plan END,
+           subscription_status=CASE WHEN excluded.stripe_event_created>=odin_api.accounts.stripe_event_created THEN excluded.subscription_status ELSE odin_api.accounts.subscription_status END,
+           stripe_customer_id=COALESCE(excluded.stripe_customer_id,odin_api.accounts.stripe_customer_id),
+           stripe_subscription_id=COALESCE(excluded.stripe_subscription_id,odin_api.accounts.stripe_subscription_id),
+           stripe_event_created=GREATEST(excluded.stripe_event_created,odin_api.accounts.stripe_event_created),
+           cancel_at_period_end=CASE WHEN excluded.stripe_event_created>=odin_api.accounts.stripe_event_created THEN excluded.cancel_at_period_end ELSE odin_api.accounts.cancel_at_period_end END,updated_at=now()`,
+          [
+            plan,
+            status,
+            item?.customer ?? null,
+            item?.id ?? null,
+            event.created,
+            item?.cancel_at_period_end === true,
+          ],
+        );
+      });
+      send(res, 200, { received: true });
+      return;
+    }
     if (url.pathname.startsWith("/api/auth/") && method === "POST") {
       const address =
         String(req.headers["x-forwarded-for"] ?? "unknown").split(",")[0] ?? "unknown";
@@ -181,19 +303,38 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
     }
     const identity = await auth.session(req.headers.cookie ?? "", origin);
     const db = new NeonActorDatabase(pool, identity);
+    const product = new ProductStore(
+      db,
+      new CredentialVault(process.env.ODIN_CREDENTIAL_ENCRYPTION_KEY),
+    );
+    const githubConnection = await product.github();
+    const githubToken = githubConnection.connected ? await product.githubToken() : undefined;
+    const availableModels = [...models, ...(await byokModels(product))];
     const store = new NeonChatStore(db);
     const createEngine = (
       database: NeonActorDatabase,
       conversationId?: string,
       signal?: AbortSignal,
     ) => {
-      const quality = conversationId
-        ? new NeonWorkspace(database, conversationId, async () => {})
-        : undefined;
+      const githubReady =
+        githubConnection.connected &&
+        typeof githubConnection.repository === "string" &&
+        typeof githubConnection.defaultBranch === "string" &&
+        githubToken;
+      const quality = githubReady
+        ? new GitHubWorkspace(
+            githubToken,
+            githubConnection.repository,
+            githubConnection.defaultBranch,
+            async () => {},
+          )
+        : conversationId
+          ? new NeonWorkspace(database, conversationId, async () => {})
+          : undefined;
       return new ChatEngine({
         store: new NeonChatStore(database),
         events: new NeonMissionStore(database),
-        models,
+        models: availableModels,
         autoRun: false,
         atomic: (action) =>
           database.transaction(async (client) => {
@@ -207,7 +348,15 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
         ...(quality && conversationId
           ? {
               quality,
-              workspace: (changed) => new NeonWorkspace(database, conversationId, changed),
+              workspace: (changed) =>
+                githubReady
+                  ? new GitHubWorkspace(
+                      githubToken,
+                      githubConnection.repository,
+                      githubConnection.defaultBranch,
+                      changed,
+                    )
+                  : new NeonWorkspace(database, conversationId, changed),
             }
           : {}),
         research: new WikipediaResearchAdapter("de"),
@@ -228,9 +377,21 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       return;
     }
     if (url.pathname === "/api/config" && method === "GET") {
+      const account = await product.account();
       send(res, 200, {
         ...createEngine(db).capabilities(),
         user: { email: identity.email },
+        account,
+        providers: await product.credentials(),
+        github: await product.github(),
+        billing: {
+          proCheckoutConfigured: !!(
+            process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRO_PRICE_ID
+          ),
+          ultraCheckoutConfigured: !!(
+            process.env.STRIPE_SECRET_KEY && process.env.STRIPE_ULTRA_PRICE_ID
+          ),
+        },
         execution: "request",
         workspace: {
           connected: true,
@@ -239,6 +400,205 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
           quality: "Syntax checks only; browser execution is isolated in the preview.",
         },
       });
+      return;
+    }
+    if (url.pathname === "/api/providers" && method === "GET") {
+      send(res, 200, { providers: await product.credentials() });
+      return;
+    }
+    const providerRoute = /^\/api\/providers\/([a-z]+)$/u.exec(url.pathname);
+    if (providerRoute) {
+      const id = provider(providerRoute[1]);
+      if (method === "PUT") {
+        const body = object(await jsonBody(req), ["key"]);
+        if (typeof body.key !== "string")
+          throw new ChatError("INVALID_CREDENTIAL", "Enter a provider key.");
+        await verifyProviderKey(id, body.key);
+        send(res, 200, await product.saveCredential(id, body.key));
+        return;
+      }
+      if (method === "DELETE") {
+        await product.deleteCredential(id);
+        send(res, 200, { connected: false });
+        return;
+      }
+    }
+    if (url.pathname === "/api/github/connect" && method === "GET") {
+      if (!process.env.GITHUB_OAUTH_CLIENT_ID)
+        throw new ChatError("GITHUB_NOT_CONFIGURED", "GitHub OAuth is not configured.", 503);
+      const target = new URL("https://github.com/login/oauth/authorize");
+      target.searchParams.set("client_id", process.env.GITHUB_OAUTH_CLIENT_ID);
+      target.searchParams.set("redirect_uri", `${origin}/api/github/callback`);
+      target.searchParams.set("scope", "repo read:user");
+      target.searchParams.set("state", await product.createOAuthState());
+      res.statusCode = 302;
+      res.setHeader("Location", target.href);
+      res.end();
+      return;
+    }
+    if (url.pathname === "/api/github/callback" && method === "GET") {
+      await product.consumeOAuthState(url.searchParams.get("state") ?? "");
+      const code = url.searchParams.get("code");
+      const client = process.env.GITHUB_OAUTH_CLIENT_ID;
+      const secret = process.env.GITHUB_OAUTH_CLIENT_SECRET;
+      if (!code || !client || !secret)
+        throw new ChatError("GITHUB_OAUTH", "GitHub authorization failed.", 400);
+      const response = await fetch("https://github.com/login/oauth/access_token", {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id: client,
+          client_secret: secret,
+          code,
+          redirect_uri: `${origin}/api/github/callback`,
+        }),
+      });
+      const token = (await response.json()) as { access_token?: string };
+      if (!response.ok || !token.access_token)
+        throw new ChatError("GITHUB_OAUTH", "GitHub authorization failed.", 502);
+      const user = await github(token.access_token, "/user");
+      if (Array.isArray(user) || typeof user.login !== "string")
+        throw new ChatError("GITHUB_UPSTREAM", "GitHub user response was invalid.", 502);
+      await product.saveGithub(token.access_token, user.login);
+      res.statusCode = 303;
+      res.setHeader("Location", "/app?settings=github");
+      res.end();
+      return;
+    }
+    if (url.pathname === "/api/github" && method === "GET") {
+      send(res, 200, await product.github());
+      return;
+    }
+    if (url.pathname === "/api/github/repositories" && method === "GET") {
+      const token = await product.githubToken();
+      if (!token) throw new ChatError("GITHUB_NOT_CONNECTED", "Connect GitHub first.", 409);
+      const repositories = (await github(
+        token,
+        "/user/repos?affiliation=owner,collaborator,organization_member&per_page=100&sort=updated",
+      )) as unknown[];
+      send(res, 200, { repositories: repositories.map(publicRepository) });
+      return;
+    }
+    if (url.pathname === "/api/github/repository" && method === "PUT") {
+      const body = object(await jsonBody(req), ["repository", "branch"]);
+      await product.selectRepository(String(body.repository ?? ""), String(body.branch ?? ""));
+      send(res, 200, await product.github());
+      return;
+    }
+    if (url.pathname === "/api/github" && method === "DELETE") {
+      const token = await product.githubToken();
+      const client = process.env.GITHUB_OAUTH_CLIENT_ID;
+      const secret = process.env.GITHUB_OAUTH_CLIENT_SECRET;
+      if (token && client && secret) {
+        await fetch(`https://api.github.com/applications/${client}/token`, {
+          method: "DELETE",
+          headers: {
+            Accept: "application/vnd.github+json",
+            Authorization: `Basic ${Buffer.from(`${client}:${secret}`).toString("base64")}`,
+            "Content-Type": "application/json",
+            "User-Agent": "Odin-Agent",
+          },
+          body: JSON.stringify({ access_token: token }),
+          redirect: "error",
+          signal: AbortSignal.timeout(10_000),
+        }).catch(() => undefined);
+      }
+      await product.deleteGithub();
+      send(res, 200, { connected: false });
+      return;
+    }
+    if (url.pathname === "/api/billing/checkout" && method === "POST") {
+      const body = object(await jsonBody(req), ["plan"]);
+      const selected = body.plan === "pro" || body.plan === "ultra" ? body.plan : undefined;
+      if (!selected) throw new ChatError("INVALID_PLAN", "Choose Pro or Ultra.");
+      const price =
+        selected === "pro" ? process.env.STRIPE_PRO_PRICE_ID : process.env.STRIPE_ULTRA_PRICE_ID;
+      if (!process.env.STRIPE_SECRET_KEY || !price)
+        throw new ChatError(
+          "CHECKOUT_NOT_CONFIGURED",
+          "Checkout is not configured for this plan.",
+          503,
+        );
+      const checkout = await stripe("checkout/sessions", {
+        mode: "subscription",
+        success_url: `${origin}/app?billing=pending`,
+        cancel_url: `${origin}/app?billing=cancelled`,
+        client_reference_id: identity.id,
+        "metadata[odin_owner_id]": identity.id,
+        "subscription_data[metadata][odin_owner_id]": identity.id,
+        "line_items[0][price]": price,
+        "line_items[0][quantity]": "1",
+      });
+      send(res, 200, { url: checkout.url });
+      return;
+    }
+    if (url.pathname === "/api/billing/portal" && method === "POST") {
+      await jsonBody(req);
+      const customer = await db.transaction(
+        async (client) =>
+          (await client.query("SELECT stripe_customer_id FROM odin_api.accounts")).rows[0]
+            ?.stripe_customer_id,
+      );
+      if (typeof customer !== "string")
+        throw new ChatError("PORTAL_UNAVAILABLE", "No billing account is linked yet.", 409);
+      const portal = await stripe("billing_portal/sessions", {
+        customer,
+        return_url: `${origin}/app?settings=billing`,
+      });
+      send(res, 200, { url: portal.url });
+      return;
+    }
+    if (url.pathname === "/api/account/export" && method === "GET") {
+      const exported = await db.transaction(async (client) => {
+        const tables = [
+          "accounts",
+          "credentials",
+          "github_connections",
+          "conversations",
+          "turns",
+          "events",
+        ];
+        const result: Record<string, unknown> = {};
+        for (const table of tables) {
+          const rows = (await client.query(`SELECT * FROM odin_api.${table}`)).rows;
+          result[table] =
+            table === "credentials" || table === "github_connections"
+              ? rows.map((row) => ({ ...row, ciphertext: "[REDACTED]" }))
+              : rows;
+        }
+        return result;
+      });
+      send(res, 200, { exportedAt: new Date().toISOString(), data: exported });
+      return;
+    }
+    if (url.pathname === "/api/account" && method === "DELETE") {
+      await jsonBody(req);
+      await db.transaction(async (client) => {
+        for (const table of [
+          "events",
+          "checkpoints",
+          "workspace_files",
+          "turns",
+          "mission_streams",
+          "conversations",
+          "leases",
+          "rate_limits",
+          "oauth_states",
+          "credentials",
+          "github_connections",
+          "accounts",
+        ])
+          await client.query(`DELETE FROM odin_api.${table}`);
+      });
+      const response = await auth.upstream(
+        "sign-out",
+        "POST",
+        origin,
+        req.headers.cookie ?? "",
+        {},
+      );
+      if (response.ok) res.setHeader("Set-Cookie", auth.cookies(response));
+      send(res, 200, { deleted: true, authAccountDeletionRequired: true });
       return;
     }
     if (url.pathname === "/api/benchmarks" && method === "GET") {
@@ -288,6 +648,16 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
         if (!token) throw new ChatError("BUSY", "A submission is already being saved.", 409);
         try {
           const body = object(await jsonBody(req), ["text", "mode", "modelId", "requestId"]);
+          const account = await product.account();
+          const selectedModel = availableModels.find((model) => model.id === body.modelId);
+          const ranks = { free: 0, pro: 1, ultra: 2 } as const;
+          const requiredPlan = body.mode === "ultra" ? "ultra" : (selectedModel?.plan ?? "free");
+          if (ranks[account.plan] < ranks[requiredPlan])
+            throw new ChatError(
+              "ENTITLEMENT_REQUIRED",
+              `This mission requires the ${requiredPlan} plan.`,
+              403,
+            );
           send(
             res,
             202,
@@ -454,6 +824,171 @@ async function jsonBody(req: IncomingMessage): Promise<unknown> {
   } catch {
     throw new ChatError("INVALID_JSON", "Invalid JSON body.");
   }
+}
+async function rawBody(req: IncomingMessage): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of req) {
+    const data = Buffer.from(chunk);
+    size += data.length;
+    if (size > 1_000_000) throw new ChatError("BODY_LIMIT", "Request is too large.", 413);
+    chunks.push(data);
+  }
+  return Buffer.concat(chunks);
+}
+async function github(token: string, path: string): Promise<Record<string, unknown> | unknown[]> {
+  const response = await fetch(`https://api.github.com${path}`, {
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "User-Agent": "Odin-Agent",
+    },
+    redirect: "error",
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new ChatError("GITHUB_UPSTREAM", "GitHub request failed.", 502);
+  return (await response.json()) as Record<string, unknown> | unknown[];
+}
+function publicRepository(value: unknown) {
+  const item = value as Record<string, unknown>;
+  return {
+    fullName: item.full_name,
+    private: item.private === true,
+    defaultBranch: item.default_branch,
+  };
+}
+async function verifyProviderKey(providerId: string, key: string): Promise<void> {
+  const endpoints: Record<string, [string, Record<string, string>]> = {
+    openai: ["https://api.openai.com/v1/models", { Authorization: `Bearer ${key}` }],
+    anthropic: [
+      "https://api.anthropic.com/v1/models?limit=1",
+      { "x-api-key": key, "anthropic-version": "2023-06-01" },
+    ],
+    openrouter: ["https://openrouter.ai/api/v1/auth/key", { Authorization: `Bearer ${key}` }],
+    nvidia: ["https://integrate.api.nvidia.com/v1/models", { Authorization: `Bearer ${key}` }],
+    google: ["https://generativelanguage.googleapis.com/v1beta/models", { "x-goog-api-key": key }],
+  };
+  const endpoint = endpoints[providerId];
+  if (!endpoint) throw new ChatError("INVALID_PROVIDER", "Unsupported provider.");
+  const response = await fetch(endpoint[0], {
+    headers: endpoint[1],
+    redirect: "error",
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok)
+    throw new ChatError("INVALID_CREDENTIAL", "The provider rejected this credential.", 400);
+  const catalog = JSON.stringify(await response.json());
+  const expected: Record<string, string> = {
+    openai: "gpt-4.1-mini",
+    anthropic: "claude-sonnet-4-20250514",
+    openrouter: "openrouter/auto",
+    nvidia: "moonshotai/kimi-k3",
+    google: "gemini-2.5-flash",
+  };
+  if (providerId !== "openrouter" && !catalog.includes(expected[providerId] ?? "model-unavailable"))
+    throw new ChatError(
+      "MODEL_UNAVAILABLE",
+      "The configured model is not available to this provider account.",
+      409,
+    );
+}
+async function byokModels(product: ProductStore): Promise<ChatModel[]> {
+  const definitions = [
+    { provider: "openai", id: "openai-gpt-4.1-mini", label: "GPT-4.1 mini", model: "gpt-4.1-mini" },
+    {
+      provider: "anthropic",
+      id: "anthropic-sonnet-4",
+      label: "Claude Sonnet 4",
+      model: "claude-sonnet-4-20250514",
+    },
+    {
+      provider: "openrouter",
+      id: "openrouter-auto",
+      label: "OpenRouter Auto",
+      model: "openrouter/auto",
+    },
+    {
+      provider: "nvidia",
+      id: "nvidia-kimi-k3-byok",
+      label: "Kimi K3 (BYOK)",
+      model: "moonshotai/kimi-k3",
+    },
+    {
+      provider: "google",
+      id: "google-gemini-2.5-flash",
+      label: "Gemini 2.5 Flash",
+      model: "gemini-2.5-flash",
+    },
+  ] as const;
+  const result: ChatModel[] = [];
+  for (const item of definitions) {
+    const credential = await product.credential(item.provider);
+    if (!credential) continue;
+    const capabilities = new CapabilityRegistry([
+      {
+        model: item.model,
+        provider: item.provider,
+        version: "p-r-catalog-2026-09-09",
+        provenance: {
+          kind: "provider",
+          observedAt: "2026-09-09T00:00:00.000Z",
+          reference: "provider account model endpoint",
+        },
+        capabilities: makeCapabilities({
+          textInput: true,
+          toolUse: true,
+          streaming: true,
+          temperature: true,
+          reasoningEfforts: ["low", "medium", "high"],
+          contextWindowTokens: 128000,
+          maxOutputTokens: 8192,
+        }),
+      },
+    ]);
+    const common = { capabilities, credential: () => credential, defaultTimeoutMs: 180_000 };
+    const adapter =
+      item.provider === "openai"
+        ? new OpenAIProvider(common)
+        : item.provider === "anthropic"
+          ? new AnthropicProvider(common)
+          : item.provider === "openrouter"
+            ? new OpenRouterProvider(common)
+            : item.provider === "nvidia"
+              ? new NvidiaProvider(common)
+              : new OpenAICompatibleProvider({
+                  ...common,
+                  providerId: "google",
+                  baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+                });
+    result.push({
+      id: item.id,
+      label: item.label,
+      model: item.model,
+      provider: adapter,
+      plan: "free",
+      summary: "User-owned provider credential; provider usage is billed by that provider.",
+      recommendedFor: ["BYOK"],
+    });
+  }
+  return result;
+}
+async function stripe(path: string, values: Record<string, string>) {
+  const secret = process.env.STRIPE_SECRET_KEY;
+  if (!secret) throw new ChatError("CHECKOUT_NOT_CONFIGURED", "Stripe is not configured.", 503);
+  const response = await fetch(`https://api.stripe.com/v1/${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secret}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams(values),
+    redirect: "error",
+    signal: AbortSignal.timeout(10_000),
+  });
+  const body = (await response.json()) as { url?: string };
+  if (!response.ok || !body.url)
+    throw new ChatError("STRIPE_UPSTREAM", "Stripe could not create this session.", 502);
+  return body;
 }
 function send(res: ServerResponse, status: number, data: unknown): void {
   res.statusCode = status;

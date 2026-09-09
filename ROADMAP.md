@@ -1,5 +1,14 @@
 # Odin delivery roadmap
 
+## Current P–R product block
+
+- Phase P: implemented in repository — Neon Auth/session boundary plus encrypted GitHub OAuth,
+  repository selection and isolated `odin/*` coding workspace. Live OAuth/email/private-repo proof open.
+- Phase Q: implemented in repository — Free/Pro/Ultra server state, Checkout/Portal, signed idempotent
+  ordered webhooks and fail-closed missing prices. Live Stripe configuration/proof open.
+- Phase R: implemented in repository — encrypted tenant BYOK status/replacement/deletion for OpenAI,
+  Anthropic, OpenRouter, NVIDIA and Google plus connected account/settings UI. Live key checks open.
+
 Checkboxes mean verified repository evidence, not intent. Milestones are completed sequentially;
 later design work may occur early, but later product capability is not declared complete early.
 
