@@ -4,9 +4,9 @@ import { writeFile } from "node:fs/promises";
 import { createNeonPool, NeonActorDatabase } from "../dist/src/chat/neon-database.js";
 
 // One explicitly pinned READY preview. This is not a production test or an open-ended model loop.
-const deploymentId = "dpl_uMex6JLEo8hjBnDijZa6nARAWo5t";
-const deploymentHead = "13623599e54ddfc5fcd2ec356672e8b46413d4b7";
-const origin = "https://odin-agent-7b1e8f0t8-clarityosbaerbelwesterop-gifs-projects.vercel.app";
+const deploymentId = "dpl_Gb5fgd6vjppYKjBPuxD1Q5QGcYH4";
+const deploymentHead = "cdc52f01b57176f06db6aad67eadcca5ecaa3599";
+const origin = "https://odin-agent-opk9qmojv-clarityosbaerbelwesterop-gifs-projects.vercel.app";
 const team = "team_5KyyWAPW9vLU4EiaKaYZuhaG";
 const project = "prj_GdWyUqh2FXRUAwCUZrewFwa0w4yl";
 const neonProject = "cold-mode-01560070";
@@ -45,6 +45,7 @@ try {
       redirect: "error",
       signal: AbortSignal.timeout(15000),
     });
+    report.managementStatus = response.status;
     assert(response.ok, `MANAGEMENT_HTTP_${response.status}`);
     return response.json();
   };
@@ -58,17 +59,21 @@ try {
   const share = await management(`/aliases/${deploymentId}/protection-bypass`, "PATCH", {
     ttl: 600,
   });
-  const shareValue = typeof share === "string" ? share : share.value;
+  stage = "preview share response shape";
+  report.shareResponseType = share === null ? "null" : typeof share;
+  const shareValue = typeof share === "string" ? share : share?.value;
   assert(typeof shareValue === "string" && shareValue.length > 10);
   // Keep Vercel's share token/cookie entirely inside this job. Never disable project protection.
   const protection = new Map();
   let url = `${origin}/?_vercel_share=${encodeURIComponent(shareValue)}`;
   for (let redirects = 0; redirects < 5; redirects++) {
+    stage = "preview share cookie exchange";
     const response = await fetch(url, {
       headers: { Cookie: [...protection].map(([key, value]) => `${key}=${value}`).join("; ") },
       redirect: "manual",
       signal: AbortSignal.timeout(20000),
     });
+    report.shareExchangeStatus = response.status;
     for (const cookie of response.headers.getSetCookie()) {
       const [pair] = cookie.split(";");
       const index = pair.indexOf("=");
@@ -77,6 +82,7 @@ try {
     }
     if (response.status >= 300 && response.status < 400) {
       const next = new URL(response.headers.get("location"), origin);
+      report.shareRedirectSameOrigin = next.origin === origin;
       assert.equal(next.origin, origin, "PREVIEW_ACCESS_NOT_GRANTED");
       url = next.href;
       await response.body?.cancel();
@@ -86,6 +92,7 @@ try {
       break;
     }
   }
+  stage = "preview access cookie presence";
   assert(protection.size > 0, "PREVIEW_COOKIE_MISSING");
   const protectionCookie = [...protection].map(([key, value]) => `${key}=${value}`).join("; ");
   const request = (path, cookie = "", method = "GET", body) =>
