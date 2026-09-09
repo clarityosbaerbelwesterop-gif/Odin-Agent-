@@ -4,39 +4,42 @@ import { writeFile } from "node:fs/promises";
 import { createNeonPool, NeonActorDatabase } from "../dist/src/chat/neon-database.js";
 import { temporaryDeploymentShare } from "./preview-access.mjs";
 
-// One explicitly pinned READY preview. This is not a production test or an open-ended model loop.
-const deploymentId = "dpl_Gb5fgd6vjppYKjBPuxD1Q5QGcYH4";
-const deploymentHead = "cdc52f01b57176f06db6aad67eadcca5ecaa3599";
-const origin = "https://odin-agent-opk9qmojv-clarityosbaerbelwesterop-gifs-projects.vercel.app";
 const team = "team_5KyyWAPW9vLU4EiaKaYZuhaG";
 const project = "prj_GdWyUqh2FXRUAwCUZrewFwa0w4yl";
+const previewBranch = "agent/chathub-modes-evidence";
 const neonProject = "cold-mode-01560070";
 const branch = "br-withered-shadow-b1q366c3";
+const liveModel = process.env.ODIN_LIVE_MODEL === "1";
 const report = {
   status: "INCOMPLETE",
   evaluatedAt: new Date().toISOString(),
   runId: process.env.GITHUB_RUN_ID,
   runnerHead: process.env.GITHUB_SHA,
-  deploymentId,
-  deploymentHead,
-  origin,
+  liveModel,
   checks: [],
   boundaries: [
-    "One synthetic account and one actual Kimi chat task on the pinned preview",
-    "Chat policy permits at most four provider calls; no retries of the task",
+    "The preview is resolved dynamically and must match the exact workflow commit SHA",
+    liveModel
+      ? "One synthetic account and at most one actual Kimi task; no task retries"
+      : "Hosted authentication and persistence only; no model-provider call is made",
     "Email verification is set only on the new fixture account; no email delivery claim",
     "An existing deployment-specific temporary share is reused without changing its expiry",
   ],
 };
+const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 let stage = "scope";
 let pool;
 let user;
 try {
   assert.equal(process.env.GITHUB_REPOSITORY, "clarityosbaerbelwesterop-gif/Odin-Agent-");
-  assert.equal(process.env.GITHUB_REF, "refs/heads/agent/chathub-modes-evidence");
+  assert.equal(process.env.GITHUB_REF, `refs/heads/${previewBranch}`);
+  assert.match(process.env.GITHUB_SHA ?? "", /^[a-f0-9]{40}$/u, "CURRENT_HEAD_REQUIRED");
   assert(process.env.VERCEL_TOKEN && process.env.NEON_API_KEY);
+
   const management = async (path, method = "GET", body) => {
-    const response = await fetch(`https://api.vercel.com${path}?teamId=${team}`, {
+    const endpoint = new URL(path, "https://api.vercel.com");
+    endpoint.searchParams.set("teamId", team);
+    const response = await fetch(endpoint, {
       method,
       headers: {
         Authorization: `Bearer ${process.env.VERCEL_TOKEN}`,
@@ -50,12 +53,49 @@ try {
     assert(response.ok, `MANAGEMENT_HTTP_${response.status}`);
     return response.json();
   };
-  const deployment = await management(`/v13/deployments/${deploymentId}`);
+
+  stage = "current preview discovery";
+  let deployment;
+  for (let attempt = 0; attempt < 36; attempt++) {
+    const params = new URLSearchParams({
+      projectId: project,
+      sha: process.env.GITHUB_SHA,
+      branch: previewBranch,
+      limit: "10",
+    });
+    const listed = await management(`/v7/deployments?${params}`);
+    const candidate = listed.deployments?.[0];
+    if (candidate) {
+      const deploymentId = candidate.uid ?? candidate.id;
+      assert.match(deploymentId ?? "", /^dpl_[A-Za-z0-9]+$/u, "DEPLOYMENT_ID_REQUIRED");
+      const current = await management(`/v13/deployments/${deploymentId}`);
+      const currentHead = current.gitSource?.sha ?? current.meta?.githubCommitSha;
+      if (currentHead === process.env.GITHUB_SHA) {
+        if (["ERROR", "CANCELED"].includes(current.readyState))
+          throw Object.assign(new Error("Current preview failed before smoke"), {
+            code: `PREVIEW_${current.readyState}`,
+          });
+        if (current.readyState === "READY") {
+          deployment = current;
+          break;
+        }
+      }
+    }
+    await sleep(5000);
+  }
+  assert(deployment, "CURRENT_PREVIEW_NOT_READY");
   assert.equal(deployment.projectId, project);
   assert.equal(deployment.target ?? null, null);
   assert.equal(deployment.readyState, "READY");
-  assert.equal(`https://${deployment.url}`, origin);
-  assert.equal(deployment.gitSource?.sha ?? deployment.meta?.githubCommitSha, deploymentHead);
+  assert.equal(deployment.gitSource?.sha ?? deployment.meta?.githubCommitSha, process.env.GITHUB_SHA);
+  const deploymentId = deployment.id ?? deployment.uid;
+  const deploymentHead = process.env.GITHUB_SHA;
+  const origin = `https://${deployment.url}`;
+  report.deploymentId = deploymentId;
+  report.deploymentHead = deploymentHead;
+  report.origin = origin;
+  report.checks.push("READY Vercel preview is bound to the exact workflow head");
+
   stage = "pinned preview URL metadata";
   // Vercel exposes share metadata on its URL alias resource, not the reduced deployment view.
   // https://vercel.com/docs/rest-api/aliases/get-an-alias
@@ -63,6 +103,7 @@ try {
   assert.equal(alias.alias, new URL(origin).hostname);
   assert.equal(alias.projectId, project);
   assert.equal(alias.deploymentId ?? alias.deployment?.id, deploymentId);
+
   stage = "existing temporary preview share";
   report.shareMetadataPresent = typeof alias.protectionBypass === "object";
   const share = temporaryDeploymentShare(alias.protectionBypass);
@@ -72,9 +113,11 @@ try {
     });
   const shareValue = share.secret;
   report.shareExpiresAt = new Date(share.expires).toISOString();
+
   // Keep Vercel's share token/cookie entirely inside this job. Never disable project protection.
   const protection = new Map();
   let url = `${origin}/?_vercel_share=${encodeURIComponent(shareValue)}`;
+  let previewAccessGranted = false;
   for (let redirects = 0; redirects < 5; redirects++) {
     stage = "preview share cookie exchange";
     const response = await fetch(url, {
@@ -98,9 +141,11 @@ try {
     } else {
       assert.equal(response.status, 200);
       await response.body?.cancel();
+      previewAccessGranted = true;
       break;
     }
   }
+  assert(previewAccessGranted, "PREVIEW_ACCESS_NOT_GRANTED");
   stage = "preview access cookie presence";
   assert(protection.size > 0, "PREVIEW_COOKIE_MISSING");
   const protectionCookie = [...protection].map(([key, value]) => `${key}=${value}`).join("; ");
@@ -108,7 +153,7 @@ try {
     fetch(`${origin}${path}`, {
       method,
       headers: {
-        Cookie: `${protectionCookie}; ${cookie}`,
+        Cookie: cookie ? `${protectionCookie}; ${cookie}` : protectionCookie,
         Origin: origin,
         "Content-Type": "application/json",
         "X-Odin-Request": "1",
@@ -117,9 +162,11 @@ try {
       redirect: "error",
       signal: AbortSignal.timeout(method === "POST" && path.endsWith("/run") ? 260000 : 30000),
     });
+
   stage = "anonymous API rejection";
   assert.equal((await request("/api/config")).status, 401);
   report.checks.push("Anonymous API access is rejected on the real Vercel deployment");
+
   stage = "preview database scope";
   const connectionResponse = await fetch(
     `https://console.neon.tech/api/v2/projects/${neonProject}/connection_uri?branch_id=${branch}&database_name=neondb&role_name=neondb_owner&pooled=true`,
@@ -136,6 +183,7 @@ try {
     "ep-rapid-union-b14h469x-pooler.c-5.eu-central-1.aws.neon.tech",
   );
   pool = createNeonPool(connection.uri);
+
   stage = "hosted managed signup";
   const email = `odin-vercel-${randomUUID()}@example.invalid`;
   const signup = await request("/api/auth/signup", "", "POST", {
@@ -163,6 +211,7 @@ try {
     user.id,
     user.email,
   ]);
+
   stage = "hosted verified authentication";
   const configResponse = await request("/api/config", cookie);
   assert.equal(configResponse.status, 200);
@@ -172,37 +221,48 @@ try {
   report.checks.push(
     "Managed signup, unverified rejection and verified session work through Vercel and restricted Postgres login",
   );
-  stage = "real hosted chat task";
+
+  stage = "hosted conversation persistence";
   const created = await request("/api/conversations", cookie, "POST", {
     title: "Disposable hosted smoke",
   });
   assert.equal(created.status, 201);
   const conversation = await created.json();
-  const sent = await request(`/api/conversations/${conversation.id}/turns`, cookie, "POST", {
-    text: "Reply with exactly ODIN_PREVIEW_OK. Do not use any tools.",
-    mode: "chat",
-    modelId: "kimi",
-    requestId: randomUUID(),
-  });
-  assert.equal(sent.status, 202);
-  const turn = await sent.json();
-  const executed = await request(`/api/turns/${turn.id}/run`, cookie, "POST", {});
-  report.executionStatus = executed.status;
-  assert.equal(executed.status, 200);
-  const viewResponse = await request(`/api/turns/${turn.id}`, cookie);
-  assert.equal(viewResponse.status, 200);
-  const view = await viewResponse.json();
-  report.taskState = view.state;
-  assert.equal(view.state, "COMPLETED");
   const eventsResponse = await request(`/api/conversations/${conversation.id}/events`, cookie);
   assert.equal(eventsResponse.status, 200);
-  const { events } = await eventsResponse.json();
-  assert(
-    events.some((event) => event.type === "answer" && event.data.text?.includes("ODIN_PREVIEW_OK")),
-  );
-  report.checks.push(
-    "One actual Kimi task completes in the deployed Odin runtime and its answer replays from Neon",
-  );
+  const initialEvents = await eventsResponse.json();
+  assert(Array.isArray(initialEvents.events));
+  report.checks.push("Conversation creation and event replay persist through the hosted API");
+
+  if (liveModel) {
+    stage = "real hosted chat task";
+    const sent = await request(`/api/conversations/${conversation.id}/turns`, cookie, "POST", {
+      text: "Reply with exactly ODIN_PREVIEW_OK. Do not use any tools.",
+      mode: "chat",
+      modelId: "kimi",
+      requestId: randomUUID(),
+    });
+    assert.equal(sent.status, 202);
+    const turn = await sent.json();
+    const executed = await request(`/api/turns/${turn.id}/run`, cookie, "POST", {});
+    report.executionStatus = executed.status;
+    assert.equal(executed.status, 200);
+    const viewResponse = await request(`/api/turns/${turn.id}`, cookie);
+    assert.equal(viewResponse.status, 200);
+    const view = await viewResponse.json();
+    report.taskState = view.state;
+    assert.equal(view.state, "COMPLETED");
+    const replayResponse = await request(`/api/conversations/${conversation.id}/events`, cookie);
+    assert.equal(replayResponse.status, 200);
+    const { events } = await replayResponse.json();
+    assert(
+      events.some((event) => event.type === "answer" && event.data.text?.includes("ODIN_PREVIEW_OK")),
+    );
+    report.checks.push(
+      "One actual Kimi task completes in the deployed Odin runtime and its answer replays from Neon",
+    );
+  }
+
   stage = "hosted logout revocation";
   assert.equal((await request("/api/session", cookie, "DELETE", {})).status, 200);
   assert.equal((await request("/api/config", cookie)).status, 401);
