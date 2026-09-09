@@ -5,7 +5,7 @@
   "description": "A provider-independent, verifiable runtime for long-running AI missions.",
   "type": "module",
   "engines": {
-    "node": ">=24.0.0"
+    "node": "24.x"
   },
   "scripts": {
     "build": "npm run clean && tsc -p tsconfig.json && node scripts/copy-web-assets.mjs",
