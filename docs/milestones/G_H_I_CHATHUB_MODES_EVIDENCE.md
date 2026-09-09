@@ -37,16 +37,37 @@ operator option, not container isolation. No paid resources are introduced. The 
 
 ## Current evidence boundary
 
-The G/H implementation is complete at the repository level. Exact-head CI run `34320927996` passed
-`npm run verify` at commit `c50e52dd1dab4e8ae6fcb562f703b75e1647486b`: 525/525 deterministic
-tests, 14/14 UI/deployment tests, strict TypeScript, Biome, dry provider smoke and the production build.
-The same commit is `READY` on Vercel preview deployment `dpl_HsLZyUXdSsRrmii6zy4v17kwkrFa` in `fra1`.
-The former isolated Vercel TypeScript-function compilation failure is removed by the JavaScript deployment
-entry that imports the already typechecked `dist` artifact.
+The G/H implementation is complete at the repository level. Current exact-head commit
+`40c6ba4c2097cc2bc6ad6606bfe528d3532e629c` passed CI run `34322374078`, including full
+`npm run verify`, strict TypeScript, Biome, deterministic tests, UI/deployment tests, dry provider smoke
+and the production build. The same commit reached `READY` on Vercel preview deployment
+`dpl_Du5imBV7aXaLBH115caAbbWoxwbw` in `fra1`. Its Vercel build completed without the former `TS2688`
+Node type-definition failure and without the former future-major Node engine warning because the runtime
+engine is now pinned to Node 24.x.
+
+The Vercel function boundary uses `api/index.mjs`, which imports the already typechecked
+`dist/src/chat/hosted.js` artifact instead of triggering a second isolated TypeScript-function
+compilation. The latest preview build therefore exercises the same compiled artifact boundary checked by
+the repository tests.
+
+Runtime provider-secret synchronization is separated from the Neon/database preview configuration.
+Workflow run `34322036524` passed full verification, synchronized only allowlisted runtime provider
+credentials present in GitHub Actions, and created preview deployment
+`dpl_6Nb6R525TktLqySzDNuVywCZcaPM`, which subsequently reached `READY`. At that run, `NV_API_KEY` was
+present and was written as both the canonical NVIDIA key aliases; `OPENAI_API_KEY`,
+`ANTHROPIC_API_KEY` and `OPENROUTER_API_KEY` were absent and were therefore skipped rather than invented.
+`VERCEL_ODIN_TOKEN` and `NEON_API_KEY` remain control-plane credentials and are intentionally never
+copied into the application runtime. `FREE_API_KEY` remains excluded until its HTTPS inference endpoint
+and exact provider/model identity are verified. Secret values are never written to artifacts or logs.
+
+The latest exact-head Vercel deployment has no warning/error/fatal runtime entries in the inspected
+post-deploy window, and the deployed landing returned HTTP 200 with the configured CSP, HSTS,
+`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `no-store` and
+`noindex` headers. This remains protected Preview evidence, not a public-production claim.
 
 Live Neon Auth/RLS evidence and a hosted desktop-browser acceptance pass are preserved separately. The
 browser pass did not enter human credentials, submit a model/coding task or cover mobile/iPad/Safari.
-The exact-current-head hosted Auth/persistence smoke is now manual and defaults to no model-provider call;
+The exact-current-head hosted Auth/persistence smoke is manual and defaults to no model-provider call;
 it has not been relabeled as passing until it is explicitly dispatched and its artifact is inspected.
 Email delivery, production migration/promotion, restricted integration credentials, physical/mobile
 acceptance and broader live benchmark domains remain open. See `docs/CHATHUB_DEPLOYMENT.md` for the
