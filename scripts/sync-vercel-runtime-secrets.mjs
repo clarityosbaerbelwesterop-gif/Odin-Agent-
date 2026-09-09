@@ -58,23 +58,33 @@ async function sync() {
       "VERCEL_TOKEN and NEON_API_KEY remain GitHub control-plane secrets",
       "FREE_API_KEY remains unsynchronized until a verified inference endpoint/provider identity exists",
       "Secret values are never printed or written to artifacts",
+      "A fresh preview deployment is created only after the environment writes complete",
     ],
   };
   let stage = "invocation";
   try {
     validateSecretSyncInvocation(process.env);
     const variables = collectRuntimeSecrets(process.env);
+    const api = async (path, method = "GET", body) => {
+      const response = await fetch(
+        `https://api.vercel.com${path}${path.includes("?") ? "&" : "?"}teamId=${scope.team}`,
+        {
+          method,
+          headers: {
+            Authorization: `Bearer ${process.env.VERCEL_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+          ...(body ? { body: JSON.stringify(body) } : {}),
+          redirect: "error",
+          signal: AbortSignal.timeout(30000),
+        },
+      );
+      assert(response.ok, `VERCEL_HTTP_${response.status}`);
+      return response.json();
+    };
+
     stage = "project scope";
-    const projectResponse = await fetch(
-      `https://api.vercel.com/v9/projects/${scope.project}?teamId=${scope.team}`,
-      {
-        headers: { Authorization: `Bearer ${process.env.VERCEL_TOKEN}` },
-        redirect: "error",
-        signal: AbortSignal.timeout(30000),
-      },
-    );
-    assert(projectResponse.ok, `VERCEL_PROJECT_HTTP_${projectResponse.status}`);
-    const project = await projectResponse.json();
+    const project = await api(`/v9/projects/${scope.project}`);
     assert.equal(project.id, scope.project);
     assert.equal(project.accountId, scope.team);
     assert.equal(project.name, "odin-agent");
@@ -82,26 +92,36 @@ async function sync() {
 
     stage = "runtime secret sync";
     for (const variable of variables) {
-      const response = await fetch(
-        `https://api.vercel.com/v10/projects/${scope.project}/env?upsert=true&teamId=${scope.team}`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.VERCEL_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(variable),
-          redirect: "error",
-          signal: AbortSignal.timeout(30000),
-        },
-      );
-      assert(response.ok, `VERCEL_ENV_HTTP_${response.status}`);
-      const result = await response.json();
+      const result = await api(`/v10/projects/${scope.project}/env?upsert=true`, "POST", variable);
       assert.equal(result.failed?.length ?? 0, 0, "ENV_WRITE_FAILED");
       report.synced.push(variable.key);
     }
     report.skipped = report.skipped.filter((key) => !report.synced.includes(key));
-    report.status = "PASS";
+
+    stage = "fresh preview deployment";
+    const deployment = await api("/v13/deployments", "POST", {
+      name: "odin-agent",
+      project: scope.project,
+      gitSource: {
+        type: "github",
+        repoId: scope.repoId,
+        ref: scope.gitBranch,
+        sha: process.env.GITHUB_SHA,
+      },
+    });
+    assert.equal(deployment.target ?? null, null, "PRODUCTION_TARGET_FORBIDDEN");
+    assert.match(deployment.id ?? "", /^dpl_[A-Za-z0-9]+$/u, "DEPLOYMENT_ID_REQUIRED");
+    assert.match(
+      deployment.url ?? "",
+      /^odin-agent-[a-z0-9-]+\.vercel\.app$/u,
+      "DEPLOYMENT_URL_REQUIRED",
+    );
+    report.deployment = {
+      id: deployment.id,
+      url: `https://${deployment.url}`,
+      state: deployment.readyState,
+    };
+    report.status = "PASS_DEPLOYMENT_PENDING";
   } catch (error) {
     report.status = "FAILED";
     report.failure = {
