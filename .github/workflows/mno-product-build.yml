@@ -1,0 +1,69 @@
+name: M–O product workspace preview
+
+on:
+  push:
+    branches: [agent/mno-product-workspace-pro-preview]
+    paths: [.github/workflows/mno-product-build.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mno-product-workspace-preview
+  cancel-in-progress: false
+
+jobs:
+  product:
+    if: github.repository == 'clarityosbaerbelwesterop-gif/Odin-Agent-' && github.ref == 'refs/heads/agent/mno-product-workspace-pro-preview'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/mno-product-workspace-pro-preview
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply product patch
+        run: |
+          node scripts/mno-product-patch.mjs
+          node scripts/mno-product-postfix.mjs
+      - name: Format and verify complete repository
+        run: |
+          npm run format
+          npm run verify
+      - name: Commit verified product implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "M–O: product workspace, Pro model and working preview"
+          git push origin HEAD:agent/mno-product-workspace-pro-preview
+      - name: Bounded Muse Glimmer connectivity smoke
+        id: muse
+        continue-on-error: true
+        env:
+          NV_API_KEY_2: ${{ secrets.NV_API_KEY_2 }}
+        run: node scripts/live-muse-product-smoke.mjs
+      - name: Configure protected product preview
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_ODIN_TOKEN }}
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NV_API_KEY: ${{ secrets.NV_API_KEY }}
+          NV_API_KEY_2: ${{ secrets.NV_API_KEY_2 }}
+          FREE_API_KEY: ${{ secrets.FREE_API_KEY }}
+        run: |
+          export GITHUB_SHA="$(git rev-parse HEAD)"
+          node scripts/configure-vercel-preview.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mno-product-preview-evidence
+          path: |
+            muse-product-smoke.json
+            vercel-preview-result.json
+          if-no-files-found: warn
+          retention-days: 14
