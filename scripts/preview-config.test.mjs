@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   classifyFreeKey,
@@ -48,6 +49,14 @@ test("FreeLLM key classification never mistakes catalog licensing for inference 
   assert.equal(classifyFreeKey("fla_synthetic"), "CATALOG_LICENSE_NOT_INFERENCE");
   assert.equal(classifyFreeKey("freellmapi-synthetic"), "ROUTER_KEY_ENDPOINT_REQUIRED");
   assert.equal(classifyFreeKey("synthetic-other"), "UNRECOGNIZED_PROVIDER_ENDPOINT_REQUIRED");
+});
+
+test("Vercel function entry uses the repository-built JavaScript artifact", async () => {
+  const config = JSON.parse(await readFile(new URL("../vercel.json", import.meta.url), "utf8"));
+  assert.deepEqual(Object.keys(config.functions), ["api/index.mjs"]);
+  const wrapper = await readFile(new URL("../api/index.mjs", import.meta.url), "utf8");
+  assert.match(wrapper, /\.\.\/dist\/src\/chat\/hosted\.js/u);
+  assert.doesNotMatch(wrapper, /\.\.\/src\/chat\/hosted\.js/u);
 });
 
 test("hosted smoke reuses only a short-lived share belonging to the pinned deployment", () => {
