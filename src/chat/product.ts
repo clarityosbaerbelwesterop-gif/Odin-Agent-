@@ -6,18 +6,53 @@ import {
   randomBytes,
   timingSafeEqual,
 } from "node:crypto";
+import type { ChatMode } from "./types.js";
 import type { ActorDatabase } from "./neon-database.js";
 import { ChatError } from "./types.js";
 
 export const PROVIDERS = ["openai", "anthropic", "openrouter", "nvidia", "google"] as const;
 export type ProductProvider = (typeof PROVIDERS)[number];
-export type Plan = "free" | "pro" | "ultra";
+export type Plan = "free" | "pro" | "developer" | "ultra";
+
+export const PLAN_RANK: Readonly<Record<Plan, number>> = Object.freeze({
+  free: 0,
+  pro: 1,
+  developer: 2,
+  ultra: 3,
+});
+
+export const MODE_MIN_PLAN: Readonly<Record<ChatMode, Plan>> = Object.freeze({
+  chat: "free",
+  thinking: "pro",
+  research: "pro",
+  coding: "developer",
+  ultra: "ultra",
+});
+
+const ACTIVE_SUBSCRIPTION_STATUSES = new Set(["active", "trialing"]);
 
 export interface ProductAccount {
   plan: Plan;
   subscriptionStatus: string;
   cancelAtPeriodEnd: boolean;
   defaultModel: string | null;
+}
+
+export function effectivePlan(account: ProductAccount): Plan {
+  if (account.plan === "free") return "free";
+  return ACTIVE_SUBSCRIPTION_STATUSES.has(account.subscriptionStatus) ? account.plan : "free";
+}
+
+export function maxPlan(first: Plan, second: Plan): Plan {
+  return PLAN_RANK[first] >= PLAN_RANK[second] ? first : second;
+}
+
+export function requiredPlanFor(mode: ChatMode, modelPlan: Plan = "free"): Plan {
+  return maxPlan(MODE_MIN_PLAN[mode], modelPlan);
+}
+
+export function hasPlan(account: ProductAccount, required: Plan): boolean {
+  return PLAN_RANK[effectivePlan(account)] >= PLAN_RANK[required];
 }
 
 export class CredentialVault {
