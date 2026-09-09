@@ -6,6 +6,7 @@
     <meta name="color-scheme" content="dark" />
     <title>Odin — Workspace</title>
     <link rel="stylesheet" href="/chat.css" />
+    <link rel="stylesheet" href="/product-info.css" />
   </head>
   <body>
     <div class="shell">
@@ -17,7 +18,7 @@
         <button id="benchmark-view" type="button" class="nav-item">Benchmarks <span>02</span></button>
         <div class="history-heading"><span class="side-label">RECENT</span><span id="conversation-count">0</span></div>
         <nav id="conversation-list" aria-label="Conversation history"></nav>
-        <div class="sidebar-footer"><span class="status-dot"></span><span id="workspace-status">Connect your workspace</span><button id="settings" type="button" aria-label="Connection details">↗</button></div>
+        <div class="sidebar-footer"><span class="status-dot"></span><span id="workspace-status">Connect your workspace</span><button id="settings" type="button" aria-label="Settings and information">↗</button></div>
       </aside>
       <main class="main">
         <header class="topbar"><button id="history-toggle" type="button" aria-expanded="false">Chats</button><div><span class="breadcrumb">Workspace /</span> <strong id="page-title">Chathub</strong></div><div class="top-actions"><span id="connection" role="status">Connecting</span><button id="activity-toggle" type="button" aria-expanded="true">Activity</button></div></header>
@@ -35,11 +36,12 @@
           </section>
           <aside id="inspector" class="inspector" aria-label="Task details"><div class="inspector-heading"><span class="status-dot"></span><h2>Work in progress</h2><span id="call-count">—</span></div><div class="inspector-tabs" role="tablist"><button type="button" role="tab" aria-selected="true" data-tab="activity">Activity</button><button type="button" role="tab" aria-selected="false" data-tab="files">Files</button><button type="button" role="tab" aria-selected="false" data-tab="preview">Preview</button></div><div class="inspector-body"><section id="activity-panel" role="tabpanel"><div class="inspector-note" id="activity-empty">Your plan, tool activity and verification will appear here when a task starts.</div><ol id="plan" class="plan"></ol><div id="activity" class="activity"></div><div id="sources" class="sources"></div><div id="verification" class="verification" hidden></div></section><section id="files-panel" role="tabpanel" hidden><p class="inspector-note">Actual workspace changes appear here.</p><div id="files"></div><pre id="diff"></pre></section><section id="preview-panel" role="tabpanel" hidden><p class="inspector-note">HTML changes can be previewed in an isolated frame. External requests are blocked.</p><select id="preview-file" aria-label="Preview file"><option value="">Choose an HTML file</option></select><iframe id="preview" title="Generated page preview" sandbox="allow-scripts" referrerpolicy="no-referrer"></iframe></section></div><div class="inspector-footer"><span>Tokens <strong id="token-count">0</strong></span><span id="cost-status">Cost not reported</span></div></aside>
         </div>
-        <section id="benchmarks" class="benchmarks" hidden><span class="welcome-tag">MEASURED EVIDENCE</span><h1>Every improvement<br />needs a result.</h1><p class="muted">Compare exact runs, preserve failed attempts, and keep the scope visible.</p><div id="benchmark-content"></div></section>
+        <section id="benchmarks" class="benchmarks" hidden><span class="welcome-tag">MEASURED EVIDENCE</span><h1>Every improvement<br />needs a result.</h1><p class="muted">Live Odin runs, historical protocol evidence and external frontier references stay separate.</p><div id="benchmark-content"></div></section>
       </main>
     </div>
     <dialog id="login" aria-labelledby="login-title"><form id="login-form"><span class="brand-mark">O</span><h2 id="login-title">Welcome to Odin</h2><p id="auth-help">Sign in to your workspace.</p><div id="neon-auth-fields" hidden><label for="auth-action">Account action</label><select id="auth-action"><option value="login">Sign in</option><option value="signup">Create account</option><option value="verify">Verify email</option><option value="forgot">Request password reset</option><option value="reset">Reset password</option></select><label for="auth-email">Email</label><input id="auth-email" type="email" autocomplete="username" maxlength="254" /><div id="auth-name-field" hidden><label for="auth-name">Name</label><input id="auth-name" autocomplete="name" maxlength="100" /></div><div id="auth-code-field" hidden><label for="auth-code">Email code</label><input id="auth-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" /><button id="auth-send-code" type="button">Send verification code</button></div></div><div id="auth-password-field"><label id="password-label" for="access-token">Server access token</label><input id="access-token" type="password" autocomplete="current-password" maxlength="128" required /></div><p id="login-error" role="alert"></p><button id="auth-submit" type="submit" class="primary">Open workspace</button></form></dialog>
-    <dialog id="connection-details" aria-labelledby="details-title"><h2 id="details-title">Connections</h2><div id="details-body"></div><div class="dialog-actions"><button id="sign-out" type="button">Sign out</button><button id="close-details" type="button" class="primary">Close</button></div></dialog>
+    <dialog id="connection-details" aria-labelledby="details-title"><h2 id="details-title">Settings & information</h2><div id="details-body"></div><div class="dialog-actions"><button id="sign-out" type="button">Sign out</button><button id="close-details" type="button" class="primary">Close</button></div></dialog>
     <script type="module" src="/chat.js"></script>
+    <script type="module" src="/product-info.js"></script>
   </body>
 </html>

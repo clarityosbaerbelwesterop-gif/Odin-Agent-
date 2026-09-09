@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Odin — Datenschutzerklärung</title>
+    <link rel="stylesheet" href="/legal.css" />
+  </head>
+  <body>
+    <header><a class="brand" href="/">odin↗</a><a href="/app">Workspace öffnen</a></header>
+    <main>
+      <span class="status">PREVIEW-ENTWURF · 09.09.2026</span>
+      <h1>Datenschutzerklärung</h1>
+      <p class="notice"><strong>Nicht kommerziell freigegeben:</strong> Betreiberangaben, produktive Auftragsverarbeiter, Transferprüfung und konkrete Löschfristen müssen vor öffentlichem Paid Launch vervollständigt und rechtlich geprüft werden.</p>
+      <h2>Verantwortlicher</h2><p><strong>[BETREIBERNAME / RECHTSFORM]</strong><br />[ANSCHRIFT]<br />[DATENSCHUTZ-/SUPPORT-E-MAIL]</p>
+      <h2>Verarbeitete Daten</h2><p>Je nach Nutzung verarbeitet Odin Konto- und Sitzungsdaten, E-Mail-Adresse, Prompts und Antworten, Gesprächs-/Missionsstatus, bereitgestellte Workspace-Dateien und Änderungen, Rechercheanfragen/Quellen sowie begrenzte Sicherheits-, Fehler- und Nutzungsmetadaten. Die Preview hat keinen aktiven Odin-Zahlungsprozess.</p>
+      <h2>Zwecke und Rechtsgrundlagen</h2><p>Die Bereitstellung des angeforderten Dienstes erfolgt grundsätzlich auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO; Sicherheit und Missbrauchsabwehr auf Grundlage von Art. 6 Abs. 1 lit. f; zwingende gesetzliche Pflichten auf Grundlage von Art. 6 Abs. 1 lit. c. Nicht notwendiges Tracking ist im aktuellen Preview-Pfad nicht aktiviert.</p>
+      <h2>Empfänger</h2><ul><li>Neon für Postgres und Auth; das aktuell beobachtete Projekt liegt in <code>aws-eu-central-1</code>.</li><li>Vercel für Hosting; die verifizierte Preview-Function lief in <code>fra1</code>, während Build-/Edge-/Unternehmensprozesse auch außerhalb Deutschlands/EU liegen können.</li><li>NVIDIA bzw. der tatsächlich konfigurierte Modellanbieter, wenn eine Modellanfrage ausgeführt wird. Hosted ist derzeit Kimi K3 aktiv.</li><li>Wikimedia/Wikipedia, wenn Research eine Quelle abruft.</li></ul>
+      <h2>Drittlandtransfers</h2><p>Soweit Empfänger außerhalb des EWR verarbeiten, müssen die Voraussetzungen der Art. 44 ff. DSGVO erfüllt werden. Die konkrete produktive DPA-/Subprozessor-/Transferprüfung bleibt ein Launch-Gate.</p>
+      <h2>Speicherdauer</h2><p>Konto-, Gesprächs-, Workspace- und Missionsdaten werden für die Preview-Funktion gespeichert, bis sie gelöscht werden oder der jeweilige Betriebs-, Sicherheits- bzw. gesetzliche Zweck entfällt. Eine verbindliche produktive Fristenmatrix ist noch offen.</p>
+      <h2>Cookies</h2><p>Der aktuelle Pfad nutzt nur notwendige Auth-/Session-Cookies (Secure, HttpOnly, SameSite=Strict) und keine Marketing-/Tracking-Cookies. Bei späteren nicht notwendigen Technologien muss die Einwilligung nach § 25 TDDDG neu bewertet werden.</p>
+      <h2>Sicherheit</h2><p>Implementiert sind unter anderem HTTPS, serverseitige Provider-Credentials, verifizierte Sitzungen/JWT-Bindung, FORCE RLS auf acht Anwendungstabellen, transaktionslokaler Nutzerkontext, Limits, CSP, isolierte statische Vorschau und Secret-Redaction.</p>
+      <h2>Deine Rechte</h2><p>Je nach Voraussetzungen bestehen insbesondere Rechte aus Art. 15–21 DSGVO: Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit und Widerspruch sowie ein Beschwerderecht bei einer Datenschutzaufsichtsbehörde. Bis ein kompletter Self-Service-Export/-Löschpfad live verifiziert ist: [DATENSCHUTZ-/SUPPORT-E-MAIL].</p>
+      <h2>Automatisierte Entscheidungen</h2><p>Die Preview ist nicht für ausschließlich automatisierte Entscheidungen mit rechtlicher oder ähnlich erheblicher Wirkung vorgesehen. Modelle schlagen vor; serverseitige Regeln kontrollieren Berechtigungen und Ausführung.</p>
+      <p>Rechtsquellen: <a href="https://eur-lex.europa.eu/eli/reg/2016/679/oj">DSGVO</a>, <a href="https://www.gesetze-im-internet.de/ttdsg/__25.html">§ 25 TDDDG</a>, <a href="https://www.gesetze-im-internet.de/ddg/__5.html">§ 5 DDG</a>. Dieser Entwurf ist keine individuelle Rechtsberatung.</p>
+    </main>
+    <footer><a href="/privacy.html">Datenschutz</a><a href="/eula.html">EULA</a><a href="/gdpr.html">DSGVO-Readiness</a><a href="/imprint.html">Impressum</a><a href="/">Startseite</a></footer>
+  </body>
+</html>

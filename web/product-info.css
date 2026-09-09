@@ -1,0 +1,180 @@
+#connection-details {
+  max-width: 920px;
+  max-height: min(88dvh, 900px);
+  overflow: auto;
+}
+#details-body {
+  display: grid;
+  gap: 16px;
+}
+.info-card,
+.evidence-section-card,
+.chart-card,
+.evidence-notice,
+.target-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #171a20;
+  padding: 20px;
+}
+.info-card h3,
+.evidence-section-card h2,
+.chart-card h2 {
+  margin: 8px 0 12px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+.info-eyebrow {
+  display: block;
+  color: #7f90ad;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+}
+.info-lead,
+.info-list,
+.workflow-list p,
+.plan-card p,
+.target-card p,
+.evidence-notice p {
+  color: #98a3b5;
+  font-size: 11px;
+  line-height: 1.75;
+}
+.workflow-list {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+}
+.workflow-list li {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid #262b34;
+}
+.workflow-number {
+  color: #879bc0;
+  font:
+    10px ui-monospace,
+    monospace;
+}
+.workflow-list strong,
+.plan-card strong,
+.target-card strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 550;
+}
+.workflow-list p {
+  margin: 4px 0 0;
+}
+.info-list {
+  padding-left: 18px;
+}
+.plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.plan-card {
+  border: 1px solid #303744;
+  border-radius: 10px;
+  padding: 15px;
+}
+.plan-card h4 {
+  margin: 10px 0;
+  font-size: 20px;
+  font-weight: 500;
+}
+.plan-status {
+  display: inline-block;
+  color: #aebfdf;
+  border: 1px solid #44516a;
+  border-radius: 999px;
+  padding: 4px 7px;
+  font-size: 8px;
+  letter-spacing: 0.8px;
+}
+.legal-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+.legal-links a,
+.evidence-source {
+  border: 1px solid #313846;
+  border-radius: 8px;
+  padding: 10px;
+  text-decoration: none;
+  font-size: 10px;
+}
+.evidence-notice {
+  border-color: #45536d;
+  margin-bottom: 22px;
+}
+.evidence-notice strong {
+  font-size: 12px;
+}
+.evidence-notice p {
+  margin-bottom: 0;
+}
+.evidence-section-card {
+  margin: 22px 0;
+}
+.chart-card {
+  margin: 14px 0;
+  background: #15181e;
+}
+.chart-row {
+  margin: 16px 0;
+}
+.chart-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  font-size: 11px;
+  margin-bottom: 7px;
+}
+.chart-heading strong {
+  font-weight: 550;
+}
+.chart-row progress {
+  width: 100%;
+  height: 12px;
+  accent-color: #aebfe5;
+}
+.evidence-table {
+  display: table;
+  overflow: visible;
+}
+.target-card {
+  margin-top: 18px;
+  border-color: #4a566d;
+}
+.target-card .plan-status {
+  margin: 10px 0 0;
+}
+.target-card .evidence-source {
+  display: inline-block;
+}
+.frontier-reference > .evidence-source {
+  display: inline-block;
+  margin-top: 8px;
+}
+@media (max-width: 760px) {
+  #connection-details {
+    padding: 22px;
+  }
+  .plan-grid,
+  .legal-links {
+    grid-template-columns: 1fr;
+  }
+  .evidence-section-card {
+    overflow-x: auto;
+  }
+  .evidence-table {
+    min-width: 650px;
+  }
+}
