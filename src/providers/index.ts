@@ -2,6 +2,7 @@ export * from "./anthropic.js";
 export * from "./base.js";
 export * from "./capabilities.js";
 export * from "./errors.js";
+export * from "./google.js";
 export * from "./nvidia.js";
 export * from "./openai.js";
 export * from "./openai-compatible.js";
