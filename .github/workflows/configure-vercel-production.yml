@@ -34,7 +34,6 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_ODIN_TOKEN }}
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-          NEON_AUTH_URL: ${{ secrets.NEON_AUTH_URL }}
           GITHUB_OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
           GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
