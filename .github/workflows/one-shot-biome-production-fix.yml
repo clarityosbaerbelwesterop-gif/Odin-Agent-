@@ -1,0 +1,35 @@
+name: One-shot Biome production fix
+
+on:
+  push:
+    branches: [agent/biome-production-fix]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/biome-production-fix
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply repository formatter to failing production files
+        run: npx biome check --write scripts/sync-vercel-production.mjs scripts/verify-neon-production.mjs src/chat/hosted.ts src/chat/server-models.ts test/chat/server-models.test.ts
+      - name: Commit formatter-only changes
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes remain."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/sync-vercel-production.mjs scripts/verify-neon-production.mjs src/chat/hosted.ts src/chat/server-models.ts test/chat/server-models.test.ts
+          git commit -m "style: apply Biome to production paths"
+          git push origin HEAD:agent/biome-production-fix
