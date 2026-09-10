@@ -501,7 +501,7 @@ $("sign-out").onclick = async () => {
     await api("/api/session", {}, "DELETE");
     resetSession();
     if (authProvider === "local") $("login").showModal();
-    else window.location.assign("/login");
+    else window.location.assign("/login?signedOut=1");
   } catch (error) {
     errorBanner(error);
   }

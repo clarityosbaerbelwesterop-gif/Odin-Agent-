@@ -9,6 +9,8 @@ test("hosted request transport preserves origin and unauthenticated APIs remain 
   process.env.NEON_AUTH_BASE_URL =
     "https://ep-fixture.neonauth.eu-central-1.aws.neon.tech/neondb/auth";
   process.env.ODIN_PUBLIC_ORIGIN = "https://odin.example";
+  process.env.GITHUB_OAUTH_CLIENT_ID = "fixture-client";
+  process.env.GITHUB_OAUTH_CLIENT_SECRET = "fixture-secret";
   const server = createServer(hostedHandler);
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   try {
@@ -31,8 +33,17 @@ test("hosted request transport preserves origin and unauthenticated APIs remain 
     assert.deepEqual(await config.json(), {
       provider: "neon",
       emailVerificationRequired: true,
-      oauth: { github: { available: false } },
+      oauth: {
+        github: {
+          available: true,
+          authBase: "https://ep-fixture.neonauth.eu-central-1.aws.neon.tech/neondb/auth",
+        },
+      },
     });
+    assert.match(
+      config.headers.get("content-security-policy") ?? "",
+      /connect-src 'self' https:\/\/ep-fixture\.neonauth\.eu-central-1\.aws\.neon\.tech/u,
+    );
     const foreign = await hostedRequest(
       address.port,
       "https://foreign.example",

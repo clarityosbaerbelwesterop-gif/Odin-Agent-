@@ -179,13 +179,12 @@ async function restoreGitHubSession(requireVerifier = false) {
     if (verifier) throw new Error("GitHub Login konnte nicht abgeschlossen werden.");
     return false;
   }
-  let data = {};
-  try {
-    data = await response.json();
-  } catch {
-    return false;
+  let token = response.headers.get("set-auth-jwt");
+  if (!token) {
+    const tokenResponse = await neonAuth("/token", { method: "GET" });
+    const tokenData = tokenResponse.ok ? await tokenResponse.json().catch(() => ({})) : {};
+    token = tokenData?.token;
   }
-  const token = response.headers.get("set-auth-jwt") ?? data?.session?.token;
   if (typeof token !== "string" || !token) {
     if (verifier) throw new Error("Neon hat keine gültige Login-Session zurückgegeben.");
     return false;

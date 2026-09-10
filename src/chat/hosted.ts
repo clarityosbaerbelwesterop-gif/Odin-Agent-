@@ -36,10 +36,31 @@ import { createSharedNvidiaModels } from "./server-models.js";
 import { ChatError, type ChatModel } from "./types.js";
 
 let services: ReturnType<typeof createServices> | undefined;
+function configuredNeonAuthBase(): string | undefined {
+  const connection =
+    process.env.ODIN_DATABASE_URL ?? process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
+  const value = resolveNeonAuthUrl(connection, process.env);
+  if (!value) return undefined;
+  try {
+    const url = new URL(value.replace(/\/$/u, ""));
+    if (
+      url.protocol !== "https:" ||
+      !url.hostname.endsWith(".neon.tech") ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash
+    )
+      return undefined;
+    return url.href.replace(/\/$/u, "");
+  } catch {
+    return undefined;
+  }
+}
 function createServices() {
   const connection =
     process.env.ODIN_DATABASE_URL ?? process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
-  const authUrl = resolveNeonAuthUrl(connection, process.env);
+  const authUrl = configuredNeonAuthBase();
   if (!connection || !authUrl) {
     console.warn("Odin backend configuration", {
       databaseConfigured: !!connection,
@@ -69,8 +90,9 @@ function createServices() {
   return { pool, auth, models };
 }
 export async function hostedHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const security =
-    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
+  const authBase = configuredNeonAuthBase();
+  const authOrigin = authBase ? new URL(authBase).origin : "";
+  const security = `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'${authOrigin ? ` ${authOrigin}` : ""}; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`;
   res.setHeader("Cache-Control", "no-store");
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Referrer-Policy", "no-referrer");
@@ -105,17 +127,42 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
     )
       throw new ChatError("CSRF_DENIED", "Missing same-origin request header.", 403);
     if (url.pathname === "/api/auth/config") {
+      const githubAvailable = Boolean(
+        authBase && process.env.GITHUB_OAUTH_CLIENT_ID && process.env.GITHUB_OAUTH_CLIENT_SECRET,
+      );
       send(res, 200, {
         provider: "neon",
         emailVerificationRequired: true,
         oauth: {
-          github: { available: false },
+          github: {
+            available: githubAvailable,
+            ...(githubAvailable && authBase ? { authBase } : {}),
+          },
         },
       });
       return;
     }
     services ??= createServices();
     const { auth, pool, models } = services;
+    if (url.pathname === "/api/auth/github/finalize" && method === "POST") {
+      const address =
+        String(req.headers["x-forwarded-for"] ?? "unknown").split(",")[0] ?? "unknown";
+      const limiter = new NeonActorDatabase(pool, { id: "odin-internal-auth-throttle" });
+      await rate(limiter, hashText(address), 10, 60);
+      const body = object(await jsonBody(req), ["token"]);
+      if (typeof body.token !== "string" || body.token.length < 32 || body.token.length > 16000)
+        throw new ChatError("INVALID_AUTH_TOKEN", "Invalid identity token.", 400);
+      const identity = await auth.verifyToken(body.token);
+      if (!identity.emailVerified)
+        throw new ChatError(
+          "EMAIL_UNVERIFIED",
+          "Verify your email before opening the workspace.",
+          403,
+        );
+      res.setHeader("Set-Cookie", auth.oauthJwtCookie(body.token));
+      send(res, 200, { ok: true });
+      return;
+    }
     if (url.pathname === "/api/stripe/webhook" && method === "POST") {
       const raw = await rawBody(req);
       verifyStripeSignature(
@@ -299,13 +346,13 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       });
     };
     if (url.pathname === "/api/session" && method === "DELETE") {
-      const response = await auth.upstream(
-        "sign-out",
-        "POST",
-        origin,
-        req.headers.cookie ?? "",
-        {},
-      );
+      const cookieHeader = req.headers.cookie ?? "";
+      if (auth.oauthJwt(cookieHeader)) {
+        res.setHeader("Set-Cookie", auth.clearOauthJwtCookie());
+        send(res, 200, { authenticated: false });
+        return;
+      }
+      const response = await auth.upstream("sign-out", "POST", origin, cookieHeader, {});
       if (!response.ok) throw new ChatError("AUTH_FAILED", "Sign-out failed.", 502);
       res.setHeader("Set-Cookie", auth.cookies(response));
       send(res, 200, { authenticated: false });

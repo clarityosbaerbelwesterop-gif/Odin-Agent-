@@ -45,9 +45,9 @@ test("dedicated login renders GitHub first without pretending an unavailable pro
   const client = await loginClient();
   try {
     assert.match(client.get("github-signin").textContent, /Continue with GitHub/u);
-    assert.match(client.get("github-note").textContent, /noch nicht freigeschaltet/u);
+    assert.match(client.get("github-note").textContent, /nicht verfügbar/u);
     client.get("github-signin").click();
-    assert.match(client.get("auth-status").textContent, /OAuth-Konfiguration/u);
+    assert.match(client.get("auth-status").textContent, /nicht verfügbar/u);
     assert.equal(client.requests.filter((item) => item.path === "/api/auth/github").length, 0);
   } finally {
     client.close();
@@ -91,6 +91,17 @@ test("email login calls the existing same-origin Neon broker", async () => {
   } finally {
     client.close();
   }
+});
+
+test("GitHub identity path exchanges Neon session state for a signed JWT before Odin finalization", async () => {
+  const source = await readFile("web/login.js", "utf8");
+  assert.match(source, /\/sign-in\/social/u);
+  assert.match(source, /neon_auth_session_verifier/u);
+  assert.match(source, /neonAuth\("\/token"/u);
+  assert.match(source, /\/api\/auth\/github\/finalize/u);
+  assert.doesNotMatch(source, /data\?\.session\?\.token/u);
+  const chatSource = await readFile("web/chat.js", "utf8");
+  assert.match(chatSource, /\/login\?signedOut=1/u);
 });
 
 test("login surface contains no demo or placeholder copy", async () => {
