@@ -14,10 +14,11 @@ import {
 } from "../chat/product.js";
 import { WikipediaResearchAdapter } from "../chat/research.js";
 import { ChatError, type ChatModel } from "../chat/types.js";
+import { botRuntimeAccess } from "./autonomy.js";
 import { BotControlStore } from "./control-store.js";
 import { botPlanLimits } from "./entitlements.js";
 import { BotStore, BotWakeQueue } from "./store.js";
-import { type BotTeamAssignment, type BotTeamPlan, planBotTeam, specialistPrompt } from "./team.js";
+import { type BotTeamAssignment, planBotTeam, specialistPrompt } from "./team.js";
 import type { ClaimedWakeup } from "./types.js";
 
 export interface BotWorkerOptions {
@@ -143,6 +144,9 @@ export class OdinBotWorker {
         ? `Continuation of task ${continuation.taskId}. Stored primary objective: ${continuation.objective}`
         : "";
     const botIdentity = await bot.ensureDefaultBot();
+    const { readToolsAllowed, workspaceWritesAllowed } = botRuntimeAccess(
+      botIdentity.autonomyLevel,
+    );
     const teamPlan = planBotTeam(objective, task.mode, limits.maxParallelTasks);
     await control.ensureFocus(
       task.id,
@@ -156,20 +160,27 @@ export class OdinBotWorker {
         specialistId: assignment.specialistId,
         phase: assignment.phase,
         mayWriteWorkspace: assignment.mayWriteWorkspace,
+        effectiveMayWriteWorkspace: assignment.mayWriteWorkspace && workspaceWritesAllowed,
       })),
+      autonomyLevel: botIdentity.autonomyLevel,
+      readToolsAllowed,
+      workspaceWritesAllowed,
     });
 
     let conversationId = task.conversationId;
     let turnId = task.turnId;
-    const makeEngine = (id: string, allowWorkspaceWrites: boolean) => {
-      const quality = githubReady
-        ? new GitHubWorkspace(
-            githubToken as string,
-            githubConnection.repository as string,
-            githubConnection.defaultBranch as string,
-            async () => {},
-          )
-        : new NeonWorkspace(db, id, async () => {});
+    const makeEngine = (id: string, requestedWorkspaceWrites: boolean) => {
+      const allowWorkspaceWrites = requestedWorkspaceWrites && workspaceWritesAllowed;
+      const quality = readToolsAllowed
+        ? githubReady
+          ? new GitHubWorkspace(
+              githubToken as string,
+              githubConnection.repository as string,
+              githubConnection.defaultBranch as string,
+              async () => {},
+            )
+          : new NeonWorkspace(db, id, async () => {})
+        : undefined;
       return new ChatEngine({
         store: new NeonChatStore(db),
         events: new NeonMissionStore(db),
@@ -187,17 +198,21 @@ export class OdinBotWorker {
           maxTurnMs: Math.min(240_000, limits.maxTaskMinutes * 60_000),
         },
         allowWorkspaceWrites,
-        quality,
-        workspace: (changed) =>
-          githubReady
-            ? new GitHubWorkspace(
-                githubToken as string,
-                githubConnection.repository as string,
-                githubConnection.defaultBranch as string,
-                changed,
-              )
-            : new NeonWorkspace(db, id, changed),
-        research: new WikipediaResearchAdapter("de"),
+        ...(quality
+          ? {
+              quality,
+              workspace: (changed) =>
+                githubReady
+                  ? new GitHubWorkspace(
+                      githubToken as string,
+                      githubConnection.repository as string,
+                      githubConnection.defaultBranch as string,
+                      changed,
+                    )
+                  : new NeonWorkspace(db, id, changed),
+            }
+          : {}),
+        ...(readToolsAllowed ? { research: new WikipediaResearchAdapter("de") } : {}),
       });
     };
 

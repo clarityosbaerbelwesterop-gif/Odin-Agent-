@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assessBotAction } from "../../src/bot/autonomy.js";
+import { assessBotAction, botRuntimeAccess } from "../../src/bot/autonomy.js";
 import { checkFocus, isContinuationRequest, memoryContentHash } from "../../src/bot/continuity.js";
 import { botSpecialists, planBotTeam, specialistPrompt } from "../../src/bot/team.js";
 
@@ -62,6 +62,30 @@ test("M5 permanently gated actions cannot be authorized by autonomy level alone"
     assert.equal(result.decision, "approval_required");
     assert.equal(result.approvalScope, "exact_action");
   }
+});
+
+test("M5 runtime access follows persisted autonomy level", () => {
+  assert.deepEqual(botRuntimeAccess(0), {
+    readToolsAllowed: false,
+    workspaceWritesAllowed: false,
+  });
+  assert.deepEqual(botRuntimeAccess(1), {
+    readToolsAllowed: true,
+    workspaceWritesAllowed: false,
+  });
+  assert.deepEqual(botRuntimeAccess(2), {
+    readToolsAllowed: true,
+    workspaceWritesAllowed: false,
+  });
+  assert.deepEqual(botRuntimeAccess(3), {
+    readToolsAllowed: true,
+    workspaceWritesAllowed: true,
+  });
+  assert.deepEqual(botRuntimeAccess(4), {
+    readToolsAllowed: true,
+    workspaceWritesAllowed: true,
+  });
+  assert.throws(() => botRuntimeAccess(5), /Autonomy level/u);
 });
 
 test("M5 level 3 only autonomously executes reversible low-risk effects", () => {

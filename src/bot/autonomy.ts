@@ -119,6 +119,17 @@ export function assessBotAction(
   };
 }
 
+export function botRuntimeAccess(level: number): {
+  readonly readToolsAllowed: boolean;
+  readonly workspaceWritesAllowed: boolean;
+} {
+  validateLevel(level);
+  return {
+    readToolsAllowed: level >= 1,
+    workspaceWritesAllowed: level >= 3,
+  };
+}
+
 export function hashAction(action: BotActionRequest): string {
   const canonical = JSON.stringify({
     type: action.type,
