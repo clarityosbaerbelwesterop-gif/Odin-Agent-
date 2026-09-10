@@ -29,6 +29,8 @@ jobs:
       - name: Apply M1-M3 implementation
         run: python scripts/odin-bot-m1-m3-run.py
       - run: npm ci
+      - name: Normalize generated product files
+        run: npx biome check --write .
       - name: Full repository verification
         run: npm run verify
       - name: Reject whitespace errors
