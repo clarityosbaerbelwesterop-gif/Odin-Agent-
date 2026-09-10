@@ -71,8 +71,7 @@ jobs:
             test/bot/github-events.test.ts \
             test/chat/github-delivery.test.ts \
             migrations/008_odin_bot_m7_m9.sql \
-            scripts/sync-vercel-production.mjs \
-            .github/workflows/configure-vercel-production.yml
+            scripts/sync-vercel-production.mjs
           git diff --cached --check
           if ! git diff --cached --quiet; then
             git commit -m "Odin Bot M7-M9: event wakeups, PR delivery and proactive lifecycle"
