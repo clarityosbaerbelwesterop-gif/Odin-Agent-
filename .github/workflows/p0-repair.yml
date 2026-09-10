@@ -1,4 +1,5 @@
 name: P0 Repair
+run-name: P0 Repair — guarded integration
 
 on:
   push:
@@ -32,7 +33,6 @@ jobs:
         run: |
           rm -f scripts/apply-product-rewrite-p0-v2.mjs
           rm -f .github/workflows/product-rewrite-p0.yml
-          rm -f .github/workflows/product-rewrite-p0-repair-once.yml
           rm -f .github/workflows/p0-repair.yml
       - name: Verify
         run: npm run verify
