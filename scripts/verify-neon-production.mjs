@@ -108,7 +108,7 @@ async function main() {
        WHERE n.nspname='odin_api' AND c.relkind='r'
        GROUP BY c.relname,c.relrowsecurity,c.relforcerowsecurity ORDER BY c.relname`,
     );
-    assert(tables.rows.length >= 18, "ODIN_TABLE_COUNT");
+    assert(tables.rows.length >= 23, "ODIN_TABLE_COUNT");
     for (const row of tables.rows) {
       assert.equal(row.rls, true, `RLS_${row.table_name}`);
       assert.equal(row.force_rls, true, `FORCE_RLS_${row.table_name}`);
@@ -116,6 +116,26 @@ async function main() {
     }
     report.checks.push(
       `${tables.rows.length} odin_api tables enforce RLS + FORCE RLS with policies`,
+    );
+    const botTables = new Set([
+      "bots",
+      "bot_tasks",
+      "bot_task_events",
+      "bot_automations",
+      "bot_inbox",
+    ]);
+    for (const name of botTables)
+      assert(
+        tables.rows.some((row) => row.table_name === name),
+        `BOT_TABLE_${name}`,
+      );
+    const control = await pool.query(
+      `SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+       WHERE n.nspname='odin_control' AND c.relname='bot_wakeups' AND c.relkind='r'`,
+    );
+    assert.equal(control.rows.length, 1, "BOT_WAKEUP_CONTROL_PLANE");
+    report.checks.push(
+      "Odin Bot user state is FORCE-RLS isolated and durable wakeups use a payload-free control index",
     );
 
     const runtimeRole = (

@@ -1,6 +1,11 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { join } from "node:path";
 import { attachDatabasePool, waitUntil } from "@vercel/functions";
+import { botPlanLimits } from "../bot/entitlements.js";
+import { OdinBotWorker } from "../bot/executor.js";
+import { BotStore } from "../bot/store.js";
+import { parseAutomationText } from "../bot/wakeup.js";
+import { verifyBotSchedulerAuthorization } from "../bot/worker-auth.js";
 import { AnthropicProvider } from "../providers/anthropic.js";
 import { CapabilityRegistry, makeCapabilities } from "../providers/capabilities.js";
 import { NvidiaProvider } from "../providers/nvidia.js";
@@ -144,6 +149,18 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
     }
     services ??= createServices();
     const { auth, pool, models } = services;
+    if (url.pathname === "/api/bot/worker" && method === "GET") {
+      await verifyBotSchedulerAuthorization(
+        typeof req.headers.authorization === "string" ? req.headers.authorization : undefined,
+      );
+      const worker = new OdinBotWorker({
+        pool,
+        baseModels: models,
+        credentialEncryptionKey: process.env.ODIN_CREDENTIAL_ENCRYPTION_KEY,
+      });
+      send(res, 200, await worker.runBatch("github-oidc-scheduler", 3));
+      return;
+    }
     if (url.pathname === "/api/auth/github/finalize" && method === "POST") {
       const address =
         String(req.headers["x-forwarded-for"] ?? "unknown").split(",")[0] ?? "unknown";
@@ -297,6 +314,15 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
     );
     const availableModels = [...models, ...(await byokModels(product))];
     const store = new NeonChatStore(db);
+    const botStore = new BotStore(db);
+    const botAccess = async () => {
+      const account = await product.account();
+      const plan = effectivePlan(account);
+      const limits = botPlanLimits(plan);
+      if (!limits.enabled)
+        throw new ChatError("BOT_ENTITLEMENT_REQUIRED", "Odin Bot requires Pro or higher.", 403);
+      return { account, plan, limits };
+    };
     const createEngine = (
       database: NeonActorDatabase,
       conversationId?: string,
@@ -376,6 +402,11 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
           ),
         },
         execution: "request",
+        bot: {
+          available: botPlanLimits(effectivePlan(account)).enabled,
+          durable: true,
+          path: "/bot",
+        },
         workspace: githubWorkspaceReady
           ? {
               connected: true,
@@ -396,6 +427,136 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
               quality: "Connect GitHub and choose a repository before starting Coding mode.",
             },
       });
+      return;
+    }
+    if (url.pathname === "/api/bot" && method === "GET") {
+      const { limits } = await botAccess();
+      send(res, 200, {
+        bot: await botStore.ensureDefaultBot(),
+        tasks: await botStore.tasks(),
+        automations: await botStore.automations(),
+        inbox: await botStore.inbox(),
+        limits,
+        runtime: {
+          durable: true,
+          browserIndependent: true,
+          scheduler: "github-oidc",
+          wakeCadenceMinutes: 5,
+        },
+      });
+      return;
+    }
+    if (url.pathname === "/api/bot/tasks" && method === "POST") {
+      await rate(db, "bot-tasks", 20, 60);
+      const { limits } = await botAccess();
+      const body = object(await jsonBody(req), [
+        "goal",
+        "mode",
+        "modelId",
+        "priority",
+        "idempotencyKey",
+      ]);
+      const mode = ["chat", "thinking", "research", "coding", "ultra"].includes(
+        String(body.mode ?? "thinking"),
+      )
+        ? (String(body.mode ?? "thinking") as keyof typeof MODE_MINIMUM_PLAN)
+        : "thinking";
+      const requiredPlan = MODE_MINIMUM_PLAN[mode];
+      if (!planAllows((await botAccess()).plan, requiredPlan))
+        throw new ChatError(
+          "ENTITLEMENT_REQUIRED",
+          `This bot task requires the ${requiredPlan} plan.`,
+          403,
+        );
+      const task = await botStore.createTask(
+        {
+          goal: typeof body.goal === "string" ? body.goal : "",
+          mode,
+          modelId: typeof body.modelId === "string" ? body.modelId : null,
+          priority: typeof body.priority === "number" ? body.priority : 50,
+          idempotencyKey: typeof body.idempotencyKey === "string" ? body.idempotencyKey : undefined,
+        },
+        limits,
+      );
+      const worker = new OdinBotWorker({
+        pool,
+        baseModels: models,
+        credentialEncryptionKey: process.env.ODIN_CREDENTIAL_ENCRYPTION_KEY,
+      });
+      waitUntil(worker.runBatch(`request:${identity.id}`, 1, identity.id));
+      send(res, 202, { task });
+      return;
+    }
+    const botTaskRoute = /^\/api\/bot\/tasks\/([\w-]+)(?:\/(control))?$/u.exec(url.pathname);
+    if (botTaskRoute) {
+      const taskId = identifier(botTaskRoute[1]);
+      await botAccess();
+      if (!botTaskRoute[2] && method === "GET") {
+        send(res, 200, {
+          task: await botStore.task(taskId),
+          events: await botStore.events(taskId),
+        });
+        return;
+      }
+      if (botTaskRoute[2] === "control" && method === "POST") {
+        const body = object(await jsonBody(req), ["command"]);
+        if (body.command !== "cancel")
+          throw new ChatError("INVALID_COMMAND", "Only cancel is available in this milestone.");
+        send(res, 200, { task: await botStore.cancel(taskId) });
+        return;
+      }
+    }
+    if (url.pathname === "/api/bot/automations/parse" && method === "POST") {
+      await botAccess();
+      const body = object(await jsonBody(req), ["instruction", "timeZone"]);
+      send(
+        res,
+        200,
+        parseAutomationText(
+          typeof body.instruction === "string" ? body.instruction : "",
+          typeof body.timeZone === "string" ? body.timeZone : "UTC",
+        ),
+      );
+      return;
+    }
+    if (url.pathname === "/api/bot/automations") {
+      const { limits } = await botAccess();
+      if (method === "GET") {
+        send(res, 200, { automations: await botStore.automations() });
+        return;
+      }
+      if (method === "POST") {
+        await rate(db, "bot-automations", 10, 60);
+        const body = object(await jsonBody(req), ["instruction", "timeZone", "notificationPolicy"]);
+        const instruction = typeof body.instruction === "string" ? body.instruction : "";
+        const parsed = parseAutomationText(
+          instruction,
+          typeof body.timeZone === "string" ? body.timeZone : "UTC",
+        );
+        const notificationPolicy = ["critical", "important", "all", "digest", "silent"].includes(
+          String(body.notificationPolicy ?? "important"),
+        )
+          ? (String(body.notificationPolicy ?? "important") as
+              | "critical"
+              | "important"
+              | "all"
+              | "digest"
+              | "silent")
+          : "important";
+        send(
+          res,
+          201,
+          await botStore.createAutomation(instruction, parsed, limits, notificationPolicy),
+        );
+        return;
+      }
+    }
+    const botAutomationRoute = /^\/api\/bot\/automations\/([\w-]+)$/u.exec(url.pathname);
+    if (botAutomationRoute && method === "DELETE") {
+      await botAccess();
+      await jsonBody(req);
+      await botStore.deleteAutomation(identifier(botAutomationRoute[1]));
+      send(res, 200, { deleted: true });
       return;
     }
     if (url.pathname === "/api/providers" && method === "GET") {
@@ -564,6 +725,11 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
           "conversations",
           "turns",
           "events",
+          "bots",
+          "bot_tasks",
+          "bot_task_events",
+          "bot_automations",
+          "bot_inbox",
         ];
         const result: Record<string, unknown> = {};
         for (const table of tables) {
@@ -590,6 +756,11 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
           "conversations",
           "leases",
           "rate_limits",
+          "bot_inbox",
+          "bot_task_events",
+          "bot_automations",
+          "bot_tasks",
+          "bots",
           "oauth_states",
           "credentials",
           "github_connections",

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { Pool } from "pg";
 
 const SCOPE = Object.freeze({
@@ -133,6 +133,13 @@ async function configureDatabase(report, envKeys) {
     connectionTimeoutMillis: 10_000,
   });
   try {
+    const botMigration = await readFile(
+      new URL("../migrations/006_odin_bot_m1_m3.sql", import.meta.url),
+      "utf8",
+    );
+    await pool.query(botMigration);
+    report.checks.push("Odin Bot M1-M3 additive schema reconciled");
+
     const role = await pool.query("SELECT 1 FROM pg_roles WHERE rolname=$1", [SCOPE.appRole]);
     const bindingAlreadyPresent = role.rows.length > 0 && envKeys.has("ODIN_DATABASE_URL");
     if (!bindingAlreadyPresent) {
@@ -160,6 +167,10 @@ async function configureDatabase(report, envKeys) {
     }
 
     await pool.query(`GRANT odin_runtime TO ${SCOPE.appRole} WITH INHERIT FALSE, SET TRUE`);
+    await pool.query(`GRANT USAGE ON SCHEMA odin_control TO ${SCOPE.appRole}`);
+    await pool.query(
+      `GRANT SELECT,INSERT,UPDATE,DELETE ON odin_control.bot_wakeups TO ${SCOPE.appRole}`,
+    );
     const checked = (
       await pool.query(
         "SELECT rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,rolinherit,rolbypassrls,rolreplication FROM pg_roles WHERE rolname=$1",

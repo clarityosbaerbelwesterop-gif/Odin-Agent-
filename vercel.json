@@ -20,6 +20,10 @@
       "destination": "/chat.html"
     },
     {
+      "source": "/bot",
+      "destination": "/bot.html"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api?odin_path=:path*"
     },
@@ -91,6 +95,19 @@
     },
     {
       "source": "/app",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        }
+      ]
+    },
+    {
+      "source": "/bot",
       "headers": [
         {
           "key": "Content-Security-Policy",
