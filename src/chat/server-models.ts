@@ -156,11 +156,17 @@ export const NVIDIA_SHARED_MODEL_DEFINITIONS: readonly NvidiaSharedModelDefiniti
   },
 ]);
 
+function isProduction(env: Environment): boolean {
+  return env.VERCEL_ENV !== undefined
+    ? env.VERCEL_ENV === "production"
+    : env.NODE_ENV === "production";
+}
+
 export function sharedNvidiaCredential(
   env: Environment,
   slot: "primary" | "secondary",
 ): string {
-  if (env.VERCEL_ENV === "production" || env.NODE_ENV === "production") {
+  if (isProduction(env)) {
     if (env.ODIN_NVIDIA_PRODUCTION_AUTHORIZED !== "true") return "";
     const primary = env.NVIDIA_PRODUCTION_API_KEY ?? "";
     if (slot === "secondary") return env.NVIDIA_PRODUCTION_API_KEY_2 ?? primary;
