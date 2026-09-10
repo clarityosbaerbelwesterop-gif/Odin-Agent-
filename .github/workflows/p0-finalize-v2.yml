@@ -1,4 +1,5 @@
 name: P0 Finalize Product Rewrite V2
+run-name: P0 Finalize — verified product-only commit
 
 on:
   push:
