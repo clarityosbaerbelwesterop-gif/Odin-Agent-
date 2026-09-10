@@ -21,7 +21,7 @@
     "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "verify": "npm run check:foundation && npm run quality && npm run typecheck && npm test && npm run test:ui && npm run smoke:kimi:dry && npm run build:base",
-    "test:ui": "node --test scripts/chat-ui.test.mjs scripts/landing.test.mjs scripts/login.test.mjs scripts/preview-config.test.mjs scripts/product-info.test.mjs scripts/workspace-ui.test.mjs",
+    "test:ui": "node --test scripts/chat-ui.test.mjs scripts/landing.test.mjs scripts/login.test.mjs scripts/preview-config.test.mjs scripts/product-info.test.mjs scripts/workspace-ui.test.mjs scripts/bot-ui.test.mjs",
     "test:chat": "node --test dist/test/chat/*.test.js"
   },
   "devDependencies": {

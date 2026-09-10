@@ -1,0 +1,392 @@
+:root {
+  color-scheme: dark;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #0a0a0b;
+  color: #f4f4f5;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: radial-gradient(circle at 50% -20%, #202024 0, transparent 38%), #0a0a0b;
+  min-height: 100vh;
+}
+.bot-shell {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 0 28px 80px;
+}
+.bot-topbar {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #232326;
+}
+.brand {
+  color: #fafafa;
+  text-decoration: none;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+.brand > span:first-child {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+  border: 1px solid #3a3a40;
+  border-radius: 9px;
+}
+.dot {
+  color: #9b87f5;
+}
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+}
+.top-actions a {
+  color: #a1a1aa;
+  text-decoration: none;
+}
+.top-actions a:hover {
+  color: #fff;
+}
+#plan-pill {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  border: 1px solid #39393f;
+  border-radius: 99px;
+  padding: 5px 8px;
+  color: #c4b5fd;
+}
+.hero {
+  padding: 82px 0 58px;
+}
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: #8b8b95;
+  margin: 0 0 16px;
+}
+.hero h1 {
+  font-size: clamp(42px, 7vw, 68px);
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+  margin: 0 0 18px;
+  font-weight: 620;
+}
+.hero-copy {
+  max-width: 630px;
+  color: #8f8f98;
+  font-size: 17px;
+  line-height: 1.6;
+  margin: 0 0 34px;
+}
+.command {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  border: 1px solid #303036;
+  background: #111113;
+  border-radius: 20px;
+  padding: 14px 14px 14px 18px;
+  box-shadow: 0 24px 70px #0006;
+}
+.command:focus-within {
+  border-color: #52525b;
+}
+.command textarea {
+  resize: none;
+  flex: 1;
+  min-height: 48px;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: #fafafa;
+  font: inherit;
+  font-size: 17px;
+  line-height: 1.4;
+}
+.command textarea::placeholder {
+  color: #62626b;
+}
+.command button {
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 13px;
+  background: #f4f4f5;
+  color: #111;
+  font-size: 22px;
+  cursor: pointer;
+}
+.command button:hover {
+  background: #fff;
+}
+#status {
+  min-height: 22px;
+  padding: 10px 4px 0;
+  color: #a1a1aa;
+  font-size: 13px;
+}
+.stream {
+  padding: 28px 0;
+  border-top: 1px solid #232326;
+}
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.section-head h2 {
+  font-size: 14px;
+  font-weight: 580;
+  margin: 0;
+  color: #e4e4e7;
+}
+.section-head > span {
+  font-size: 12px;
+  color: #71717a;
+}
+.section-head button {
+  border: 0;
+  background: transparent;
+  color: #a78bfa;
+  cursor: pointer;
+}
+.rows {
+  display: grid;
+}
+.task-row,
+.inbox-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 12px;
+  padding: 14px 10px;
+  color: inherit;
+  cursor: pointer;
+}
+.task-row:hover,
+.inbox-row:hover {
+  background: #121215;
+}
+.task-copy,
+.schedule-row > span,
+.inbox-row > span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.task-copy strong,
+.schedule-row strong,
+.inbox-row strong {
+  font-size: 14px;
+  font-weight: 520;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.task-copy small,
+.schedule-row small,
+.inbox-row small {
+  font-size: 12px;
+  color: #71717a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.task-state {
+  font-size: 12px;
+  color: #a1a1aa;
+  white-space: nowrap;
+}
+.empty {
+  margin: 10px;
+  color: #5f5f68;
+  font-size: 13px;
+}
+.schedule-form {
+  display: flex;
+  gap: 8px;
+  padding: 8px 0 14px;
+}
+.schedule-form input {
+  flex: 1;
+  border: 1px solid #303036;
+  border-radius: 12px;
+  background: #111113;
+  padding: 12px 14px;
+  color: #fff;
+  outline: none;
+}
+.schedule-form button,
+.schedule-row button {
+  border: 1px solid #303036;
+  background: #151518;
+  color: #d4d4d8;
+  border-radius: 10px;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+.schedule-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 10px;
+}
+.inbox-row b {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: #c4b5fd;
+}
+dialog {
+  width: min(680px, calc(100% - 28px));
+  border: 1px solid #303036;
+  border-radius: 22px;
+  background: #111113;
+  color: #f4f4f5;
+  padding: 24px;
+  box-shadow: 0 30px 120px #000c;
+}
+dialog::backdrop {
+  background: #000b;
+  backdrop-filter: blur(8px);
+}
+.detail-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+.detail-head h2 {
+  font-size: 24px;
+  letter-spacing: -0.035em;
+  margin: 0;
+}
+.detail-head > button {
+  border: 0;
+  background: transparent;
+  color: #a1a1aa;
+  font-size: 24px;
+  cursor: pointer;
+}
+.detail-status {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 20px 0;
+  color: #a1a1aa;
+  font-size: 13px;
+}
+.detail-status span:first-child {
+  color: #d8b4fe;
+}
+.events {
+  border-top: 1px solid #27272a;
+  border-bottom: 1px solid #27272a;
+  padding: 10px 0;
+  max-height: 270px;
+  overflow: auto;
+}
+.event {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 12px;
+  padding: 8px 4px;
+  font-size: 13px;
+}
+.event time {
+  color: #5f5f68;
+}
+.event span {
+  color: #d4d4d8;
+}
+details {
+  padding: 16px 2px;
+}
+summary {
+  cursor: pointer;
+  color: #a1a1aa;
+  font-size: 12px;
+}
+dl {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 8px 14px;
+  font-size: 12px;
+}
+dt {
+  color: #71717a;
+}
+dd {
+  margin: 0;
+  color: #d4d4d8;
+  overflow-wrap: anywhere;
+}
+.detail-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.detail-actions button {
+  border: 1px solid #3f3f46;
+  background: transparent;
+  color: #d4d4d8;
+  border-radius: 10px;
+  padding: 9px 12px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+@media (max-width: 640px) {
+  .bot-shell {
+    padding: 0 16px 60px;
+  }
+  .bot-topbar {
+    height: 60px;
+  }
+  .hero {
+    padding: 56px 0 42px;
+  }
+  .hero-copy {
+    font-size: 15px;
+  }
+  .command {
+    border-radius: 17px;
+  }
+  .task-row,
+  .inbox-row {
+    padding: 14px 4px;
+  }
+  .task-state {
+    max-width: 92px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .schedule-form {
+    display: grid;
+  }
+  .schedule-row {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+}

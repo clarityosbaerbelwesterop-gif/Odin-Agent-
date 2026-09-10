@@ -1,0 +1,34 @@
+name: Odin Bot durable scheduler
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: odin-bot-durable-scheduler
+  cancel-in-progress: false
+
+jobs:
+  wake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Wake due Odin Bot work with GitHub OIDC
+        shell: bash
+        env:
+          ODIN_BOT_WORKER_URL: https://odin-agent-xi.vercel.app/api/bot/worker
+        run: |
+          set -euo pipefail
+          RESPONSE="$(curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=odin-bot-worker")"
+          TOKEN="$(python -c 'import json,sys; print(json.load(sys.stdin)["value"])' <<<"${RESPONSE}")"
+          test -n "${TOKEN}"
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer ${TOKEN}" \
+            "${ODIN_BOT_WORKER_URL}"
