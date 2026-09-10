@@ -2,7 +2,7 @@ import type { Pool } from "pg";
 import { ChatEngine } from "../chat/engine.js";
 import { GitHubWorkspace } from "../chat/github-workspace.js";
 import { DEFAULT_CHAT_LIMITS } from "../chat/modes.js";
-import { NeonActorDatabase, type ActorDatabase } from "../chat/neon-database.js";
+import { type ActorDatabase, NeonActorDatabase } from "../chat/neon-database.js";
 import { NeonChatStore, NeonMissionStore } from "../chat/neon-store.js";
 import { NeonWorkspace } from "../chat/neon-workspace.js";
 import {
@@ -17,12 +17,7 @@ import { ChatError, type ChatModel } from "../chat/types.js";
 import { BotControlStore } from "./control-store.js";
 import { botPlanLimits } from "./entitlements.js";
 import { BotStore, BotWakeQueue } from "./store.js";
-import {
-  planBotTeam,
-  specialistPrompt,
-  type BotTeamAssignment,
-  type BotTeamPlan,
-} from "./team.js";
+import { type BotTeamAssignment, type BotTeamPlan, planBotTeam, specialistPrompt } from "./team.js";
 import type { ClaimedWakeup } from "./types.js";
 
 export interface BotWorkerOptions {
@@ -141,13 +136,19 @@ export class OdinBotWorker {
       return "blocked";
     }
 
-    const continuation = await control.resolveContinuation(task.goal);
+    const continuation = await control.resolveContinuation(task.goal, task.id);
     const objective = continuation?.objective || task.goal;
-    const continuityContext = continuation && continuation.taskId !== task.id
-      ? `Continuation of task ${continuation.taskId}. Stored primary objective: ${continuation.objective}`
-      : "";
+    const continuityContext =
+      continuation && continuation.taskId !== task.id
+        ? `Continuation of task ${continuation.taskId}. Stored primary objective: ${continuation.objective}`
+        : "";
+    const botIdentity = await bot.ensureDefaultBot();
     const teamPlan = planBotTeam(objective, task.mode, limits.maxParallelTasks);
-    await control.ensureFocus(task.id, objective, structuredClone(teamPlan) as unknown as Record<string, unknown>);
+    await control.ensureFocus(
+      task.id,
+      objective,
+      structuredClone(teamPlan) as unknown as Record<string, unknown>,
+    );
     await emitBotEvent(db, task.id, "team.planned", {
       planHash: teamPlan.planHash,
       primary: teamPlan.primary,
@@ -231,7 +232,8 @@ export class OdinBotWorker {
       .slice(0, 12000);
 
     const primary = teamPlan.assignments.find((assignment) => assignment.phase === "primary");
-    if (!primary) throw new ChatError("BOT_TEAM_INVALID", "Odin Bot team plan has no primary agent.", 500);
+    if (!primary)
+      throw new ChatError("BOT_TEAM_INVALID", "Odin Bot team plan has no primary agent.", 500);
 
     if (!conversationId || !turnId) {
       const chatStore = new NeonChatStore(db);
@@ -265,7 +267,8 @@ export class OdinBotWorker {
     const mainAnswer = await answerForTurn(new NeonChatStore(db), conversationId, turnId);
     const focusCheckpoint = await control.checkpointFocus(task.id, {
       currentObjective: objective,
-      completedSteps: view.state === "COMPLETED" ? ["Primary agent completed and verified its mission"] : [],
+      completedSteps:
+        view.state === "COMPLETED" ? ["Primary agent completed and verified its mission"] : [],
       openBlockers: view.state === "BLOCKED" ? ["Primary mission entered BLOCKED state"] : [],
     });
     await bot.saveCheckpoint(task.id, {
@@ -285,7 +288,11 @@ export class OdinBotWorker {
       await emitBotEvent(db, task.id, "focus.replan_required", {
         revision: focusCheckpoint.focus.revision,
       });
-      throw new ChatError("BOT_FOCUS_DRIFT", "Focus drift was detected; a fresh plan is required.", 503);
+      throw new ChatError(
+        "BOT_FOCUS_DRIFT",
+        "Focus drift was detected; a fresh plan is required.",
+        503,
+      );
     }
 
     if (view.state === "COMPLETED") {
@@ -297,12 +304,19 @@ export class OdinBotWorker {
           task.id,
           reviewer,
           objective,
-          [preflightContext, `PRIMARY RESULT:\n${mainAnswer}`].filter(Boolean).join("\n\n").slice(0, 12000),
+          [preflightContext, `PRIMARY RESULT:\n${mainAnswer}`]
+            .filter(Boolean)
+            .join("\n\n")
+            .slice(0, 12000),
           selected.id,
           makeEngine,
         );
         if (review.state !== "COMPLETED") {
-          throw new ChatError("BOT_REVIEW_INCOMPLETE", "Independent reviewer did not complete successfully.", 503);
+          throw new ChatError(
+            "BOT_REVIEW_INCOMPLETE",
+            "Independent reviewer did not complete successfully.",
+            503,
+          );
         }
         const verdict = reviewVerdict(review.answer);
         await emitBotEvent(db, task.id, "team.review.completed", {
@@ -311,9 +325,15 @@ export class OdinBotWorker {
           turnId: review.turnId,
         });
         if (verdict === "BLOCK") {
-          await bot.updateTask(task.id, "blocked", "Independent review found a release blocker", "team.review.blocked", {
-            reviewerTurnId: review.turnId,
-          });
+          await bot.updateTask(
+            task.id,
+            "blocked",
+            "Independent review found a release blocker",
+            "team.review.blocked",
+            {
+              reviewerTurnId: review.turnId,
+            },
+          );
           await bot.addInbox(
             task.id,
             "important",
@@ -324,10 +344,33 @@ export class OdinBotWorker {
           return "blocked";
         }
       }
-      await bot.updateTask(task.id, "done", "Completed and independently checked", "runtime.completed", {
-        turnId,
-        teamPlanHash: teamPlan.planHash,
+      await control.remember(botIdentity.id, {
+        kind: "previous_mission",
+        key: `mission:${task.id}`,
+        content: JSON.stringify({
+          objective,
+          taskId: task.id,
+          conversationId,
+          turnId,
+          teamPlanHash: teamPlan.planHash,
+        }),
+        sourceClass: "mission",
+        sourceRef: `bot-task:${task.id}`,
+        sourceTimestamp: new Date().toISOString(),
+        scope: { taskId: task.id },
+        confidence: 1,
+        sensitivity: "internal",
       });
+      await bot.updateTask(
+        task.id,
+        "done",
+        "Completed and independently checked",
+        "runtime.completed",
+        {
+          turnId,
+          teamPlanHash: teamPlan.planHash,
+        },
+      );
       return "done";
     }
     if (view.state === "BLOCKED") {
@@ -433,11 +476,14 @@ export class OdinBotWorker {
   }
 }
 
-async function answerForTurn(store: NeonChatStore, conversationId: string, turnId: string): Promise<string> {
+async function answerForTurn(
+  store: NeonChatStore,
+  conversationId: string,
+  turnId: string,
+): Promise<string> {
   const events = await store.events(conversationId, 0, 1000);
-  const answer = events
-    .filter((event) => event.turnId === turnId && event.type === "answer")
-    .at(-1)?.data.text;
+  const answer = events.filter((event) => event.turnId === turnId && event.type === "answer").at(-1)
+    ?.data.text;
   return typeof answer === "string" ? answer.slice(0, 12000) : "";
 }
 
@@ -448,10 +494,11 @@ async function emitBotEvent(
   data: Record<string, unknown>,
 ): Promise<void> {
   await db.transaction(async (client) => {
-    await client.query(
-      "INSERT INTO odin_api.bot_task_events(task_id,type,data) VALUES($1,$2,$3)",
-      [taskId, type, data],
-    );
+    await client.query("INSERT INTO odin_api.bot_task_events(task_id,type,data) VALUES($1,$2,$3)", [
+      taskId,
+      type,
+      data,
+    ]);
   });
 }
 

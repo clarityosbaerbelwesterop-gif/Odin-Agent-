@@ -9,7 +9,12 @@ export type BotMemoryKind =
   | "previous_mission"
   | "learned_procedure";
 export type BotMemorySensitivity = "public" | "internal" | "sensitive";
-export type BotMemorySourceClass = "explicit_user" | "repository" | "tool" | "mission" | "verified_learning";
+export type BotMemorySourceClass =
+  | "explicit_user"
+  | "repository"
+  | "tool"
+  | "mission"
+  | "verified_learning";
 
 export interface BotMemoryInput {
   readonly kind: BotMemoryKind;
@@ -45,7 +50,8 @@ export interface FocusCheck {
   readonly shouldReplan: boolean;
 }
 
-const CONTINUATION = /\b(?:continue|weiter|weitermachen|gestern|yesterday|that thing|dem ding|da weiter|mach da)\b/iu;
+const CONTINUATION =
+  /\b(?:continue|weiter|weitermachen|gestern|yesterday|that thing|dem ding|da weiter|mach da)\b/iu;
 
 export function isContinuationRequest(text: string): boolean {
   return CONTINUATION.test(text.trim());
@@ -55,7 +61,12 @@ export function checkFocus(primaryObjective: string, candidateObjective: string)
   const primary = significantTokens(primaryObjective);
   const candidate = significantTokens(candidateObjective);
   if (candidate.size === 0 || primary.size === 0) {
-    return { aligned: false, overlap: 0, reason: "Objective lacks enough stable terms to prove alignment.", shouldReplan: true };
+    return {
+      aligned: false,
+      overlap: 0,
+      reason: "Objective lacks enough stable terms to prove alignment.",
+      shouldReplan: true,
+    };
   }
   const shared = [...candidate].filter((token) => primary.has(token)).length;
   const overlap = shared / Math.max(1, Math.min(primary.size, candidate.size));
@@ -63,7 +74,9 @@ export function checkFocus(primaryObjective: string, candidateObjective: string)
   return {
     aligned,
     overlap,
-    reason: aligned ? "Candidate remains anchored to the primary objective." : "Candidate drifted from the stored primary objective.",
+    reason: aligned
+      ? "Candidate remains anchored to the primary objective."
+      : "Candidate drifted from the stored primary objective.",
     shouldReplan: !aligned,
   };
 }
@@ -85,16 +98,40 @@ export function memoryContentHash(content: string): string {
 
 export function validateMemoryInput(input: BotMemoryInput): void {
   if (!input.key.trim() || input.key.length > 240) throw new TypeError("Memory key is invalid.");
-  if (!input.content.trim() || input.content.length > 65_536) throw new TypeError("Memory content is invalid.");
-  if (!input.sourceRef.trim() || input.sourceRef.length > 1000) throw new TypeError("Memory source reference is invalid.");
-  if (!Number.isFinite(input.confidence) || input.confidence < 0 || input.confidence > 1) throw new TypeError("Memory confidence must be between 0 and 1.");
+  if (!input.content.trim() || input.content.length > 65_536)
+    throw new TypeError("Memory content is invalid.");
+  if (!input.sourceRef.trim() || input.sourceRef.length > 1000)
+    throw new TypeError("Memory source reference is invalid.");
+  if (!Number.isFinite(input.confidence) || input.confidence < 0 || input.confidence > 1)
+    throw new TypeError("Memory confidence must be between 0 and 1.");
   const timestamp = Date.parse(input.sourceTimestamp);
   if (!Number.isFinite(timestamp)) throw new TypeError("Memory source timestamp is invalid.");
-  if (input.expiresAt && !Number.isFinite(Date.parse(input.expiresAt))) throw new TypeError("Memory expiry is invalid.");
+  if (input.expiresAt && !Number.isFinite(Date.parse(input.expiresAt)))
+    throw new TypeError("Memory expiry is invalid.");
 }
 
 function significantTokens(text: string): Set<string> {
-  const stop = new Set(["the", "and", "that", "this", "with", "from", "dann", "und", "das", "der", "die", "den", "dem", "ein", "eine", "mach", "make", "please", "bitte"]);
+  const stop = new Set([
+    "the",
+    "and",
+    "that",
+    "this",
+    "with",
+    "from",
+    "dann",
+    "und",
+    "das",
+    "der",
+    "die",
+    "den",
+    "dem",
+    "ein",
+    "eine",
+    "mach",
+    "make",
+    "please",
+    "bitte",
+  ]);
   return new Set(
     text
       .toLowerCase()

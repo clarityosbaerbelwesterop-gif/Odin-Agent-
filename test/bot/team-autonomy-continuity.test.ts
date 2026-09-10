@@ -20,7 +20,8 @@ test("M4 specialist catalog contains the required Odin team roles", () => {
     "odin_ux",
     "odin_support",
     "odin_voice_support",
-  ]) assert.ok(ids.has(id as never), `missing ${id}`);
+  ])
+    assert.ok(ids.has(id as never), `missing ${id}`);
 });
 
 test("M4 simple work stays single-agent and complex coding uses controlled specialists", () => {
@@ -36,7 +37,11 @@ test("M4 simple work stays single-agent and complex coding uses controlled speci
   assert.equal(complex.primary, "odin_coder");
   assert.equal(complex.complexity, "complex");
   assert.ok(complex.assignments.some((item) => item.specialistId === "odin_debugger"));
-  assert.ok(complex.assignments.some((item) => item.specialistId === "odin_security" || item.specialistId === "odin_devops"));
+  assert.ok(
+    complex.assignments.some(
+      (item) => item.specialistId === "odin_security" || item.specialistId === "odin_devops",
+    ),
+  );
   assert.ok(complex.assignments.some((item) => item.specialistId === "odin_reviewer"));
   assert.ok(complex.assignments.length <= 4);
   assert.equal(complex.assignments.filter((item) => item.mayWriteWorkspace).length, 1);
@@ -100,9 +105,15 @@ test("M5 action hashes bind approvals to exact action metadata", () => {
 test("M6 continuity recognizes follow-up language and focus drift", () => {
   assert.equal(isContinuationRequest("Mach bei dem Ding von gestern weiter."), true);
   assert.equal(isContinuationRequest("Build an unrelated weather app."), false);
-  const aligned = checkFocus("Bring Odin Bot to production with durable background tasks", "Continue Odin Bot background task production verification");
+  const aligned = checkFocus(
+    "Bring Odin Bot to production with durable background tasks",
+    "Continue Odin Bot background task production verification",
+  );
   assert.equal(aligned.aligned, true);
-  const drift = checkFocus("Bring Odin Bot to production with durable background tasks", "Write a recipe for apple pie");
+  const drift = checkFocus(
+    "Bring Odin Bot to production with durable background tasks",
+    "Write a recipe for apple pie",
+  );
   assert.equal(drift.shouldReplan, true);
 });
 
