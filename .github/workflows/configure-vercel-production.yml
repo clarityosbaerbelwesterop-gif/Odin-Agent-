@@ -1,27 +1,25 @@
-name: Configure Odin production
+name: Sync Odin Vercel production
 
 on:
   push:
     branches: [main]
     paths:
       - .github/workflows/configure-vercel-production.yml
-      - scripts/configure-vercel-production.mjs
-      - migrations/004_reconcile_product_control_plane.sql
-      - migrations/005_developer_plan.sql
+      - scripts/sync-vercel-production.mjs
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: odin-production-setup
+  group: odin-vercel-production-sync
   cancel-in-progress: false
 
 jobs:
-  configure:
+  sync-and-deploy:
     if: github.repository == 'clarityosbaerbelwesterop-gif/Odin-Agent-' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -29,27 +27,28 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Verify merged product before touching production
+      - name: Verify exact merged source before production changes
         run: npm run verify
-      - name: Configure production Neon/Vercel and deploy exact main SHA
+      - name: Synchronize production secrets, repair Neon binding, and deploy exact main SHA
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_ODIN_TOKEN }}
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-          NV_API_KEY: ${{ secrets.NV_API_KEY }}
-          NV_API_KEY_2: ${{ secrets.NV_API_KEY_2 }}
           GITHUB_OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
           GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-          STRIPE_PRO_PRICE_ID: price_1UDr55EmDA2oLCpoQJNERPTA
-          STRIPE_DEVELOPER_PRICE_ID: price_1UDr5HEmDA2oLCpoTuUlXUH0
-          STRIPE_ULTRA_PRICE_ID: price_1UDr5REmDA2oLCpoiETsQLQf
-          GITHUB_MCP_URL: https://api.githubcopilot.com/mcp/readonly
-        run: node scripts/configure-vercel-production.mjs
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          NVIDIA_PRODUCTION_API_KEY: ${{ secrets.NVIDIA_PRODUCTION_API_KEY }}
+          NVIDIA_PRODUCTION_API_KEY_2: ${{ secrets.NVIDIA_PRODUCTION_API_KEY_2 }}
+          ODIN_NVIDIA_PRODUCTION_AUTHORIZED: ${{ secrets.ODIN_NVIDIA_PRODUCTION_AUTHORIZED }}
+        run: node scripts/sync-vercel-production.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: odin-production-setup-evidence
-          path: production-setup-result.json
+          name: odin-vercel-production-sync
+          path: vercel-production-sync-result.json
           if-no-files-found: warn
           retention-days: 14
