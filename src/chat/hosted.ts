@@ -31,6 +31,7 @@ import {
 } from "./product.js";
 import { WikipediaResearchAdapter } from "./research.js";
 import { hashText, identifier, integer, object, publicError } from "./safety.js";
+import { createSharedNvidiaModels } from "./server-models.js";
 import { ChatError, type ChatModel } from "./types.js";
 
 let services: ReturnType<typeof createServices> | undefined;
@@ -57,96 +58,7 @@ function createServices() {
   const pool = createNeonPool(connection);
   attachDatabasePool(pool);
   const auth = new NeonAuth(authUrl);
-  const models: ChatModel[] = [];
-  const addNvidiaModel = (input: {
-    id: string;
-    label: string;
-    model: string;
-    plan: "free" | "pro" | "developer" | "ultra";
-    summary: string;
-    recommendedFor: readonly string[];
-    credential: () => string;
-    version: string;
-    reference: string;
-    capabilities: ReturnType<typeof makeCapabilities>;
-    timeoutMs: number;
-  }) => {
-    if (!input.credential()) return;
-    const capabilities = new CapabilityRegistry([
-      {
-        model: input.model,
-        provider: "nvidia",
-        version: input.version,
-        provenance: {
-          kind: "provider",
-          observedAt: "2026-09-09T00:00:00.000Z",
-          reference: input.reference,
-        },
-        capabilities: input.capabilities,
-      },
-    ]);
-    models.push({
-      id: input.id,
-      label: input.label,
-      model: input.model,
-      plan: input.plan,
-      summary: input.summary,
-      recommendedFor: input.recommendedFor,
-      provider: new NvidiaProvider({
-        capabilities,
-        credential: input.credential,
-        reasoningParameter: "reasoning_effort",
-        defaultTimeoutMs: input.timeoutMs,
-      }),
-    });
-  };
-  addNvidiaModel({
-    id: "kimi",
-    label: "Kimi K3",
-    model: "moonshotai/kimi-k3",
-    plan: "free",
-    summary: "Großer Kontext für Coding, Reasoning und lange Aufgaben.",
-    recommendedFor: ["Coding", "Thinking", "Long context"],
-    credential: () => process.env.NV_API_KEY ?? process.env.NVIDIA_API_KEY ?? "",
-    version: "nvidia-build-2026-09-04",
-    reference: "https://docs.api.nvidia.com/nim/reference/moonshotai-kimi-k3-infer",
-    capabilities: makeCapabilities({
-      textInput: true,
-      toolUse: true,
-      streaming: true,
-      reasoningEfforts: ["low", "high", "max"],
-      contextWindowTokens: 1048576,
-      maxOutputTokens: 65536,
-    }),
-    timeoutMs: 180000,
-  });
-  addNvidiaModel({
-    id: "muse-glimmer",
-    label: "Muse Glimmer 30B",
-    model: "meta/muse-glimmer-30b",
-    plan: "pro",
-    summary: "Multimodales Reasoning-Modell für agentische Aufgaben, Coding und Tool-Nutzung.",
-    recommendedFor: ["Pro", "Coding", "Agents", "Vision", "Tool use"],
-    credential: () =>
-      process.env.NV_API_KEY_2 ??
-      process.env.NV_PRO_API_KEY ??
-      process.env.NV_API_KEY ??
-      process.env.NVIDIA_API_KEY ??
-      "",
-    version: "nvidia-build-2026-09-09",
-    reference: "https://docs.api.nvidia.com/nim/re/reference/meta-muse-glimmer-30b-infer",
-    capabilities: makeCapabilities({
-      textInput: true,
-      imageInput: true,
-      toolUse: true,
-      streaming: true,
-      temperature: true,
-      reasoningEfforts: ["minimal", "low", "medium", "high", "max"],
-      contextWindowTokens: 131072,
-      maxOutputTokens: 8192,
-    }),
-    timeoutMs: 120000,
-  });
+  const models: ChatModel[] = createSharedNvidiaModels(process.env);
   console.info("Odin backend readiness", {
     databaseConfigured: true,
     authConfigured: true,
