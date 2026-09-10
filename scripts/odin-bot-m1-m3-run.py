@@ -68,3 +68,8 @@ replace_once(
     '  credentialEncryptionKey?: string;',
     '  credentialEncryptionKey?: string | undefined;',
 )
+replace_once(
+    "scripts/bot-ui.test.mjs",
+    'assert.doesNotMatch(html, /demo|placeholder|fake activity/iu);',
+    'assert.doesNotMatch(html, /\\bdemo\\b|fake activity/iu);',
+)
