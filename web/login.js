@@ -69,11 +69,31 @@ function submitLabel() {
 
 function renderMode() {
   const content = {
-    login: ["WILLKOMMEN ZURÜCK", "Bei Odin anmelden", "Öffne deinen Workspace und setze deine Missionen fort."],
-    signup: ["NEUES KONTO", "Odin Account erstellen", "Erstelle deine Identity. Danach bestätigst du deine E-Mail."],
-    verify: ["E-MAIL BESTÄTIGEN", "Konto verifizieren", "Fordere einen sechsstelligen Code an und bestätige deine Adresse."],
-    forgot: ["PASSWORT RESET", "Zugang wiederherstellen", "Wir senden einen Reset-Code, wenn für die Adresse ein Konto existiert."],
-    reset: ["NEUES PASSWORT", "Passwort neu setzen", "Gib den Reset-Code und ein neues Passwort mit mindestens 14 Zeichen ein."],
+    login: [
+      "WILLKOMMEN ZURÜCK",
+      "Bei Odin anmelden",
+      "Öffne deinen Workspace und setze deine Missionen fort.",
+    ],
+    signup: [
+      "NEUES KONTO",
+      "Odin Account erstellen",
+      "Erstelle deine Identity. Danach bestätigst du deine E-Mail.",
+    ],
+    verify: [
+      "E-MAIL BESTÄTIGEN",
+      "Konto verifizieren",
+      "Fordere einen sechsstelligen Code an und bestätige deine Adresse.",
+    ],
+    forgot: [
+      "PASSWORT RESET",
+      "Zugang wiederherstellen",
+      "Wir senden einen Reset-Code, wenn für die Adresse ein Konto existiert.",
+    ],
+    reset: [
+      "NEUES PASSWORT",
+      "Passwort neu setzen",
+      "Gib den Reset-Code und ein neues Passwort mit mindestens 14 Zeichen ein.",
+    ],
   }[mode];
   $("form-eyebrow").textContent = content[0];
   $("login-title").textContent = content[1];
@@ -89,7 +109,8 @@ function renderMode() {
   $("auth-password").minLength = ["signup", "reset"].includes(mode) ? 14 : 1;
   $("auth-password").autocomplete = mode === "login" ? "current-password" : "new-password";
   $("auth-submit").textContent = submitLabel();
-  $("switch-row").firstChild.textContent = mode === "login" ? "Noch kein Konto? " : "Zurück zur Anmeldung? ";
+  $("switch-row").firstChild.textContent =
+    mode === "login" ? "Noch kein Konto? " : "Zurück zur Anmeldung? ";
   $("switch-mode").textContent = mode === "login" ? "Registrieren" : "Anmelden";
   status();
 }
@@ -120,9 +141,11 @@ async function initialize() {
     authConfig = await request("/api/auth/config");
     const github = authConfig?.oauth?.github;
     if (github?.available === true) {
-      $("github-note").textContent = "Melde dich mit GitHub an. Repository-Zugriff wird separat und nur bei Bedarf freigegeben.";
+      $("github-note").textContent =
+        "Melde dich mit GitHub an. Repository-Zugriff wird separat und nur bei Bedarf freigegeben.";
     } else {
-      $("github-note").textContent = "GitHub Login ist für dieses Deployment noch nicht freigeschaltet. E-Mail Login funktioniert weiterhin.";
+      $("github-note").textContent =
+        "GitHub Login ist für dieses Deployment noch nicht freigeschaltet. E-Mail Login funktioniert weiterhin.";
     }
   } catch (error) {
     status(error.message, "error");
@@ -135,14 +158,18 @@ $("github-signin").addEventListener("click", async () => {
   if (busy) return;
   const github = authConfig?.oauth?.github;
   if (github?.available !== true || typeof github.start !== "string") {
-    status("GitHub Login benötigt noch die einmalige OAuth-Konfiguration für Odin Identity.", "error");
+    status(
+      "GitHub Login benötigt noch die einmalige OAuth-Konfiguration für Odin Identity.",
+      "error",
+    );
     return;
   }
   setBusy(true);
   status("GitHub wird geöffnet …");
   try {
     const target = new URL(github.start, window.location.origin);
-    if (target.origin !== window.location.origin) throw new Error("Unsicheres Login-Ziel wurde blockiert.");
+    if (target.origin !== window.location.origin)
+      throw new Error("Unsicheres Login-Ziel wurde blockiert.");
     target.searchParams.set("returnTo", safeReturnTo());
     window.location.assign(target.href);
   } catch (error) {
@@ -179,7 +206,8 @@ $("auth-form").addEventListener("submit", async (event) => {
   const password = $("auth-password").value;
   const otp = $("auth-code").value.trim();
   const name = $("auth-name").value.trim();
-  for (const input of $("auth-form").querySelectorAll("input")) input.removeAttribute("aria-invalid");
+  for (const input of $("auth-form").querySelectorAll("input"))
+    input.removeAttribute("aria-invalid");
   if (!$("auth-form").checkValidity()) {
     $("auth-form").reportValidity();
     return;

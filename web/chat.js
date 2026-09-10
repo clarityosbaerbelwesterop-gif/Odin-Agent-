@@ -23,9 +23,14 @@ async function api(path, body, method = body === undefined ? "GET" : "POST") {
   if (!response.ok) {
     const error = new Error(data.message ?? "Request failed");
     error.status = response.status;
-    if (response.status === 401 && !$("login").open) {
+    if (response.status === 401) {
       resetSession();
-      $("login").showModal();
+      if (authProvider === "local") {
+        if (!$("login").open) $("login").showModal();
+      } else {
+        const returnTo = `${window.location.pathname}${window.location.search}`;
+        window.location.assign(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+      }
     }
     throw error;
   }
@@ -301,6 +306,7 @@ async function openConversation(id) {
   stream = new EventSource(`/api/conversations/${id}/events?after=0`);
   stream.onopen = () => {
     $("connection").textContent = "Connected";
+    if (active && !terminal.has(active.state) && active.state !== "PAUSED") startExecution(active);
   };
   stream.onerror = () => {
     $("connection").textContent = "Reconnecting";
@@ -317,7 +323,7 @@ async function openConversation(id) {
     }
   };
   updateControls();
-  if (active?.state === "CREATED") startExecution(active);
+  if (active && !terminal.has(active.state) && active.state !== "PAUSED") startExecution(active);
   await loadConversations();
 }
 function showChat() {
@@ -494,7 +500,8 @@ $("sign-out").onclick = async () => {
   try {
     await api("/api/session", {}, "DELETE");
     resetSession();
-    $("login").showModal();
+    if (authProvider === "local") $("login").showModal();
+    else window.location.assign("/login");
   } catch (error) {
     errorBanner(error);
   }

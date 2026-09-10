@@ -71,7 +71,12 @@ async function workspaceClient() {
   };
   window.eval(await readFile("web/workspace.js", "utf8"));
   await tick();
-  return { window, saves, get: (id) => window.document.getElementById(id), close: () => window.close() };
+  return {
+    window,
+    saves,
+    get: (id) => window.document.getElementById(id),
+    close: () => window.close(),
+  };
 }
 
 test("workspace picker loads real repositories, searches and loads branches", async () => {

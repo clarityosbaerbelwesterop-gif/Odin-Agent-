@@ -51,7 +51,8 @@ a {
   min-height: 100vh;
   overflow: hidden;
   border-right: 1px solid #242628;
-  background: radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.06), transparent 34%), #0b0c0d;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.06), transparent 34%), #0b0c0d;
 }
 .identity::after {
   content: "";
@@ -62,7 +63,9 @@ a {
   bottom: -28%;
   border: 1px solid #242628;
   border-radius: 50%;
-  box-shadow: 0 0 0 70px rgba(255, 255, 255, 0.012), 0 0 0 140px rgba(255, 255, 255, 0.008);
+  box-shadow:
+    0 0 0 70px rgba(255, 255, 255, 0.012),
+    0 0 0 140px rgba(255, 255, 255, 0.008);
   pointer-events: none;
 }
 .brand {
@@ -159,7 +162,10 @@ a {
   border-radius: 10px;
   border: 1px solid #34373a;
   cursor: pointer;
-  transition: background 0.14s ease, border-color 0.14s ease, transform 0.08s ease;
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease,
+    transform 0.08s ease;
 }
 .github-button {
   display: flex;

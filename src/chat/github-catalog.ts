@@ -122,7 +122,11 @@ export class GitHubCatalog {
         404,
       );
     if (response.status === 429)
-      throw new ChatError("GITHUB_RATE_LIMIT", "GitHub is rate limiting requests. Try again shortly.", 429);
+      throw new ChatError(
+        "GITHUB_RATE_LIMIT",
+        "GitHub is rate limiting requests. Try again shortly.",
+        429,
+      );
     throw new ChatError("GITHUB_UPSTREAM", "GitHub request failed.", 502);
   }
 }

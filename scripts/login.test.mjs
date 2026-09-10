@@ -3,7 +3,9 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { JSDOM } from "jsdom";
 
-async function loginClient({ config = { provider: "neon", oauth: { github: { available: false } } } } = {}) {
+async function loginClient({
+  config = { provider: "neon", oauth: { github: { available: false } } },
+} = {}) {
   const html = await readFile("web/login.html", "utf8");
   const dom = new JSDOM(html, {
     url: "https://odin.example/login?returnTo=%2Fapp%3Fmode%3Dcoding",
@@ -74,9 +76,9 @@ test("email login calls the existing same-origin Neon broker", async () => {
   try {
     client.get("auth-email").value = "person@example.com";
     client.get("auth-password").value = "correct-password";
-    client.get("auth-form").dispatchEvent(
-      new client.window.Event("submit", { bubbles: true, cancelable: true }),
-    );
+    client
+      .get("auth-form")
+      .dispatchEvent(new client.window.Event("submit", { bubbles: true, cancelable: true }));
     await new Promise((resolve) => setImmediate(resolve));
     const request = client.requests.find((item) => item.path === "/api/auth/login");
     assert.ok(request);

@@ -77,7 +77,11 @@ test("repository selection is verified against GitHub before persistence", async
   const catalog = new GitHubCatalog("token", async (url) => {
     calls.push(String(url));
     if (String(url).endsWith("/branches/feature%2Fmobile"))
-      return response({ name: "feature/mobile", protected: false, commit: { sha: "c".repeat(40) } });
+      return response({
+        name: "feature/mobile",
+        protected: false,
+        commit: { sha: "c".repeat(40) },
+      });
     return response({
       full_name: "acme/private-app",
       name: "private-app",
@@ -103,7 +107,8 @@ test("GitHub failures become actionable public product errors", async () => {
     const catalog = new GitHubCatalog("token", async () => response({}, status));
     await assert.rejects(
       () => catalog.repositories(),
-      (error: unknown) => error instanceof ChatError && error.code === code && error.status === status,
+      (error: unknown) =>
+        error instanceof ChatError && error.code === code && error.status === status,
     );
   }
 });
@@ -114,10 +119,10 @@ test("repository and branch names fail closed before any request", async () => {
     calls++;
     return response([]);
   });
-  await assert.rejects(() => catalog.branches("https://github.com/acme/repo"), /valid GitHub repository/u);
   await assert.rejects(
-    () => catalog.verifySelection("acme/repo", "../main"),
-    /valid Git branch/u,
+    () => catalog.branches("https://github.com/acme/repo"),
+    /valid GitHub repository/u,
   );
+  await assert.rejects(() => catalog.verifySelection("acme/repo", "../main"), /valid Git branch/u);
   assert.equal(calls, 0);
 });

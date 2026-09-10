@@ -64,4 +64,6 @@ const result = {
   verifiedAt: new Date().toISOString(),
 };
 await writeFile(RESULT_FILE, `${JSON.stringify(result, null, 2)}\n`, "utf8");
-console.log(`Neon Auth GitHub provider ${result.action} and verified without exposing credentials.`);
+console.log(
+  `Neon Auth GitHub provider ${result.action} and verified without exposing credentials.`,
+);

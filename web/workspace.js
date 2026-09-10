@@ -44,7 +44,10 @@ const button = el("button", undefined, "workspace-pill");
 button.type = "button";
 button.id = "workspace-picker-button";
 button.setAttribute("aria-haspopup", "dialog");
-button.append(el("span", "Repository", "workspace-pill-label"), el("strong", "Kein Repository", "workspace-pill-value"));
+button.append(
+  el("span", "Repository", "workspace-pill-label"),
+  el("strong", "Kein Repository", "workspace-pill-value"),
+);
 const topActions = document.querySelector(".top-actions");
 if (topActions) topActions.prepend(button);
 
@@ -104,7 +107,9 @@ function renderRepositories(query = "") {
   const target = $("workspace-repositories");
   target.replaceChildren();
   const needle = query.trim().toLowerCase();
-  const values = repositories.filter((repo) => !needle || repo.fullName.toLowerCase().includes(needle));
+  const values = repositories.filter(
+    (repo) => !needle || repo.fullName.toLowerCase().includes(needle),
+  );
   $("workspace-repo-count").textContent = String(values.length);
   if (!values.length) {
     target.append(el("p", "Keine passenden Repositories.", "workspace-empty"));
@@ -134,11 +139,15 @@ async function selectRepository(repo) {
   setLoading(true);
   clearError();
   try {
-    const result = await request(`/api/github/branches?repository=${encodeURIComponent(repo.fullName)}`);
+    const result = await request(
+      `/api/github/branches?repository=${encodeURIComponent(repo.fullName)}`,
+    );
     renderBranches(result.branches ?? [], repo.defaultBranch);
   } catch (error) {
     showError(error);
-    $("workspace-branches").replaceChildren(el("p", "Branches konnten nicht geladen werden.", "workspace-empty"));
+    $("workspace-branches").replaceChildren(
+      el("p", "Branches konnten nicht geladen werden.", "workspace-empty"),
+    );
   } finally {
     setLoading(false);
   }
@@ -164,7 +173,10 @@ function renderBranches(branches, preferred) {
     item.dataset.name = branch.name;
     item.setAttribute("role", "option");
     item.setAttribute("aria-selected", "false");
-    item.append(el("strong", branch.name), el("small", branch.protected ? "Protected" : branch.commitSha.slice(0, 8)));
+    item.append(
+      el("strong", branch.name),
+      el("small", branch.protected ? "Protected" : branch.commitSha.slice(0, 8)),
+    );
     item.addEventListener("click", () => choose(branch));
     target.append(item);
   }
@@ -207,9 +219,15 @@ async function openPicker() {
 button.addEventListener("click", openPicker);
 dialog.querySelector(".workspace-close").addEventListener("click", () => dialog.close());
 dialog.addEventListener("cancel", () => dialog.close());
-$("workspace-search").addEventListener("input", () => renderRepositories($("workspace-search").value));
-$("workspace-connect").addEventListener("click", () => window.location.assign("/api/github/connect"));
-$("workspace-reconnect").addEventListener("click", () => window.location.assign("/api/github/connect"));
+$("workspace-search").addEventListener("input", () =>
+  renderRepositories($("workspace-search").value),
+);
+$("workspace-connect").addEventListener("click", () =>
+  window.location.assign("/api/github/connect"),
+);
+$("workspace-reconnect").addEventListener("click", () =>
+  window.location.assign("/api/github/connect"),
+);
 $("workspace-save").addEventListener("click", async () => {
   if (loading) return;
   const repository = $("workspace-save").dataset.repository;

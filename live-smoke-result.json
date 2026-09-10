@@ -1,0 +1,8 @@
+{
+  "configured": true,
+  "maxProviderCalls": 2,
+  "model": "moonshotai/kimi-k3",
+  "objective": "Fix add function so it returns the sum of both arguments",
+  "provider": "nvidia",
+  "secretPresent": false
+}
