@@ -1,0 +1,54 @@
+name: Verify Odin Bot M4-M6 build
+
+on:
+  push:
+    branches:
+      - agent/odin-bot-m4-m6-team-autonomy-continuity-v2
+    paths:
+      - .github/workflows/odin-bot-m4-m6-build.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: odin-bot-m4-m6-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Apply M4-M6 integration
+        run: python scripts/odin-bot-m4-m6-patch.py
+      - run: npm ci
+      - name: Normalize product files
+        run: npx biome check --write .
+      - name: Full repository verification
+        run: npm run verify
+      - name: Reject whitespace errors
+        run: git diff --check
+      - name: Commit verified integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          git status --short
+          git config user.name "odin-bot-build"
+          git config user.email "odin-bot-build@users.noreply.github.com"
+          git add \
+            migrations/007_odin_bot_m4_m6.sql \
+            src/bot/team.ts src/bot/autonomy.ts src/bot/continuity.ts src/bot/control-store.ts src/bot/executor.ts \
+            test/bot/team-autonomy-continuity.test.ts \
+            src/chat/hosted.ts \
+            scripts/sync-vercel-production.mjs scripts/verify-neon-production.mjs
+          if ! git diff --cached --quiet; then
+            git commit -m "Odin Bot M4-M6: team, scoped autonomy and continuity"
+            git push origin HEAD:agent/odin-bot-m4-m6-team-autonomy-continuity-v2
+          fi
