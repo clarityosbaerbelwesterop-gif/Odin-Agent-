@@ -55,3 +55,4 @@ jobs:
           test -n "$(git diff --cached --name-only)"
           git commit -m "Odin Bot M1-M3: durable foundation, wakeups and product UX"
           git push origin HEAD:agent/odin-bot-m1-m3-foundation-wakeup-ux
+# strict-type-gate-rerun
