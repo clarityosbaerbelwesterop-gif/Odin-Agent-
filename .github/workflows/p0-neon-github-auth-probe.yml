@@ -1,5 +1,5 @@
 name: P0 Neon GitHub Auth Probe
-run-name: P0 Neon GitHub Auth Probe — post-refresh control
+run-name: P0 Neon GitHub Auth Probe — exact production endpoint
 
 on:
   push:
@@ -28,7 +28,7 @@ jobs:
           GITHUB_OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
           GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
         run: node scripts/configure-neon-github-auth.mjs
-      - name: Probe Google and GitHub social provider activation without secret values
+      - name: Probe exact production Neon Auth endpoint without secret values
         env:
-          NEON_AUTH_URL: ${{ secrets.NEON_AUTH_URL }}
+          PRODUCTION_NEON_AUTH_URL: https://ep-restless-cake-b1d8u9ge.neonauth.c-5.eu-central-1.aws.neon.tech/neondb/auth
         run: node scripts/probe-neon-github-auth.mjs
