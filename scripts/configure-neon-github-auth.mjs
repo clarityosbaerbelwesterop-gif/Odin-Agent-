@@ -11,6 +11,15 @@ function required(name) {
   return value;
 }
 
+function providersOf(value) {
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === "object") {
+    if (Array.isArray(value.oauth_providers)) return value.oauth_providers;
+    if (Array.isArray(value.providers)) return value.providers;
+  }
+  return [];
+}
+
 const neonApiKey = required("NEON_API_KEY");
 const clientId = required("GITHUB_OAUTH_CLIENT_ID");
 const clientSecret = required("GITHUB_OAUTH_CLIENT_SECRET");
@@ -37,8 +46,7 @@ async function neon(path = "", init = {}) {
 }
 
 const before = await neon();
-const providers = Array.isArray(before) ? before : [];
-const exists = providers.some((provider) => provider?.id === "github");
+const exists = providersOf(before).some((provider) => provider?.id === "github");
 const payload = JSON.stringify({
   id: "github",
   client_id: clientId,
@@ -52,7 +60,7 @@ if (exists) {
 }
 
 const after = await neon();
-const configured = Array.isArray(after) && after.some((provider) => provider?.id === "github");
+const configured = providersOf(after).some((provider) => provider?.id === "github");
 if (!configured) throw new Error("Neon Auth did not confirm the GitHub OAuth provider.");
 
 const result = {
