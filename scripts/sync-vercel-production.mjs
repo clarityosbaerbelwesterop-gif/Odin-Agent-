@@ -142,7 +142,8 @@ async function configureDatabase(report, envKeys) {
       "rolinherit",
       "rolbypassrls",
       "rolreplication",
-    ]) assert.equal(checked[key], false, `APP_ROLE_${key}`);
+    ])
+      assert.equal(checked[key], false, `APP_ROLE_${key}`);
 
     const appUri = new URL(ownerUri.toString());
     appUri.username = SCOPE.appRole;
@@ -229,7 +230,8 @@ async function main() {
     if (productionAuthorized && productionNvidia) {
       await upsert("ODIN_NVIDIA_PRODUCTION_AUTHORIZED", "true", envKeys);
       await upsert("NVIDIA_PRODUCTION_API_KEY", productionNvidia, envKeys);
-      if (productionNvidia2) await upsert("NVIDIA_PRODUCTION_API_KEY_2", productionNvidia2, envKeys);
+      if (productionNvidia2)
+        await upsert("NVIDIA_PRODUCTION_API_KEY_2", productionNvidia2, envKeys);
       report.synced.push("ODIN_NVIDIA_PRODUCTION_AUTHORIZED", "NVIDIA_PRODUCTION_API_KEY");
       if (productionNvidia2) report.synced.push("NVIDIA_PRODUCTION_API_KEY_2");
     } else {
@@ -266,14 +268,17 @@ async function main() {
       signal: AbortSignal.timeout(15_000),
     });
     assert.equal(protectedSmoke.status, 401, "PROTECTED_API_MUST_BE_401");
-    report.checks.push("Exact-main production deployment is READY and protected API fails closed with 401");
+    report.checks.push(
+      "Exact-main production deployment is READY and protected API fails closed with 401",
+    );
 
     report.status = report.operatorGates.length ? "READY_WITH_OPERATOR_GATES" : "READY";
   } catch (error) {
     report.status = "FAILED";
     report.failure = {
       name: typeof error?.name === "string" ? error.name : "Error",
-      message: typeof error?.message === "string" ? error.message.slice(0, 220) : "Production sync failed",
+      message:
+        typeof error?.message === "string" ? error.message.slice(0, 220) : "Production sync failed",
     };
     process.exitCode = 1;
   } finally {

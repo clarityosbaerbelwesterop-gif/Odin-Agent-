@@ -24,14 +24,17 @@ function validateInvocation() {
 }
 
 async function neon(path) {
-  const response = await fetch(`https://console.neon.tech/api/v2/projects/${SCOPE.project}/${path}`, {
-    headers: {
-      Authorization: `Bearer ${process.env.NEON_API_KEY}`,
-      "Content-Type": "application/json",
+  const response = await fetch(
+    `https://console.neon.tech/api/v2/projects/${SCOPE.project}/${path}`,
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.NEON_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      redirect: "error",
+      signal: AbortSignal.timeout(30_000),
     },
-    redirect: "error",
-    signal: AbortSignal.timeout(30_000),
-  });
+  );
   assert(response.ok, `NEON_HTTP_${response.status}`);
   return response.json();
 }
@@ -52,11 +55,14 @@ async function main() {
   try {
     validateInvocation();
 
-    const projectResponse = await fetch(`https://console.neon.tech/api/v2/projects/${SCOPE.project}`, {
-      headers: { Authorization: `Bearer ${process.env.NEON_API_KEY}` },
-      redirect: "error",
-      signal: AbortSignal.timeout(30_000),
-    });
+    const projectResponse = await fetch(
+      `https://console.neon.tech/api/v2/projects/${SCOPE.project}`,
+      {
+        headers: { Authorization: `Bearer ${process.env.NEON_API_KEY}` },
+        redirect: "error",
+        signal: AbortSignal.timeout(30_000),
+      },
+    );
     assert(projectResponse.ok, `NEON_PROJECT_HTTP_${projectResponse.status}`);
     const projectBody = await projectResponse.json();
     const project = projectBody.project ?? projectBody;
@@ -74,7 +80,11 @@ async function main() {
     const auth = await neon(`branches/${SCOPE.branch}/auth`);
     assert.equal(auth.auth_provider, "better_auth", "NEON_AUTH_PROVIDER");
     assert.equal(auth.db_name, SCOPE.database, "NEON_AUTH_DATABASE");
-    assert.match(auth.base_url ?? "", /^https:\/\/[^/]+\.neonauth\.[^/]+\/neondb\/auth$/u, "NEON_AUTH_URL");
+    assert.match(
+      auth.base_url ?? "",
+      /^https:\/\/[^/]+\.neonauth\.[^/]+\/neondb\/auth$/u,
+      "NEON_AUTH_URL",
+    );
     report.checks.push("Neon Auth is provisioned with Better Auth on neondb");
 
     const connection = await neon(
@@ -104,7 +114,9 @@ async function main() {
       assert.equal(row.force_rls, true, `FORCE_RLS_${row.table_name}`);
       assert(row.policy_count >= 1, `POLICY_${row.table_name}`);
     }
-    report.checks.push(`${tables.rows.length} odin_api tables enforce RLS + FORCE RLS with policies`);
+    report.checks.push(
+      `${tables.rows.length} odin_api tables enforce RLS + FORCE RLS with policies`,
+    );
 
     const runtimeRole = (
       await pool.query(
@@ -120,7 +132,8 @@ async function main() {
       "rolinherit",
       "rolbypassrls",
       "rolreplication",
-    ]) assert.equal(runtimeRole[key], false, `ODIN_RUNTIME_${key}`);
+    ])
+      assert.equal(runtimeRole[key], false, `ODIN_RUNTIME_${key}`);
     report.checks.push("odin_runtime is a non-login, non-privileged, non-RLS-bypass role");
 
     const planConstraint = await pool.query(
@@ -137,7 +150,10 @@ async function main() {
     report.status = "FAILED";
     report.failure = {
       name: typeof error?.name === "string" ? error.name : "Error",
-      message: typeof error?.message === "string" ? error.message.slice(0, 220) : "Neon verification failed",
+      message:
+        typeof error?.message === "string"
+          ? error.message.slice(0, 220)
+          : "Neon verification failed",
     };
     process.exitCode = 1;
   } finally {

@@ -50,14 +50,19 @@ test("nested actor operations share a transaction; detached work obtains a fresh
   }
 });
 
-test("public Auth fallback is bound to the verified preview database and environment", () => {
+test("public Auth fallback is bound to verified database hosts and Vercel environments", () => {
   const connection =
     "postgresql://fixture:fixture@ep-rapid-union-b14h469x-pooler.c-5.eu-central-1.aws.neon.tech/neondb";
   const expected =
     "https://ep-rapid-union-b14h469x.neonauth.c-5.eu-central-1.aws.neon.tech/neondb/auth";
   assert.equal(resolveNeonAuthUrl(connection, { VERCEL_ENV: "preview" }), expected);
+  assert.equal(resolveNeonAuthUrl(connection, { VERCEL_ENV: "production" }), expected);
   assert.equal(
     resolveNeonAuthUrl(connection.replace("-pooler", ""), { VERCEL_ENV: "preview" }),
+    expected,
+  );
+  assert.equal(
+    resolveNeonAuthUrl(connection.replace("-pooler", ""), { VERCEL_ENV: "production" }),
     expected,
   );
   for (const database of [
@@ -66,9 +71,10 @@ test("public Auth fallback is bound to the verified preview database and environ
     connection.replace("ep-rapid-union-b14h469x", "ep-unknown-branch"),
     connection.replace("/neondb", "/other"),
     connection.replace("postgresql:", "https:"),
-  ])
+  ]) {
     assert.equal(resolveNeonAuthUrl(database, { VERCEL_ENV: "preview" }), undefined);
-  assert.equal(resolveNeonAuthUrl(connection, { VERCEL_ENV: "production" }), undefined);
+    assert.equal(resolveNeonAuthUrl(database, { VERCEL_ENV: "production" }), undefined);
+  }
   assert.equal(resolveNeonAuthUrl(connection, {}), undefined);
   assert.equal(resolveNeonAuthUrl(connection, { NEON_AUTH_BASE_URL: expected }), expected);
 });
