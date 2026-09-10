@@ -1,5 +1,5 @@
 name: P0 Neon GitHub Auth Probe
-run-name: P0 Neon GitHub Auth Probe — social contract diagnostics
+run-name: P0 Neon GitHub Auth Probe — provider activation control
 
 on:
   push:
@@ -28,7 +28,7 @@ jobs:
           GITHUB_OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
           GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
         run: node scripts/configure-neon-github-auth.mjs
-      - name: Probe real Neon social sign-in contract without secret values
+      - name: Probe Google and GitHub social provider activation without secret values
         env:
           NEON_AUTH_URL: ${{ secrets.NEON_AUTH_URL }}
         run: node scripts/probe-neon-github-auth.mjs
