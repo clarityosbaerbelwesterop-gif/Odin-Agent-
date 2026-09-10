@@ -34,8 +34,14 @@ replace_once(
 
 replace_once(
     "web/login.js",
-    '''  const token = response.headers.get("set-auth-jwt") ?? data?.session?.token;\n  if (typeof token !== "string" || !token) {\n    if (verifier) throw new Error("Neon hat keine gültige Login-Session zurückgegeben.");\n    return false;\n  }\n  await request("/api/auth/github/finalize", { token });\n''',
+    '''  let data = {};\n  try {\n    data = await response.json();\n  } catch {\n    return false;\n  }\n  const token = response.headers.get("set-auth-jwt") ?? data?.session?.token;\n  if (typeof token !== "string" || !token) {\n    if (verifier) throw new Error("Neon hat keine gültige Login-Session zurückgegeben.");\n    return false;\n  }\n  await request("/api/auth/github/finalize", { token });\n''',
     '''  let token = response.headers.get("set-auth-jwt");\n  if (!token) {\n    const tokenResponse = await neonAuth("/token", { method: "GET" });\n    const tokenData = tokenResponse.ok ? await tokenResponse.json().catch(() => ({})) : {};\n    token = tokenData?.token;\n  }\n  if (typeof token !== "string" || !token) {\n    if (verifier) throw new Error("Neon hat keine gültige Login-Session zurückgegeben.");\n    return false;\n  }\n  await request("/api/auth/github/finalize", { token });\n''',
+)
+
+replace_once(
+    "web/chat.js",
+    '''    else window.location.assign("/login");\n''',
+    '''    else window.location.assign("/login?signedOut=1");\n''',
 )
 
 replace_once(
@@ -43,13 +49,6 @@ replace_once(
     '''  let authUrl = safeSecret("NEON_AUTH_URL");\n  if (!authUrl) {\n    const auth = await api("neon", `branches/${SCOPE.neonBranch}/auth`);\n    authUrl = auth.base_url ?? auth.auth?.base_url ?? "";\n  }\n  assert(authUrl.startsWith("https://") && authUrl.includes(".neonauth."), "NEON_AUTH_URL");\n''',
     '''  const auth = await api("neon", `branches/${SCOPE.neonBranch}/auth`);\n  const authUrl = auth.base_url ?? auth.auth?.base_url ?? "";\n  assert(authUrl.startsWith("https://") && authUrl.includes(".neonauth."), "NEON_AUTH_URL");\n''',
 )
-
-production_workflow = Path(".github/workflows/configure-vercel-production.yml")
-production_lines = production_workflow.read_text().splitlines()
-filtered_lines = [line for line in production_lines if "NEON_AUTH_URL:" not in line]
-if len(production_lines) - len(filtered_lines) != 1:
-    raise SystemExit("configure-vercel-production.yml: expected exactly one NEON_AUTH_URL mapping")
-production_workflow.write_text("\n".join(filtered_lines) + "\n")
 
 replace_once(
     "test/chat/hosted.test.ts",
@@ -78,16 +77,13 @@ replace_once(
 login_test = Path("scripts/login.test.mjs")
 text = login_test.read_text()
 anchor = '''test("login surface contains no demo or placeholder copy", async () => {\n'''
-addition = '''test("GitHub identity path exchanges Neon session state for a signed JWT before Odin finalization", async () => {\n  const source = await readFile("web/login.js", "utf8");\n  assert.match(source, /\\/sign-in\\/social/u);\n  assert.match(source, /neon_auth_session_verifier/u);\n  assert.match(source, /neonAuth\\("\\/token"/u);\n  assert.match(source, /\\/api\\/auth\\/github\\/finalize/u);\n  assert.doesNotMatch(source, /data\\?\\.session\\?\\.token/u);\n});\n\n'''
+addition = '''test("GitHub identity path exchanges Neon session state for a signed JWT before Odin finalization", async () => {\n  const source = await readFile("web/login.js", "utf8");\n  assert.match(source, /\\/sign-in\\/social/u);\n  assert.match(source, /neon_auth_session_verifier/u);\n  assert.match(source, /neonAuth\\("\\/token"/u);\n  assert.match(source, /\\/api\\/auth\\/github\\/finalize/u);\n  assert.doesNotMatch(source, /data\\?\\.session\\?\\.token/u);\n  const chatSource = await readFile("web/chat.js", "utf8");\n  assert.match(chatSource, /\\/login\\?signedOut=1/u);\n});\n\n'''
 if text.count(anchor) != 1:
     raise SystemExit("login test anchor mismatch")
 login_test.write_text(text.replace(anchor, addition + anchor, 1))
 
 for path in [
-    ".github/workflows/p0-neon-github-auth-probe.yml",
     "scripts/probe-neon-github-auth.mjs",
-    ".github/workflows/p0-finalize-branch.yml",
-    ".github/workflows/p0-finalize-v2.yml",
     "scripts/p0-finalize-patch.py",
 ]:
     Path(path).unlink(missing_ok=True)
