@@ -1,0 +1,33 @@
+name: P0 Neon GitHub Auth Probe
+
+on:
+  push:
+    branches:
+      - agent/product-rewrite-p0-auth-workspace-chat
+    paths:
+      - ".github/workflows/p0-neon-github-auth-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Configure GitHub provider from existing secrets
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          GITHUB_OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
+          GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        run: node scripts/configure-neon-github-auth.mjs
+      - name: Probe real Neon social sign-in contract without secret values
+        env:
+          NEON_AUTH_URL: ${{ secrets.NEON_AUTH_URL }}
+        run: node scripts/probe-neon-github-auth.mjs
