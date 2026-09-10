@@ -1,5 +1,5 @@
 name: P0 Repair
-run-name: P0 Repair — type-safe guarded integration
+run-name: P0 Repair — complete integration gate
 
 on:
   push:
@@ -26,9 +26,9 @@ jobs:
       - run: npm ci
       - name: Apply guarded P0 patch
         run: node scripts/apply-product-rewrite-p0-v2.mjs
-      - name: Format product files
+      - name: Format product and production-wiring files
         run: |
-          npx biome format --write src/chat/hosted.ts src/chat/github-catalog.ts test/chat/github-catalog.test.ts web/chat.js web/chat.html web/login.html web/login.css web/login.js web/workspace.js web/workspace.css scripts/login.test.mjs scripts/workspace-ui.test.mjs
+          npx biome format --write src/chat/hosted.ts src/chat/github-catalog.ts test/chat/github-catalog.test.ts test/chat/hosted.test.ts web/chat.js web/chat.html web/login.html web/login.css web/login.js web/workspace.js web/workspace.css scripts/login.test.mjs scripts/workspace-ui.test.mjs scripts/configure-neon-github-auth.mjs .github/workflows/configure-vercel-production.yml
       - name: Remove one-shot files
         run: |
           rm -f scripts/apply-product-rewrite-p0-v2.mjs
