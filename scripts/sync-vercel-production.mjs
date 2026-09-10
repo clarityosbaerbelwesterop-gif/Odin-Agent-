@@ -97,6 +97,24 @@ async function waitForDeployment(id) {
   throw new Error("DEPLOYMENT_TIMEOUT");
 }
 
+async function waitForHttpStatus(url, expectedStatus, label) {
+  let lastFailure = "not attempted";
+  for (let attempt = 1; attempt <= 18; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        redirect: "error",
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (response.status === expectedStatus) return;
+      lastFailure = `HTTP_${response.status}`;
+    } catch (error) {
+      lastFailure = error instanceof Error ? error.name : "FETCH_FAILED";
+    }
+    if (attempt < 18) await new Promise((resolve) => setTimeout(resolve, 5_000));
+  }
+  throw new Error(`${label}_${lastFailure}`);
+}
+
 async function configureDatabase(report, envKeys) {
   const branch = await api("neon", `branches/${SCOPE.neonBranch}`);
   assert.equal(branch.branch?.id, SCOPE.neonBranch, "NEON_BRANCH_SCOPE");
@@ -115,19 +133,33 @@ async function configureDatabase(report, envKeys) {
     connectionTimeoutMillis: 10_000,
   });
   try {
-    const password = randomBytes(32).toString("base64url");
     const role = await pool.query("SELECT 1 FROM pg_roles WHERE rolname=$1", [SCOPE.appRole]);
-    if (role.rows.length === 0) {
-      await pool.query(
-        `CREATE ROLE ${SCOPE.appRole} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS NOREPLICATION PASSWORD '${password}'`,
+    const bindingAlreadyPresent = role.rows.length > 0 && envKeys.has("ODIN_DATABASE_URL");
+    if (!bindingAlreadyPresent) {
+      const password = randomBytes(32).toString("base64url");
+      if (role.rows.length === 0) {
+        await pool.query(
+          `CREATE ROLE ${SCOPE.appRole} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS NOREPLICATION PASSWORD '${password}'`,
+        );
+      } else {
+        await pool.query(
+          `ALTER ROLE ${SCOPE.appRole} WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS NOREPLICATION PASSWORD '${password}'`,
+        );
+      }
+      const appUri = new URL(ownerUri.toString());
+      appUri.username = SCOPE.appRole;
+      appUri.password = password;
+      await upsert("ODIN_DATABASE_URL", appUri.toString(), envKeys);
+      report.checks.push(
+        "Restricted odin_prod_app credential provisioned and ODIN_DATABASE_URL synchronized",
       );
     } else {
-      await pool.query(
-        `ALTER ROLE ${SCOPE.appRole} WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS NOREPLICATION PASSWORD '${password}'`,
+      report.checks.push(
+        "Existing restricted odin_prod_app credential and ODIN_DATABASE_URL retained on retry",
       );
     }
-    await pool.query(`GRANT odin_runtime TO ${SCOPE.appRole} WITH INHERIT FALSE, SET TRUE`);
 
+    await pool.query(`GRANT odin_runtime TO ${SCOPE.appRole} WITH INHERIT FALSE, SET TRUE`);
     const checked = (
       await pool.query(
         "SELECT rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,rolinherit,rolbypassrls,rolreplication FROM pg_roles WHERE rolname=$1",
@@ -144,12 +176,6 @@ async function configureDatabase(report, envKeys) {
       "rolreplication",
     ])
       assert.equal(checked[key], false, `APP_ROLE_${key}`);
-
-    const appUri = new URL(ownerUri.toString());
-    appUri.username = SCOPE.appRole;
-    appUri.password = password;
-    await upsert("ODIN_DATABASE_URL", appUri.toString(), envKeys);
-    report.checks.push("Restricted odin_prod_app role rotated and ODIN_DATABASE_URL synchronized");
   } finally {
     await pool.end().catch(() => {});
   }
@@ -177,6 +203,7 @@ async function main() {
       "NEON_API_KEY and VERCEL_TOKEN remain GitHub Actions control-plane secrets",
       "Production NVIDIA capacity is fail-closed unless explicitly authorized",
       "Secret values are never printed or stored in artifacts",
+      "Retries preserve an existing odin_prod_app credential instead of rotating it again",
     ],
   };
   try {
@@ -255,21 +282,16 @@ async function main() {
     assert.match(deployment.id ?? "", /^dpl_[A-Za-z0-9]+$/u, "DEPLOYMENT_ID");
     const ready = await waitForDeployment(deployment.id);
     assert.equal(ready.readyState ?? ready.state, "READY", "DEPLOYMENT_READY");
-    const url = `https://${ready.url}`;
-    report.deployment = { id: ready.id, url, target: ready.target };
+    const deploymentUrl = `https://${ready.url}`;
+    report.deployment = { id: ready.id, url: deploymentUrl, target: ready.target };
 
-    const authSmoke = await fetch(`${url}/api/auth/config`, {
-      redirect: "error",
-      signal: AbortSignal.timeout(15_000),
-    });
-    assert.equal(authSmoke.status, 200, "AUTH_CONFIG_HTTP");
-    const protectedSmoke = await fetch(`${url}/api/config`, {
-      redirect: "error",
-      signal: AbortSignal.timeout(15_000),
-    });
-    assert.equal(protectedSmoke.status, 401, "PROTECTED_API_MUST_BE_401");
+    // A READY deployment can precede DNS propagation for its generated hostname.
+    // Smoke the stable production alias with bounded retries instead of failing on
+    // one transient resolver/network error after the production mutation succeeded.
+    await waitForHttpStatus(`${SCOPE.origin}/api/auth/config`, 200, "AUTH_CONFIG");
+    await waitForHttpStatus(`${SCOPE.origin}/api/config`, 401, "PROTECTED_API");
     report.checks.push(
-      "Exact-main production deployment is READY and protected API fails closed with 401",
+      "Exact-main production deployment is READY and canonical protected API fails closed with 401",
     );
 
     report.status = report.operatorGates.length ? "READY_WITH_OPERATOR_GATES" : "READY";
