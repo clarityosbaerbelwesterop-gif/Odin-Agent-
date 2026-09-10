@@ -31,6 +31,7 @@ jobs:
           python scripts/odin-bot-m7-m9-builder-fix.py
           python scripts/odin-bot-m7-m9-build.py
           python scripts/odin-bot-m7-m9-polish.py
+          python scripts/odin-bot-m7-m9-types-fix.py
       - run: npm ci
       - name: Normalize changed product files
         run: >-
