@@ -8,8 +8,10 @@ export interface NeonIdentity {
 }
 const denied = () => new ChatError("UNAUTHORIZED", "Sign in to access Odin.", 401);
 const COOKIE_NAMES = new Set(["__Secure-neon-auth.session_token", "neon-auth.session_token"]);
+const OAUTH_JWT_COOKIE = "__Host-odin-neon-jwt";
+const OAUTH_JWT_MAX_AGE_SECONDS = 14 * 60;
 
-/** Same-origin broker avoids third-party cookie failures on Safari. No password is stored. */
+/** Same-origin broker avoids third-party cookie failures for email auth. No password is stored. */
 export class NeonAuth {
   readonly base: URL;
   readonly #keys: JWTVerifyGetKey;
@@ -72,7 +74,41 @@ export class NeonAuth {
       .filter((part) => COOKIE_NAMES.has(part.split("=")[0] ?? ""))
       .join("; ");
   }
+  oauthJwt(header: string): string | undefined {
+    if (header.length > 20000) throw denied();
+    for (const part of header.split(";")) {
+      const value = part.trim();
+      const separator = value.indexOf("=");
+      if (separator < 1 || value.slice(0, separator) !== OAUTH_JWT_COOKIE) continue;
+      try {
+        const token = decodeURIComponent(value.slice(separator + 1));
+        if (!token || token.length > 16000 || /[\r\n]/u.test(token)) throw denied();
+        return token;
+      } catch {
+        throw denied();
+      }
+    }
+    return undefined;
+  }
+  oauthJwtCookie(token: string): string {
+    if (!token || token.length > 16000 || /[\r\n]/u.test(token)) throw denied();
+    return `${OAUTH_JWT_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${OAUTH_JWT_MAX_AGE_SECONDS}`;
+  }
+  clearOauthJwtCookie(): string {
+    return `${OAUTH_JWT_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`;
+  }
   async session(cookie: string, origin: string): Promise<NeonIdentity> {
+    const oauthToken = this.oauthJwt(cookie);
+    if (oauthToken) {
+      const identity = await this.verifyToken(oauthToken);
+      if (!identity.emailVerified)
+        throw new ChatError(
+          "EMAIL_UNVERIFIED",
+          "Verify your email before opening the workspace.",
+          403,
+        );
+      return identity;
+    }
     const selected = this.cookie(cookie);
     if (!selected) throw denied();
     const response = await this.upstream("get-session", "GET", origin, selected);

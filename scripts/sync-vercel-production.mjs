@@ -180,11 +180,8 @@ async function configureDatabase(report, envKeys) {
     await pool.end().catch(() => {});
   }
 
-  let authUrl = safeSecret("NEON_AUTH_URL");
-  if (!authUrl) {
-    const auth = await api("neon", `branches/${SCOPE.neonBranch}/auth`);
-    authUrl = auth.base_url ?? auth.auth?.base_url ?? "";
-  }
+  const auth = await api("neon", `branches/${SCOPE.neonBranch}/auth`);
+  const authUrl = auth.base_url ?? auth.auth?.base_url ?? "";
   assert(authUrl.startsWith("https://") && authUrl.includes(".neonauth."), "NEON_AUTH_URL");
   await upsert("NEON_AUTH_BASE_URL", authUrl, envKeys);
   report.checks.push("Neon Auth production endpoint synchronized");

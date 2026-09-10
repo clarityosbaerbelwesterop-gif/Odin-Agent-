@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - .github/workflows/configure-vercel-production.yml
+      - scripts/configure-neon-github-auth.mjs
       - scripts/sync-vercel-production.mjs
   workflow_dispatch:
 
@@ -29,11 +30,10 @@ jobs:
       - run: npm ci
       - name: Verify exact merged source before production changes
         run: npm run verify
-      - name: Synchronize production secrets, repair Neon binding, and deploy exact main SHA
+      - name: Configure GitHub identity provider, synchronize production secrets, and deploy exact main SHA
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_ODIN_TOKEN }}
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-          NEON_AUTH_URL: ${{ secrets.NEON_AUTH_URL }}
           GITHUB_OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
           GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
@@ -46,11 +46,15 @@ jobs:
           NVIDIA_PRODUCTION_API_KEY: ${{ secrets.NV_API_KEY }}
           NVIDIA_PRODUCTION_API_KEY_2: ${{ secrets.NV_API_KEY_2 }}
           ODIN_NVIDIA_PRODUCTION_AUTHORIZED: "true"
-        run: node scripts/sync-vercel-production.mjs
+        run: |
+          node scripts/configure-neon-github-auth.mjs
+          node scripts/sync-vercel-production.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: odin-vercel-production-sync
-          path: vercel-production-sync-result.json
+          name: odin-production-sync
+          path: |
+            neon-github-auth-result.json
+            vercel-production-sync-result.json
           if-no-files-found: warn
           retention-days: 14

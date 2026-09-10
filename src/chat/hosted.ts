@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { join } from "node:path";
-import { attachDatabasePool } from "@vercel/functions";
+import { attachDatabasePool, waitUntil } from "@vercel/functions";
 import { AnthropicProvider } from "../providers/anthropic.js";
 import { CapabilityRegistry, makeCapabilities } from "../providers/capabilities.js";
 import { NvidiaProvider } from "../providers/nvidia.js";
@@ -10,6 +10,7 @@ import { OpenRouterProvider } from "../providers/openrouter.js";
 import { readBenchmarks } from "./benchmarks.js";
 import { resolveNeonAuthUrl } from "./deployment.js";
 import { ChatEngine } from "./engine.js";
+import { GitHubCatalog } from "./github-catalog.js";
 import { GitHubWorkspace } from "./github-workspace.js";
 import { DEFAULT_CHAT_LIMITS } from "./modes.js";
 import { NeonAuth } from "./neon-auth.js";
@@ -35,10 +36,31 @@ import { createSharedNvidiaModels } from "./server-models.js";
 import { ChatError, type ChatModel } from "./types.js";
 
 let services: ReturnType<typeof createServices> | undefined;
+function configuredNeonAuthBase(): string | undefined {
+  const connection =
+    process.env.ODIN_DATABASE_URL ?? process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
+  const value = resolveNeonAuthUrl(connection, process.env);
+  if (!value) return undefined;
+  try {
+    const url = new URL(value.replace(/\/$/u, ""));
+    if (
+      url.protocol !== "https:" ||
+      !url.hostname.endsWith(".neon.tech") ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash
+    )
+      return undefined;
+    return url.href.replace(/\/$/u, "");
+  } catch {
+    return undefined;
+  }
+}
 function createServices() {
   const connection =
     process.env.ODIN_DATABASE_URL ?? process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
-  const authUrl = resolveNeonAuthUrl(connection, process.env);
+  const authUrl = configuredNeonAuthBase();
   if (!connection || !authUrl) {
     console.warn("Odin backend configuration", {
       databaseConfigured: !!connection,
@@ -68,8 +90,9 @@ function createServices() {
   return { pool, auth, models };
 }
 export async function hostedHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const security =
-    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
+  const authBase = configuredNeonAuthBase();
+  const authOrigin = authBase ? new URL(authBase).origin : "";
+  const security = `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'${authOrigin ? ` ${authOrigin}` : ""}; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`;
   res.setHeader("Cache-Control", "no-store");
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Referrer-Policy", "no-referrer");
@@ -104,11 +127,42 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
     )
       throw new ChatError("CSRF_DENIED", "Missing same-origin request header.", 403);
     if (url.pathname === "/api/auth/config") {
-      send(res, 200, { provider: "neon", emailVerificationRequired: true });
+      const githubAvailable = Boolean(
+        authBase && process.env.GITHUB_OAUTH_CLIENT_ID && process.env.GITHUB_OAUTH_CLIENT_SECRET,
+      );
+      send(res, 200, {
+        provider: "neon",
+        emailVerificationRequired: true,
+        oauth: {
+          github: {
+            available: githubAvailable,
+            ...(githubAvailable && authBase ? { authBase } : {}),
+          },
+        },
+      });
       return;
     }
     services ??= createServices();
     const { auth, pool, models } = services;
+    if (url.pathname === "/api/auth/github/finalize" && method === "POST") {
+      const address =
+        String(req.headers["x-forwarded-for"] ?? "unknown").split(",")[0] ?? "unknown";
+      const limiter = new NeonActorDatabase(pool, { id: "odin-internal-auth-throttle" });
+      await rate(limiter, hashText(address), 10, 60);
+      const body = object(await jsonBody(req), ["token"]);
+      if (typeof body.token !== "string" || body.token.length < 32 || body.token.length > 16000)
+        throw new ChatError("INVALID_AUTH_TOKEN", "Invalid identity token.", 400);
+      const identity = await auth.verifyToken(body.token);
+      if (!identity.emailVerified)
+        throw new ChatError(
+          "EMAIL_UNVERIFIED",
+          "Verify your email before opening the workspace.",
+          403,
+        );
+      res.setHeader("Set-Cookie", auth.oauthJwtCookie(body.token));
+      send(res, 200, { ok: true });
+      return;
+    }
     if (url.pathname === "/api/stripe/webhook" && method === "POST") {
       const raw = await rawBody(req);
       verifyStripeSignature(
@@ -292,13 +346,13 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       });
     };
     if (url.pathname === "/api/session" && method === "DELETE") {
-      const response = await auth.upstream(
-        "sign-out",
-        "POST",
-        origin,
-        req.headers.cookie ?? "",
-        {},
-      );
+      const cookieHeader = req.headers.cookie ?? "";
+      if (auth.oauthJwt(cookieHeader)) {
+        res.setHeader("Set-Cookie", auth.clearOauthJwtCookie());
+        send(res, 200, { authenticated: false });
+        return;
+      }
+      const response = await auth.upstream("sign-out", "POST", origin, cookieHeader, {});
       if (!response.ok) throw new ChatError("AUTH_FAILED", "Sign-out failed.", 502);
       res.setHeader("Set-Cookie", auth.cookies(response));
       send(res, 200, { authenticated: false });
@@ -322,12 +376,25 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
           ),
         },
         execution: "request",
-        workspace: {
-          connected: true,
-          writable: true,
-          kind: "static-web",
-          quality: "Syntax checks only; browser execution is isolated in the preview.",
-        },
+        workspace: githubWorkspaceReady
+          ? {
+              connected: true,
+              writable: true,
+              kind: "github",
+              account: githubConnection.login,
+              repository: githubConnection.repository,
+              branch: githubConnection.defaultBranch,
+              quality: "Changes run on an isolated Odin branch and require repository checks.",
+            }
+          : {
+              connected: false,
+              writable: false,
+              kind: "github",
+              account: githubConnection.connected ? githubConnection.login : null,
+              repository: null,
+              branch: null,
+              quality: "Connect GitHub and choose a repository before starting Coding mode.",
+            },
       });
       return;
     }
@@ -401,16 +468,25 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
     if (url.pathname === "/api/github/repositories" && method === "GET") {
       const token = await product.githubToken();
       if (!token) throw new ChatError("GITHUB_NOT_CONNECTED", "Connect GitHub first.", 409);
-      const repositories = (await github(
-        token,
-        "/user/repos?affiliation=owner,collaborator,organization_member&per_page=100&sort=updated",
-      )) as unknown[];
-      send(res, 200, { repositories: repositories.map(publicRepository) });
+      send(res, 200, { repositories: await new GitHubCatalog(token).repositories() });
+      return;
+    }
+    if (url.pathname === "/api/github/branches" && method === "GET") {
+      const token = await product.githubToken();
+      if (!token) throw new ChatError("GITHUB_NOT_CONNECTED", "Connect GitHub first.", 409);
+      const repository = url.searchParams.get("repository") ?? "";
+      send(res, 200, { branches: await new GitHubCatalog(token).branches(repository) });
       return;
     }
     if (url.pathname === "/api/github/repository" && method === "PUT") {
       const body = object(await jsonBody(req), ["repository", "branch"]);
-      await product.selectRepository(String(body.repository ?? ""), String(body.branch ?? ""));
+      const token = await product.githubToken();
+      if (!token) throw new ChatError("GITHUB_NOT_CONNECTED", "Connect GitHub first.", 409);
+      const verified = await new GitHubCatalog(token).verifySelection(
+        String(body.repository ?? ""),
+        String(body.branch ?? ""),
+      );
+      await product.selectRepository(verified.repository.fullName, verified.branch.name);
       send(res, 200, await product.github());
       return;
     }
@@ -683,40 +759,37 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
         const resource = `run:${id}`;
         const lease = await db.claim(resource);
         if (!lease) throw new ChatError("BUSY", "This task already has an active worker.", 409);
-        const controller = new AbortController();
-        const workerDb = new NeonActorDatabase(pool, identity, { resource, token: lease });
-        const worker = createEngine(workerDb, found.conversationId, controller.signal);
-        let checking = false,
-          lastAuth = Date.now();
-        const monitor = setInterval(() => {
-          if (checking) return;
-          checking = true;
-          void (async () => {
-            try {
-              const view = await engine.view(id);
-              if (["PAUSED", "CANCELLED", "BLOCKED", "FAILED"].includes(view.state))
+        const run = (async () => {
+          const controller = new AbortController();
+          const workerDb = new NeonActorDatabase(pool, identity, { resource, token: lease });
+          const worker = createEngine(workerDb, found.conversationId, controller.signal);
+          let checking = false;
+          const monitor = setInterval(() => {
+            if (checking) return;
+            checking = true;
+            void (async () => {
+              try {
+                const view = await engine.view(id);
+                if (["PAUSED", "CANCELLED", "BLOCKED", "FAILED"].includes(view.state))
+                  controller.abort();
+              } catch {
                 controller.abort();
-              if (Date.now() - lastAuth > 30000) {
-                await auth.session(req.headers.cookie ?? "", origin);
-                lastAuth = Date.now();
+              } finally {
+                checking = false;
               }
-            } catch {
-              controller.abort();
-            } finally {
-              checking = false;
-            }
-          })();
-        }, 1000);
-        const disconnect = () => controller.abort();
-        res.once("close", disconnect);
-        try {
-          await worker.execute(id);
-          send(res, 200, await engine.view(id));
-        } finally {
-          clearInterval(monitor);
-          res.off("close", disconnect);
-          await db.release(resource, lease);
-        }
+            })();
+          }, 1000);
+          try {
+            await worker.execute(id);
+          } finally {
+            clearInterval(monitor);
+            await db.release(resource, lease);
+          }
+        })();
+        // A browser reload must not cancel server-side work. Vercel owns the bounded promise
+        // after this acknowledgement and the database lease fences duplicate workers.
+        waitUntil(run);
+        send(res, 202, { accepted: true, turn: await engine.view(id) });
         return;
       }
     }
@@ -789,14 +862,6 @@ async function github(token: string, path: string): Promise<Record<string, unkno
   });
   if (!response.ok) throw new ChatError("GITHUB_UPSTREAM", "GitHub request failed.", 502);
   return (await response.json()) as Record<string, unknown> | unknown[];
-}
-function publicRepository(value: unknown) {
-  const item = value as Record<string, unknown>;
-  return {
-    fullName: item.full_name,
-    private: item.private === true,
-    defaultBranch: item.default_branch,
-  };
 }
 async function verifyProviderKey(providerId: string, key: string): Promise<void> {
   const endpoints: Record<string, [string, Record<string, string>]> = {

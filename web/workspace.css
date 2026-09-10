@@ -1,0 +1,321 @@
+.workspace-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(40vw, 420px);
+  min-height: 34px;
+  padding: 5px 10px;
+  border: 1px solid var(--border, #2d3033);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.workspace-pill:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.workspace-pill-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7f858a;
+}
+.workspace-pill-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 570;
+}
+.workspace-pill.connected::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #8fbc96;
+}
+.workspace-dialog {
+  width: min(940px, calc(100vw - 32px));
+  max-height: min(780px, calc(100vh - 32px));
+  padding: 0;
+  border: 1px solid #303438;
+  border-radius: 14px;
+  background: #111315;
+  color: #f4f4f2;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.52);
+}
+.workspace-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+}
+.workspace-dialog-shell {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  min-height: 560px;
+}
+.workspace-dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 24px 26px 18px;
+  border-bottom: 1px solid #292c2f;
+}
+.workspace-dialog-header h2 {
+  margin: 6px 0 0;
+  font-size: 24px;
+  letter-spacing: -0.03em;
+}
+.workspace-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  color: #8c9297;
+  font-weight: 700;
+}
+.workspace-close {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #32363a;
+  border-radius: 9px;
+  background: transparent;
+  color: #aeb2b5;
+  font-size: 23px;
+  line-height: 1;
+  cursor: pointer;
+}
+.workspace-error {
+  margin: 16px 26px 0;
+  padding: 11px 12px;
+  border: 1px solid #663d3d;
+  border-radius: 8px;
+  background: #251718;
+  color: #edaaaa;
+  font-size: 12px;
+}
+.workspace-disconnected {
+  padding: 70px 26px;
+  text-align: center;
+}
+.workspace-disconnected h3 {
+  font-size: 22px;
+  margin: 0 0 8px;
+}
+.workspace-disconnected p {
+  color: #92979b;
+  margin: 0 auto 22px;
+  max-width: 430px;
+}
+.workspace-account-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 26px;
+  color: #aeb2b5;
+  font-size: 12px;
+}
+.workspace-account-row button {
+  border: 0;
+  background: transparent;
+  color: #aeb2b5;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.workspace-search {
+  display: block;
+  padding: 0 26px 16px;
+}
+.workspace-search input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #303438;
+  border-radius: 9px;
+  background: #0c0e0f;
+  color: #f4f4f2;
+  padding: 0 13px;
+  outline: none;
+}
+.workspace-search input:focus {
+  border-color: #666d72;
+}
+.workspace-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  margin: 0 26px;
+  background: #292c2f;
+  border: 1px solid #292c2f;
+  border-radius: 10px;
+  overflow: hidden;
+  min-height: 300px;
+}
+.workspace-columns > div {
+  background: #0d0f10;
+  min-width: 0;
+}
+.workspace-column-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 11px 13px;
+  border-bottom: 1px solid #292c2f;
+  color: #858b90;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.workspace-list {
+  max-height: 310px;
+  overflow: auto;
+  padding: 6px;
+}
+.workspace-list-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 9px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #d9dcde;
+  text-align: left;
+  cursor: pointer;
+}
+.workspace-list-item:hover {
+  background: #171a1c;
+}
+.workspace-list-item[aria-selected="true"] {
+  border-color: #3f454a;
+  background: #1b1e20;
+}
+.workspace-list-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.workspace-list-main {
+  display: grid;
+  min-width: 0;
+}
+.workspace-list-main strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.workspace-list-main small,
+.branch-item small {
+  margin-top: 2px;
+  color: #777d82;
+  font-size: 10px;
+}
+.workspace-badge {
+  flex: none;
+  padding: 3px 6px;
+  border: 1px solid #34383b;
+  border-radius: 5px;
+  color: #888e93;
+  font-size: 9px;
+  text-transform: uppercase;
+}
+.workspace-empty {
+  padding: 18px 12px;
+  color: #767c81;
+  font-size: 12px;
+}
+.workspace-dialog-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 26px 24px;
+}
+.workspace-dialog-footer > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.workspace-dialog-footer strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.workspace-dialog-footer span {
+  color: #7f858a;
+  font-size: 10px;
+}
+.workspace-primary {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid #d9dcde;
+  border-radius: 8px;
+  background: #f0f0ed;
+  color: #111315;
+  font-weight: 650;
+  cursor: pointer;
+}
+.workspace-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+@media (max-width: 900px) {
+  .workspace-pill-label {
+    display: none;
+  }
+  .workspace-pill {
+    max-width: 44vw;
+  }
+  .workspace-dialog {
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+    border: 0;
+  }
+  .workspace-dialog-shell {
+    min-height: 100dvh;
+  }
+  .workspace-columns {
+    grid-template-columns: 1fr;
+    margin: 0 18px;
+    overflow: visible;
+  }
+  .workspace-list {
+    max-height: 220px;
+  }
+  .workspace-dialog-header {
+    padding: 20px 18px 16px;
+  }
+  .workspace-account-row {
+    padding: 13px 18px;
+  }
+  .workspace-search {
+    padding: 0 18px 14px;
+  }
+  .workspace-dialog-footer {
+    position: sticky;
+    bottom: 0;
+    padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
+    background: #111315;
+    border-top: 1px solid #292c2f;
+  }
+  .workspace-primary {
+    min-height: 46px;
+  }
+}
+@media (max-width: 520px) {
+  .workspace-pill {
+    max-width: 52vw;
+  }
+  .workspace-pill-value {
+    font-size: 11px;
+  }
+  .workspace-dialog-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .workspace-dialog-footer .workspace-primary {
+    width: 100%;
+  }
+}

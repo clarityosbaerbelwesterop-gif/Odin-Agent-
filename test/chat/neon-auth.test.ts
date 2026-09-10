@@ -106,6 +106,25 @@ test("Neon sessions require current server session, verified email and matching 
     /Verify your email/u,
   );
 });
+test("OAuth JWT bridge accepts only a signed verified Neon identity and expires locally", async () => {
+  const auth = new NeonAuth(base, fetch, keys);
+  const jwt = await token();
+  const cookie = auth.oauthJwtCookie(jwt);
+  assert.match(cookie, /^__Host-odin-neon-jwt=/u);
+  assert.match(cookie, /; Path=\/; HttpOnly; Secure; SameSite=Strict; Max-Age=840$/u);
+  assert.equal(auth.oauthJwt(cookie), jwt);
+  assert.equal((await auth.session(cookie, "https://odin.example")).id, "user-a");
+  assert.equal(
+    auth.clearOauthJwtCookie(),
+    "__Host-odin-neon-jwt=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0",
+  );
+  const unverified = await token({ emailVerified: false });
+  await assert.rejects(
+    auth.session(auth.oauthJwtCookie(unverified), "https://odin.example"),
+    /Verify your email/u,
+  );
+});
+
 test("Auth broker forwards only session cookies and never follows arbitrary upstream routes", async () => {
   const auth = new NeonAuth(base, fetch, keys);
   const headers = new Headers();
