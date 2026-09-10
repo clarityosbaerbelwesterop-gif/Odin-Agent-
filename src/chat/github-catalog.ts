@@ -17,6 +17,7 @@ export interface GitHubBranchSummary {
 }
 
 type JsonObject = Record<string, unknown>;
+const FORBIDDEN_BRANCH_CHARACTERS = new Set(["~", "^", ":", "?", "*", "[", "\\"]);
 
 export class GitHubCatalog {
   constructor(
@@ -134,6 +135,10 @@ function repositoryRoute(value: string): string {
 }
 
 function branchName(value: string): string {
+  const hasForbiddenCharacter = [...value].some((character) => {
+    const code = character.charCodeAt(0);
+    return code < 32 || code === 127 || FORBIDDEN_BRANCH_CHARACTERS.has(character);
+  });
   if (
     !value ||
     value.length > 200 ||
@@ -141,7 +146,7 @@ function branchName(value: string): string {
     value.endsWith("/") ||
     value.includes("..") ||
     value.includes("//") ||
-    /[~^:?*[\\\u0000-\u001f\u007f]/u.test(value)
+    hasForbiddenCharacter
   )
     throw new ChatError("INVALID_BRANCH", "Choose a valid Git branch.");
   return value;
