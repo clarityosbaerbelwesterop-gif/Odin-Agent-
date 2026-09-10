@@ -1,5 +1,5 @@
 name: P0 Repair
-run-name: P0 Repair — guarded integration
+run-name: P0 Repair — type-safe guarded integration
 
 on:
   push:
