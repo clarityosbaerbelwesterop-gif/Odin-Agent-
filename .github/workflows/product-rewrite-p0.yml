@@ -1,0 +1,61 @@
+name: Product Rewrite P0 Integration
+
+on:
+  push:
+    branches:
+      - agent/product-rewrite-p0-auth-workspace-chat
+
+permissions:
+  contents: write
+
+concurrency:
+  group: product-rewrite-p0-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  integrate:
+    name: Apply, verify, and commit P0 integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Apply guarded integration patch
+        run: node scripts/apply-product-rewrite-p0-v2.mjs
+
+      - name: Format changed product files
+        run: >-
+          npx biome format --write
+          src/chat/hosted.ts src/chat/github-catalog.ts
+          test/chat/github-catalog.test.ts
+          web/chat.js web/chat.html web/login.html web/login.css web/login.js web/workspace.js web/workspace.css
+          scripts/login.test.mjs scripts/workspace-ui.test.mjs
+          scripts/apply-product-rewrite-p0-v2.mjs
+
+      - name: Verify repository
+        run: npm run verify
+
+      - name: Remove one-shot integration machinery
+        run: rm scripts/apply-product-rewrite-p0.mjs scripts/apply-product-rewrite-p0-v2.mjs .github/workflows/product-rewrite-p0.yml
+
+      - name: Commit verified integration
+        shell: bash
+        run: |
+          git config user.name "odin-product-rewrite"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "P0: wire login workspace and resilient mission execution"
+          git push origin HEAD:agent/product-rewrite-p0-auth-workspace-chat
