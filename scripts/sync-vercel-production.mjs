@@ -145,6 +145,23 @@ async function configureDatabase(report, envKeys) {
     );
     await pool.query(botControlMigration);
     report.checks.push("Odin Bot M4-M6 autonomy/memory/focus schema reconciled");
+    const botEventMigration = await readFile(
+      new URL("../migrations/008_odin_bot_m7_m9.sql", import.meta.url),
+      "utf8",
+    );
+    await pool.query(botEventMigration);
+    report.checks.push("Odin Bot M7-M9 GitHub event/PR lifecycle schema reconciled");
+
+    const eventSchema = await pool.query(
+      `SELECT to_regclass('odin_control.bot_github_hooks')::text AS hooks,
+              to_regclass('odin_control.bot_event_receipts')::text AS receipts`,
+    );
+    assert.equal(eventSchema.rows[0]?.hooks, "odin_control.bot_github_hooks", "BOT_HOOK_SCHEMA");
+    assert.equal(
+      eventSchema.rows[0]?.receipts,
+      "odin_control.bot_event_receipts",
+      "BOT_EVENT_SCHEMA",
+    );
 
     const role = await pool.query("SELECT 1 FROM pg_roles WHERE rolname=$1", [SCOPE.appRole]);
     const bindingAlreadyPresent = role.rows.length > 0 && envKeys.has("ODIN_DATABASE_URL");
@@ -176,6 +193,12 @@ async function configureDatabase(report, envKeys) {
     await pool.query(`GRANT USAGE ON SCHEMA odin_control TO ${SCOPE.appRole}`);
     await pool.query(
       `GRANT SELECT,INSERT,UPDATE,DELETE ON odin_control.bot_wakeups TO ${SCOPE.appRole}`,
+    );
+    await pool.query(
+      `GRANT SELECT,INSERT,UPDATE,DELETE ON odin_control.bot_github_hooks TO ${SCOPE.appRole}`,
+    );
+    await pool.query(
+      `GRANT SELECT,INSERT,UPDATE,DELETE ON odin_control.bot_event_receipts TO ${SCOPE.appRole}`,
     );
     const checked = (
       await pool.query(

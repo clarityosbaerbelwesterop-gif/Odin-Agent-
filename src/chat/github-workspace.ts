@@ -158,6 +158,9 @@ export class GitHubWorkspace implements RepositoryWorkspace, QualityCommandRunne
     await this.changed({ path, before, after: content, sha: hashText(content), branch });
     return { sha: file.sha };
   }
+  branchName(): string | null {
+    return this.#workBranch ?? null;
+  }
   commands() {
     return [{ id: "github-checks", label: "GitHub Actions checks on the isolated Odin branch" }];
   }

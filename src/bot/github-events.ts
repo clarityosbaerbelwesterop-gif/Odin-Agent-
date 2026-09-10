@@ -4,9 +4,9 @@ import type { ActorDatabase } from "../chat/neon-database.js";
 import { ChatError } from "../chat/types.js";
 import {
   githubEventMatches,
+  type NormalizedGitHubEvent,
   normalizeGitHubEvent,
   proactiveGitHubSignal,
-  type NormalizedGitHubEvent,
   verifyGitHubWebhookSignature,
 } from "./github-event-policy.js";
 import { BotStore } from "./store.js";
@@ -15,7 +15,7 @@ import type { BotPlanLimits } from "./types.js";
 const REPOSITORY = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/u;
 const TOKEN = /^[A-Za-z0-9_-]{43}$/u;
 const DELIVERY = /^[A-Za-z0-9-]{8,128}$/u;
-const EVENT = /^(?:pull_request|pull_request_review|check_run|workflow_run|push)$/u;
+const EVENT = /^(?:pull_request|pull_request_review|check_run|workflow_run|push|ping)$/u;
 
 function header(
   headers: Record<string, string | string[] | undefined>,
@@ -32,7 +32,11 @@ function validRepository(value: string): string {
 }
 
 function validOwner(value: string): string {
-  if (!value || value.length > 200 || /[\u0000-\u001f\u007f]/u.test(value))
+  const hasControl = [...value].some((character) => {
+    const code = character.charCodeAt(0);
+    return code < 32 || code === 127;
+  });
+  if (!value || value.length > 200 || hasControl)
     throw new ChatError("BOT_EVENT_OWNER", "Bot event owner is invalid.", 500);
   return value;
 }
@@ -63,7 +67,13 @@ export class GitHubEventBridge {
     readonly request: typeof fetch = fetch,
   ) {
     const parsed = new URL(publicOrigin);
-    if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.search || parsed.hash)
+    if (
+      parsed.protocol !== "https:" ||
+      parsed.username ||
+      parsed.password ||
+      parsed.search ||
+      parsed.hash
+    )
       throw new ChatError("BOT_EVENT_ORIGIN", "A secure public Odin origin is required.", 500);
     this.origin = parsed.origin;
   }
@@ -105,7 +115,11 @@ export class GitHubEventBridge {
     await this.#github(token, repository, `/hooks/${hookId}`, { method: "DELETE" });
   }
 
-  async ensureHook(ownerId: string, githubToken: string, repository: string): Promise<{
+  async ensureHook(
+    ownerId: string,
+    githubToken: string,
+    repository: string,
+  ): Promise<{
     repository: string;
     connected: boolean;
   }> {
@@ -121,9 +135,11 @@ export class GitHubEventBridge {
       return { repository: repo, connected: true };
 
     if (existing) {
-      await this.#deleteRemoteHook(githubToken, String(existing.repository), String(existing.hook_id)).catch(
-        () => undefined,
-      );
+      await this.#deleteRemoteHook(
+        githubToken,
+        String(existing.repository),
+        String(existing.hook_id),
+      ).catch(() => undefined);
       await this.pool.query("DELETE FROM odin_control.bot_github_hooks WHERE owner_id=$1", [owner]);
     }
 
@@ -165,7 +181,11 @@ export class GitHubEventBridge {
           )
         ).rows[0];
         if (winner?.repository !== repo)
-          throw new ChatError("BOT_EVENT_CONFLICT", "Repository event configuration changed; retry.", 409);
+          throw new ChatError(
+            "BOT_EVENT_CONFLICT",
+            "Repository event configuration changed; retry.",
+            409,
+          );
       }
     } catch (error) {
       await this.#deleteRemoteHook(githubToken, repo, hookId).catch(() => undefined);

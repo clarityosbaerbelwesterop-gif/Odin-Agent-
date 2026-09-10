@@ -1,4 +1,5 @@
 import { ChatError } from "../chat/types.js";
+import { githubTriggerForInstruction } from "./github-event-policy.js";
 import type { ParsedAutomation } from "./types.js";
 
 function validTimeZone(value: string): string {
@@ -158,7 +159,12 @@ export function parseAutomationText(
     return {
       name: text.slice(0, 120),
       triggerType: /fertig|complete|finished/u.test(lower) ? "dependency" : "condition",
-      trigger: { kind: "event", source, expression: text },
+      trigger: {
+        kind: "event",
+        source,
+        expression: text,
+        ...(source === "github" ? githubTriggerForInstruction(text) : {}),
+      },
       nextWakeupAt: null,
       display: source === "generic" ? "When condition becomes true" : `On ${source} event`,
     };

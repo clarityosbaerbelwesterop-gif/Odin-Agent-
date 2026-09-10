@@ -19,10 +19,15 @@ test("M8 creates one PR from the isolated Odin branch and reuses an existing PR"
     if (url.includes("/pulls?") && !existing) return json([]);
     if (url.endsWith("/pulls") && init?.method === "POST") {
       existing = true;
-      return json({ number: 12, html_url: "https://github.com/acme/odin/pull/12", state: "open" }, 201);
+      return json(
+        { number: 12, html_url: "https://github.com/acme/odin/pull/12", state: "open" },
+        201,
+      );
     }
     if (url.includes("/pulls?"))
-      return json([{ number: 12, html_url: "https://github.com/acme/odin/pull/12", state: "open" }]);
+      return json([
+        { number: 12, html_url: "https://github.com/acme/odin/pull/12", state: "open" },
+      ]);
     throw new Error(`unexpected ${url}`);
   };
   const client = new GitHubPullRequestClient("token", "acme/odin", "main", request);
@@ -49,10 +54,16 @@ test("M8 GitHub workspace quality checks use the same branch that received edits
     requests.push(`${method} ${url}`);
     if (url.includes("/contents/src%2Ffile.ts") || url.includes("/contents/src/file.ts")) {
       if (method === "PUT") return json({ content: { sha: "sha-new" } });
-      return json({ type: "file", encoding: "base64", content: Buffer.from("old").toString("base64"), sha: "sha-old" });
+      return json({
+        type: "file",
+        encoding: "base64",
+        content: Buffer.from("old").toString("base64"),
+        sha: "sha-old",
+      });
     }
     if (url.includes("/git/ref/heads/main")) return json({ object: { sha: "base-sha" } });
-    if (url.endsWith("/git/refs") && method === "POST") return json({ ref: "refs/heads/odin/work" }, 201);
+    if (url.endsWith("/git/refs") && method === "POST")
+      return json({ ref: "refs/heads/odin/work" }, 201);
     if (url.includes("/commits/odin%2F"))
       return json({ check_runs: [{ name: "CI", status: "completed", conclusion: "success" }] });
     throw new Error(`unexpected ${method} ${url}`);

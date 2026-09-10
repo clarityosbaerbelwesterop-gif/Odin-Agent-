@@ -6,7 +6,8 @@ export type GitHubEventName =
   | "pull_request_review"
   | "check_run"
   | "workflow_run"
-  | "push";
+  | "push"
+  | "ping";
 
 export type GitHubEventPredicate =
   | "any"
@@ -118,7 +119,11 @@ export function githubTriggerForInstruction(instruction: string): GitHubAutomati
 }
 
 export function normalizeGitHubEvent(eventName: string, payload: unknown): NormalizedGitHubEvent {
-  if (!["pull_request", "pull_request_review", "check_run", "workflow_run", "push"].includes(eventName))
+  if (
+    !["pull_request", "pull_request_review", "check_run", "workflow_run", "push", "ping"].includes(
+      eventName,
+    )
+  )
     throw new ChatError("BOT_EVENT_UNSUPPORTED", "This GitHub event is not supported.", 202);
   const root = record(payload);
   const repository = text(record(root.repository).full_name, 201) ?? "";
@@ -151,7 +156,8 @@ export function normalizeGitHubEvent(eventName: string, payload: unknown): Norma
     const check = record(root.check_run);
     conclusion = text(check.conclusion, 80)?.toLowerCase() ?? null;
     pullNumber ??= firstPullNumber(check.pull_requests);
-    branch = branchFromRef(record(check.check_suite).head_branch) ?? branchFromRef(check.head_branch);
+    branch =
+      branchFromRef(record(check.check_suite).head_branch) ?? branchFromRef(check.head_branch);
     predicate = checkPredicate(conclusion);
   } else if (eventName === "workflow_run") {
     const workflow = record(root.workflow_run);
@@ -159,9 +165,11 @@ export function normalizeGitHubEvent(eventName: string, payload: unknown): Norma
     pullNumber ??= firstPullNumber(workflow.pull_requests);
     branch = branchFromRef(workflow.head_branch);
     predicate = checkPredicate(conclusion);
-  } else {
+  } else if (eventName === "push") {
     branch = branchFromRef(root.ref);
     predicate = "pushed";
+  } else {
+    predicate = "any";
   }
 
   return {
@@ -181,9 +189,9 @@ export function githubEventMatches(
   event: NormalizedGitHubEvent,
 ): boolean {
   if (trigger.kind !== "event" || trigger.source !== "github") return false;
+  if (event.eventName === "ping") return false;
   const fallback = githubTriggerForInstruction(String(trigger.expression ?? ""));
-  const selectedEvent =
-    typeof trigger.event === "string" ? trigger.event : fallback.event;
+  const selectedEvent = typeof trigger.event === "string" ? trigger.event : fallback.event;
   const selectedPredicate =
     typeof trigger.predicate === "string" ? trigger.predicate : fallback.predicate;
   const eventMatches =
@@ -213,9 +221,7 @@ export function verifyGitHubWebhookSignature(
     throw new ChatError("BOT_EVENT_UNAUTHORIZED", "GitHub event signature is invalid.", 401);
 }
 
-export function proactiveGitHubSignal(
-  event: NormalizedGitHubEvent,
-): ProactiveGitHubSignal | null {
+export function proactiveGitHubSignal(event: NormalizedGitHubEvent): ProactiveGitHubSignal | null {
   if (event.predicate === "checks_failed")
     return {
       category: "important",

@@ -10,10 +10,13 @@ import {
 } from "../../src/bot/github-event-policy.js";
 
 test("M7 parses GitHub automations into bounded event selectors", () => {
-  assert.deepEqual(githubTriggerForInstruction("Wenn der PR gemerged ist, prüfe die nächste Aufgabe"), {
-    event: "pull_request",
-    predicate: "merged",
-  });
+  assert.deepEqual(
+    githubTriggerForInstruction("Wenn der PR gemerged ist, prüfe die nächste Aufgabe"),
+    {
+      event: "pull_request",
+      predicate: "merged",
+    },
+  );
   assert.deepEqual(githubTriggerForInstruction("When CI fails, inspect the repository"), {
     event: "checks",
     predicate: "checks_failed",
@@ -86,6 +89,29 @@ test("M7 webhook signatures are exact and tampering fails closed", () => {
     () => verifyGitHubWebhookSignature(secret, Buffer.from(`${body.toString()}x`), signature),
     /signature is invalid/u,
   );
+});
+
+test("M7 GitHub hook ping is authenticated metadata but never fires an automation", () => {
+  const ping = normalizeGitHubEvent("ping", {
+    repository: { full_name: "acme/odin" },
+    zen: "untrusted prose must not become instructions",
+  });
+  assert.equal(ping.eventName, "ping");
+  assert.equal(ping.predicate, "any");
+  assert.equal(
+    githubEventMatches(
+      {
+        kind: "event",
+        source: "github",
+        expression: "When anything changes",
+        event: "*",
+        predicate: "any",
+      },
+      ping,
+    ),
+    false,
+  );
+  assert.equal(proactiveGitHubSignal(ping), null);
 });
 
 test("M9 proactive signals surface only meaningful PR lifecycle changes", () => {

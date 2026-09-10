@@ -56,7 +56,12 @@ function normalizePullRequest(
   const number = Number(item.number);
   const htmlUrl = typeof item.html_url === "string" ? item.html_url : "";
   const state = item.state === "closed" ? "closed" : item.state === "open" ? "open" : null;
-  if (!Number.isSafeInteger(number) || number <= 0 || !/^https:\/\/github\.com\//u.test(htmlUrl) || !state)
+  if (
+    !Number.isSafeInteger(number) ||
+    number <= 0 ||
+    !/^https:\/\/github\.com\//u.test(htmlUrl) ||
+    !state
+  )
     throw new ChatError("GITHUB_UPSTREAM", "GitHub pull request response is invalid.", 502);
   return {
     number,
@@ -107,7 +112,11 @@ export class GitHubPullRequestClient {
           : response.status === 422
             ? "GitHub refused the pull request because its branch or base is no longer deliverable."
             : "GitHub pull request delivery failed.",
-        response.status === 401 || response.status === 403 ? 403 : response.status === 422 ? 409 : 502,
+        response.status === 401 || response.status === 403
+          ? 403
+          : response.status === 422
+            ? 409
+            : 502,
       );
     if (response.status === 204) return {};
     return response.json();
@@ -129,7 +138,10 @@ export class GitHubPullRequestClient {
       base: this.baseBranch,
       per_page: "10",
     });
-    const existing = await this.#api(`/pulls?${query.toString()}`, { signal: input.signal });
+    const existing = await this.#api(
+      `/pulls?${query.toString()}`,
+      input.signal ? { signal: input.signal } : {},
+    );
     if (Array.isArray(existing) && existing.length > 0)
       return normalizePullRequest(existing[0], branch, this.baseBranch);
 
@@ -142,7 +154,7 @@ export class GitHubPullRequestClient {
         body,
         maintainer_can_modify: true,
       }),
-      signal: input.signal,
+      ...(input.signal ? { signal: input.signal } : {}),
     });
     return normalizePullRequest(created, branch, this.baseBranch);
   }
@@ -150,10 +162,11 @@ export class GitHubPullRequestClient {
   async status(number: number, signal?: AbortSignal): Promise<GitHubPullRequestDelivery> {
     if (!Number.isSafeInteger(number) || number <= 0)
       throw new ChatError("GITHUB_PR_INVALID", "Pull request number is invalid.");
-    const pull = await this.#api(`/pulls/${number}`, { signal });
+    const pull = await this.#api(`/pulls/${number}`, signal ? { signal } : {});
     const item = object(pull);
     const branch = typeof object(item.head).ref === "string" ? String(object(item.head).ref) : "";
-    const base = typeof object(item.base).ref === "string" ? String(object(item.base).ref) : this.baseBranch;
+    const base =
+      typeof object(item.base).ref === "string" ? String(object(item.base).ref) : this.baseBranch;
     return normalizePullRequest(pull, validBranch(branch), validBranch(base));
   }
 }

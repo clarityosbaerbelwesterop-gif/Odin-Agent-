@@ -4,6 +4,7 @@ import { attachDatabasePool, waitUntil } from "@vercel/functions";
 import { BotControlStore } from "../bot/control-store.js";
 import { botPlanLimits } from "../bot/entitlements.js";
 import { OdinBotWorker } from "../bot/executor.js";
+import { GitHubEventBridge, processGitHubEvent } from "../bot/github-events.js";
 import { BotStore } from "../bot/store.js";
 import { botSpecialists } from "../bot/team.js";
 import { parseAutomationText } from "../bot/wakeup.js";
@@ -18,7 +19,7 @@ import { readBenchmarks } from "./benchmarks.js";
 import { resolveNeonAuthUrl } from "./deployment.js";
 import { ChatEngine } from "./engine.js";
 import { GitHubCatalog } from "./github-catalog.js";
-import { GitHubWorkspace } from "./github-workspace.js";
+import { GitHubWorkspaceSession } from "./github-workspace-session.js";
 import { DEFAULT_CHAT_LIMITS } from "./modes.js";
 import { NeonAuth } from "./neon-auth.js";
 import { createNeonPool, NeonActorDatabase } from "./neon-database.js";
@@ -127,9 +128,13 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
     const url = new URL(req.url ?? "/", origin);
     if (url.pathname === "/api" && url.searchParams.has("odin_path"))
       url.pathname = `/api/${url.searchParams.get("odin_path")}`;
+    const githubEventRoute = /^\/api\/bot\/events\/github\/([A-Za-z0-9_-]{43})$/u.exec(
+      url.pathname,
+    );
     if (
       !["GET", "HEAD"].includes(method) &&
       url.pathname !== "/api/stripe/webhook" &&
+      !githubEventRoute &&
       req.headers["x-odin-request"] !== "1"
     )
       throw new ChatError("CSRF_DENIED", "Missing same-origin request header.", 403);
@@ -151,6 +156,52 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
     }
     services ??= createServices();
     const { auth, pool, models } = services;
+    if (githubEventRoute && method === "POST") {
+      const bridge = new GitHubEventBridge(pool, process.env.ODIN_PUBLIC_ORIGIN ?? origin);
+      const delivery = await bridge.authenticateDelivery(
+        githubEventRoute[1] ?? "",
+        req.headers,
+        await rawBody(req),
+      );
+      if (delivery.duplicate) {
+        send(res, 202, { accepted: true, duplicate: true, fired: 0 });
+        return;
+      }
+      const eventDb = new NeonActorDatabase(pool, { id: delivery.ownerId });
+      const eventProduct = new ProductStore(
+        eventDb,
+        new CredentialVault(process.env.ODIN_CREDENTIAL_ENCRYPTION_KEY),
+      );
+      const limits = botPlanLimits(effectivePlan(await eventProduct.account()));
+      if (!limits.enabled) {
+        await bridge.markProcessed(delivery.ownerId, delivery.deliveryId);
+        send(res, 202, { accepted: true, duplicate: false, fired: 0 });
+        return;
+      }
+      const processed = await processGitHubEvent(
+        eventDb,
+        delivery.event,
+        delivery.deliveryId,
+        limits,
+      );
+      await bridge.markProcessed(delivery.ownerId, delivery.deliveryId);
+      if (processed.firedTaskIds.length) {
+        const worker = new OdinBotWorker({
+          pool,
+          baseModels: models,
+          credentialEncryptionKey: process.env.ODIN_CREDENTIAL_ENCRYPTION_KEY,
+          publicOrigin: process.env.ODIN_PUBLIC_ORIGIN ?? origin,
+        });
+        waitUntil(worker.runBatch(`github-event:${delivery.deliveryId}`, 3, delivery.ownerId));
+      }
+      send(res, 202, {
+        accepted: true,
+        duplicate: false,
+        fired: processed.firedTaskIds.length,
+        linkedTask: processed.linkedTaskId !== null,
+      });
+      return;
+    }
     if (url.pathname === "/api/bot/worker" && method === "GET") {
       await verifyBotSchedulerAuthorization(
         typeof req.headers.authorization === "string" ? req.headers.authorization : undefined,
@@ -159,6 +210,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
         pool,
         baseModels: models,
         credentialEncryptionKey: process.env.ODIN_CREDENTIAL_ENCRYPTION_KEY,
+        publicOrigin: process.env.ODIN_PUBLIC_ORIGIN ?? origin,
       });
       send(res, 200, await worker.runBatch("github-oidc-scheduler", 3));
       return;
@@ -332,16 +384,17 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       signal?: AbortSignal,
     ) => {
       const githubReady = githubWorkspaceReady ? (githubToken as string) : undefined;
-      const quality = githubReady
-        ? new GitHubWorkspace(
-            githubReady,
-            githubConnection.repository,
-            githubConnection.defaultBranch,
-            async () => {},
-          )
-        : conversationId
-          ? new NeonWorkspace(database, conversationId, async () => {})
+      const githubSession =
+        githubReady && conversationId
+          ? new GitHubWorkspaceSession(
+              githubReady,
+              githubConnection.repository,
+              githubConnection.defaultBranch,
+            )
           : undefined;
+      const quality =
+        githubSession ??
+        (conversationId ? new NeonWorkspace(database, conversationId, async () => {}) : undefined);
       return new ChatEngine({
         store: new NeonChatStore(database),
         events: new NeonMissionStore(database),
@@ -360,13 +413,8 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
           ? {
               quality,
               workspace: (changed) =>
-                githubReady
-                  ? new GitHubWorkspace(
-                      githubReady,
-                      githubConnection.repository,
-                      githubConnection.defaultBranch,
-                      changed,
-                    )
+                githubSession
+                  ? githubSession.workspace(changed)
                   : new NeonWorkspace(database, conversationId, changed),
             }
           : {}),
@@ -447,6 +495,9 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
           browserIndependent: true,
           scheduler: "github-oidc",
           wakeCadenceMinutes: 5,
+          eventDrivenGitHub: true,
+          pullRequestDelivery: true,
+          proactiveLifecycleInbox: true,
         },
       });
       return;
@@ -584,6 +635,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
         pool,
         baseModels: models,
         credentialEncryptionKey: process.env.ODIN_CREDENTIAL_ENCRYPTION_KEY,
+        publicOrigin: process.env.ODIN_PUBLIC_ORIGIN ?? origin,
       });
       waitUntil(worker.runBatch(`request:${identity.id}`, 1, identity.id));
       send(res, 202, { task });
@@ -646,11 +698,41 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
               | "digest"
               | "silent")
           : "important";
-        send(
-          res,
-          201,
-          await botStore.createAutomation(instruction, parsed, limits, notificationPolicy),
+        const created = await botStore.createAutomation(
+          instruction,
+          parsed,
+          limits,
+          notificationPolicy,
         );
+        if (parsed.trigger.kind === "event") {
+          if (parsed.trigger.source !== "github") {
+            await botStore.deleteAutomation(created.id);
+            throw new ChatError(
+              "AUTOMATION_SOURCE_UNAVAILABLE",
+              "This event source is not available yet. GitHub repository events are supported.",
+              409,
+            );
+          }
+          if (!githubWorkspaceReady || !githubToken || !githubConnection.repository) {
+            await botStore.deleteAutomation(created.id);
+            throw new ChatError(
+              "GITHUB_WORKSPACE_REQUIRED",
+              "Connect GitHub and select a repository before creating a GitHub event automation.",
+              409,
+            );
+          }
+          try {
+            await new GitHubEventBridge(pool, process.env.ODIN_PUBLIC_ORIGIN ?? origin).ensureHook(
+              identity.id,
+              githubToken,
+              githubConnection.repository,
+            );
+          } catch (error) {
+            await botStore.deleteAutomation(created.id);
+            throw error;
+          }
+        }
+        send(res, 201, created);
         return;
       }
     }
@@ -751,11 +833,24 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
         String(body.branch ?? ""),
       );
       await product.selectRepository(verified.repository.fullName, verified.branch.name);
+      if ((await botStore.eventAutomations("github")).length) {
+        await new GitHubEventBridge(pool, process.env.ODIN_PUBLIC_ORIGIN ?? origin).ensureHook(
+          identity.id,
+          token,
+          verified.repository.fullName,
+        );
+      }
       send(res, 200, await product.github());
       return;
     }
     if (url.pathname === "/api/github" && method === "DELETE") {
       const token = await product.githubToken();
+      if (token) {
+        await new GitHubEventBridge(pool, process.env.ODIN_PUBLIC_ORIGIN ?? origin).disconnectHook(
+          identity.id,
+          token,
+        );
+      }
       const client = process.env.GITHUB_OAUTH_CLIENT_ID;
       const secret = process.env.GITHUB_OAUTH_CLIENT_SECRET;
       if (token && client && secret) {
@@ -849,6 +944,12 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
     }
     if (url.pathname === "/api/account" && method === "DELETE") {
       await jsonBody(req);
+      if (githubToken) {
+        await new GitHubEventBridge(pool, process.env.ODIN_PUBLIC_ORIGIN ?? origin).disconnectHook(
+          identity.id,
+          githubToken,
+        );
+      }
       await db.transaction(async (client) => {
         for (const table of [
           "events",

@@ -23,7 +23,7 @@ CREATE INDEX IF NOT EXISTS odin_bot_github_hooks_repository
 CREATE TABLE IF NOT EXISTS odin_control.bot_event_receipts (
   owner_id text NOT NULL,
   delivery_id text NOT NULL CHECK(length(delivery_id) BETWEEN 8 AND 128),
-  event_name text NOT NULL CHECK(event_name IN ('pull_request','pull_request_review','check_run','workflow_run','push')),
+  event_name text NOT NULL CHECK(event_name IN ('pull_request','pull_request_review','check_run','workflow_run','push','ping')),
   repository text NOT NULL CHECK(repository ~ '^[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}$'),
   received_at timestamptz NOT NULL DEFAULT now(),
   processed_at timestamptz,
