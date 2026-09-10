@@ -1,5 +1,13 @@
 # Engineering handover
 
+## PR #44 S–U checkpoint (2026-09-09)
+
+The repository now implements the four-tier Free/Pro/Developer/Ultra contract, fail-closed effective
+Stripe entitlement, exact Odin price mapping, Developer checkout/UI/schema migration, Coding and Ultra
+mode floors, and an injected-transport official GitHub MCP read client that produces M3 registrations.
+Migration 005 is idempotent. Local verification evidence must be refreshed at the final commit; hosted
+Stripe, OAuth, Neon migration/RLS, preview and production behavior still require operator/live proof.
+
 ## P–R product completion checkpoint — 2026-09-09
 
 The current branch materializes the previously build-time M–O patch and adds exactly Phase P identity /

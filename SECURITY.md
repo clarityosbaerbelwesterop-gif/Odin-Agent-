@@ -1,5 +1,13 @@
 # Security model
 
+## S–U entitlement and GitHub MCP boundary
+
+An account's stored plan is audit state, not sufficient authorization. Only `active` and `trialing`
+subscriptions retain a paid effective plan; every other or unknown status collapses to Free. Exact Odin
+Stripe prices are allowlisted, unknown prices collapse to Free, and checkout redirects never update an
+entitlement. GitHub MCP is fixed to `https://api.githubcopilot.com/mcp/readonly`, rejects redirects,
+bounds and validates JSON-RPC responses, and exposes only an explicit read allowlist through M3.
+
 ## P–R hosted product additions
 
 User provider and GitHub tokens use AES-256-GCM under the server-only
