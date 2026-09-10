@@ -14,7 +14,7 @@ def replace_once(path: str, before: str, after: str) -> None:
     target = Path(path)
     text = target.read_text()
     if text.count(before) != 1:
-        raise SystemExit(f"{path}: lint repair anchor mismatch")
+        raise SystemExit(f"{path}: repair anchor mismatch")
     target.write_text(text.replace(before, after, 1))
 
 
@@ -39,7 +39,32 @@ replace_once(
     '''  const clean = value.trim();\n  const hasControl = [...clean].some((char) => {\n    const code = char.charCodeAt(0);\n    return code < 32 && ![9, 10, 13].includes(code);\n  });\n  if (!clean || clean.length > max || hasControl)\n    throw new ChatError("INVALID_BOT_INPUT", `${label} is invalid.`);''',
 )
 replace_once(
+    "src/bot/store.ts",
+    '    idempotencyKey?: string;',
+    '    idempotencyKey?: string | undefined;',
+)
+replace_once(
     "web/bot.js",
     '  items.forEach((item) => target.append(row(item)));',
     '  for (const item of items) target.append(row(item));',
+)
+replace_once(
+    "src/bot/wakeup.ts",
+    '  return values as Record<string, number>;',
+    '''  return values as {\n    year: number;\n    month: number;\n    day: number;\n    hour: number;\n    minute: number;\n    second: number;\n  };''',
+)
+replace_once(
+    "src/bot/wakeup.ts",
+    '    const everyMinutes = /hour|stund/u.test(interval[2]) ? amount * 60 : amount;',
+    '    const everyMinutes = /hour|stund/u.test(interval[2] ?? "") ? amount * 60 : amount;',
+)
+replace_once(
+    "src/bot/worker-auth.ts",
+    '''  if (!match) throw new ChatError("BOT_WORKER_UNAUTHORIZED", "Worker authorization is required.", 401);\n  try {\n    const { payload } = await jwtVerify(match[1], JWKS, {''',
+    '''  const token = match?.[1];\n  if (!token) throw new ChatError("BOT_WORKER_UNAUTHORIZED", "Worker authorization is required.", 401);\n  try {\n    const { payload } = await jwtVerify(token, JWKS, {''',
+)
+replace_once(
+    "src/bot/executor.ts",
+    '  credentialEncryptionKey?: string;',
+    '  credentialEncryptionKey?: string | undefined;',
 )
