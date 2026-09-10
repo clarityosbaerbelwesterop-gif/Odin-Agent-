@@ -39,6 +39,47 @@ replace_once(
     "Stay inside the user's primary objective.''',
 )
 
+# M6: a continuation must resolve to a predecessor, never the just-created task itself.
+replace_once(
+    "src/bot/control-store.ts",
+    '''  async resolveContinuation(goal: string): Promise<{ taskId: string; objective: string } | null> {
+    if (!isContinuationRequest(goal)) return null;
+    return this.db.transaction(async (client) => {
+      const row = (
+        await client.query(
+          `SELECT t.id,f.primary_objective FROM odin_api.bot_tasks t
+           LEFT JOIN odin_api.bot_focus f ON f.owner_id=t.owner_id AND f.task_id=t.id
+           ORDER BY CASE WHEN t.status IN ('working','waiting','approval','queued') THEN 0 ELSE 1 END,t.updated_at DESC LIMIT 1`,
+        )
+      ).rows[0];
+      return row ? { taskId: row.id, objective: row.primary_objective ?? "" } : null;
+    });
+  }''',
+    '''  async resolveContinuation(
+    goal: string,
+    excludeTaskId?: string,
+  ): Promise<{ taskId: string; objective: string } | null> {
+    if (!isContinuationRequest(goal)) return null;
+    return this.db.transaction(async (client) => {
+      const row = (
+        await client.query(
+          `SELECT t.id,f.primary_objective FROM odin_api.bot_tasks t
+           LEFT JOIN odin_api.bot_focus f ON f.owner_id=t.owner_id AND f.task_id=t.id
+           WHERE ($1::uuid IS NULL OR t.id<>$1)
+           ORDER BY CASE WHEN t.status IN ('working','waiting','approval','queued') THEN 0 ELSE 1 END,t.updated_at DESC LIMIT 1`,
+          [excludeTaskId ?? null],
+        )
+      ).rows[0];
+      return row ? { taskId: row.id, objective: row.primary_objective ?? "" } : null;
+    });
+  }''',
+)
+replace_once(
+    "src/bot/executor.ts",
+    "    const continuation = await control.resolveContinuation(task.goal);",
+    "    const continuation = await control.resolveContinuation(task.goal, task.id);",
+)
+
 # M6: persist mission continuity after verified completion.
 replace_once(
     "src/bot/executor.ts",
@@ -218,7 +259,13 @@ replace_once(
 )
 replace_once(
     "scripts/verify-neon-production.mjs",
-    '''    const botTables = new Set(["bots", "bot_tasks", "bot_task_events", "bot_automations", "bot_inbox"]);''',
+    '''    const botTables = new Set([
+      "bots",
+      "bot_tasks",
+      "bot_task_events",
+      "bot_automations",
+      "bot_inbox",
+    ]);''',
     '''    const botTables = new Set([
       "bots",
       "bot_tasks",
