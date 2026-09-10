@@ -27,7 +27,7 @@ jobs:
           node-version: 24
           cache: npm
       - name: Apply M1-M3 implementation
-        run: python scripts/odin-bot-m1-m3-patch.py
+        run: python scripts/odin-bot-m1-m3-run.py
       - run: npm ci
       - name: Full repository verification
         run: npm run verify
