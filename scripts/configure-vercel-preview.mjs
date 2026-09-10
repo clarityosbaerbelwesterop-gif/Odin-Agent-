@@ -7,7 +7,7 @@ import { createNeonPool } from "../dist/src/chat/neon-database.js";
 export const scope = Object.freeze({
   repository: "clarityosbaerbelwesterop-gif/Odin-Agent-",
   repoId: 1355059364,
-  gitBranch: "agent/mno-product-workspace-pro-preview",
+  gitBranch: "agent/stu-plans-github-mcp-modes",
   team: "team_5KyyWAPW9vLU4EiaKaYZuhaG",
   project: "prj_GdWyUqh2FXRUAwCUZrewFwa0w4yl",
   neonProject: "cold-mode-01560070",

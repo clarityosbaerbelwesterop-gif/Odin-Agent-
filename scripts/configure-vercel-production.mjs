@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { Pool } from "pg";
 
 const scope = Object.freeze({
@@ -68,7 +68,9 @@ async function upsertProductionVariable(key, value) {
 async function currentProductionEnv() {
   const result = await management("vercel", `/v10/projects/${scope.project}/env`);
   return Array.isArray(result.envs)
-    ? result.envs.filter((entry) => Array.isArray(entry.target) && entry.target.includes("production"))
+    ? result.envs.filter(
+        (entry) => Array.isArray(entry.target) && entry.target.includes("production"),
+      )
     : [];
 }
 
@@ -119,6 +121,16 @@ async function configure() {
       connectionTimeoutMillis: 10_000,
     });
 
+    const developerMigration = await readFile("migrations/005_developer_plan.sql", "utf8");
+    await ownerPool.query(developerMigration);
+    const planConstraint = await ownerPool.query(
+      `SELECT pg_get_constraintdef(c.oid) AS definition
+       FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid
+       JOIN pg_namespace n ON n.oid=t.relnamespace
+       WHERE n.nspname='odin_api' AND t.relname='accounts' AND c.conname='accounts_plan_check'`,
+    );
+    assert.match(planConstraint.rows[0]?.definition ?? "", /developer/u, "DEVELOPER_PLAN_SCHEMA");
+
     const schema = await ownerPool.query(
       `SELECT c.relname,c.relrowsecurity,c.relforcerowsecurity,
         count(p.policyname) FILTER (WHERE p.policyname='owner_isolation')::int AS owner_policies
@@ -140,7 +152,8 @@ async function configure() {
     const envs = await currentProductionEnv();
     const has = (key) => envs.some((entry) => entry.key === key);
     let appUri;
-    const role = (await ownerPool.query("SELECT * FROM pg_roles WHERE rolname=$1", [scope.role])).rows[0];
+    const role = (await ownerPool.query("SELECT * FROM pg_roles WHERE rolname=$1", [scope.role]))
+      .rows[0];
     if (!has("ODIN_DATABASE_URL")) {
       const password = randomBytes(32).toString("base64url");
       assert.match(password, /^[A-Za-z0-9_-]{43}$/u);
@@ -169,7 +182,8 @@ async function configure() {
       await upsertProductionVariable("ODIN_DATABASE_URL", appUri);
     }
 
-    const checked = (await ownerPool.query("SELECT * FROM pg_roles WHERE rolname=$1", [scope.role])).rows[0];
+    const checked = (await ownerPool.query("SELECT * FROM pg_roles WHERE rolname=$1", [scope.role]))
+      .rows[0];
     assert(checked?.rolcanlogin, "PRODUCTION_APP_LOGIN");
     for (const field of [
       "rolsuper",
@@ -200,20 +214,38 @@ async function configure() {
     await upsertProductionVariable("ODIN_PUBLIC_ORIGIN", scope.origin);
     await upsertProductionVariable("NV_API_KEY", process.env.NV_API_KEY);
     await upsertProductionVariable("NV_API_KEY_2", process.env.NV_API_KEY_2);
+    await upsertProductionVariable("GITHUB_MCP_URL", "https://api.githubcopilot.com/mcp/readonly");
+    for (const key of [
+      "GITHUB_OAUTH_CLIENT_ID",
+      "GITHUB_OAUTH_CLIENT_SECRET",
+      "STRIPE_SECRET_KEY",
+      "STRIPE_WEBHOOK_SECRET",
+    ]) {
+      if (process.env[key]) await upsertProductionVariable(key, process.env[key]);
+    }
+    const exactPrices = {
+      STRIPE_PRO_PRICE_ID: "price_1UDr55EmDA2oLCpoQJNERPTA",
+      STRIPE_DEVELOPER_PRICE_ID: "price_1UDr5HEmDA2oLCpoTuUlXUH0",
+      STRIPE_ULTRA_PRICE_ID: "price_1UDr5REmDA2oLCpoiETsQLQf",
+    };
+    for (const [key, value] of Object.entries(exactPrices)) {
+      assert.equal(process.env[key], value, `EXACT_${key}`);
+      await upsertProductionVariable(key, value);
+    }
     if (!has("ODIN_CREDENTIAL_ENCRYPTION_KEY"))
       await upsertProductionVariable(
         "ODIN_CREDENTIAL_ENCRYPTION_KEY",
         randomBytes(32).toString("base64url"),
       );
-    report.checks.push("Production Neon/Auth/origin/encryption/NVIDIA variables are configured server-side");
+    report.checks.push(
+      "Production Neon/Auth/origin/encryption/NVIDIA variables are configured server-side",
+    );
 
     for (const key of [
       "GITHUB_OAUTH_CLIENT_ID",
       "GITHUB_OAUTH_CLIENT_SECRET",
       "STRIPE_SECRET_KEY",
       "STRIPE_WEBHOOK_SECRET",
-      "STRIPE_PRO_PRICE_ID",
-      "STRIPE_ULTRA_PRICE_ID",
     ]) {
       if (!has(key)) report.operatorGates.push(key);
     }
@@ -245,7 +277,9 @@ async function configure() {
       signal: AbortSignal.timeout(15_000),
     });
     assert.equal(configSmoke.status, 401, "UNAUTHENTICATED_CONFIG_MUST_BE_401");
-    report.checks.push("Fresh production deployment is READY; Auth config works and protected API fails closed with 401");
+    report.checks.push(
+      "Fresh production deployment is READY; Auth config works and protected API fails closed with 401",
+    );
 
     report.status = report.operatorGates.length ? "READY_WITH_OPERATOR_GATES" : "READY";
   } catch (error) {

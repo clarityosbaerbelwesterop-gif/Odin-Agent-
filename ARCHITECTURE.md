@@ -1,5 +1,14 @@
 # Odin architecture
 
+## S–U product completion contract (2026-09-09)
+
+The product control plane has exactly four ordered plans: Free, Pro, Developer and Ultra. Runtime
+authorization derives an effective plan from authoritative Stripe state (`active` or `trialing` only),
+then enforces both the selected model floor and mode floor server-side. Coding requires Developer plus
+an authenticated, connected and selected GitHub repository; Ultra requires Ultra. The official hosted
+GitHub MCP endpoint is pinned read-only and its audited read operations are normalized into M3 tool
+registrations; repository mutations remain exclusively in the existing isolated GitHub workspace.
+
 ## P–R product control plane (2026-09-09)
 
 The hosted product reuses Neon Auth and the transaction-local `odin_runtime` identity boundary. Product

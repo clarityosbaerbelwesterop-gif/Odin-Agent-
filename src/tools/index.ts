@@ -1,5 +1,6 @@
 export * from "./audit.js";
 export * from "./ecosystem.js";
+export * from "./github-mcp.js";
 export * from "./policy.js";
 export * from "./registry.js";
 export * from "./repository.js";

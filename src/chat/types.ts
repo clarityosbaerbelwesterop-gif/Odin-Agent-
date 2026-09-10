@@ -2,7 +2,7 @@ import type { MissionState } from "../mission/runtime.js";
 import type { ModelMessage, ModelProvider, TokenUsage } from "../providers/types.js";
 
 export type ChatMode = "chat" | "coding" | "thinking" | "research" | "ultra";
-export type ProductPlan = "free" | "pro" | "ultra";
+export type ProductPlan = "free" | "pro" | "developer" | "ultra";
 export interface ChatModel {
   readonly id: string;
   readonly label: string;

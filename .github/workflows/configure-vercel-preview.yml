@@ -2,9 +2,6 @@ name: Configure Odin Vercel preview
 
 on:
   workflow_dispatch:
-  push:
-    branches: [agent/mno-product-workspace-pro-preview]
-    paths: [.github/workflows/configure-vercel-preview.yml, scripts/configure-vercel-preview.mjs]
 
 permissions:
   contents: read
@@ -15,7 +12,7 @@ concurrency:
 
 jobs:
   preview:
-    if: github.repository == 'clarityosbaerbelwesterop-gif/Odin-Agent-' && github.ref == 'refs/heads/agent/mno-product-workspace-pro-preview'
+    if: github.repository == 'clarityosbaerbelwesterop-gif/Odin-Agent-' && github.ref == 'refs/heads/agent/stu-plans-github-mcp-modes'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

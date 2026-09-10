@@ -181,7 +181,7 @@ function providersCard(config) {
 }
 
 function billingCard(config) {
-  const item = card("Billing", "FREE / PRO / ULTRA");
+  const item = card("Billing", "FREE / PRO / DEVELOPER / ULTRA");
   item.append(
     node(
       "p",
@@ -189,12 +189,13 @@ function billingCard(config) {
       "info-lead",
     ),
   );
-  for (const plan of ["pro", "ultra"]) {
+  const prices = { pro: "$9.99 / month", developer: "$19.99 / month", ultra: "$49.99 / month" };
+  for (const plan of ["pro", "developer", "ultra"]) {
     const configured = config?.billing?.[`${plan}CheckoutConfigured`];
     item.append(
       actionButton(
         configured
-          ? `${plan.toUpperCase()} wählen`
+          ? `${plan.toUpperCase()} · ${prices[plan]}`
           : `${plan.toUpperCase()} · Checkout nicht konfiguriert`,
         async () => {
           const result = await request("/api/billing/checkout", { plan });

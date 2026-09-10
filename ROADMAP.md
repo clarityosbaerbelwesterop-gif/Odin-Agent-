@@ -1,5 +1,12 @@
 # Odin delivery roadmap
 
+## S–U — four-tier plans, GitHub MCP and Coding/Ultra semantics
+
+Repository implementation is complete for deterministic four-tier ranking, effective subscription
+authorization, exact Stripe price mapping, Developer migration and UI, mode/model enforcement, Coding
+repository prerequisites, and pinned read-only GitHub MCP normalization through M3. Live Stripe,
+GitHub, Neon and Vercel validation remains a release gate and must not be inferred from local fixtures.
+
 ## Current P–R product block
 
 - Phase P: implemented in repository — Neon Auth/session boundary plus encrypted GitHub OAuth,

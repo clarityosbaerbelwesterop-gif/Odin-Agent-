@@ -17,7 +17,18 @@ import { createNeonPool, NeonActorDatabase } from "./neon-database.js";
 import { NeonChatStore, NeonMissionStore } from "./neon-store.js";
 import { NeonWorkspace } from "./neon-workspace.js";
 import { PREVIEW_CSP } from "./preview.js";
-import { CredentialVault, ProductStore, provider, verifyStripeSignature } from "./product.js";
+import {
+  CredentialVault,
+  configuredStripePrice,
+  effectivePlan,
+  MODE_MINIMUM_PLAN,
+  ProductStore,
+  planAllows,
+  provider,
+  stripePricePlan,
+  subscriptionPriceId,
+  verifyStripeSignature,
+} from "./product.js";
 import { WikipediaResearchAdapter } from "./research.js";
 import { hashText, identifier, integer, object, publicError } from "./safety.js";
 import { ChatError, type ChatModel } from "./types.js";
@@ -51,7 +62,7 @@ function createServices() {
     id: string;
     label: string;
     model: string;
-    plan: "free" | "pro" | "ultra";
+    plan: "free" | "pro" | "developer" | "ultra";
     summary: string;
     recommendedFor: readonly string[];
     credential: () => string;
@@ -202,7 +213,16 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       const item = event.data?.object;
       const metadata = item?.metadata as Record<string, unknown> | undefined;
       const owner = metadata?.odin_owner_id;
-      if (!event.id || !Number.isSafeInteger(event.created) || typeof owner !== "string")
+      if (
+        !event.id ||
+        !Number.isSafeInteger(event.created) ||
+        ![
+          "customer.subscription.created",
+          "customer.subscription.updated",
+          "customer.subscription.deleted",
+        ].includes(event.type ?? "") ||
+        typeof owner !== "string"
+      )
         throw new ChatError("STRIPE_EVENT", "Invalid Stripe event.");
       const webhookDb = new NeonActorDatabase(pool, { id: owner });
       await webhookDb.transaction(async (client) => {
@@ -211,13 +231,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
           [event.id, event.created],
         );
         if (!accepted.rows.length) return;
-        const encoded = JSON.stringify(item?.items ?? {});
-        const plan =
-          process.env.STRIPE_ULTRA_PRICE_ID && encoded.includes(process.env.STRIPE_ULTRA_PRICE_ID)
-            ? "ultra"
-            : process.env.STRIPE_PRO_PRICE_ID && encoded.includes(process.env.STRIPE_PRO_PRICE_ID)
-              ? "pro"
-              : "free";
+        const plan = stripePricePlan(subscriptionPriceId(item ?? {}));
         const status = String(
           item?.status ?? (event.type === "customer.subscription.deleted" ? "canceled" : "free"),
         );
@@ -309,6 +323,12 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
     );
     const githubConnection = await product.github();
     const githubToken = githubConnection.connected ? await product.githubToken() : undefined;
+    const githubWorkspaceReady = Boolean(
+      githubConnection.connected &&
+        typeof githubConnection.repository === "string" &&
+        typeof githubConnection.defaultBranch === "string" &&
+        githubToken,
+    );
     const availableModels = [...models, ...(await byokModels(product))];
     const store = new NeonChatStore(db);
     const createEngine = (
@@ -316,14 +336,10 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       conversationId?: string,
       signal?: AbortSignal,
     ) => {
-      const githubReady =
-        githubConnection.connected &&
-        typeof githubConnection.repository === "string" &&
-        typeof githubConnection.defaultBranch === "string" &&
-        githubToken;
+      const githubReady = githubWorkspaceReady ? (githubToken as string) : undefined;
       const quality = githubReady
         ? new GitHubWorkspace(
-            githubToken,
+            githubReady,
             githubConnection.repository,
             githubConnection.defaultBranch,
             async () => {},
@@ -351,7 +367,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
               workspace: (changed) =>
                 githubReady
                   ? new GitHubWorkspace(
-                      githubToken,
+                      githubReady,
                       githubConnection.repository,
                       githubConnection.defaultBranch,
                       changed,
@@ -381,15 +397,16 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       send(res, 200, {
         ...createEngine(db).capabilities(),
         user: { email: identity.email },
-        account,
+        account: { ...account, effectivePlan: effectivePlan(account) },
         providers: await product.credentials(),
         github: await product.github(),
         billing: {
-          proCheckoutConfigured: !!(
-            process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRO_PRICE_ID
+          proCheckoutConfigured: !!(process.env.STRIPE_SECRET_KEY && configuredStripePrice("pro")),
+          developerCheckoutConfigured: !!(
+            process.env.STRIPE_SECRET_KEY && configuredStripePrice("developer")
           ),
           ultraCheckoutConfigured: !!(
-            process.env.STRIPE_SECRET_KEY && process.env.STRIPE_ULTRA_PRICE_ID
+            process.env.STRIPE_SECRET_KEY && configuredStripePrice("ultra")
           ),
         },
         execution: "request",
@@ -509,10 +526,12 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
     }
     if (url.pathname === "/api/billing/checkout" && method === "POST") {
       const body = object(await jsonBody(req), ["plan"]);
-      const selected = body.plan === "pro" || body.plan === "ultra" ? body.plan : undefined;
-      if (!selected) throw new ChatError("INVALID_PLAN", "Choose Pro or Ultra.");
-      const price =
-        selected === "pro" ? process.env.STRIPE_PRO_PRICE_ID : process.env.STRIPE_ULTRA_PRICE_ID;
+      const selected =
+        body.plan === "pro" || body.plan === "developer" || body.plan === "ultra"
+          ? body.plan
+          : undefined;
+      if (!selected) throw new ChatError("INVALID_PLAN", "Choose Pro, Developer or Ultra.");
+      const price = selected ? configuredStripePrice(selected) : undefined;
       if (!process.env.STRIPE_SECRET_KEY || !price)
         throw new ChatError(
           "CHECKOUT_NOT_CONFIGURED",
@@ -650,13 +669,23 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
           const body = object(await jsonBody(req), ["text", "mode", "modelId", "requestId"]);
           const account = await product.account();
           const selectedModel = availableModels.find((model) => model.id === body.modelId);
-          const ranks = { free: 0, pro: 1, ultra: 2 } as const;
-          const requiredPlan = body.mode === "ultra" ? "ultra" : (selectedModel?.plan ?? "free");
-          if (ranks[account.plan] < ranks[requiredPlan])
+          const mode = typeof body.mode === "string" ? body.mode : "";
+          if (!Object.hasOwn(MODE_MINIMUM_PLAN, mode))
+            throw new ChatError("UNKNOWN_MODE", "Choose a supported mode.");
+          const modePlan = MODE_MINIMUM_PLAN[mode as keyof typeof MODE_MINIMUM_PLAN];
+          const modelPlan = selectedModel?.plan ?? "free";
+          const requiredPlan = planAllows(modePlan, modelPlan) ? modePlan : modelPlan;
+          if (!planAllows(effectivePlan(account), requiredPlan))
             throw new ChatError(
               "ENTITLEMENT_REQUIRED",
               `This mission requires the ${requiredPlan} plan.`,
               403,
+            );
+          if (mode === "coding" && !githubWorkspaceReady)
+            throw new ChatError(
+              "GITHUB_WORKSPACE_REQUIRED",
+              "Coding requires a connected GitHub account and selected repository.",
+              409,
             );
           send(
             res,

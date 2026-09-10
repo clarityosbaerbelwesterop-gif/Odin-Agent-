@@ -7,11 +7,68 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 import type { ActorDatabase } from "./neon-database.js";
-import { ChatError } from "./types.js";
+import { ChatError, type ChatMode, type ProductPlan } from "./types.js";
 
 export const PROVIDERS = ["openai", "anthropic", "openrouter", "nvidia", "google"] as const;
 export type ProductProvider = (typeof PROVIDERS)[number];
-export type Plan = "free" | "pro" | "ultra";
+export type Plan = ProductPlan;
+
+export const PLAN_RANK: Readonly<Record<Plan, number>> = Object.freeze({
+  free: 0,
+  pro: 1,
+  developer: 2,
+  ultra: 3,
+});
+export const MODE_MINIMUM_PLAN: Readonly<Record<ChatMode, Plan>> = Object.freeze({
+  chat: "free",
+  thinking: "pro",
+  research: "pro",
+  coding: "developer",
+  ultra: "ultra",
+});
+export const ODIN_STRIPE_PRICES = Object.freeze({
+  pro: "price_1UDr55EmDA2oLCpoQJNERPTA",
+  developer: "price_1UDr5HEmDA2oLCpoTuUlXUH0",
+  ultra: "price_1UDr5REmDA2oLCpoiETsQLQf",
+});
+const PAID_STATUSES = new Set(["active", "trialing"]);
+
+export function effectivePlan(account: Pick<ProductAccount, "plan" | "subscriptionStatus">): Plan {
+  return account.plan !== "free" && PAID_STATUSES.has(account.subscriptionStatus)
+    ? account.plan
+    : "free";
+}
+
+export function planAllows(actual: Plan, required: Plan): boolean {
+  return PLAN_RANK[actual] >= PLAN_RANK[required];
+}
+
+export function stripePricePlan(priceId: unknown, env: NodeJS.ProcessEnv = process.env): Plan {
+  if (typeof priceId !== "string") return "free";
+  const mappings: ReadonlyArray<readonly [string | undefined, Plan]> = [
+    [env.STRIPE_PRO_PRICE_ID, "pro"],
+    [env.STRIPE_DEVELOPER_PRICE_ID, "developer"],
+    [env.STRIPE_ULTRA_PRICE_ID, "ultra"],
+  ];
+  return mappings.find(([configured]) => configured === priceId)?.[1] ?? "free";
+}
+
+export function configuredStripePrice(plan: Exclude<Plan, "free">): string | undefined {
+  const key = `STRIPE_${plan.toUpperCase()}_PRICE_ID`;
+  const configured = process.env[key];
+  return configured === ODIN_STRIPE_PRICES[plan] ? configured : undefined;
+}
+
+export function subscriptionPriceId(item: Record<string, unknown>): string | undefined {
+  const items = item.items;
+  if (!items || typeof items !== "object" || Array.isArray(items)) return undefined;
+  const data = (items as { data?: unknown }).data;
+  if (!Array.isArray(data) || data.length !== 1) return undefined;
+  const price = (data[0] as { price?: unknown } | undefined)?.price;
+  return price && typeof price === "object" && !Array.isArray(price)
+    ? ((price as { id?: unknown }).id as string | undefined)
+    : undefined;
+}
 
 export interface ProductAccount {
   plan: Plan;

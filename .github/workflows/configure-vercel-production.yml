@@ -7,6 +7,7 @@ on:
       - .github/workflows/configure-vercel-production.yml
       - scripts/configure-vercel-production.mjs
       - migrations/004_reconcile_product_control_plane.sql
+      - migrations/005_developer_plan.sql
   workflow_dispatch:
 
 permissions:
@@ -36,6 +37,14 @@ jobs:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
           NV_API_KEY: ${{ secrets.NV_API_KEY }}
           NV_API_KEY_2: ${{ secrets.NV_API_KEY_2 }}
+          GITHUB_OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
+          GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          STRIPE_PRO_PRICE_ID: price_1UDr55EmDA2oLCpoQJNERPTA
+          STRIPE_DEVELOPER_PRICE_ID: price_1UDr5HEmDA2oLCpoTuUlXUH0
+          STRIPE_ULTRA_PRICE_ID: price_1UDr5REmDA2oLCpoiETsQLQf
+          GITHUB_MCP_URL: https://api.githubcopilot.com/mcp/readonly
         run: node scripts/configure-vercel-production.mjs
       - uses: actions/upload-artifact@v4
         if: always()

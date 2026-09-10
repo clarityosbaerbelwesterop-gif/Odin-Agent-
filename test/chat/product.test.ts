@@ -1,7 +1,68 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import test from "node:test";
-import { CredentialVault, provider, verifyStripeSignature } from "../../src/chat/product.js";
+import {
+  CredentialVault,
+  effectivePlan,
+  MODE_MINIMUM_PLAN,
+  ODIN_STRIPE_PRICES,
+  PLAN_RANK,
+  planAllows,
+  provider,
+  stripePricePlan,
+  subscriptionPriceId,
+  verifyStripeSignature,
+} from "../../src/chat/product.js";
+
+test("S-U plans rank all four tiers and modes fail closed at their minimum plan", () => {
+  assert.deepEqual(PLAN_RANK, { free: 0, pro: 1, developer: 2, ultra: 3 });
+  assert.deepEqual(MODE_MINIMUM_PLAN, {
+    chat: "free",
+    thinking: "pro",
+    research: "pro",
+    coding: "developer",
+    ultra: "ultra",
+  });
+  assert.equal(planAllows("pro", "developer"), false);
+  assert.equal(planAllows("developer", "ultra"), false);
+  assert.equal(planAllows("developer", "developer"), true);
+});
+
+test("S-U effective paid entitlement requires an approved Stripe status", () => {
+  for (const status of ["active", "trialing"])
+    assert.equal(effectivePlan({ plan: "developer", subscriptionStatus: status }), "developer");
+  for (const status of [
+    "canceled",
+    "past_due",
+    "unpaid",
+    "paused",
+    "incomplete",
+    "incomplete_expired",
+    "unknown",
+  ])
+    assert.equal(effectivePlan({ plan: "ultra", subscriptionStatus: status }), "free");
+});
+
+test("S-U Stripe mapping accepts only exact configured Odin prices", () => {
+  const env = {
+    STRIPE_PRO_PRICE_ID: ODIN_STRIPE_PRICES.pro,
+    STRIPE_DEVELOPER_PRICE_ID: ODIN_STRIPE_PRICES.developer,
+    STRIPE_ULTRA_PRICE_ID: ODIN_STRIPE_PRICES.ultra,
+  } as NodeJS.ProcessEnv;
+  assert.equal(stripePricePlan(ODIN_STRIPE_PRICES.pro, env), "pro");
+  assert.equal(stripePricePlan(ODIN_STRIPE_PRICES.developer, env), "developer");
+  assert.equal(stripePricePlan(ODIN_STRIPE_PRICES.ultra, env), "ultra");
+  assert.equal(stripePricePlan("price_from_another_product", env), "free");
+  assert.equal(
+    subscriptionPriceId({ items: { data: [{ price: { id: ODIN_STRIPE_PRICES.developer } }] } }),
+    ODIN_STRIPE_PRICES.developer,
+  );
+  assert.equal(subscriptionPriceId({ items: { data: [] } }), undefined);
+  assert.equal(
+    subscriptionPriceId({ items: { data: [{ price: { id: "one" } }, { price: { id: "two" } }] } }),
+    undefined,
+  );
+});
 
 test("P-R credential vault encrypts authenticated data and exposes only a safe fingerprint", () => {
   const vault = new CredentialVault(Buffer.alloc(32, 7).toString("base64url"));
