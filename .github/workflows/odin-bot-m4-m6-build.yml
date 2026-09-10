@@ -52,3 +52,4 @@ jobs:
             git commit -m "Odin Bot M4-M6: team, scoped autonomy and continuity"
             git push origin HEAD:agent/odin-bot-m4-m6-team-autonomy-continuity-v2
           fi
+# rerun: anchor + predecessor exclusion verified
