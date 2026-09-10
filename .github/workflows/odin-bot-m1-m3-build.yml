@@ -1,0 +1,55 @@
+name: Verify Odin Bot M1-M3 build
+
+on:
+  push:
+    branches:
+      - agent/odin-bot-m1-m3-foundation-wakeup-ux
+    paths:
+      - .github/workflows/odin-bot-m1-m3-build.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: odin-bot-m1-m3-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Apply M1-M3 implementation
+        run: python scripts/odin-bot-m1-m3-patch.py
+      - run: npm ci
+      - name: Full repository verification
+        run: npm run verify
+      - name: Reject whitespace errors
+        run: git diff --check
+      - name: Commit verified product files
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/odin-bot-scheduler.yml
+          git status --short
+          git config user.name "odin-bot-build"
+          git config user.email "odin-bot-build@users.noreply.github.com"
+          git add \
+            migrations/006_odin_bot_m1_m3.sql \
+            src/bot \
+            test/bot \
+            scripts/bot-ui.test.mjs \
+            src/chat/hosted.ts \
+            web/bot.html web/bot.js web/bot.css web/chat.html \
+            package.json vercel.json \
+            scripts/sync-vercel-production.mjs scripts/verify-neon-production.mjs
+          test -n "$(git diff --cached --name-only)"
+          git commit -m "Odin Bot M1-M3: durable foundation, wakeups and product UX"
+          git push origin HEAD:agent/odin-bot-m1-m3-foundation-wakeup-ux
