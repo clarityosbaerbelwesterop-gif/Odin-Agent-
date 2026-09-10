@@ -1,5 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const allowedModes = new Set(["login", "signup", "verify", "forgot", "reset"]);
+const VERIFIER_PARAM = "neon_auth_session_verifier";
 let mode = "login";
 let authConfig = null;
 let busy = false;
@@ -40,6 +41,36 @@ async function request(path, body, method = body === undefined ? "GET" : "POST")
     throw error;
   }
   return data;
+}
+
+function githubAuthBase() {
+  const value = authConfig?.oauth?.github?.authBase;
+  if (typeof value !== "string") throw new Error("GitHub Login ist nicht verfügbar.");
+  const url = new URL(value);
+  if (
+    url.protocol !== "https:" ||
+    !url.hostname.endsWith(".neon.tech") ||
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash
+  )
+    throw new Error("Unsichere Auth-Konfiguration wurde blockiert.");
+  return url.href.replace(/\/$/u, "");
+}
+
+async function neonAuth(path, init = {}) {
+  const response = await fetch(`${githubAuthBase()}${path}`, {
+    credentials: "include",
+    redirect: "manual",
+    ...init,
+    headers: {
+      Accept: "application/json",
+      ...(init.body === undefined ? {} : { "Content-Type": "application/json" }),
+      ...(init.headers ?? {}),
+    },
+  });
+  return response;
 }
 
 function status(text = "", kind = "") {
@@ -134,19 +165,59 @@ async function restoreSession() {
   }
 }
 
+async function restoreGitHubSession(requireVerifier = false) {
+  const github = authConfig?.oauth?.github;
+  if (github?.available !== true) return false;
+  const params = new URLSearchParams(window.location.search);
+  const verifier = params.get(VERIFIER_PARAM);
+  if (requireVerifier && !verifier) return false;
+  const route = verifier
+    ? `/get-session?${encodeURIComponent(VERIFIER_PARAM)}=${encodeURIComponent(verifier)}`
+    : "/get-session";
+  const response = await neonAuth(route, { method: "GET" });
+  if (!response.ok) {
+    if (verifier) throw new Error("GitHub Login konnte nicht abgeschlossen werden.");
+    return false;
+  }
+  let data = {};
+  try {
+    data = await response.json();
+  } catch {
+    return false;
+  }
+  const token = response.headers.get("set-auth-jwt") ?? data?.session?.token;
+  if (typeof token !== "string" || !token) {
+    if (verifier) throw new Error("Neon hat keine gültige Login-Session zurückgegeben.");
+    return false;
+  }
+  await request("/api/auth/github/finalize", { token });
+  if (verifier) {
+    const clean = new URL(window.location.href);
+    clean.searchParams.delete(VERIFIER_PARAM);
+    clean.searchParams.delete("oauth");
+    window.history.replaceState(window.history.state, "", clean.href);
+  }
+  window.location.replace(safeReturnTo());
+  return true;
+}
+
 async function initialize() {
   setBusy(true);
   try {
-    if (await restoreSession()) return;
     authConfig = await request("/api/auth/config");
+    if (await restoreSession()) return;
+    const params = new URLSearchParams(window.location.search);
+    const explicitSignOut = params.get("signedOut") === "1";
+    if (!explicitSignOut && (await restoreGitHubSession(params.has(VERIFIER_PARAM)))) return;
     const github = authConfig?.oauth?.github;
     if (github?.available === true) {
       $("github-note").textContent =
         "Melde dich mit GitHub an. Repository-Zugriff wird separat und nur bei Bedarf freigegeben.";
     } else {
       $("github-note").textContent =
-        "GitHub Login ist für dieses Deployment noch nicht freigeschaltet. E-Mail Login funktioniert weiterhin.";
+        "GitHub Login ist für dieses Deployment nicht verfügbar. E-Mail Login funktioniert weiterhin.";
     }
+    if (params.get("oauth") === "error") status("GitHub Login wurde nicht abgeschlossen.", "error");
   } catch (error) {
     status(error.message, "error");
   } finally {
@@ -157,20 +228,32 @@ async function initialize() {
 $("github-signin").addEventListener("click", async () => {
   if (busy) return;
   const github = authConfig?.oauth?.github;
-  if (github?.available !== true || typeof github.start !== "string") {
-    status(
-      "GitHub Login benötigt noch die einmalige OAuth-Konfiguration für Odin Identity.",
-      "error",
-    );
+  if (github?.available !== true) {
+    status("GitHub Login ist für dieses Deployment nicht verfügbar.", "error");
     return;
   }
   setBusy(true);
   status("GitHub wird geöffnet …");
   try {
-    const target = new URL(github.start, window.location.origin);
-    if (target.origin !== window.location.origin)
+    const callback = new URL("/login", window.location.origin);
+    callback.searchParams.set("returnTo", safeReturnTo());
+    const errorCallback = new URL(callback.href);
+    errorCallback.searchParams.set("oauth", "error");
+    const response = await neonAuth("/sign-in/social", {
+      method: "POST",
+      body: JSON.stringify({
+        provider: "github",
+        callbackURL: callback.href,
+        errorCallbackURL: errorCallback.href,
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || typeof data.url !== "string")
+      throw new Error("GitHub Login konnte nicht gestartet werden.");
+    const target = new URL(data.url);
+    const authBase = new URL(githubAuthBase());
+    if (target.protocol !== "https:" || target.hostname !== authBase.hostname)
       throw new Error("Unsicheres Login-Ziel wurde blockiert.");
-    target.searchParams.set("returnTo", safeReturnTo());
     window.location.assign(target.href);
   } catch (error) {
     status(error.message, "error");
