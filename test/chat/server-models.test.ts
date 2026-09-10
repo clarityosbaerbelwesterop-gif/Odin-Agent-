@@ -80,8 +80,7 @@ test("documented model capability ceilings stay conservative", () => {
     4096,
   );
   assert.equal(
-    byId.get("kimi")?.provider.capabilities("moonshotai/kimi-k3").capabilities
-      .contextWindowTokens,
+    byId.get("kimi")?.provider.capabilities("moonshotai/kimi-k3").capabilities.contextWindowTokens,
     1048576,
   );
   assert.equal(
@@ -90,9 +89,8 @@ test("documented model capability ceilings stay conservative", () => {
     16384,
   );
   assert.deepEqual(
-    byId
-      .get("mistral-medium-3-5")
-      ?.provider.capabilities("mistralai/mistral-medium-3.5-128b").capabilities.reasoningEfforts,
+    byId.get("mistral-medium-3-5")?.provider.capabilities("mistralai/mistral-medium-3.5-128b")
+      .capabilities.reasoningEfforts,
     ["high"],
   );
 });
