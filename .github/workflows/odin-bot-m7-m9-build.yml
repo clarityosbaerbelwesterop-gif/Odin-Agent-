@@ -28,6 +28,7 @@ jobs:
           cache: npm
       - name: Apply M7-M9 runtime integration
         run: |
+          python scripts/odin-bot-m7-m9-builder-fix.py
           python scripts/odin-bot-m7-m9-build.py
           python scripts/odin-bot-m7-m9-polish.py
       - run: npm ci
