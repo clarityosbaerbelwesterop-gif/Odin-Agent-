@@ -130,7 +130,11 @@ export class GitHubCatalog {
 function repositoryRoute(value: string): string {
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/u.test(value))
     throw new ChatError("INVALID_REPOSITORY", "Choose a valid GitHub repository.");
-  const [owner, name] = value.split("/");
+  const parts = value.split("/");
+  const owner = parts[0];
+  const name = parts[1];
+  if (!owner || !name)
+    throw new ChatError("INVALID_REPOSITORY", "Choose a valid GitHub repository.");
   return `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`;
 }
 
