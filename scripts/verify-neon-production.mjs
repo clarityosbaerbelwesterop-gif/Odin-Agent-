@@ -108,7 +108,7 @@ async function main() {
        WHERE n.nspname='odin_api' AND c.relkind='r'
        GROUP BY c.relname,c.relrowsecurity,c.relforcerowsecurity ORDER BY c.relname`,
     );
-    assert(tables.rows.length >= 23, "ODIN_TABLE_COUNT");
+    assert(tables.rows.length >= 26, "ODIN_TABLE_COUNT");
     for (const row of tables.rows) {
       assert.equal(row.rls, true, `RLS_${row.table_name}`);
       assert.equal(row.force_rls, true, `FORCE_RLS_${row.table_name}`);
@@ -123,6 +123,9 @@ async function main() {
       "bot_task_events",
       "bot_automations",
       "bot_inbox",
+      "bot_approvals",
+      "bot_memories",
+      "bot_focus",
     ]);
     for (const name of botTables)
       assert(

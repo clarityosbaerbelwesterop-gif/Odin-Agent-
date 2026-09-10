@@ -2,7 +2,7 @@ import type { Pool } from "pg";
 import { ChatEngine } from "../chat/engine.js";
 import { GitHubWorkspace } from "../chat/github-workspace.js";
 import { DEFAULT_CHAT_LIMITS } from "../chat/modes.js";
-import { NeonActorDatabase } from "../chat/neon-database.js";
+import { type ActorDatabase, NeonActorDatabase } from "../chat/neon-database.js";
 import { NeonChatStore, NeonMissionStore } from "../chat/neon-store.js";
 import { NeonWorkspace } from "../chat/neon-workspace.js";
 import {
@@ -14,14 +14,25 @@ import {
 } from "../chat/product.js";
 import { WikipediaResearchAdapter } from "../chat/research.js";
 import { ChatError, type ChatModel } from "../chat/types.js";
+import { botRuntimeAccess } from "./autonomy.js";
+import { BotControlStore } from "./control-store.js";
 import { botPlanLimits } from "./entitlements.js";
 import { BotStore, BotWakeQueue } from "./store.js";
+import { type BotTeamAssignment, planBotTeam, specialistPrompt } from "./team.js";
 import type { ClaimedWakeup } from "./types.js";
 
 export interface BotWorkerOptions {
   pool: Pool;
   baseModels: readonly ChatModel[];
   credentialEncryptionKey?: string | undefined;
+}
+
+interface SpecialistRunResult {
+  readonly assignment: BotTeamAssignment;
+  readonly state: string;
+  readonly answer: string;
+  readonly conversationId: string;
+  readonly turnId: string;
 }
 
 export class OdinBotWorker {
@@ -76,6 +87,7 @@ export class OdinBotWorker {
   private async runTask(wake: ClaimedWakeup): Promise<string> {
     const db = new NeonActorDatabase(this.options.pool, { id: wake.ownerId });
     const bot = new BotStore(db);
+    const control = new BotControlStore(db);
     let task = await bot.task(wake.targetId);
     if (["done", "cancelled", "failed", "blocked"].includes(task.status)) return task.status;
 
@@ -125,17 +137,50 @@ export class OdinBotWorker {
       return "blocked";
     }
 
+    const continuation = await control.resolveContinuation(task.goal, task.id);
+    const objective = continuation?.objective || task.goal;
+    const continuityContext =
+      continuation && continuation.taskId !== task.id
+        ? `Continuation of task ${continuation.taskId}. Stored primary objective: ${continuation.objective}`
+        : "";
+    const botIdentity = await bot.ensureDefaultBot();
+    const { readToolsAllowed, workspaceWritesAllowed } = botRuntimeAccess(
+      botIdentity.autonomyLevel,
+    );
+    const teamPlan = planBotTeam(objective, task.mode, limits.maxParallelTasks);
+    await control.ensureFocus(
+      task.id,
+      objective,
+      structuredClone(teamPlan) as unknown as Record<string, unknown>,
+    );
+    await emitBotEvent(db, task.id, "team.planned", {
+      planHash: teamPlan.planHash,
+      primary: teamPlan.primary,
+      assignments: teamPlan.assignments.map((assignment) => ({
+        specialistId: assignment.specialistId,
+        phase: assignment.phase,
+        mayWriteWorkspace: assignment.mayWriteWorkspace,
+        effectiveMayWriteWorkspace: assignment.mayWriteWorkspace && workspaceWritesAllowed,
+      })),
+      autonomyLevel: botIdentity.autonomyLevel,
+      readToolsAllowed,
+      workspaceWritesAllowed,
+    });
+
     let conversationId = task.conversationId;
     let turnId = task.turnId;
-    const makeEngine = (id: string) => {
-      const quality = githubReady
-        ? new GitHubWorkspace(
-            githubToken as string,
-            githubConnection.repository as string,
-            githubConnection.defaultBranch as string,
-            async () => {},
-          )
-        : new NeonWorkspace(db, id, async () => {});
+    const makeEngine = (id: string, requestedWorkspaceWrites: boolean) => {
+      const allowWorkspaceWrites = requestedWorkspaceWrites && workspaceWritesAllowed;
+      const quality = readToolsAllowed
+        ? githubReady
+          ? new GitHubWorkspace(
+              githubToken as string,
+              githubConnection.repository as string,
+              githubConnection.defaultBranch as string,
+              async () => {},
+            )
+          : new NeonWorkspace(db, id, async () => {})
+        : undefined;
       return new ChatEngine({
         store: new NeonChatStore(db),
         events: new NeonMissionStore(db),
@@ -152,20 +197,58 @@ export class OdinBotWorker {
           ...DEFAULT_CHAT_LIMITS,
           maxTurnMs: Math.min(240_000, limits.maxTaskMinutes * 60_000),
         },
-        allowWorkspaceWrites: true,
-        quality,
-        workspace: (changed) =>
-          githubReady
-            ? new GitHubWorkspace(
-                githubToken as string,
-                githubConnection.repository as string,
-                githubConnection.defaultBranch as string,
-                changed,
-              )
-            : new NeonWorkspace(db, id, changed),
-        research: new WikipediaResearchAdapter("de"),
+        allowWorkspaceWrites,
+        ...(quality
+          ? {
+              quality,
+              workspace: (changed) =>
+                githubReady
+                  ? new GitHubWorkspace(
+                      githubToken as string,
+                      githubConnection.repository as string,
+                      githubConnection.defaultBranch as string,
+                      changed,
+                    )
+                  : new NeonWorkspace(db, id, changed),
+            }
+          : {}),
+        ...(readToolsAllowed ? { research: new WikipediaResearchAdapter("de") } : {}),
       });
     };
+
+    const preflightAssignments = teamPlan.assignments.filter(
+      (assignment) => assignment.phase === "preflight",
+    );
+    const preflightResults =
+      !conversationId && preflightAssignments.length > 0
+        ? await Promise.all(
+            preflightAssignments.map((assignment) =>
+              this.runReadOnlySpecialist(
+                db,
+                bot,
+                task.id,
+                assignment,
+                objective,
+                continuityContext,
+                selected.id,
+                makeEngine,
+              ),
+            ),
+          )
+        : [];
+    const preflightContext = [
+      continuityContext,
+      ...preflightResults
+        .filter((result) => result.state === "COMPLETED" && result.answer)
+        .map((result) => `${result.assignment.specialistId}: ${result.answer}`),
+    ]
+      .filter(Boolean)
+      .join("\n\n")
+      .slice(0, 12000);
+
+    const primary = teamPlan.assignments.find((assignment) => assignment.phase === "primary");
+    if (!primary)
+      throw new ChatError("BOT_TEAM_INVALID", "Odin Bot team plan has no primary agent.", 500);
 
     if (!conversationId || !turnId) {
       const chatStore = new NeonChatStore(db);
@@ -173,11 +256,11 @@ export class OdinBotWorker {
         `Odin Bot · ${task.goal.slice(0, 100)}`,
       );
       conversationId = conversation.id;
-      const engine = makeEngine(conversation.id);
+      const engine = makeEngine(conversation.id, primary.mayWriteWorkspace);
       const turn = await engine.submit({
         conversationId: conversation.id,
-        text: task.goal,
-        mode: task.mode,
+        text: specialistPrompt(primary, objective, preflightContext),
+        mode: primary.mode,
         modelId: selected.id,
         requestId: task.id,
       });
@@ -186,19 +269,123 @@ export class OdinBotWorker {
       task = await bot.task(task.id);
     }
 
-    await bot.updateTask(task.id, "working", "Executing durable mission", "runtime.started", {
-      turnId,
-    });
-    const engine = makeEngine(conversationId);
+    await bot.updateTask(
+      task.id,
+      "working",
+      `Executing with ${primary.specialistId}`,
+      "runtime.started",
+      { turnId, teamPlanHash: teamPlan.planHash },
+    );
+    const engine = makeEngine(conversationId, primary.mayWriteWorkspace);
     await engine.execute(turnId);
     const view = await engine.view(turnId);
+    const mainAnswer = await answerForTurn(new NeonChatStore(db), conversationId, turnId);
+    const focusCheckpoint = await control.checkpointFocus(task.id, {
+      currentObjective: objective,
+      completedSteps:
+        view.state === "COMPLETED" ? ["Primary agent completed and verified its mission"] : [],
+      openBlockers: view.state === "BLOCKED" ? ["Primary mission entered BLOCKED state"] : [],
+    });
     await bot.saveCheckpoint(task.id, {
       missionState: view.state,
       missionVersion: view.version,
       usage: view.usage,
+      teamPlan,
+      focusRevision: focusCheckpoint.focus.revision,
+      focusDriftCount: focusCheckpoint.focus.driftCount,
+      specialists: preflightResults.map((result) => ({
+        id: result.assignment.specialistId,
+        state: result.state,
+        turnId: result.turnId,
+      })),
     });
+    if (focusCheckpoint.shouldReplan) {
+      await emitBotEvent(db, task.id, "focus.replan_required", {
+        revision: focusCheckpoint.focus.revision,
+      });
+      throw new ChatError(
+        "BOT_FOCUS_DRIFT",
+        "Focus drift was detected; a fresh plan is required.",
+        503,
+      );
+    }
+
     if (view.state === "COMPLETED") {
-      await bot.updateTask(task.id, "done", "Completed", "runtime.completed", { turnId });
+      const reviewer = teamPlan.assignments.find((assignment) => assignment.phase === "review");
+      if (reviewer) {
+        const review = await this.runReadOnlySpecialist(
+          db,
+          bot,
+          task.id,
+          reviewer,
+          objective,
+          [preflightContext, `PRIMARY RESULT:\n${mainAnswer}`]
+            .filter(Boolean)
+            .join("\n\n")
+            .slice(0, 12000),
+          selected.id,
+          makeEngine,
+        );
+        if (review.state !== "COMPLETED") {
+          throw new ChatError(
+            "BOT_REVIEW_INCOMPLETE",
+            "Independent reviewer did not complete successfully.",
+            503,
+          );
+        }
+        const verdict = reviewVerdict(review.answer);
+        await emitBotEvent(db, task.id, "team.review.completed", {
+          specialistId: reviewer.specialistId,
+          verdict,
+          turnId: review.turnId,
+        });
+        if (verdict === "BLOCK") {
+          await bot.updateTask(
+            task.id,
+            "blocked",
+            "Independent review found a release blocker",
+            "team.review.blocked",
+            {
+              reviewerTurnId: review.turnId,
+            },
+          );
+          await bot.addInbox(
+            task.id,
+            "important",
+            "Odin Bot review found a blocker",
+            review.answer.slice(0, 1800),
+            { taskId: task.id, reviewerTurnId: review.turnId },
+          );
+          return "blocked";
+        }
+      }
+      await control.remember(botIdentity.id, {
+        kind: "previous_mission",
+        key: `mission:${task.id}`,
+        content: JSON.stringify({
+          objective,
+          taskId: task.id,
+          conversationId,
+          turnId,
+          teamPlanHash: teamPlan.planHash,
+        }),
+        sourceClass: "mission",
+        sourceRef: `bot-task:${task.id}`,
+        sourceTimestamp: new Date().toISOString(),
+        scope: { taskId: task.id },
+        confidence: 1,
+        sensitivity: "internal",
+      });
+      await bot.updateTask(
+        task.id,
+        "done",
+        "Completed and independently checked",
+        "runtime.completed",
+        {
+          turnId,
+          teamPlanHash: teamPlan.planHash,
+        },
+      );
       return "done";
     }
     if (view.state === "BLOCKED") {
@@ -224,6 +411,51 @@ export class OdinBotWorker {
       "The mission needs another durable execution quantum.",
       503,
     );
+  }
+
+  private async runReadOnlySpecialist(
+    db: ActorDatabase,
+    bot: BotStore,
+    taskId: string,
+    assignment: BotTeamAssignment,
+    objective: string,
+    context: string,
+    modelId: string,
+    makeEngine: (id: string, allowWorkspaceWrites: boolean) => ChatEngine,
+  ): Promise<SpecialistRunResult> {
+    await bot.updateTask(
+      taskId,
+      "working",
+      `Consulting ${assignment.specialistId}`,
+      "team.specialist.started",
+      { specialistId: assignment.specialistId, phase: assignment.phase },
+    );
+    const store = new NeonChatStore(db);
+    const conversation = await store.createConversation(`Odin Bot · ${assignment.specialistId}`);
+    const engine = makeEngine(conversation.id, false);
+    const turn = await engine.submit({
+      conversationId: conversation.id,
+      text: specialistPrompt(assignment, objective, context),
+      mode: assignment.mode,
+      modelId,
+      requestId: `${taskId}:${assignment.specialistId}:${assignment.phase}`,
+    });
+    await engine.execute(turn.id);
+    const view = await engine.view(turn.id);
+    const answer = await answerForTurn(store, conversation.id, turn.id);
+    await emitBotEvent(db, taskId, "team.specialist.completed", {
+      specialistId: assignment.specialistId,
+      phase: assignment.phase,
+      state: view.state,
+      turnId: turn.id,
+    });
+    return {
+      assignment,
+      state: view.state,
+      answer,
+      conversationId: conversation.id,
+      turnId: turn.id,
+    };
   }
 
   private async markRetry(wake: ClaimedWakeup, error: unknown): Promise<void> {
@@ -257,4 +489,35 @@ export class OdinBotWorker {
       { taskId: wake.targetId },
     );
   }
+}
+
+async function answerForTurn(
+  store: NeonChatStore,
+  conversationId: string,
+  turnId: string,
+): Promise<string> {
+  const events = await store.events(conversationId, 0, 1000);
+  const answer = events.filter((event) => event.turnId === turnId && event.type === "answer").at(-1)
+    ?.data.text;
+  return typeof answer === "string" ? answer.slice(0, 12000) : "";
+}
+
+async function emitBotEvent(
+  db: ActorDatabase,
+  taskId: string,
+  type: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  await db.transaction(async (client) => {
+    await client.query("INSERT INTO odin_api.bot_task_events(task_id,type,data) VALUES($1,$2,$3)", [
+      taskId,
+      type,
+      data,
+    ]);
+  });
+}
+
+function reviewVerdict(answer: string): "PASS" | "BLOCK" {
+  const firstLine = answer.trim().split(/\r?\n/u, 1)[0]?.trim().toUpperCase() ?? "";
+  return firstLine === "VERDICT: PASS" ? "PASS" : "BLOCK";
 }

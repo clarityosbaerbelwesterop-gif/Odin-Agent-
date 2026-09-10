@@ -139,6 +139,12 @@ async function configureDatabase(report, envKeys) {
     );
     await pool.query(botMigration);
     report.checks.push("Odin Bot M1-M3 additive schema reconciled");
+    const botControlMigration = await readFile(
+      new URL("../migrations/007_odin_bot_m4_m6.sql", import.meta.url),
+      "utf8",
+    );
+    await pool.query(botControlMigration);
+    report.checks.push("Odin Bot M4-M6 autonomy/memory/focus schema reconciled");
 
     const role = await pool.query("SELECT 1 FROM pg_roles WHERE rolname=$1", [SCOPE.appRole]);
     const bindingAlreadyPresent = role.rows.length > 0 && envKeys.has("ODIN_DATABASE_URL");

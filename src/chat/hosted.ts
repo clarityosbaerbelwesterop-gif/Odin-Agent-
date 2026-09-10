@@ -1,9 +1,11 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { join } from "node:path";
 import { attachDatabasePool, waitUntil } from "@vercel/functions";
+import { BotControlStore } from "../bot/control-store.js";
 import { botPlanLimits } from "../bot/entitlements.js";
 import { OdinBotWorker } from "../bot/executor.js";
 import { BotStore } from "../bot/store.js";
+import { botSpecialists } from "../bot/team.js";
 import { parseAutomationText } from "../bot/wakeup.js";
 import { verifyBotSchedulerAuthorization } from "../bot/worker-auth.js";
 import { AnthropicProvider } from "../providers/anthropic.js";
@@ -315,6 +317,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
     const availableModels = [...models, ...(await byokModels(product))];
     const store = new NeonChatStore(db);
     const botStore = new BotStore(db);
+    const botControl = new BotControlStore(db);
     const botAccess = async () => {
       const account = await product.account();
       const plan = effectivePlan(account);
@@ -435,7 +438,9 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
         bot: await botStore.ensureDefaultBot(),
         tasks: await botStore.tasks(),
         automations: await botStore.automations(),
+        approvals: await botControl.approvals(),
         inbox: await botStore.inbox(),
+        team: botSpecialists(),
         limits,
         runtime: {
           durable: true,
@@ -445,6 +450,103 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
         },
       });
       return;
+    }
+    if (url.pathname === "/api/bot/settings" && method === "POST") {
+      await botAccess();
+      const body = object(await jsonBody(req), ["autonomyLevel"]);
+      const level = Number(body.autonomyLevel);
+      if (!Number.isInteger(level) || level < 0 || level > 4)
+        throw new ChatError("INVALID_AUTONOMY", "Choose autonomy level 0 through 4.");
+      const bot = await botStore.ensureDefaultBot();
+      send(res, 200, {
+        autonomyLevel: await botControl.setBotAutonomy(bot.id, level as 0 | 1 | 2 | 3 | 4),
+      });
+      return;
+    }
+    if (url.pathname === "/api/bot/approvals" && method === "GET") {
+      await botAccess();
+      send(res, 200, { approvals: await botControl.approvals() });
+      return;
+    }
+    const botApprovalRoute = /^\/api\/bot\/approvals\/([\w-]+)$/u.exec(url.pathname);
+    if (botApprovalRoute && method === "POST") {
+      await botAccess();
+      const body = object(await jsonBody(req), ["decision", "actionHash"]);
+      if (body.decision !== "approve" && body.decision !== "reject")
+        throw new ChatError("INVALID_APPROVAL_DECISION", "Choose approve or reject.");
+      send(res, 200, {
+        approval: await botControl.decideApproval(
+          identifier(botApprovalRoute[1]),
+          body.decision,
+          typeof body.actionHash === "string" ? body.actionHash : undefined,
+        ),
+      });
+      return;
+    }
+    if (url.pathname === "/api/bot/memory") {
+      await botAccess();
+      const bot = await botStore.ensureDefaultBot();
+      if (method === "GET") {
+        send(res, 200, { memories: await botControl.memories(bot.id) });
+        return;
+      }
+      if (method === "POST") {
+        const body = object(await jsonBody(req), [
+          "kind",
+          "key",
+          "content",
+          "sourceRef",
+          "scope",
+          "confidence",
+          "sensitivity",
+          "expiresAt",
+        ]);
+        const kinds = new Set([
+          "user_preference",
+          "project",
+          "recurring_task",
+          "decision",
+          "working_context",
+          "previous_mission",
+          "learned_procedure",
+        ]);
+        const sensitivities = new Set(["public", "internal", "sensitive"]);
+        if (
+          !kinds.has(String(body.kind)) ||
+          !sensitivities.has(String(body.sensitivity ?? "internal"))
+        )
+          throw new ChatError("INVALID_MEMORY", "Choose a supported memory kind and sensitivity.");
+        send(
+          res,
+          201,
+          await botControl.remember(bot.id, {
+            kind: String(body.kind) as
+              | "user_preference"
+              | "project"
+              | "recurring_task"
+              | "decision"
+              | "working_context"
+              | "previous_mission"
+              | "learned_procedure",
+            key: typeof body.key === "string" ? body.key : "",
+            content: typeof body.content === "string" ? body.content : "",
+            sourceClass: "explicit_user",
+            sourceRef: typeof body.sourceRef === "string" ? body.sourceRef : "user:bot-memory",
+            sourceTimestamp: new Date().toISOString(),
+            scope:
+              body.scope && typeof body.scope === "object" && !Array.isArray(body.scope)
+                ? (body.scope as Record<string, unknown>)
+                : {},
+            confidence: typeof body.confidence === "number" ? body.confidence : 1,
+            sensitivity: String(body.sensitivity ?? "internal") as
+              | "public"
+              | "internal"
+              | "sensitive",
+            expiresAt: typeof body.expiresAt === "string" ? body.expiresAt : null,
+          }),
+        );
+        return;
+      }
     }
     if (url.pathname === "/api/bot/tasks" && method === "POST") {
       await rate(db, "bot-tasks", 20, 60);
@@ -495,6 +597,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
         send(res, 200, {
           task: await botStore.task(taskId),
           events: await botStore.events(taskId),
+          focus: await botControl.focus(taskId).catch(() => null),
         });
         return;
       }
