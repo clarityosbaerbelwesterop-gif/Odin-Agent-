@@ -1,5 +1,5 @@
 name: P0 Neon GitHub Auth Probe
-run-name: P0 Neon GitHub Auth Probe — provider activation control
+run-name: P0 Neon GitHub Auth Probe — post-refresh control
 
 on:
   push:
