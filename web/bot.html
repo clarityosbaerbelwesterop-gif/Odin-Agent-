@@ -42,6 +42,20 @@
           <div id="scheduled" class="rows"><p class="empty">No automations yet.</p></div>
         </section>
 
+        <section class="stream connectors-section" aria-label="Odin connectors">
+          <div class="section-head">
+            <div><h2>Connectors</h2><p class="section-note">OAuth MCP and secure brokered connections</p></div>
+            <span id="connector-count">0</span>
+          </div>
+          <div class="connector-featured" id="connector-featured"></div>
+          <button id="connector-browse-toggle" class="browse-toggle" type="button">Browse all connectors</button>
+          <div id="connector-browser" hidden>
+            <label class="sr-only" for="connector-search">Search connectors</label>
+            <input id="connector-search" class="connector-search" type="search" maxlength="100" placeholder="Search GitHub, Notion, Slack, Stripe…" />
+            <div id="connector-catalog" class="connector-catalog"></div>
+          </div>
+        </section>
+
         <section class="stream" aria-label="Odin Bot inbox">
           <div class="section-head"><h2>Inbox</h2><span id="inbox-count">0</span></div>
           <div id="inbox" class="rows"><p class="empty">No approvals or alerts.</p></div>
@@ -59,6 +73,24 @@
         <div id="events" class="events"></div>
         <details><summary>Advanced details</summary><dl id="advanced"></dl></details>
         <div class="detail-actions"><button id="stop-task" type="button">Stop task</button></div>
+      </dialog>
+
+      <dialog id="connector-detail">
+        <div class="detail-head">
+          <div><p class="eyebrow">CONNECTOR</p><h2 id="connector-detail-name">Connector</h2></div>
+          <button id="connector-detail-close" type="button" aria-label="Close">×</button>
+        </div>
+        <p id="connector-detail-description" class="connector-description"></p>
+        <div id="connector-detail-meta" class="connector-meta"></div>
+        <form id="connector-custom-form" class="connector-custom-form" hidden>
+          <label for="connector-endpoint">Remote MCP endpoint</label>
+          <input id="connector-endpoint" type="url" inputmode="url" autocomplete="off" placeholder="https://example.com/mcp" />
+        </form>
+        <div id="connector-detail-status" class="connector-detail-status" role="status" aria-live="polite"></div>
+        <div class="detail-actions connector-actions">
+          <button id="connector-disconnect" type="button" hidden>Disconnect</button>
+          <button id="connector-connect" type="button">Connect with OAuth</button>
+        </div>
       </dialog>
     </div>
     <script type="module" src="/bot.js"></script>
