@@ -57,12 +57,6 @@ await replace("scripts/sync-vercel-production.mjs", [
   ['["OPENROUTER_API_KEY", "OPENROUTER_API_KEY"],', '["UNOROUTER_API_KEY", "UNOROUTER_API_KEY"],\n  ["GITHUB_REPO_OAUTH_CLIENT_ID", "GITHUB_REPO_OAUTH_CLIENT_ID"],\n  ["GITHUB_REPO_OAUTH_CLIENT_SECRET", "GITHUB_REPO_OAUTH_CLIENT_SECRET"],'],
 ]);
 
-await replace(".github/workflows/configure-vercel-production.yml", [
-  ['          GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}\n', '          GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}\n          GITHUB_REPO_OAUTH_CLIENT_ID: ${{ secrets.GITHUB_REPO_OAUTH_CLIENT_ID }}\n          GITHUB_REPO_OAUTH_CLIENT_SECRET: ${{ secrets.GITHUB_REPO_OAUTH_CLIENT_SECRET }}\n'],
-  ['          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY || secrets.UNOROUTER_API_KEY }}', '          UNOROUTER_API_KEY: ${{ secrets.UNOROUTER_API_KEY }}'],
-  ['      - src/providers/openrouter.ts\n', '      - src/providers/openrouter.ts\n      - src/providers/unorouter.ts\n'],
-]);
-
 await replace("src/providers/index.ts", [
   ['export * from "./openrouter.js";\n', 'export * from "./openrouter.js";\nexport * from "./unorouter.js";\n'],
 ]);
