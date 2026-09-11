@@ -13,6 +13,7 @@ on:
       - migrations/009_quota_and_provider_pool.sql
       - src/bot/**
       - src/providers/nvidia-pool.ts
+      - src/providers/openrouter.ts
       - src/chat/quota.ts
       - src/chat/server-models.ts
       - src/chat/github-*.ts
@@ -51,7 +52,7 @@ jobs:
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY || secrets.UNOROUTER_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           FREE_API_KEY: ${{ secrets.FREE_API_KEY }}
           NVIDIA_PRODUCTION_API_KEY: ${{ secrets.NV_API_KEY }}
