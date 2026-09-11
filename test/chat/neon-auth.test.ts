@@ -71,7 +71,10 @@ test("Neon sessions accept canonical Better Auth and legacy Neon session cookies
       (await auth.session(`${sessionCookie}; unrelated=private`, "https://odin.example")).id,
       "user-a",
     );
-    assert.equal((requests[0]?.headers as Record<string, string> | undefined)?.Cookie, sessionCookie);
+    assert.equal(
+      (requests[0]?.headers as Record<string, string> | undefined)?.Cookie,
+      sessionCookie,
+    );
   }
 });
 

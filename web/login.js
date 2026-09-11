@@ -244,12 +244,18 @@ async function restoreSession() {
       if (email) {
         try {
           await request("/api/auth/sendCode", { email });
-          status("Deine E-Mail ist noch nicht bestätigt. Wir haben einen neuen Code gesendet.", "error");
+          status(
+            "Deine E-Mail ist noch nicht bestätigt. Wir haben einen neuen Code gesendet.",
+            "error",
+          );
         } catch {
           status("Deine E-Mail ist noch nicht bestätigt. Fordere einen neuen Code an.", "error");
         }
       } else {
-        status("Deine E-Mail ist noch nicht bestätigt. Gib deine E-Mail ein und fordere einen Code an.", "error");
+        status(
+          "Deine E-Mail ist noch nicht bestätigt. Gib deine E-Mail ein und fordere einen Code an.",
+          "error",
+        );
       }
     } else if (error.status !== 401) {
       status(error.message, "error");
