@@ -45,13 +45,41 @@ test("Neon JWT verification binds signature, algorithm, issuer, audience, lifeti
   await assert.rejects(auth.verifyToken("x".repeat(16001)), /Sign in/u);
   assert.throws(() => new NeonAuth("https://evil.example/auth"), /Configure/u);
 });
-test("Neon sessions require current server session, verified email and matching signed user identity", async () => {
+
+test("Neon sessions accept canonical Better Auth and legacy Neon session cookies", async () => {
   const jwt = await token();
-  let state: "active" | "revoked" | "different" | "expired" = "active";
   const requests: RequestInit[] = [];
   const transport: typeof fetch = async (_url, init) => {
     requests.push(init ?? {});
     return new Response(
+      JSON.stringify({
+        user: { id: "user-a" },
+        session: { userId: "user-a", expiresAt: new Date(Date.now() + 60000).toISOString() },
+      }),
+      { headers: { "set-auth-jwt": jwt } },
+    );
+  };
+  for (const sessionCookie of [
+    "__Secure-better-auth.session_token=fixture",
+    "better-auth.session_token=fixture",
+    "__Secure-neon-auth.session_token=fixture",
+    "neon-auth.session_token=fixture",
+  ]) {
+    requests.length = 0;
+    const auth = new NeonAuth(base, transport, keys);
+    assert.equal(
+      (await auth.session(`${sessionCookie}; unrelated=private`, "https://odin.example")).id,
+      "user-a",
+    );
+    assert.equal((requests[0]?.headers as Record<string, string> | undefined)?.Cookie, sessionCookie);
+  }
+});
+
+test("Neon sessions require current server session, verified email and matching signed user identity", async () => {
+  const jwt = await token();
+  let state: "active" | "revoked" | "different" | "expired" = "active";
+  const transport: typeof fetch = async () =>
+    new Response(
       JSON.stringify(
         state === "revoked"
           ? null
@@ -66,25 +94,15 @@ test("Neon sessions require current server session, verified email and matching 
       ),
       { headers: { "set-auth-jwt": jwt } },
     );
-  };
   const auth = new NeonAuth(base, transport, keys);
   assert.equal(
-    (
-      await auth.session(
-        "__Secure-neon-auth.session_token=fixture; unrelated=private",
-        "https://odin.example",
-      )
-    ).id,
+    (await auth.session("__Secure-better-auth.session_token=fixture", "https://odin.example")).id,
     "user-a",
-  );
-  assert.equal(
-    (requests[0]?.headers as Record<string, string> | undefined)?.Cookie,
-    "__Secure-neon-auth.session_token=fixture",
   );
   for (const value of ["revoked", "different", "expired"] as const) {
     state = value;
     await assert.rejects(
-      auth.session("__Secure-neon-auth.session_token=fixture", "https://odin.example"),
+      auth.session("__Secure-better-auth.session_token=fixture", "https://odin.example"),
     );
   }
   await assert.rejects(auth.session("unrelated=private", "https://odin.example"));
@@ -102,10 +120,11 @@ test("Neon sessions require current server session, verified email and matching 
     keys,
   );
   await assert.rejects(
-    verifyRequired.session("__Secure-neon-auth.session_token=fixture", "https://odin.example"),
+    verifyRequired.session("__Secure-better-auth.session_token=fixture", "https://odin.example"),
     /Verify your email/u,
   );
 });
+
 test("OAuth JWT bridge accepts only a signed verified Neon identity and expires locally", async () => {
   const auth = new NeonAuth(base, fetch, keys);
   const jwt = await token();
@@ -125,18 +144,18 @@ test("OAuth JWT bridge accepts only a signed verified Neon identity and expires 
   );
 });
 
-test("Auth broker forwards only session cookies and never follows arbitrary upstream routes", async () => {
+test("Auth broker forwards only approved session cookies and never follows arbitrary upstream routes", async () => {
   const auth = new NeonAuth(base, fetch, keys);
   const headers = new Headers();
   headers.append(
     "set-cookie",
-    "__Secure-neon-auth.session_token=fixture; Domain=.neon.tech; Path=/auth; Max-Age=999999999",
+    "__Secure-better-auth.session_token=fixture; Domain=.neon.tech; Path=/auth; Max-Age=999999999",
   );
   headers.append("set-cookie", "unrelated=secret; Path=/");
   headers.append("set-cookie", "__Secure-neonauth.session_token=wrong-prefix; Path=/");
   const cookies = auth.cookies(new Response("{}", { headers }));
   assert.deepEqual(cookies, [
-    "__Secure-neon-auth.session_token=fixture; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800",
+    "__Secure-better-auth.session_token=fixture; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800",
   ]);
   await assert.rejects(
     auth.upstream("../admin/delete-user", "POST", "https://odin.example"),
