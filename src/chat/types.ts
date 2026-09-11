@@ -11,6 +11,8 @@ export interface ChatModel {
   readonly plan?: ProductPlan;
   readonly summary?: string;
   readonly recommendedFor?: readonly string[];
+  /** Shared hosted capacity is quota-metered; BYOK models leave this unset/false. */
+  readonly sharedCapacity?: boolean;
 }
 export interface ChatLimits {
   readonly maxCalls: number;
