@@ -40,18 +40,18 @@ interface SpecialistRunResult {
 }
 
 const BOT_MODEL_PRIORITY: Readonly<Record<ChatMode, readonly string[]>> = Object.freeze({
-  chat: ["openrouter-gpt-5-6-luna", "gpt-oss-120b", "gpt-oss-20b"],
+  chat: ["unorouter-gpt-5-6-luna", "gpt-oss-120b", "gpt-oss-20b"],
   thinking: [
-    "openrouter-gpt-5-6-luna",
-    "openrouter-claude-fable-5-1",
+    "unorouter-gpt-5-6-luna",
+    "unorouter-claude-fable-5-1",
     "gpt-oss-120b",
     "kimi",
     "deepseek-v4-flash",
   ],
-  research: ["openrouter-gpt-5-6-luna", "openrouter-claude-fable-5-1", "gpt-oss-120b", "kimi"],
+  research: ["unorouter-gpt-5-6-luna", "unorouter-claude-fable-5-1", "gpt-oss-120b", "kimi"],
   coding: [
-    "openrouter-claude-opus-5",
-    "openrouter-claude-fable-5-1",
+    "unorouter-claude-opus-5",
+    "unorouter-claude-fable-5-1",
     "kimi",
     "deepseek-v4-pro",
     "deepseek-v4-flash",
@@ -59,8 +59,8 @@ const BOT_MODEL_PRIORITY: Readonly<Record<ChatMode, readonly string[]>> = Object
     "gpt-oss-120b",
   ],
   ultra: [
-    "openrouter-claude-opus-5",
-    "openrouter-claude-fable-5-1",
+    "unorouter-claude-opus-5",
+    "unorouter-claude-fable-5-1",
     "kimi",
     "deepseek-v4-pro",
     "mistral-medium-3-5",

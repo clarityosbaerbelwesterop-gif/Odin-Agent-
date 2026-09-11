@@ -56,11 +56,11 @@ test("M10 OCU weights charge stronger shared models more than the same token use
   assert.equal(computeUnitsForUsage("deepseek-v4-pro", usage), 10);
 });
 
-test("frontier OpenRouter models receive explicit shared-compute weights", () => {
+test("frontier UnoRouter models receive explicit shared-compute weights", () => {
   const usage = { inputTokens: 1_000, outputTokens: 500 };
-  assert.equal(computeUnitsForUsage("openrouter-gpt-5-6-luna", usage), 6);
-  assert.equal(computeUnitsForUsage("openrouter-claude-fable-5-1", usage), 16);
-  assert.equal(computeUnitsForUsage("openrouter-claude-opus-5", usage), 20);
+  assert.equal(computeUnitsForUsage("unorouter-gpt-5-6-luna", usage), 6);
+  assert.equal(computeUnitsForUsage("unorouter-claude-fable-5-1", usage), 16);
+  assert.equal(computeUnitsForUsage("unorouter-claude-opus-5", usage), 20);
 });
 
 test("M10 OCU accounting has a minimum charge and a conservative unknown-model fallback", () => {
