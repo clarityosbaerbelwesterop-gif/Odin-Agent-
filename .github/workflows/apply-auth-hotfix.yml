@@ -27,6 +27,8 @@ jobs:
       - run: npm ci
       - name: Apply targeted auth fixes
         run: node scripts/apply-auth-hotfix.mjs
+      - name: Format targeted hotfix
+        run: npx biome check --write web/login.js web/chat.js web/bot.js vercel.json scripts/login.test.mjs scripts/apply-auth-hotfix.mjs
       - name: Verify repository
         run: npm run verify
       - name: Commit verified hotfix and remove transformer
