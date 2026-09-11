@@ -1,6 +1,7 @@
 const $ = (id) => document.getElementById(id);
 const allowedModes = new Set(["login", "signup", "verify", "forgot", "reset"]);
 const VERIFIER_PARAM = "neon_auth_session_verifier";
+const LAST_EMAIL_KEY = "odin.auth.last-email";
 let mode = "login";
 let authConfig = null;
 let busy = false;
@@ -77,7 +78,7 @@ function githubRedirectTarget(value) {
 }
 
 async function neonAuth(path, init = {}) {
-  const response = await fetch(`${githubAuthBase()}${path}`, {
+  return fetch(`${githubAuthBase()}${path}`, {
     credentials: "include",
     redirect: "manual",
     ...init,
@@ -87,7 +88,6 @@ async function neonAuth(path, init = {}) {
       ...(init.headers ?? {}),
     },
   });
-  return response;
 }
 
 function status(text = "", kind = "") {
@@ -182,11 +182,51 @@ function setMode(next) {
   applyMode(next);
 }
 
+function rememberEmail(email) {
+  if (!email) return;
+  try {
+    window.sessionStorage.setItem(LAST_EMAIL_KEY, email);
+  } catch {
+    // Authentication must not depend on browser storage availability.
+  }
+}
+
+function restoreRememberedEmail() {
+  if ($("auth-email").value) return;
+  try {
+    const email = window.sessionStorage.getItem(LAST_EMAIL_KEY);
+    if (email) $("auth-email").value = email;
+  } catch {
+    // Ignore unavailable session storage.
+  }
+}
+
 async function clearIncompleteSession() {
   try {
     await request("/api/auth/logout", {});
   } catch {
     // A stale incomplete session must never prevent the login surface from recovering.
+  }
+}
+
+async function sendVerificationCode(email) {
+  await request("/api/auth/sendCode", { email });
+  applyMode("verify");
+  status("Bestätigungscode wurde angefordert. Prüfe dein Postfach.", "success");
+}
+
+async function handleUnverifiedEmail(email) {
+  rememberEmail(email);
+  await clearIncompleteSession();
+  applyMode("verify");
+  try {
+    await request("/api/auth/sendCode", { email });
+    status("Deine E-Mail ist noch nicht bestätigt. Wir haben einen neuen Code gesendet.", "error");
+  } catch {
+    status(
+      "Deine E-Mail ist noch nicht bestätigt. Nutze „Code senden“, um einen neuen Code anzufordern.",
+      "error",
+    );
   }
 }
 
@@ -197,9 +237,26 @@ async function restoreSession() {
     return true;
   } catch (error) {
     if (error.code === "EMAIL_UNVERIFIED") {
+      restoreRememberedEmail();
+      const email = $("auth-email").value.trim();
       await clearIncompleteSession();
       applyMode("verify");
-      status("Deine E-Mail ist noch nicht bestätigt. Fordere einen neuen Code an.", "error");
+      if (email) {
+        try {
+          await request("/api/auth/sendCode", { email });
+          status(
+            "Deine E-Mail ist noch nicht bestätigt. Wir haben einen neuen Code gesendet.",
+            "error",
+          );
+        } catch {
+          status("Deine E-Mail ist noch nicht bestätigt. Fordere einen neuen Code an.", "error");
+        }
+      } else {
+        status(
+          "Deine E-Mail ist noch nicht bestätigt. Gib deine E-Mail ein und fordere einen Code an.",
+          "error",
+        );
+      }
     } else if (error.status !== 401) {
       status(error.message, "error");
     }
@@ -236,16 +293,41 @@ async function restoreGitHubSession(requireVerifier = false) {
     const clean = new URL(window.location.href);
     clean.searchParams.delete(VERIFIER_PARAM);
     clean.searchParams.delete("oauth");
+    clean.searchParams.delete("error");
+    clean.searchParams.delete("error_description");
     window.history.replaceState(window.history.state, "", clean.href);
   }
   window.location.replace(safeReturnTo());
   return true;
 }
 
+function renderOAuthError(params) {
+  if (params.get("oauth") !== "error") return;
+  const code = params.get("error") ?? params.get("error_code") ?? "";
+  if (["account_not_linked", "email_not_verified", "email_not_verified_error"].includes(code)) {
+    restoreRememberedEmail();
+    applyMode("verify");
+    status(
+      "Dieses GitHub-Konto gehört zu einem noch nicht bestätigten Odin-Konto. Bestätige zuerst deine E-Mail und starte GitHub danach erneut.",
+      "error",
+    );
+    return;
+  }
+  if (code === "access_denied") {
+    status("GitHub-Autorisierung wurde abgebrochen.", "error");
+    return;
+  }
+  status(
+    code ? `GitHub Login fehlgeschlagen (${code}).` : "GitHub Login wurde nicht abgeschlossen.",
+    "error",
+  );
+}
+
 async function initialize() {
   setBusy(true);
   try {
     authConfig = await request("/api/auth/config");
+    restoreRememberedEmail();
     if (await restoreSession()) return;
     const params = new URLSearchParams(window.location.search);
     const explicitSignOut = params.get("signedOut") === "1";
@@ -259,7 +341,7 @@ async function initialize() {
       $("github-note").textContent =
         "GitHub Login ist für dieses Deployment nicht verfügbar. E-Mail Login funktioniert weiterhin.";
     }
-    if (params.get("oauth") === "error") status("GitHub Login wurde nicht abgeschlossen.", "error");
+    renderOAuthError(params);
   } catch (error) {
     status(error.message, "error");
   } finally {
@@ -274,6 +356,8 @@ $("github-signin").addEventListener("click", async () => {
     status("GitHub Login ist für dieses Deployment nicht verfügbar.", "error");
     return;
   }
+  const email = $("auth-email").value.trim();
+  rememberEmail(email);
   setBusy(true);
   status("GitHub wird geöffnet …");
   try {
@@ -310,10 +394,10 @@ $("send-code").addEventListener("click", async () => {
     $("auth-email").reportValidity();
     return;
   }
+  rememberEmail(email);
   setBusy(true);
   try {
-    await request("/api/auth/sendCode", { email });
-    status("Bestätigungscode wurde angefordert. Prüfe dein Postfach.", "success");
+    await sendVerificationCode(email);
   } catch (error) {
     status(error.message, "error");
   } finally {
@@ -334,6 +418,7 @@ $("auth-form").addEventListener("submit", async (event) => {
     $("auth-form").reportValidity();
     return;
   }
+  rememberEmail(email);
   setBusy(true);
   status();
   try {
@@ -343,8 +428,14 @@ $("auth-form").addEventListener("submit", async (event) => {
     if (["verify", "reset"].includes(mode)) body.otp = otp;
     await request(`/api/auth/${mode}`, body);
     if (mode === "login") {
-      status("Angemeldet. Workspace wird geöffnet …", "success");
-      window.location.replace(safeReturnTo());
+      try {
+        await request("/api/config");
+        status("Angemeldet. Workspace wird geöffnet …", "success");
+        window.location.replace(safeReturnTo());
+      } catch (error) {
+        if (error.code === "EMAIL_UNVERIFIED") await handleUnverifiedEmail(email);
+        else throw error;
+      }
       return;
     }
     if (mode === "signup") {
