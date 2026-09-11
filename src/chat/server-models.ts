@@ -1,8 +1,5 @@
 import { CapabilityRegistry, makeCapabilities } from "../providers/capabilities.js";
-import {
-  PooledNvidiaProvider,
-  type NvidiaPoolCredential,
-} from "../providers/nvidia-pool.js";
+import { type NvidiaPoolCredential, PooledNvidiaProvider } from "../providers/nvidia-pool.js";
 import type { ModelCapabilities, ReasoningEffort } from "../providers/types.js";
 import type { ChatModel, ProductPlan } from "./types.js";
 

@@ -31,10 +31,15 @@ export interface PooledNvidiaProviderOptions {
 
 function cooldownFor(error: unknown): number {
   if (!isProviderError(error)) return 5_000;
-  if (error.retryAfterMs !== undefined) return Math.max(1_000, Math.min(error.retryAfterMs, 15 * 60_000));
+  if (error.retryAfterMs !== undefined)
+    return Math.max(1_000, Math.min(error.retryAfterMs, 15 * 60_000));
   if (error.category === "authentication" || error.category === "permission") return 60 * 60_000;
   if (error.category === "rate_limit" || error.category === "quota") return 60_000;
-  if (error.category === "network" || error.category === "timeout" || error.category === "unavailable")
+  if (
+    error.category === "network" ||
+    error.category === "timeout" ||
+    error.category === "unavailable"
+  )
     return 5_000;
   return 0;
 }
@@ -137,7 +142,12 @@ export class PooledNvidiaProvider implements ModelProvider {
     throw lastError ?? new Error("No NVIDIA credential is currently available.");
   }
 
-  poolStatus(): readonly { slot: string; failures: number; inFlight: number; coolingDown: boolean }[] {
+  poolStatus(): readonly {
+    slot: string;
+    failures: number;
+    inFlight: number;
+    coolingDown: boolean;
+  }[] {
     const now = Date.now();
     return [...this.#states.entries()].map(([slot, state]) => ({
       slot,
@@ -151,9 +161,14 @@ export class PooledNvidiaProvider implements ModelProvider {
     const now = Date.now();
     const entries = [...this.#states.entries()];
     const healthy = entries.filter(([, state]) => state.cooldownUntil <= now);
-    const candidates = healthy.length > 0 ? healthy : entries.sort(([, a], [, b]) => a.cooldownUntil - b.cooldownUntil).slice(0, 1);
+    const candidates =
+      healthy.length > 0
+        ? healthy
+        : entries.sort(([, a], [, b]) => a.cooldownUntil - b.cooldownUntil).slice(0, 1);
     return candidates
-      .sort(([, left], [, right]) => left.inFlight - right.inFlight || left.failures - right.failures)
+      .sort(
+        ([, left], [, right]) => left.inFlight - right.inFlight || left.failures - right.failures,
+      )
       .map(([slot]) => slot);
   }
 

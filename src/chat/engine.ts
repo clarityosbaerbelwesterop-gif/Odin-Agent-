@@ -5,6 +5,7 @@ import { MissionRuntime, type MissionState } from "../mission/runtime.js";
 import type { QualityCommandRunner, RepositoryWorkspace } from "../tools/repository.js";
 import { runChatAgent } from "./agent.js";
 import { DEFAULT_CHAT_LIMITS, MODE_POLICIES, parseMode } from "./modes.js";
+import type { ChatQuotaController } from "./quota.js";
 import type { ChatRepository } from "./repository.js";
 import { hashText, identifier, integer, publicError, safeText } from "./safety.js";
 import {
@@ -35,6 +36,7 @@ export interface ChatEngineOptions {
   allowWorkspaceWrites?: boolean;
   quality?: QualityCommandRunner;
   research?: ResearchAdapter;
+  quota?: ChatQuotaController;
   workspace?: (onChange: (change: ChatChange) => Promise<void>) => RepositoryWorkspace;
   autoRun?: boolean;
   signal?: AbortSignal;
@@ -357,6 +359,7 @@ export class ChatEngine {
           ...(workspace ? { workspace } : {}),
           quality: this.#options.quality ?? NO_QUALITY,
           ...(this.#options.research ? { research: this.#options.research } : {}),
+          ...(this.#options.quota ? { quota: this.#options.quota } : {}),
           publish,
           snapshot: () => this.#mission.load(turn.id),
           reserve: (inputTokens, outputTokens, toolCalls) =>

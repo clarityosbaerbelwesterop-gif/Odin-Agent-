@@ -37,10 +37,7 @@ function configuredInt(
   return value;
 }
 
-export function planQuota(
-  plan: ProductPlan,
-  env: NodeJS.ProcessEnv = process.env,
-): PlanQuota {
+export function planQuota(plan: ProductPlan, env: NodeJS.ProcessEnv = process.env): PlanQuota {
   const base = DEFAULT_PLAN_QUOTAS[plan];
   return {
     monthlyOcu: configuredInt(env, plan, "MONTHLY_OCU", base.monthlyOcu),
@@ -54,7 +51,10 @@ export function planQuota(
   };
 }
 
-export function computeUnitsForUsage(modelId: string, usage: Pick<TokenUsage, "inputTokens" | "outputTokens">): number {
+export function computeUnitsForUsage(
+  modelId: string,
+  usage: Pick<TokenUsage, "inputTokens" | "outputTokens">,
+): number {
   const weight = MODEL_WEIGHTS[modelId] ?? 1;
   const normalized = usage.inputTokens / 1_000 + usage.outputTokens / 500;
   return Math.max(1, Math.ceil(normalized * weight));
@@ -89,11 +89,7 @@ export interface QuotaSnapshot {
 
 export interface ChatQuotaController {
   reserve(request: QuotaReservationRequest): Promise<QuotaReservation>;
-  settle(
-    reservation: QuotaReservation,
-    usage: TokenUsage,
-    provider: string,
-  ): Promise<void>;
+  settle(reservation: QuotaReservation, usage: TokenUsage, provider: string): Promise<void>;
   release(reservation: QuotaReservation): Promise<void>;
 }
 
@@ -180,7 +176,11 @@ export class QuotaStore implements ChatQuotaController {
       ).rows[0];
       if (replay) {
         if (replay.status !== "reserved")
-          throw new ChatError("QUOTA_RESERVATION_REPLAY", "Usage reservation is already finalized.", 409);
+          throw new ChatError(
+            "QUOTA_RESERVATION_REPLAY",
+            "Usage reservation is already finalized.",
+            409,
+          );
         return { requestId: request.requestId, estimatedOcu: Number(replay.estimated_ocus) };
       }
       const period = (
@@ -206,9 +206,17 @@ export class QuotaStore implements ChatQuotaController {
         ).rows[0]?.total ?? 0,
       );
       if (consumed + reserved + estimatedOcu > quota.monthlyOcu)
-        throw new ChatError("MONTHLY_QUOTA_EXHAUSTED", "Monthly shared-compute quota is exhausted.", 429);
+        throw new ChatError(
+          "MONTHLY_QUOTA_EXHAUSTED",
+          "Monthly shared-compute quota is exhausted.",
+          429,
+        );
       if (dailyConsumed + dailyReserved + estimatedOcu > quota.dailyOcu)
-        throw new ChatError("DAILY_QUOTA_EXHAUSTED", "Daily shared-compute burst limit is exhausted.", 429);
+        throw new ChatError(
+          "DAILY_QUOTA_EXHAUSTED",
+          "Daily shared-compute burst limit is exhausted.",
+          429,
+        );
       await client.query(
         `INSERT INTO odin_api.quota_reservations(request_id,mission_id,period_start,mode,model_id,estimated_ocus,expires_at)
          VALUES($1,$2,$3,$4,$5,$6,now()+interval '30 minutes')`,
@@ -229,15 +237,8 @@ export class QuotaStore implements ChatQuotaController {
     });
   }
 
-  async settle(
-    reservation: QuotaReservation,
-    usage: TokenUsage,
-    provider: string,
-  ): Promise<void> {
-    const actualOcu = computeUnitsForUsage(
-      await this.modelIdFor(reservation.requestId),
-      usage,
-    );
+  async settle(reservation: QuotaReservation, usage: TokenUsage, provider: string): Promise<void> {
+    const actualOcu = computeUnitsForUsage(await this.modelIdFor(reservation.requestId), usage);
     await this.db.transaction(async (client) => {
       await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [
         `quota-settle:${reservation.requestId}`,
@@ -248,7 +249,7 @@ export class QuotaStore implements ChatQuotaController {
           [reservation.requestId],
         )
       ).rows[0];
-      if (!row || row.status !== "reserved") return;
+      if (row?.status !== "reserved") return;
       const inserted = await client.query(
         `INSERT INTO odin_api.usage_ledger(request_id,mission_id,plan,mode,model_id,provider,input_tokens,output_tokens,compute_units)
          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(owner_id,request_id) DO NOTHING RETURNING request_id`,
@@ -298,28 +299,41 @@ export class QuotaStore implements ChatQuotaController {
   private async modelIdFor(requestId: string): Promise<string> {
     return this.db.transaction(async (client) => {
       const row = (
-        await client.query(
-          "SELECT model_id FROM odin_api.quota_reservations WHERE request_id=$1",
-          [requestId],
-        )
+        await client.query("SELECT model_id FROM odin_api.quota_reservations WHERE request_id=$1", [
+          requestId,
+        ])
       ).rows[0];
-      if (!row) throw new ChatError("QUOTA_RESERVATION_MISSING", "Usage reservation is missing.", 500);
+      if (!row)
+        throw new ChatError("QUOTA_RESERVATION_MISSING", "Usage reservation is missing.", 500);
       return String(row.model_id);
     });
   }
 
-  private async syncEntitlement(client: { query: (sql: string, values?: unknown[]) => Promise<{ rows: any[] }> }, quota: PlanQuota) {
+  private async syncEntitlement(
+    client: {
+      query: (sql: string, values?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
+    },
+    quota: PlanQuota,
+  ) {
     await client.query(
       `INSERT INTO odin_api.plan_entitlements(plan,monthly_ocu,daily_ocu,max_concurrent_missions,bot_enabled)
        VALUES($1,$2,$3,$4,$5)
        ON CONFLICT(owner_id,plan) DO UPDATE SET monthly_ocu=excluded.monthly_ocu,daily_ocu=excluded.daily_ocu,
        max_concurrent_missions=excluded.max_concurrent_missions,bot_enabled=excluded.bot_enabled,updated_at=now()`,
-      [this.plan, quota.monthlyOcu, quota.dailyOcu, quota.maxConcurrentMissions, this.plan !== "free"],
+      [
+        this.plan,
+        quota.monthlyOcu,
+        quota.dailyOcu,
+        quota.maxConcurrentMissions,
+        this.plan !== "free",
+      ],
     );
   }
 
   private async ensurePeriod(
-    client: { query: (sql: string, values?: unknown[]) => Promise<{ rows: any[] }> },
+    client: {
+      query: (sql: string, values?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
+    },
     quota: PlanQuota,
     start: string,
     end: string,
@@ -333,7 +347,9 @@ export class QuotaStore implements ChatQuotaController {
   }
 
   private async expireReservations(
-    client: { query: (sql: string, values?: unknown[]) => Promise<{ rows: any[] }> },
+    client: {
+      query: (sql: string, values?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
+    },
     periodStart: string,
   ) {
     const expired = (
