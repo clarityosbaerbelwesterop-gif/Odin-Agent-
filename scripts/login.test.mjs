@@ -93,7 +93,10 @@ test("registration sends a verification code automatically and enters verificati
     assert.equal(client.get("code-field").hidden, false);
     assert.equal(client.get("code-field").style.display, "");
     assert.equal(client.get("password-field").style.display, "none");
-    assert.match(client.get("auth-status").textContent, /Bestätigungscode wurde per E-Mail gesendet/u);
+    assert.match(
+      client.get("auth-status").textContent,
+      /Bestätigungscode wurde per E-Mail gesendet/u,
+    );
   } finally {
     client.close();
   }
