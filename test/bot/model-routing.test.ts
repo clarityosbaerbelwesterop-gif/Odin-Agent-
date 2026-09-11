@@ -24,18 +24,12 @@ test("Pro bot defaults to the OpenRouter frontier lane for reasoning", () => {
 });
 
 test("Developer coding prefers Fable while Ultra coding prefers Opus", () => {
-  assert.equal(
-    selectBotModel(catalog, "developer", "coding")?.id,
-    "openrouter-claude-fable-5-1",
-  );
+  assert.equal(selectBotModel(catalog, "developer", "coding")?.id, "openrouter-claude-fable-5-1");
   assert.equal(selectBotModel(catalog, "ultra", "coding")?.id, "openrouter-claude-opus-5");
 });
 
 test("explicit model choice wins only when the subscription is entitled", () => {
-  assert.equal(
-    selectBotModel(catalog, "developer", "coding", "kimi")?.id,
-    "kimi",
-  );
+  assert.equal(selectBotModel(catalog, "developer", "coding", "kimi")?.id, "kimi");
   assert.equal(
     selectBotModel(catalog, "developer", "coding", "openrouter-claude-opus-5"),
     undefined,

@@ -58,10 +58,6 @@ test("hosted catalog keeps NVIDIA defaults first and appends OpenRouter when con
   assert.equal(models[0]?.id, "gpt-oss-20b");
   assert.deepEqual(
     models.slice(-3).map((model) => model.id),
-    [
-      "openrouter-gpt-5-6-luna",
-      "openrouter-claude-fable-5-1",
-      "openrouter-claude-opus-5",
-    ],
+    ["openrouter-gpt-5-6-luna", "openrouter-claude-fable-5-1", "openrouter-claude-opus-5"],
   );
 });

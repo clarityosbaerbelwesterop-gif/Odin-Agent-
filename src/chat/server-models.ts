@@ -133,8 +133,7 @@ export const NVIDIA_SHARED_MODEL_DEFINITIONS: readonly SharedModelDefinition[] =
     summary: "Flagship-Modell für Coding, Reasoning, Vision und native Function Calls.",
     recommendedFor: ["Ultra", "Coding", "Vision", "Structured work"],
     version: "nvidia-api-2026-09-10",
-    reference:
-      "https://docs.api.nvidia.com/nim/reference/mistralai-mistral-medium-3-5-128b-infer",
+    reference: "https://docs.api.nvidia.com/nim/reference/mistralai-mistral-medium-3-5-128b-infer",
     capabilities: {
       textInput: true,
       imageInput: true,
@@ -201,7 +200,8 @@ export const OPENROUTER_SHARED_MODEL_DEFINITIONS: readonly SharedModelDefinition
     label: "Claude Opus 5 · OpenRouter",
     model: "anthropic/claude-opus-5",
     plan: "ultra",
-    summary: "Flagship-Modell für schwierigstes Coding, Reviews und lang laufende autonome Missionen.",
+    summary:
+      "Flagship-Modell für schwierigstes Coding, Reviews und lang laufende autonome Missionen.",
     recommendedFor: ["Ultra", "Hard coding", "Long horizon", "Review"],
     version: "openrouter-2026-09-11",
     reference: "https://openrouter.ai/anthropic/claude-opus-5",

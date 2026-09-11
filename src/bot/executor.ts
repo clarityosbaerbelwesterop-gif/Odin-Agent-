@@ -15,12 +15,7 @@ import {
 } from "../chat/product.js";
 import { QuotaStore } from "../chat/quota.js";
 import { WikipediaResearchAdapter } from "../chat/research.js";
-import {
-  ChatError,
-  type ChatMode,
-  type ChatModel,
-  type ProductPlan,
-} from "../chat/types.js";
+import { ChatError, type ChatMode, type ChatModel, type ProductPlan } from "../chat/types.js";
 import { botRuntimeAccess } from "./autonomy.js";
 import { BotControlStore } from "./control-store.js";
 import { botPlanLimits } from "./entitlements.js";
@@ -53,12 +48,7 @@ const BOT_MODEL_PRIORITY: Readonly<Record<ChatMode, readonly string[]>> = Object
     "kimi",
     "deepseek-v4-flash",
   ],
-  research: [
-    "openrouter-gpt-5-6-luna",
-    "openrouter-claude-fable-5-1",
-    "gpt-oss-120b",
-    "kimi",
-  ],
+  research: ["openrouter-gpt-5-6-luna", "openrouter-claude-fable-5-1", "gpt-oss-120b", "kimi"],
   coding: [
     "openrouter-claude-opus-5",
     "openrouter-claude-fable-5-1",
