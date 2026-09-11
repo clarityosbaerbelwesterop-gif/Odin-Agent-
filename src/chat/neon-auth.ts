@@ -7,7 +7,19 @@ export interface NeonIdentity {
   readonly emailVerified: boolean;
 }
 const denied = () => new ChatError("UNAUTHORIZED", "Sign in to access Odin.", 401);
-const COOKIE_NAMES = new Set(["__Secure-neon-auth.session_token", "neon-auth.session_token"]);
+/**
+ * Neon Auth is backed by Better Auth. Production Better Auth defaults to the
+ * `better-auth.session_token` cookie (with `__Secure-` on HTTPS), while older
+ * Odin/Neon deployments used the `neon-auth` prefix. Accept only these exact
+ * first-party session-token names so the broker remains fail-closed while
+ * allowing current and existing sessions to survive the same-origin bridge.
+ */
+const COOKIE_NAMES = new Set([
+  "__Secure-better-auth.session_token",
+  "better-auth.session_token",
+  "__Secure-neon-auth.session_token",
+  "neon-auth.session_token",
+]);
 const OAUTH_JWT_COOKIE = "__Host-odin-neon-jwt";
 const OAUTH_JWT_MAX_AGE_SECONDS = 14 * 60;
 
