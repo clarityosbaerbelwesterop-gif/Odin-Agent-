@@ -54,18 +54,61 @@ test("dedicated login renders GitHub first without pretending an unavailable pro
   }
 });
 
-test("registration, verification and password recovery are explicit states", async () => {
+test("login hides registration and verification-only fields", async () => {
+  const client = await loginClient();
+  try {
+    assert.equal(client.get("name-field").hidden, true);
+    assert.equal(client.get("name-field").style.display, "none");
+    assert.equal(client.get("code-field").hidden, true);
+    assert.equal(client.get("code-field").style.display, "none");
+    assert.equal(client.get("password-field").hidden, false);
+    assert.equal(client.get("password-field").style.display, "");
+  } finally {
+    client.close();
+  }
+});
+
+test("registration sends a verification code automatically and enters verification state", async () => {
   const client = await loginClient();
   try {
     client.get("switch-mode").click();
     assert.equal(client.get("login-title").textContent, "Odin Account erstellen");
     assert.equal(client.get("name-field").hidden, false);
+    assert.equal(client.get("name-field").style.display, "");
+    assert.equal(client.get("code-field").style.display, "none");
     assert.equal(client.get("auth-password").minLength, 14);
 
-    client.get("switch-mode").click();
+    client.get("auth-email").value = "person@example.com";
+    client.get("auth-name").value = "Person";
+    client.get("auth-password").value = "correct-password";
+    client
+      .get("auth-form")
+      .dispatchEvent(new client.window.Event("submit", { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.ok(client.requests.find((item) => item.path === "/api/auth/signup"));
+    assert.ok(client.requests.find((item) => item.path === "/api/auth/sendCode"));
+    assert.equal(client.get("login-title").textContent, "Konto verifizieren");
+    assert.equal(client.get("code-field").hidden, false);
+    assert.equal(client.get("code-field").style.display, "");
+    assert.equal(client.get("password-field").style.display, "none");
+    assert.match(
+      client.get("auth-status").textContent,
+      /Bestätigungscode wurde per E-Mail gesendet/u,
+    );
+  } finally {
+    client.close();
+  }
+});
+
+test("password recovery is an explicit state", async () => {
+  const client = await loginClient();
+  try {
     client.get("forgot-password").click();
     assert.equal(client.get("login-title").textContent, "Zugang wiederherstellen");
     assert.equal(client.get("password-field").hidden, true);
+    assert.equal(client.get("password-field").style.display, "none");
   } finally {
     client.close();
   }
@@ -93,9 +136,11 @@ test("email login calls the existing same-origin Neon broker", async () => {
   }
 });
 
-test("GitHub identity path exchanges Neon session state for a signed JWT before Odin finalization", async () => {
+test("GitHub identity path accepts the GitHub authorize redirect and finalizes a signed Neon JWT", async () => {
   const source = await readFile("web/login.js", "utf8");
   assert.match(source, /\/sign-in\/social/u);
+  assert.match(source, /target\.hostname === "github\.com"/u);
+  assert.match(source, /target\.pathname === "\/login\/oauth\/authorize"/u);
   assert.match(source, /neon_auth_session_verifier/u);
   assert.match(source, /neonAuth\("\/token"/u);
   assert.match(source, /\/api\/auth\/github\/finalize/u);

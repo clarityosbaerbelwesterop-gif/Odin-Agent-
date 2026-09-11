@@ -59,6 +59,23 @@ function githubAuthBase() {
   return url.href.replace(/\/$/u, "");
 }
 
+function githubRedirectTarget(value) {
+  if (typeof value !== "string") throw new Error("GitHub Login konnte nicht gestartet werden.");
+  const target = new URL(value);
+  const authBase = new URL(githubAuthBase());
+  const isNeonRedirect =
+    target.protocol === "https:" &&
+    target.hostname === authBase.hostname &&
+    target.pathname.startsWith(authBase.pathname);
+  const isGitHubAuthorize =
+    target.protocol === "https:" &&
+    target.hostname === "github.com" &&
+    target.pathname === "/login/oauth/authorize";
+  if ((!isNeonRedirect && !isGitHubAuthorize) || target.username || target.password || target.hash)
+    throw new Error("Unsicheres Login-Ziel wurde blockiert.");
+  return target.href;
+}
+
 async function neonAuth(path, init = {}) {
   const response = await fetch(`${githubAuthBase()}${path}`, {
     credentials: "include",
@@ -98,6 +115,12 @@ function submitLabel() {
   }[mode];
 }
 
+function setFieldVisible(id, visible) {
+  const field = $(id);
+  field.hidden = !visible;
+  field.style.display = visible ? "" : "none";
+}
+
 function renderMode() {
   const content = {
     login: [
@@ -113,7 +136,7 @@ function renderMode() {
     verify: [
       "E-MAIL BESTÄTIGEN",
       "Konto verifizieren",
-      "Fordere einen sechsstelligen Code an und bestätige deine Adresse.",
+      "Gib den sechsstelligen Code aus deiner E-Mail ein.",
     ],
     forgot: [
       "PASSWORT RESET",
@@ -129,9 +152,9 @@ function renderMode() {
   $("form-eyebrow").textContent = content[0];
   $("login-title").textContent = content[1];
   $("form-copy").textContent = content[2];
-  $("name-field").hidden = mode !== "signup";
-  $("code-field").hidden = !["verify", "reset"].includes(mode);
-  $("password-field").hidden = ["verify", "forgot"].includes(mode);
+  setFieldVisible("name-field", mode === "signup");
+  setFieldVisible("code-field", ["verify", "reset"].includes(mode));
+  setFieldVisible("password-field", !["verify", "forgot"].includes(mode));
   $("forgot-password").hidden = mode !== "login";
   $("send-code").hidden = mode !== "verify";
   $("auth-name").required = mode === "signup";
@@ -146,12 +169,17 @@ function renderMode() {
   status();
 }
 
-function setMode(next) {
-  if (!allowedModes.has(next) || busy) return;
+function applyMode(next) {
+  if (!allowedModes.has(next)) return;
   mode = next;
   renderMode();
   if (mode === "verify") $("auth-code").focus();
   else $("auth-email").focus();
+}
+
+function setMode(next) {
+  if (busy) return;
+  applyMode(next);
 }
 
 async function restoreSession() {
@@ -249,11 +277,7 @@ $("github-signin").addEventListener("click", async () => {
     const data = await response.json().catch(() => ({}));
     if (!response.ok || typeof data.url !== "string")
       throw new Error("GitHub Login konnte nicht gestartet werden.");
-    const target = new URL(data.url);
-    const authBase = new URL(githubAuthBase());
-    if (target.protocol !== "https:" || target.hostname !== authBase.hostname)
-      throw new Error("Unsicheres Login-Ziel wurde blockiert.");
-    window.location.assign(target.href);
+    window.location.assign(githubRedirectTarget(data.url));
   } catch (error) {
     status(error.message, "error");
     setBusy(false);
@@ -309,19 +333,27 @@ $("auth-form").addEventListener("submit", async (event) => {
     }
     if (mode === "signup") {
       $("auth-password").value = "";
-      setMode("verify");
-      status("Konto erstellt. Fordere jetzt deinen Bestätigungscode an.", "success");
+      applyMode("verify");
+      try {
+        await request("/api/auth/sendCode", { email });
+        status("Konto erstellt. Der Bestätigungscode wurde per E-Mail gesendet.", "success");
+      } catch {
+        status(
+          "Konto erstellt. Der Code konnte nicht automatisch gesendet werden. Nutze „Code senden“.",
+          "error",
+        );
+      }
     } else if (mode === "forgot") {
-      setMode("reset");
+      applyMode("reset");
       status("Wenn ein Konto existiert, wurde ein Reset-Code gesendet.", "success");
     } else if (mode === "verify") {
       $("auth-code").value = "";
-      setMode("login");
+      applyMode("login");
       status("E-Mail bestätigt. Du kannst dich jetzt anmelden.", "success");
     } else if (mode === "reset") {
       $("auth-password").value = "";
       $("auth-code").value = "";
-      setMode("login");
+      applyMode("login");
       status("Passwort aktualisiert. Du kannst dich jetzt anmelden.", "success");
     }
   } catch (error) {
