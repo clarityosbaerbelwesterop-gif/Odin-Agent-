@@ -260,6 +260,7 @@ if (githubButton) {
 
 markRecoverableOAuthFailure();
 const sendCodeButton = document.getElementById("send-code");
-if (sendCodeButton) sendCodeButton.addEventListener("click", requestRecoveryCode, { capture: true });
+if (sendCodeButton)
+  sendCodeButton.addEventListener("click", requestRecoveryCode, { capture: true });
 const form = document.getElementById("auth-form");
 if (form) form.addEventListener("submit", completeRecovery, { capture: true });
