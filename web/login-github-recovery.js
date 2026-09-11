@@ -1,5 +1,6 @@
 const RECOVERY_KEY = "odin.auth.github-recovery";
 const LAST_EMAIL_KEY = "odin.auth.last-email";
+const ATTEMPT_EMAIL_KEY = "odin.auth.github-attempt-email";
 const RECOVERABLE_ERRORS = new Set([
   "account_not_linked",
   "email_not_verified",
@@ -49,6 +50,31 @@ function rememberEmail(email) {
     window.sessionStorage.setItem(LAST_EMAIL_KEY, email);
   } catch {
     // Authentication must not depend on browser storage.
+  }
+}
+
+function clearRememberedEmail() {
+  try {
+    window.sessionStorage.removeItem(LAST_EMAIL_KEY);
+  } catch {
+    // Authentication must not depend on browser storage.
+  }
+}
+
+function rememberGitHubAttemptEmail(email) {
+  try {
+    if (email) window.sessionStorage.setItem(ATTEMPT_EMAIL_KEY, email);
+    else window.sessionStorage.removeItem(ATTEMPT_EMAIL_KEY);
+  } catch {
+    // Authentication must not depend on browser storage.
+  }
+}
+
+function githubAttemptEmail() {
+  try {
+    return window.sessionStorage.getItem(ATTEMPT_EMAIL_KEY)?.trim() ?? "";
+  } catch {
+    return "";
   }
 }
 
@@ -131,8 +157,58 @@ function markRecoverableOAuthFailure() {
   const params = new URLSearchParams(window.location.search);
   if (params.get("oauth") !== "error") return;
   const code = params.get("error") ?? params.get("error_code") ?? "";
-  if (RECOVERABLE_ERRORS.has(code)) setRecoveryPending(true);
-  else if (code === "access_denied") setRecoveryPending(false);
+  if (RECOVERABLE_ERRORS.has(code)) {
+    setRecoveryPending(true);
+    const attemptEmail = githubAttemptEmail();
+    if (attemptEmail) {
+      rememberEmail(attemptEmail);
+      const emailInput = document.getElementById("auth-email");
+      if (emailInput && !emailInput.value) emailInput.value = attemptEmail;
+    } else {
+      clearRememberedEmail();
+      const emailInput = document.getElementById("auth-email");
+      if (emailInput) {
+        emailInput.value = "";
+        emailInput.placeholder = "E-Mail des bestehenden Odin-Kontos";
+      }
+    }
+  } else if (code === "access_denied") {
+    setRecoveryPending(false);
+  }
+}
+
+async function requestRecoveryCode(event) {
+  if (!recoveryPending()) return;
+  const emailInput = document.getElementById("auth-email");
+  const email = emailInput?.value.trim() ?? "";
+  if (!email || !emailInput?.checkValidity()) return;
+
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  rememberEmail(email);
+  const button = document.getElementById("send-code");
+  if (button) button.disabled = true;
+  setStatus("Code wird für das bestehende Odin-Konto angefordert …");
+
+  try {
+    await jsonRequest("/api/auth/sendCode", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", "X-Odin-Request": "1" },
+      body: JSON.stringify({ email }),
+    });
+    setStatus(
+      "Wenn diese Adresse exakt zu deinem bestehenden, noch unbestätigten Odin-Konto gehört, wurde ein Code angefordert. Unbekannte oder andere Adressen erhalten absichtlich keine E-Mail.",
+      "success",
+    );
+  } catch (error) {
+    setStatus(
+      error instanceof Error ? error.message : "Bestätigungscode konnte nicht angefordert werden.",
+      "error",
+    );
+  } finally {
+    if (button) button.disabled = false;
+  }
 }
 
 async function completeRecovery(event) {
@@ -170,6 +246,20 @@ async function completeRecovery(event) {
   }
 }
 
+const githubButton = document.getElementById("github-signin");
+if (githubButton) {
+  githubButton.addEventListener(
+    "click",
+    () => {
+      const email = document.getElementById("auth-email")?.value.trim() ?? "";
+      rememberGitHubAttemptEmail(email);
+    },
+    { capture: true },
+  );
+}
+
 markRecoverableOAuthFailure();
+const sendCodeButton = document.getElementById("send-code");
+if (sendCodeButton) sendCodeButton.addEventListener("click", requestRecoveryCode, { capture: true });
 const form = document.getElementById("auth-form");
 if (form) form.addEventListener("submit", completeRecovery, { capture: true });
