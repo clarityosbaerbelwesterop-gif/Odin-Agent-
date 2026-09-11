@@ -49,8 +49,8 @@ jobs:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
           GITHUB_OAUTH_CLIENT_ID: ${{ secrets.OAUTH_CLIENT_ID }}
           GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          GITHUB_REPO_OAUTH_CLIENT_ID: ${{ secrets.GITHUB_REPO_OAUTH_CLIENT_ID }}
-          GITHUB_REPO_OAUTH_CLIENT_SECRET: ${{ secrets.GITHUB_REPO_OAUTH_CLIENT_SECRET }}
+          GITHUB_REPO_OAUTH_CLIENT_ID: ${{ secrets.CLIENT_ID_2 }}
+          GITHUB_REPO_OAUTH_CLIENT_SECRET: ${{ secrets.CLIENT_SECRET_2 }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
