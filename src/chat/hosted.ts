@@ -38,7 +38,7 @@ import {
   subscriptionPriceId,
   verifyStripeSignature,
 } from "./product.js";
-import { QuotaStore } from "./quota.js";
+import { planQuota, QuotaStore } from "./quota.js";
 import { WikipediaResearchAdapter } from "./research.js";
 import { hashText, identifier, integer, object, publicError } from "./safety.js";
 import { createSharedNvidiaModels } from "./server-models.js";
@@ -1136,8 +1136,17 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       if (turn[2] === "run" && method === "POST") {
         await jsonBody(req);
         const resource = `run:${id}`;
-        const lease = await db.claim(resource);
-        if (!lease) throw new ChatError("BUSY", "This task already has an active worker.", 409);
+        const runLimit = planQuota(effectivePlan(await product.account())).maxConcurrentMissions;
+        const claimed = await db.claimBounded(resource, "run:", runLimit);
+        if (claimed.status === "busy")
+          throw new ChatError("BUSY", "This task already has an active worker.", 409);
+        if (claimed.status === "limit")
+          throw new ChatError(
+            "CONCURRENT_MISSION_LIMIT",
+            "Your plan's concurrent mission limit is reached.",
+            409,
+          );
+        const lease = claimed.token;
         const run = (async () => {
           const controller = new AbortController();
           const workerDb = new NeonActorDatabase(pool, identity, { resource, token: lease });

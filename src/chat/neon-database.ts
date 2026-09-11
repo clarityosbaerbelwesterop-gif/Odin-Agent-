@@ -106,9 +106,10 @@ export class NeonActorDatabase implements ActorDatabase {
       await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [
         JSON.stringify(["odin-bounded-lease", this.actor.id, prefix]),
       ]);
-      await client.query("DELETE FROM odin_api.leases WHERE resource LIKE $1 AND expires_at<now()", [
-        `${prefix}%`,
-      ]);
+      await client.query(
+        "DELETE FROM odin_api.leases WHERE resource LIKE $1 AND expires_at<now()",
+        [`${prefix}%`],
+      );
       const existing = await client.query(
         "SELECT 1 FROM odin_api.leases WHERE resource=$1 AND expires_at>now()",
         [resource],
@@ -129,9 +130,7 @@ export class NeonActorDatabase implements ActorDatabase {
          WHERE odin_api.leases.expires_at < now() RETURNING token`,
         [resource, token, seconds],
       );
-      return inserted.rows.length
-        ? { status: "claimed", token }
-        : { status: "busy", token: null };
+      return inserted.rows.length ? { status: "claimed", token } : { status: "busy", token: null };
     });
   }
   /** Lock order is resource, lease row, then mission. Workers lock lease before mission too. */
