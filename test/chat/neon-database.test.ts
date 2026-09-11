@@ -50,6 +50,52 @@ test("nested actor operations share a transaction; detached work obtains a fresh
   }
 });
 
+test("bounded leases atomically distinguish duplicate workers from plan concurrency exhaustion", async () => {
+  const active = new Map<string, string>();
+  const pool = {
+    connect: async () => ({
+      query: async (sql: string, values: unknown[] = []) => {
+        if (sql.startsWith("SELECT 1 FROM odin_api.leases WHERE resource=$1")) {
+          return { rows: active.has(String(values[0])) ? [{ exists: 1 }] : [] };
+        }
+        if (sql.startsWith("SELECT count(*)::int AS n FROM odin_api.leases")) {
+          const prefix = String(values[0]).replace(/%$/u, "");
+          return { rows: [{ n: [...active.keys()].filter((key) => key.startsWith(prefix)).length }] };
+        }
+        if (sql.startsWith("INSERT INTO odin_api.leases(resource,token,expires_at)")) {
+          const resource = String(values[0]);
+          const token = String(values[1]);
+          if (active.has(resource)) return { rows: [] };
+          active.set(resource, token);
+          return { rows: [{ token }] };
+        }
+        if (sql.startsWith("DELETE FROM odin_api.leases WHERE resource=$1 AND token=$2")) {
+          const resource = String(values[0]);
+          if (active.get(resource) === String(values[1])) active.delete(resource);
+          return { rows: [] };
+        }
+        return { rows: [] };
+      },
+      release: () => {},
+    }),
+  } as unknown as Pool;
+  const db = new NeonActorDatabase(pool, { id: "fixture-user" });
+
+  const first = await db.claimBounded("run:first", "run:", 2);
+  assert.equal(first.status, "claimed");
+  const duplicate = await db.claimBounded("run:first", "run:", 2);
+  assert.equal(duplicate.status, "busy");
+  const second = await db.claimBounded("run:second", "run:", 2);
+  assert.equal(second.status, "claimed");
+  const overLimit = await db.claimBounded("run:third", "run:", 2);
+  assert.equal(overLimit.status, "limit");
+
+  assert.equal(first.status, "claimed");
+  if (first.status === "claimed") await db.release("run:first", first.token);
+  const afterRelease = await db.claimBounded("run:third", "run:", 2);
+  assert.equal(afterRelease.status, "claimed");
+});
+
 test("public Auth fallback is bound to verified database hosts and Vercel environments", () => {
   const connection =
     "postgresql://fixture:fixture@ep-rapid-union-b14h469x-pooler.c-5.eu-central-1.aws.neon.tech/neondb";
