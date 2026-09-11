@@ -169,12 +169,17 @@ function renderMode() {
   status();
 }
 
-function setMode(next) {
-  if (!allowedModes.has(next) || busy) return;
+function applyMode(next) {
+  if (!allowedModes.has(next)) return;
   mode = next;
   renderMode();
   if (mode === "verify") $("auth-code").focus();
   else $("auth-email").focus();
+}
+
+function setMode(next) {
+  if (busy) return;
+  applyMode(next);
 }
 
 async function restoreSession() {
@@ -328,7 +333,7 @@ $("auth-form").addEventListener("submit", async (event) => {
     }
     if (mode === "signup") {
       $("auth-password").value = "";
-      setMode("verify");
+      applyMode("verify");
       try {
         await request("/api/auth/sendCode", { email });
         status("Konto erstellt. Der Bestätigungscode wurde per E-Mail gesendet.", "success");
@@ -339,16 +344,16 @@ $("auth-form").addEventListener("submit", async (event) => {
         );
       }
     } else if (mode === "forgot") {
-      setMode("reset");
+      applyMode("reset");
       status("Wenn ein Konto existiert, wurde ein Reset-Code gesendet.", "success");
     } else if (mode === "verify") {
       $("auth-code").value = "";
-      setMode("login");
+      applyMode("login");
       status("E-Mail bestätigt. Du kannst dich jetzt anmelden.", "success");
     } else if (mode === "reset") {
       $("auth-password").value = "";
       $("auth-code").value = "";
-      setMode("login");
+      applyMode("login");
       status("Passwort aktualisiert. Du kannst dich jetzt anmelden.", "success");
     }
   } catch (error) {
