@@ -256,7 +256,7 @@ export function sharedOpenRouterCredential(env: Environment): string | undefined
   return value && value.trim() !== "" && !/[\r\n]/u.test(value) ? value : undefined;
 }
 
-export function createSharedNvidiaModels(env: Environment = process.env): ChatModel[] {
+function createNvidiaModels(env: Environment): ChatModel[] {
   const credentials = sharedNvidiaCredentials(env);
   if (credentials.length === 0) return [];
   const models: ChatModel[] = [];
@@ -332,6 +332,14 @@ export function createSharedOpenRouterModels(env: Environment = process.env): Ch
   });
 }
 
+/**
+ * Backward-compatible factory name used by the hosted runtime. NVIDIA stays first so existing UI
+ * defaults remain stable; the bot has its own explicit frontier-model router.
+ */
+export function createSharedNvidiaModels(env: Environment = process.env): ChatModel[] {
+  return [...createNvidiaModels(env), ...createSharedOpenRouterModels(env)];
+}
+
 export function createSharedHostedModels(env: Environment = process.env): ChatModel[] {
-  return [...createSharedNvidiaModels(env), ...createSharedOpenRouterModels(env)];
+  return createSharedNvidiaModels(env);
 }
