@@ -68,6 +68,7 @@ await replace("src/providers/index.ts", [
 ]);
 
 await replace("test/chat/openrouter-shared.test.ts", [
+  ['  assert.equal(\n    sharedOpenRouterCredential({\n      OPENROUTER_API_KEY: "canonical",\n      UNOROUTER_API_KEY: "repo-alias",\n    }),\n    "canonical",\n  );\n', ''],
   ['createSharedOpenRouterModels', 'createSharedUnoRouterModels'],
   ['OPENROUTER_SHARED_MODEL_DEFINITIONS', 'UNOROUTER_SHARED_MODEL_DEFINITIONS'],
   ['sharedOpenRouterCredential', 'sharedUnoRouterCredential'],
