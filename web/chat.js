@@ -23,13 +23,19 @@ async function api(path, body, method = body === undefined ? "GET" : "POST") {
   if (!response.ok) {
     const error = new Error(data.message ?? "Request failed");
     error.status = response.status;
-    if (response.status === 401) {
+    error.code = data.code;
+    const authenticationRequired =
+      response.status === 401 || (response.status === 403 && data.code === "EMAIL_UNVERIFIED");
+    if (authenticationRequired) {
       resetSession();
       if (authProvider === "local") {
         if (!$("login").open) $("login").showModal();
       } else {
         const returnTo = `${window.location.pathname}${window.location.search}`;
-        window.location.assign(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+        const login = new URL("/login", window.location.origin);
+        login.searchParams.set("returnTo", returnTo);
+        if (data.code === "EMAIL_UNVERIFIED") login.searchParams.set("verify", "1");
+        window.location.assign(`${login.pathname}${login.search}`);
       }
     }
     throw error;
@@ -740,8 +746,10 @@ api("/api/auth/config")
     return initialize();
   })
   .catch((error) => {
-    $("connection").textContent =
-      error.status === 401 ? "Sign in required" : "Connection unavailable";
+    const authenticationRequired = error.status === 401 || error.code === "EMAIL_UNVERIFIED";
+    $("connection").textContent = authenticationRequired
+      ? "Sign in required"
+      : "Connection unavailable";
     updateControls();
-    if (error.status !== 401) errorBanner(error);
+    if (!authenticationRequired) errorBanner(error);
   });
