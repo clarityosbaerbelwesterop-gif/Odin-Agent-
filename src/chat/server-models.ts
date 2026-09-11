@@ -1,7 +1,7 @@
 import { CapabilityRegistry, makeCapabilities } from "../providers/capabilities.js";
 import { type NvidiaPoolCredential, PooledNvidiaProvider } from "../providers/nvidia-pool.js";
-import { OpenRouterProvider } from "../providers/openrouter.js";
 import type { ModelCapabilities, ReasoningEffort } from "../providers/types.js";
+import { UnoRouterProvider } from "../providers/unorouter.js";
 import type { ChatModel, ProductPlan } from "./types.js";
 
 type Environment = Readonly<Record<string, string | undefined>>;
@@ -149,19 +149,19 @@ export const NVIDIA_SHARED_MODEL_DEFINITIONS: readonly SharedModelDefinition[] =
 ]);
 
 /**
- * OpenRouter is intentionally a small curated frontier lane instead of mirroring the whole catalog.
+ * UnoRouter is intentionally a small curated frontier lane instead of mirroring the whole catalog.
  * These models are shared hosted capacity and therefore pass through Odin's normal plan/quota gates.
  */
-export const OPENROUTER_SHARED_MODEL_DEFINITIONS: readonly SharedModelDefinition[] = Object.freeze([
+export const UNOROUTER_SHARED_MODEL_DEFINITIONS: readonly SharedModelDefinition[] = Object.freeze([
   {
-    id: "openrouter-gpt-5-6-luna",
-    label: "GPT-5.6 Luna · OpenRouter",
-    model: "openai/gpt-5.6-luna",
+    id: "unorouter-gpt-5-6-luna",
+    label: "GPT-5.6 Luna · UnoRouter",
+    model: "gpt-5.6-luna",
     plan: "pro",
     summary: "Schnelles Frontier-Modell für Thinking, Research und agentische Aufgaben.",
     recommendedFor: ["Thinking", "Research", "Agents"],
-    version: "openrouter-2026-09-11",
-    reference: "https://openrouter.ai/openai/gpt-5.6-luna",
+    version: "unorouter-2026-09-11",
+    reference: "https://unorouter.com/de/modelle/openai/gpt-5.6-luna",
     capabilities: {
       textInput: true,
       imageInput: true,
@@ -175,14 +175,14 @@ export const OPENROUTER_SHARED_MODEL_DEFINITIONS: readonly SharedModelDefinition
     timeoutMs: 180000,
   },
   {
-    id: "openrouter-claude-fable-5-1",
-    label: "Claude Fable 5.1 · OpenRouter",
-    model: "anthropic/claude-fable-5.1",
+    id: "unorouter-claude-fable-5-1",
+    label: "Claude Fable 5.1 · UnoRouter",
+    model: "claude-fable-5.1",
     plan: "developer",
     summary: "Frontier Coding-Modell für lange Refactors, Agent-Loops und komplexe Repo-Arbeit.",
     recommendedFor: ["Coding", "Long-running agents", "Code review"],
-    version: "openrouter-2026-09-11",
-    reference: "https://openrouter.ai/anthropic/claude-fable-5.1",
+    version: "unorouter-2026-09-11",
+    reference: "https://unorouter.com/de/modelle/anthropic/claude-fable-5.1",
     capabilities: {
       textInput: true,
       imageInput: true,
@@ -196,15 +196,15 @@ export const OPENROUTER_SHARED_MODEL_DEFINITIONS: readonly SharedModelDefinition
     timeoutMs: 240000,
   },
   {
-    id: "openrouter-claude-opus-5",
-    label: "Claude Opus 5 · OpenRouter",
-    model: "anthropic/claude-opus-5",
+    id: "unorouter-claude-opus-5",
+    label: "Claude Opus 5 · UnoRouter",
+    model: "claude-opus-5",
     plan: "ultra",
     summary:
       "Flagship-Modell für schwierigstes Coding, Reviews und lang laufende autonome Missionen.",
     recommendedFor: ["Ultra", "Hard coding", "Long horizon", "Review"],
-    version: "openrouter-2026-09-11",
-    reference: "https://openrouter.ai/anthropic/claude-opus-5",
+    version: "unorouter-2026-09-11",
+    reference: "https://unorouter.com/de/modelle/anthropic/claude-opus-5",
     capabilities: {
       textInput: true,
       imageInput: true,
@@ -251,8 +251,8 @@ export function sharedNvidiaCredentials(env: Environment): readonly NvidiaPoolCr
     .filter((credential) => credential.value !== "");
 }
 
-export function sharedOpenRouterCredential(env: Environment): string | undefined {
-  const value = env.OPENROUTER_API_KEY ?? env.UNOROUTER_API_KEY;
+export function sharedUnoRouterCredential(env: Environment): string | undefined {
+  const value = env.UNOROUTER_API_KEY;
   return value && value.trim() !== "" && !/[\r\n]/u.test(value) ? value : undefined;
 }
 
@@ -293,17 +293,14 @@ function createNvidiaModels(env: Environment): ChatModel[] {
   return models;
 }
 
-export function createSharedOpenRouterModels(env: Environment = process.env): ChatModel[] {
-  const credential = sharedOpenRouterCredential(env);
+export function createSharedUnoRouterModels(env: Environment = process.env): ChatModel[] {
+  const credential = sharedUnoRouterCredential(env);
   if (!credential) return [];
-  const httpReferer = env.ODIN_PUBLIC_ORIGIN?.startsWith("https://")
-    ? env.ODIN_PUBLIC_ORIGIN
-    : undefined;
-  return OPENROUTER_SHARED_MODEL_DEFINITIONS.map((definition) => {
+  return UNOROUTER_SHARED_MODEL_DEFINITIONS.map((definition) => {
     const capabilities = new CapabilityRegistry([
       {
         model: definition.model,
-        provider: "openrouter",
+        provider: "unorouter",
         version: definition.version,
         provenance: {
           kind: "provider",
@@ -321,12 +318,10 @@ export function createSharedOpenRouterModels(env: Environment = process.env): Ch
       summary: definition.summary,
       recommendedFor: definition.recommendedFor,
       sharedCapacity: true,
-      provider: new OpenRouterProvider({
+      provider: new UnoRouterProvider({
         capabilities,
         credential: async () => credential,
         defaultTimeoutMs: definition.timeoutMs,
-        appTitle: "Odin Agent",
-        ...(httpReferer ? { httpReferer } : {}),
       }),
     } satisfies ChatModel;
   });
@@ -337,7 +332,7 @@ export function createSharedOpenRouterModels(env: Environment = process.env): Ch
  * defaults remain stable; the bot has its own explicit frontier-model router.
  */
 export function createSharedNvidiaModels(env: Environment = process.env): ChatModel[] {
-  return [...createNvidiaModels(env), ...createSharedOpenRouterModels(env)];
+  return [...createNvidiaModels(env), ...createSharedUnoRouterModels(env)];
 }
 
 export function createSharedHostedModels(env: Environment = process.env): ChatModel[] {

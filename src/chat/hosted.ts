@@ -770,10 +770,14 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       }
     }
     if (url.pathname === "/api/github/connect" && method === "GET") {
-      if (!process.env.GITHUB_OAUTH_CLIENT_ID)
-        throw new ChatError("GITHUB_NOT_CONFIGURED", "GitHub OAuth is not configured.", 503);
+      if (!process.env.GITHUB_REPO_OAUTH_CLIENT_ID || !process.env.GITHUB_REPO_OAUTH_CLIENT_SECRET)
+        throw new ChatError(
+          "GITHUB_REPO_OAUTH_NOT_CONFIGURED",
+          "Repository access needs its own GitHub OAuth app. Configure the repo OAuth client first.",
+          503,
+        );
       const target = new URL("https://github.com/login/oauth/authorize");
-      target.searchParams.set("client_id", process.env.GITHUB_OAUTH_CLIENT_ID);
+      target.searchParams.set("client_id", process.env.GITHUB_REPO_OAUTH_CLIENT_ID);
       target.searchParams.set("redirect_uri", `${origin}/api/github/callback`);
       target.searchParams.set("scope", "repo read:user");
       target.searchParams.set("state", await product.createOAuthState());
@@ -785,8 +789,8 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
     if (url.pathname === "/api/github/callback" && method === "GET") {
       await product.consumeOAuthState(url.searchParams.get("state") ?? "");
       const code = url.searchParams.get("code");
-      const client = process.env.GITHUB_OAUTH_CLIENT_ID;
-      const secret = process.env.GITHUB_OAUTH_CLIENT_SECRET;
+      const client = process.env.GITHUB_REPO_OAUTH_CLIENT_ID;
+      const secret = process.env.GITHUB_REPO_OAUTH_CLIENT_SECRET;
       if (!code || !client || !secret)
         throw new ChatError("GITHUB_OAUTH", "GitHub authorization failed.", 400);
       const response = await fetch("https://github.com/login/oauth/access_token", {
@@ -855,8 +859,8 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
           token,
         );
       }
-      const client = process.env.GITHUB_OAUTH_CLIENT_ID;
-      const secret = process.env.GITHUB_OAUTH_CLIENT_SECRET;
+      const client = process.env.GITHUB_REPO_OAUTH_CLIENT_ID;
+      const secret = process.env.GITHUB_REPO_OAUTH_CLIENT_SECRET;
       if (token && client && secret) {
         await fetch(`https://api.github.com/applications/${client}/token`, {
           method: "DELETE",

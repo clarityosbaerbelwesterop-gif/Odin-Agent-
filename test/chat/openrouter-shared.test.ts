@@ -2,52 +2,45 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createSharedNvidiaModels,
-  createSharedOpenRouterModels,
-  OPENROUTER_SHARED_MODEL_DEFINITIONS,
-  sharedOpenRouterCredential,
+  createSharedUnoRouterModels,
+  sharedUnoRouterCredential,
+  UNOROUTER_SHARED_MODEL_DEFINITIONS,
 } from "../../src/chat/server-models.js";
 
-test("OpenRouter shared capacity accepts the canonical or repository alias secret", () => {
-  assert.equal(sharedOpenRouterCredential({ OPENROUTER_API_KEY: "canonical" }), "canonical");
-  assert.equal(sharedOpenRouterCredential({ UNOROUTER_API_KEY: "repo-alias" }), "repo-alias");
-  assert.equal(
-    sharedOpenRouterCredential({
-      OPENROUTER_API_KEY: "canonical",
-      UNOROUTER_API_KEY: "repo-alias",
-    }),
-    "canonical",
-  );
-  assert.equal(sharedOpenRouterCredential({ UNOROUTER_API_KEY: "bad\nkey" }), undefined);
+test("UnoRouter shared capacity accepts the canonical or repository alias secret", () => {
+  assert.equal(sharedUnoRouterCredential({ UNOROUTER_API_KEY: "canonical" }), "canonical");
+  assert.equal(sharedUnoRouterCredential({ UNOROUTER_API_KEY: "repo-alias" }), "repo-alias");
+  assert.equal(sharedUnoRouterCredential({ UNOROUTER_API_KEY: "bad\nkey" }), undefined);
 });
 
-test("shared OpenRouter catalog exposes only the curated frontier lane", () => {
+test("shared UnoRouter catalog exposes only the curated frontier lane", () => {
   assert.deepEqual(
-    OPENROUTER_SHARED_MODEL_DEFINITIONS.map(({ id, model, plan }) => [id, model, plan]),
+    UNOROUTER_SHARED_MODEL_DEFINITIONS.map(({ id, model, plan }) => [id, model, plan]),
     [
-      ["openrouter-gpt-5-6-luna", "openai/gpt-5.6-luna", "pro"],
-      ["openrouter-claude-fable-5-1", "anthropic/claude-fable-5.1", "developer"],
-      ["openrouter-claude-opus-5", "anthropic/claude-opus-5", "ultra"],
+      ["unorouter-gpt-5-6-luna", "gpt-5.6-luna", "pro"],
+      ["unorouter-claude-fable-5-1", "claude-fable-5.1", "developer"],
+      ["unorouter-claude-opus-5", "claude-opus-5", "ultra"],
     ],
   );
 });
 
-test("UNOROUTER repository secret creates quota-metered OpenRouter models", () => {
-  const models = createSharedOpenRouterModels({
+test("UNOROUTER repository secret creates quota-metered UnoRouter models", () => {
+  const models = createSharedUnoRouterModels({
     UNOROUTER_API_KEY: "repo-secret",
     ODIN_PUBLIC_ORIGIN: "https://odin-agent-xi.vercel.app",
   });
   assert.equal(models.length, 3);
-  assert(models.every((model) => model.provider.id === "openrouter"));
+  assert(models.every((model) => model.provider.id === "unorouter"));
   assert(models.every((model) => model.sharedCapacity === true));
-  assert.equal(models.find((model) => model.id === "openrouter-gpt-5-6-luna")?.plan, "pro");
+  assert.equal(models.find((model) => model.id === "unorouter-gpt-5-6-luna")?.plan, "pro");
   assert.equal(
-    models.find((model) => model.id === "openrouter-claude-fable-5-1")?.plan,
+    models.find((model) => model.id === "unorouter-claude-fable-5-1")?.plan,
     "developer",
   );
-  assert.equal(models.find((model) => model.id === "openrouter-claude-opus-5")?.plan, "ultra");
+  assert.equal(models.find((model) => model.id === "unorouter-claude-opus-5")?.plan, "ultra");
 });
 
-test("hosted catalog keeps NVIDIA defaults first and appends OpenRouter when configured", () => {
+test("hosted catalog keeps NVIDIA defaults first and appends UnoRouter when configured", () => {
   const models = createSharedNvidiaModels({
     VERCEL_ENV: "production",
     ODIN_NVIDIA_PRODUCTION_AUTHORIZED: "true",
@@ -58,6 +51,6 @@ test("hosted catalog keeps NVIDIA defaults first and appends OpenRouter when con
   assert.equal(models[0]?.id, "gpt-oss-20b");
   assert.deepEqual(
     models.slice(-3).map((model) => model.id),
-    ["openrouter-gpt-5-6-luna", "openrouter-claude-fable-5-1", "openrouter-claude-opus-5"],
+    ["unorouter-gpt-5-6-luna", "unorouter-claude-fable-5-1", "unorouter-claude-opus-5"],
   );
 });
