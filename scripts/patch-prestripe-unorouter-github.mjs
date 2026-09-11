@@ -4,7 +4,7 @@ async function replace(path, pairs) {
   let text = await readFile(path, "utf8");
   for (const [from, to] of pairs) {
     if (!text.includes(from)) throw new Error(`${path}: missing patch anchor: ${from.slice(0, 80)}`);
-    text = text.replace(from, to);
+    text = text.split(from).join(to);
   }
   await writeFile(path, text);
 }
@@ -78,9 +78,7 @@ await replace("test/chat/openrouter-shared.test.ts", [
   ['"openai/gpt-5.6-luna"', '"gpt-5.6-luna"'],
   ['"anthropic/claude-fable-5.1"', '"claude-fable-5.1"'],
   ['"anthropic/claude-opus-5"', '"claude-opus-5"'],
-  ['OPENROUTER_API_KEY: "canonical",\n    UNOROUTER_API_KEY: "repo-alias",', 'UNOROUTER_API_KEY: "canonical",'],
-  ['sharedUnoRouterCredential({ OPENROUTER_API_KEY: "canonical" }), "canonical"', 'sharedUnoRouterCredential({ UNOROUTER_API_KEY: "canonical" }), "canonical"'],
-  ['sharedUnoRouterCredential({ UNOROUTER_API_KEY: "repo-alias" }), "repo-alias"', 'sharedUnoRouterCredential({ UNOROUTER_API_KEY: "repo-alias" }), "repo-alias"'],
+  ['OPENROUTER_API_KEY: "canonical"', 'UNOROUTER_API_KEY: "canonical"'],
   ['models.every((model) => model.provider.id === "openrouter")', 'models.every((model) => model.provider.id === "unorouter")'],
 ]);
 
