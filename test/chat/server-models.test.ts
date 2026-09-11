@@ -3,7 +3,7 @@ import test from "node:test";
 import {
   createSharedNvidiaModels,
   NVIDIA_SHARED_MODEL_DEFINITIONS,
-  sharedNvidiaCredential,
+  sharedNvidiaCredentials,
 } from "../../src/chat/server-models.js";
 
 test("shared NVIDIA catalog is ordered across the four Odin plans", () => {
@@ -29,31 +29,37 @@ test("production never consumes legacy NVIDIA Developer Program/API Catalog keys
     NV_API_KEY_2: "legacy-secondary",
     ODIN_NVIDIA_PRODUCTION_AUTHORIZED: "true",
   };
-  assert.equal(sharedNvidiaCredential(legacyOnly, "primary"), "");
-  assert.equal(sharedNvidiaCredential(legacyOnly, "secondary"), "");
+  assert.deepEqual(sharedNvidiaCredentials(legacyOnly), []);
   assert.deepEqual(createSharedNvidiaModels(legacyOnly), []);
 });
 
-test("production shared models require explicit authorization and production credential names", () => {
-  const key = "prod-primary";
+test("production pool accepts up to five explicitly authorized credentials", () => {
+  const env = {
+    VERCEL_ENV: "production",
+    ODIN_NVIDIA_PRODUCTION_AUTHORIZED: "true",
+    NVIDIA_PRODUCTION_API_KEY: "prod-1",
+    NVIDIA_PRODUCTION_API_KEY_2: "prod-2",
+    NVIDIA_PRODUCTION_API_KEY_3: "prod-3",
+    NVIDIA_PRODUCTION_API_KEY_4: "prod-4",
+    NVIDIA_PRODUCTION_API_KEY_5: "prod-5",
+  };
+  const credentials = sharedNvidiaCredentials(env);
+  assert.deepEqual(
+    credentials.map(({ slot }) => slot),
+    ["production-1", "production-2", "production-3", "production-4", "production-5"],
+  );
+  const models = createSharedNvidiaModels(env);
+  assert.equal(models.length, NVIDIA_SHARED_MODEL_DEFINITIONS.length);
+  assert(models.every((model) => model.sharedCapacity === true));
+});
+
+test("production shared models require explicit authorization", () => {
   assert.deepEqual(
     createSharedNvidiaModels({
       VERCEL_ENV: "production",
-      NVIDIA_PRODUCTION_API_KEY: key,
+      NVIDIA_PRODUCTION_API_KEY: "prod-primary",
     }),
     [],
-  );
-
-  const models = createSharedNvidiaModels({
-    VERCEL_ENV: "production",
-    ODIN_NVIDIA_PRODUCTION_AUTHORIZED: "true",
-    NVIDIA_PRODUCTION_API_KEY: key,
-    NVIDIA_PRODUCTION_API_KEY_2: "prod-secondary",
-  });
-  assert.equal(models.length, NVIDIA_SHARED_MODEL_DEFINITIONS.length);
-  assert.deepEqual(
-    models.map(({ id, plan }) => [id, plan]),
-    NVIDIA_SHARED_MODEL_DEFINITIONS.map(({ id, plan }) => [id, plan]),
   );
 });
 
@@ -62,7 +68,14 @@ test("non-production preview may use existing bounded evaluation credentials", (
     VERCEL_ENV: "preview",
     NV_API_KEY: "preview-primary",
     NV_API_KEY_2: "preview-secondary",
+    NV_API_KEY_3: "preview-tertiary",
   });
+  assert.equal(sharedNvidiaCredentials({
+    VERCEL_ENV: "preview",
+    NV_API_KEY: "preview-primary",
+    NV_API_KEY_2: "preview-secondary",
+    NV_API_KEY_3: "preview-tertiary",
+  }).length, 3);
   assert.equal(models.length, 6);
   assert.equal(models.find((model) => model.id === "kimi")?.plan, "developer");
   assert.equal(models.find((model) => model.id === "deepseek-v4-pro")?.plan, "ultra");
