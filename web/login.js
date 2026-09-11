@@ -182,13 +182,27 @@ function setMode(next) {
   applyMode(next);
 }
 
+async function clearIncompleteSession() {
+  try {
+    await request("/api/auth/logout", {});
+  } catch {
+    // A stale incomplete session must never prevent the login surface from recovering.
+  }
+}
+
 async function restoreSession() {
   try {
     await request("/api/config");
     window.location.replace(safeReturnTo());
     return true;
   } catch (error) {
-    if (error.status !== 401 && error.status !== 403) status(error.message, "error");
+    if (error.code === "EMAIL_UNVERIFIED") {
+      await clearIncompleteSession();
+      applyMode("verify");
+      status("Deine E-Mail ist noch nicht bestätigt. Fordere einen neuen Code an.", "error");
+    } else if (error.status !== 401) {
+      status(error.message, "error");
+    }
     return false;
   }
 }
@@ -235,7 +249,8 @@ async function initialize() {
     if (await restoreSession()) return;
     const params = new URLSearchParams(window.location.search);
     const explicitSignOut = params.get("signedOut") === "1";
-    if (!explicitSignOut && (await restoreGitHubSession(params.has(VERIFIER_PARAM)))) return;
+    if (!explicitSignOut && params.has(VERIFIER_PARAM) && (await restoreGitHubSession(true)))
+      return;
     const github = authConfig?.oauth?.github;
     if (github?.available === true) {
       $("github-note").textContent =
@@ -272,6 +287,7 @@ $("github-signin").addEventListener("click", async () => {
         provider: "github",
         callbackURL: callback.href,
         errorCallbackURL: errorCallback.href,
+        disableRedirect: true,
       }),
     });
     const data = await response.json().catch(() => ({}));
@@ -333,6 +349,7 @@ $("auth-form").addEventListener("submit", async (event) => {
     }
     if (mode === "signup") {
       $("auth-password").value = "";
+      await clearIncompleteSession();
       applyMode("verify");
       try {
         await request("/api/auth/sendCode", { email });

@@ -12,9 +12,16 @@ async function api(path, options = {}) {
     },
   });
   const data = await response.json().catch(() => ({}));
-  if (response.status === 401) {
-    location.assign(`/login?next=${encodeURIComponent("/bot")}`);
-    throw new Error("Authentication required");
+  const authenticationRequired =
+    response.status === 401 || (response.status === 403 && data.code === "EMAIL_UNVERIFIED");
+  if (authenticationRequired) {
+    const login = new URL("/login", location.origin);
+    login.searchParams.set("returnTo", "/bot");
+    if (data.code === "EMAIL_UNVERIFIED") login.searchParams.set("verify", "1");
+    location.assign(`${login.pathname}${login.search}`);
+    const error = new Error("Authentication required");
+    error.code = data.code;
+    throw error;
   }
   if (!response.ok) throw new Error(data.message ?? "Odin Bot request failed.");
   return data;

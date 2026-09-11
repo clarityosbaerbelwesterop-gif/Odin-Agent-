@@ -88,6 +88,7 @@ test("registration sends a verification code automatically and enters verificati
     await new Promise((resolve) => setImmediate(resolve));
 
     assert.ok(client.requests.find((item) => item.path === "/api/auth/signup"));
+    assert.ok(client.requests.find((item) => item.path === "/api/auth/logout"));
     assert.ok(client.requests.find((item) => item.path === "/api/auth/sendCode"));
     assert.equal(client.get("login-title").textContent, "Konto verifizieren");
     assert.equal(client.get("code-field").hidden, false);
@@ -141,6 +142,9 @@ test("GitHub identity path accepts the GitHub authorize redirect and finalizes a
   assert.match(source, /\/sign-in\/social/u);
   assert.match(source, /target\.hostname === "github\.com"/u);
   assert.match(source, /target\.pathname === "\/login\/oauth\/authorize"/u);
+  assert.match(source, /disableRedirect: true/u);
+  assert.match(source, /EMAIL_UNVERIFIED/u);
+  assert.match(source, /\/api\/auth\/logout/u);
   assert.match(source, /neon_auth_session_verifier/u);
   assert.match(source, /neonAuth\("\/token"/u);
   assert.match(source, /\/api\/auth\/github\/finalize/u);
@@ -154,4 +158,23 @@ test("login surface contains no demo or placeholder copy", async () => {
   assert.doesNotMatch(html, /\b(?:demo|placeholder|coming soon|not implemented)\b/iu);
   assert.match(html, /id="github-signin"/u);
   assert.match(html, /id="auth-form"/u);
+});
+
+test("hosted UI routes unverified sessions back through the real login surface", async () => {
+  const chatSource = await readFile("web/chat.js", "utf8");
+  const botSource = await readFile("web/bot.js", "utf8");
+  assert.match(chatSource, /EMAIL_UNVERIFIED/u);
+  assert.match(chatSource, /searchParams\.set\("returnTo", returnTo\)/u);
+  assert.match(botSource, /EMAIL_UNVERIFIED/u);
+  assert.match(botSource, /searchParams\.set\("returnTo", "\/bot"\)/u);
+});
+
+test("login CSP permits only the configured Neon Auth origin for OAuth transport", async () => {
+  const vercel = JSON.parse(await readFile("vercel.json", "utf8"));
+  const rule = vercel.headers.find((item) => item.source === "/login");
+  const csp = rule.headers.find((item) => item.key === "Content-Security-Policy").value;
+  assert.match(
+    csp,
+    /https:\/\/ep-restless-cake-b1d8u9ge\.neonauth\.c-5\.eu-central-1\.aws\.neon\.tech/u,
+  );
 });
