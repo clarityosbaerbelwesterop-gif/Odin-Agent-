@@ -22,6 +22,9 @@ const MODEL_WEIGHTS: Readonly<Record<string, number>> = Object.freeze({
   kimi: 3,
   "mistral-medium-3-5": 4,
   "deepseek-v4-pro": 5,
+  "openrouter-gpt-5-6-luna": 3,
+  "openrouter-claude-fable-5-1": 8,
+  "openrouter-claude-opus-5": 10,
 });
 
 function configuredInt(
