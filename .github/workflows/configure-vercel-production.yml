@@ -20,6 +20,7 @@ on:
       - src/chat/github-*.ts
       - src/chat/hosted.ts
       - web/bot.*
+      - web/login*
   workflow_dispatch:
 
 permissions:
