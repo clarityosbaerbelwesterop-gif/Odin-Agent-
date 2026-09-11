@@ -15,7 +15,7 @@ import {
 } from "../chat/product.js";
 import { QuotaStore } from "../chat/quota.js";
 import { WikipediaResearchAdapter } from "../chat/research.js";
-import { ChatError, type ChatModel } from "../chat/types.js";
+import { ChatError, type ChatMode, type ChatModel, type ProductPlan } from "../chat/types.js";
 import { botRuntimeAccess } from "./autonomy.js";
 import { BotControlStore } from "./control-store.js";
 import { botPlanLimits } from "./entitlements.js";
@@ -37,6 +37,49 @@ interface SpecialistRunResult {
   readonly answer: string;
   readonly conversationId: string;
   readonly turnId: string;
+}
+
+const BOT_MODEL_PRIORITY: Readonly<Record<ChatMode, readonly string[]>> = Object.freeze({
+  chat: ["openrouter-gpt-5-6-luna", "gpt-oss-120b", "gpt-oss-20b"],
+  thinking: [
+    "openrouter-gpt-5-6-luna",
+    "openrouter-claude-fable-5-1",
+    "gpt-oss-120b",
+    "kimi",
+    "deepseek-v4-flash",
+  ],
+  research: ["openrouter-gpt-5-6-luna", "openrouter-claude-fable-5-1", "gpt-oss-120b", "kimi"],
+  coding: [
+    "openrouter-claude-opus-5",
+    "openrouter-claude-fable-5-1",
+    "kimi",
+    "deepseek-v4-pro",
+    "deepseek-v4-flash",
+    "mistral-medium-3-5",
+    "gpt-oss-120b",
+  ],
+  ultra: [
+    "openrouter-claude-opus-5",
+    "openrouter-claude-fable-5-1",
+    "kimi",
+    "deepseek-v4-pro",
+    "mistral-medium-3-5",
+  ],
+});
+
+export function selectBotModel(
+  models: readonly ChatModel[],
+  plan: ProductPlan,
+  mode: ChatMode,
+  requestedId?: string | null,
+): ChatModel | undefined {
+  const available = models.filter((model) => planAllows(plan, model.plan ?? "free"));
+  if (requestedId) return available.find((model) => model.id === requestedId);
+  for (const id of BOT_MODEL_PRIORITY[mode]) {
+    const match = available.find((model) => model.id === id);
+    if (match) return match;
+  }
+  return available[0];
 }
 
 export class OdinBotWorker {
@@ -117,9 +160,7 @@ export class OdinBotWorker {
     const availableModels = this.options.baseModels.filter((model) =>
       planAllows(plan, model.plan ?? "free"),
     );
-    const selected = task.modelId
-      ? availableModels.find((model) => model.id === task.modelId)
-      : availableModels[0];
+    const selected = selectBotModel(availableModels, plan, task.mode, task.modelId);
     if (!selected) {
       await bot.updateTask(task.id, "blocked", "No server model is available", "task.blocked", {
         code: "MODEL_UNAVAILABLE",
@@ -161,6 +202,8 @@ export class OdinBotWorker {
     await emitBotEvent(db, task.id, "team.planned", {
       planHash: teamPlan.planHash,
       primary: teamPlan.primary,
+      modelId: selected.id,
+      provider: selected.provider.id,
       assignments: teamPlan.assignments.map((assignment) => ({
         specialistId: assignment.specialistId,
         phase: assignment.phase,
