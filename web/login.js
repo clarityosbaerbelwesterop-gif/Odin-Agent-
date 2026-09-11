@@ -71,12 +71,7 @@ function githubRedirectTarget(value) {
     target.protocol === "https:" &&
     target.hostname === "github.com" &&
     target.pathname === "/login/oauth/authorize";
-  if (
-    (!isNeonRedirect && !isGitHubAuthorize) ||
-    target.username ||
-    target.password ||
-    target.hash
-  )
+  if ((!isNeonRedirect && !isGitHubAuthorize) || target.username || target.password || target.hash)
     throw new Error("Unsicheres Login-Ziel wurde blockiert.");
   return target.href;
 }
