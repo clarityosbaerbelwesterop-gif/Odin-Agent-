@@ -162,7 +162,10 @@ async function completeRecovery(event) {
     setStatus("E-Mail bestätigt. GitHub wird erneut geöffnet …", "success");
     await restartGitHubOAuth();
   } catch (error) {
-    setStatus(error instanceof Error ? error.message : "GitHub Login konnte nicht fortgesetzt werden.", "error");
+    setStatus(
+      error instanceof Error ? error.message : "GitHub Login konnte nicht fortgesetzt werden.",
+      "error",
+    );
     if (submit) submit.disabled = false;
   }
 }
