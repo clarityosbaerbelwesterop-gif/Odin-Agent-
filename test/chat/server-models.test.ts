@@ -70,12 +70,15 @@ test("non-production preview may use existing bounded evaluation credentials", (
     NV_API_KEY_2: "preview-secondary",
     NV_API_KEY_3: "preview-tertiary",
   });
-  assert.equal(sharedNvidiaCredentials({
-    VERCEL_ENV: "preview",
-    NV_API_KEY: "preview-primary",
-    NV_API_KEY_2: "preview-secondary",
-    NV_API_KEY_3: "preview-tertiary",
-  }).length, 3);
+  assert.equal(
+    sharedNvidiaCredentials({
+      VERCEL_ENV: "preview",
+      NV_API_KEY: "preview-primary",
+      NV_API_KEY_2: "preview-secondary",
+      NV_API_KEY_3: "preview-tertiary",
+    }).length,
+    3,
+  );
   assert.equal(models.length, 6);
   assert.equal(models.find((model) => model.id === "kimi")?.plan, "developer");
   assert.equal(models.find((model) => model.id === "deepseek-v4-pro")?.plan, "ultra");
