@@ -27,10 +27,10 @@ jobs:
       - run: npx biome check --write src/providers/unorouter.ts src/providers/index.ts src/chat/server-models.ts src/chat/quota.ts src/chat/hosted.ts src/bot/executor.ts scripts/sync-vercel-production.mjs test/chat/openrouter-shared.test.ts test/chat/quota.test.ts test/bot/model-routing.test.ts .github/workflows/configure-vercel-production.yml
       - run: npx tsc -p tsconfig.json --noEmit
       - run: npm test -- --runInBand || npm test
-      - name: Commit applied patch
+      - name: Commit applied product patch
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/providers/unorouter.ts src/providers/index.ts src/chat/server-models.ts src/chat/quota.ts src/chat/hosted.ts src/bot/executor.ts scripts/sync-vercel-production.mjs test/chat/openrouter-shared.test.ts test/chat/quota.test.ts test/bot/model-routing.test.ts .github/workflows/configure-vercel-production.yml
+          git add src/providers/unorouter.ts src/providers/index.ts src/chat/server-models.ts src/chat/quota.ts src/chat/hosted.ts src/bot/executor.ts scripts/sync-vercel-production.mjs test/chat/openrouter-shared.test.ts test/chat/quota.test.ts test/bot/model-routing.test.ts
           git commit -m 'fix: separate GitHub repo OAuth and wire UnoRouter correctly'
           git push origin HEAD:fix/unorouter-provider
