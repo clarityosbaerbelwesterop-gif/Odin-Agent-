@@ -60,7 +60,9 @@ test("bounded leases atomically distinguish duplicate workers from plan concurre
         }
         if (sql.startsWith("SELECT count(*)::int AS n FROM odin_api.leases")) {
           const prefix = String(values[0]).replace(/%$/u, "");
-          return { rows: [{ n: [...active.keys()].filter((key) => key.startsWith(prefix)).length }] };
+          return {
+            rows: [{ n: [...active.keys()].filter((key) => key.startsWith(prefix)).length }],
+          };
         }
         if (sql.startsWith("INSERT INTO odin_api.leases(resource,token,expires_at)")) {
           const resource = String(values[0]);
