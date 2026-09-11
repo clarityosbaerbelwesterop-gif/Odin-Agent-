@@ -23,9 +23,40 @@
           <form id="task-form" class="command">
             <label class="sr-only" for="goal">Goal for Odin Bot</label>
             <textarea id="goal" maxlength="16000" rows="2" placeholder="What should I take care of?" required></textarea>
-            <button type="submit" aria-label="Give task to Odin Bot">↑</button>
+            <div class="command-controls">
+              <label class="select-field" for="task-mode"><span>Mode</span><select id="task-mode">
+                <option value="chat">Chat</option>
+                <option value="thinking" selected>Thinking</option>
+                <option value="research">Research</option>
+                <option value="coding">Coding</option>
+                <option value="ultra">Ultra</option>
+              </select></label>
+              <label class="select-field" for="task-priority"><span>Priority</span><select id="task-priority">
+                <option value="25">Low</option>
+                <option value="50" selected>Normal</option>
+                <option value="75">High</option>
+                <option value="100">Urgent</option>
+              </select></label>
+              <button class="submit-task" type="submit" aria-label="Give task to Odin Bot">↑</button>
+            </div>
           </form>
+          <p id="mode-help" class="microcopy">Odin chooses the strongest plan-eligible model for the selected task.</p>
           <div id="status" role="status" aria-live="polite"></div>
+        </section>
+
+        <section class="stream" aria-label="Odin autonomy controls">
+          <div class="section-head"><h2>Autonomy</h2><span id="autonomy-current">Level —</span></div>
+          <form id="autonomy-form" class="control-form">
+            <label class="wide-field" for="autonomy-level"><span>Execution authority</span><select id="autonomy-level">
+              <option value="0">Level 0 · Advice only</option>
+              <option value="1">Level 1 · Read only</option>
+              <option value="2">Level 2 · Prepare changes</option>
+              <option value="3">Level 3 · Reversible execution</option>
+              <option value="4">Level 4 · Extended execution</option>
+            </select></label>
+            <button type="submit">Save autonomy</button>
+          </form>
+          <p id="autonomy-help" class="microcopy">Irreversible, critical, financial, production-secret and permanent deletion actions stay approval-gated even at the highest level.</p>
         </section>
 
         <section class="stream" aria-label="Odin Bot activity">
@@ -33,13 +64,50 @@
           <div id="active" class="rows"><p class="empty">Nothing needs attention right now.</p></div>
         </section>
 
+        <section class="stream" aria-label="Pending approvals">
+          <div class="section-head"><h2>Approvals</h2><span id="approval-count">0</span></div>
+          <div id="approvals" class="rows"><p class="empty">No actions are waiting for approval.</p></div>
+        </section>
+
         <section class="stream scheduled" aria-label="Scheduled automations">
           <div class="section-head"><h2>Scheduled</h2><button id="schedule-toggle" type="button">Add</button></div>
           <form id="schedule-form" class="schedule-form" hidden>
             <input id="schedule-instruction" maxlength="4000" placeholder="Jeden Morgen um 8 prüfe mein Projekt" />
+            <select id="schedule-policy" aria-label="Notification policy">
+              <option value="important" selected>Important only</option>
+              <option value="critical">Critical only</option>
+              <option value="all">All updates</option>
+              <option value="digest">Digest</option>
+              <option value="silent">Silent</option>
+            </select>
             <button type="submit">Schedule</button>
           </form>
           <div id="scheduled" class="rows"><p class="empty">No automations yet.</p></div>
+        </section>
+
+        <section class="stream" aria-label="Odin Bot memory">
+          <div class="section-head"><h2>Memory</h2><button id="memory-toggle" type="button">Add</button></div>
+          <form id="memory-form" class="memory-form" hidden>
+            <div class="memory-grid">
+              <label for="memory-kind"><span>Kind</span><select id="memory-kind">
+                <option value="user_preference">User preference</option>
+                <option value="project" selected>Project</option>
+                <option value="recurring_task">Recurring task</option>
+                <option value="decision">Decision</option>
+                <option value="working_context">Working context</option>
+                <option value="learned_procedure">Learned procedure</option>
+              </select></label>
+              <label for="memory-sensitivity"><span>Sensitivity</span><select id="memory-sensitivity">
+                <option value="public">Public</option>
+                <option value="internal" selected>Internal</option>
+                <option value="sensitive">Sensitive</option>
+              </select></label>
+            </div>
+            <label for="memory-key"><span>Stable key</span><input id="memory-key" maxlength="160" placeholder="project.build-rule" required /></label>
+            <label for="memory-content"><span>What Odin should remember</span><textarea id="memory-content" maxlength="12000" rows="3" required></textarea></label>
+            <div class="form-actions"><button type="submit">Save memory</button></div>
+          </form>
+          <div id="memories" class="rows"><p class="empty">No explicit memories loaded.</p></div>
         </section>
 
         <section class="stream" aria-label="Odin Bot inbox">
