@@ -1,0 +1,40 @@
+name: M10-M12 integration
+
+on:
+  push:
+    branches: [agent/m10-m12-quota-nvidia-pool]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/m10-m12-quota-nvidia-pool
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply quota/key-pool integration
+        run: node scripts/m10-m12-integrate.mjs
+      - name: Format changed production files
+        run: npx biome check --write src/chat/agent.ts src/chat/engine.ts src/chat/hosted.ts src/bot/executor.ts src/chat/quota.ts src/chat/server-models.ts src/providers/nvidia-pool.ts scripts/sync-vercel-production.mjs .github/workflows/configure-vercel-production.yml
+      - name: Verify full repository
+        run: npm run verify
+      - name: Commit integrated M10-M12 block
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/chat/agent.ts src/chat/engine.ts src/chat/hosted.ts src/bot/executor.ts src/chat/quota.ts src/chat/server-models.ts src/providers/nvidia-pool.ts scripts/sync-vercel-production.mjs .github/workflows/configure-vercel-production.yml
+          if git diff --cached --quiet; then
+            echo "No integration diff to commit"
+            exit 0
+          fi
+          git commit -m "M10-M12: integrate quotas and pooled NVIDIA capacity"
+          git push origin HEAD:agent/m10-m12-quota-nvidia-pool
