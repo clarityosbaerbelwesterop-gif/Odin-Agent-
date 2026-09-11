@@ -1,6 +1,7 @@
 import type { Pool } from "pg";
 import { ChatEngine } from "../chat/engine.js";
-import { GitHubWorkspace } from "../chat/github-workspace.js";
+import { GitHubPullRequestClient } from "../chat/github-delivery.js";
+import { GitHubWorkspaceSession } from "../chat/github-workspace-session.js";
 import { DEFAULT_CHAT_LIMITS } from "../chat/modes.js";
 import { type ActorDatabase, NeonActorDatabase } from "../chat/neon-database.js";
 import { NeonChatStore, NeonMissionStore } from "../chat/neon-store.js";
@@ -17,6 +18,7 @@ import { ChatError, type ChatModel } from "../chat/types.js";
 import { botRuntimeAccess } from "./autonomy.js";
 import { BotControlStore } from "./control-store.js";
 import { botPlanLimits } from "./entitlements.js";
+import { GitHubEventBridge } from "./github-events.js";
 import { BotStore, BotWakeQueue } from "./store.js";
 import { type BotTeamAssignment, planBotTeam, specialistPrompt } from "./team.js";
 import type { ClaimedWakeup } from "./types.js";
@@ -25,6 +27,7 @@ export interface BotWorkerOptions {
   pool: Pool;
   baseModels: readonly ChatModel[];
   credentialEncryptionKey?: string | undefined;
+  publicOrigin?: string | undefined;
 }
 
 interface SpecialistRunResult {
@@ -169,17 +172,20 @@ export class OdinBotWorker {
 
     let conversationId = task.conversationId;
     let turnId = task.turnId;
+    let primaryGitHubSession: GitHubWorkspaceSession | undefined;
     const makeEngine = (id: string, requestedWorkspaceWrites: boolean) => {
       const allowWorkspaceWrites = requestedWorkspaceWrites && workspaceWritesAllowed;
-      const quality = readToolsAllowed
-        ? githubReady
-          ? new GitHubWorkspace(
+      const githubSession =
+        readToolsAllowed && githubReady
+          ? new GitHubWorkspaceSession(
               githubToken as string,
               githubConnection.repository as string,
               githubConnection.defaultBranch as string,
-              async () => {},
             )
-          : new NeonWorkspace(db, id, async () => {})
+          : undefined;
+      if (requestedWorkspaceWrites && githubSession) primaryGitHubSession = githubSession;
+      const quality = readToolsAllowed
+        ? (githubSession ?? new NeonWorkspace(db, id, async () => {}))
         : undefined;
       return new ChatEngine({
         store: new NeonChatStore(db),
@@ -202,13 +208,8 @@ export class OdinBotWorker {
           ? {
               quality,
               workspace: (changed) =>
-                githubReady
-                  ? new GitHubWorkspace(
-                      githubToken as string,
-                      githubConnection.repository as string,
-                      githubConnection.defaultBranch as string,
-                      changed,
-                    )
+                githubSession
+                  ? githubSession.workspace(changed)
                   : new NeonWorkspace(db, id, changed),
             }
           : {}),
@@ -357,6 +358,69 @@ export class OdinBotWorker {
             { taskId: task.id, reviewerTurnId: review.turnId },
           );
           return "blocked";
+        }
+      }
+      if (task.mode === "coding" && githubReady && workspaceWritesAllowed) {
+        const workBranch = primaryGitHubSession?.branchName();
+        if (workBranch) {
+          const delivery = await new GitHubPullRequestClient(
+            githubToken as string,
+            githubConnection.repository as string,
+            githubConnection.defaultBranch as string,
+          ).ensurePullRequest({
+            branch: workBranch,
+            title: `Odin Bot: ${task.goal.replace(/\s+/gu, " ").slice(0, 180)}`,
+            body: `Odin Bot completed task ${task.id} and passed its configured verification plus independent review.\n\nMerge remains a separate user-controlled action.`,
+          });
+          await bot.mergeCheckpoint(task.id, {
+            delivery: {
+              kind: "github_pull_request",
+              repository: githubConnection.repository,
+              branch: workBranch,
+              baseBranch: githubConnection.defaultBranch,
+              pullNumber: delivery.number,
+              url: delivery.url,
+              state: delivery.state,
+              checks: "passed",
+            },
+          });
+          await emitBotEvent(db, task.id, "delivery.pull_request.ready", {
+            repository: githubConnection.repository,
+            branch: workBranch,
+            pullNumber: delivery.number,
+            url: delivery.url,
+          });
+          await bot.addInbox(
+            task.id,
+            "information",
+            "Pull request ready for review",
+            "Odin finished the coding task, passed verification, and opened a pull request. Merge remains under your control.",
+            {
+              taskId: task.id,
+              repository: githubConnection.repository,
+              pullNumber: delivery.number,
+              url: delivery.url,
+            },
+            `delivery:${task.id}:${delivery.number}`,
+          );
+          if (this.options.publicOrigin) {
+            try {
+              await new GitHubEventBridge(this.options.pool, this.options.publicOrigin).ensureHook(
+                wake.ownerId,
+                githubToken as string,
+                githubConnection.repository as string,
+              );
+            } catch {
+              await bot.addInbox(
+                task.id,
+                "important",
+                "GitHub event tracking needs permission",
+                "The pull request is ready, but Odin could not subscribe to repository events. Reconnect GitHub or verify webhook permissions to receive proactive lifecycle updates.",
+                { taskId: task.id, pullNumber: delivery.number },
+                `delivery:${task.id}:${delivery.number}:hook`,
+              );
+            }
+          }
         }
       }
       await control.remember(botIdentity.id, {
