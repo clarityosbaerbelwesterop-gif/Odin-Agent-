@@ -23,6 +23,17 @@ jobs:
       - run: npm ci
       - name: Apply quota/key-pool integration
         run: node scripts/m10-m12-integrate.mjs
+      - name: Tighten generated quota typings and remove transformer
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/chat/quota.ts')
+          text = path.read_text()
+          text = text.replace('Promise<{ rows: any[] }>', 'Promise<{ rows: Record<string, unknown>[] }>')
+          text = text.replace('if (!row || row.status !== "reserved") return;', 'if (row?.status !== "reserved") return;')
+          path.write_text(text)
+          PY
+          rm scripts/m10-m12-integrate.mjs
       - name: Format changed production files
         run: npx biome check --write src/chat/agent.ts src/chat/engine.ts src/chat/hosted.ts src/bot/executor.ts src/chat/quota.ts src/chat/server-models.ts src/providers/nvidia-pool.ts scripts/sync-vercel-production.mjs .github/workflows/configure-vercel-production.yml
       - name: Verify full repository
@@ -31,7 +42,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/chat/agent.ts src/chat/engine.ts src/chat/hosted.ts src/bot/executor.ts src/chat/quota.ts src/chat/server-models.ts src/providers/nvidia-pool.ts scripts/sync-vercel-production.mjs .github/workflows/configure-vercel-production.yml
+          git add src/chat/agent.ts src/chat/engine.ts src/chat/hosted.ts src/bot/executor.ts src/chat/quota.ts src/chat/server-models.ts src/providers/nvidia-pool.ts scripts/sync-vercel-production.mjs .github/workflows/configure-vercel-production.yml scripts/m10-m12-integrate.mjs
           if git diff --cached --quiet; then
             echo "No integration diff to commit"
             exit 0
