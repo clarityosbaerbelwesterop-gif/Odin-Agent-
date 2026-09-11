@@ -7,6 +7,7 @@ import { ToolRuntime } from "../tools/runtime.js";
 import { IndependentVerificationEngine } from "../verification/engine.js";
 import type { VerificationRequest } from "../verification/types.js";
 import { modePolicy, modePrompt } from "./modes.js";
+import type { ChatQuotaController } from "./quota.js";
 import type { ChatRepository } from "./repository.js";
 import { hashText, publicError, safeText } from "./safety.js";
 import { chatTools } from "./tools.js";
@@ -25,6 +26,7 @@ export interface ChatAgentContext {
   turn: ChatTurn;
   model: ChatModel;
   limits: ChatLimits;
+  quota?: ChatQuotaController;
   store: ChatRepository;
   signal: AbortSignal;
   workspace?: RepositoryWorkspace;
@@ -168,16 +170,33 @@ export async function runChatAgent(
       ...(policy.reasoningEffort === undefined ? {} : { reasoningEffort: policy.reasoningEffort }),
       ...(!reviewer && profile.capabilities.toolUse ? { tools: tools.definitions } : {}),
     };
+    const quotaReservation =
+      context.quota && model.sharedCapacity === true
+        ? await context.quota.reserve({
+            requestId: `${turn.id}:model:${state.calls}`,
+            missionId: turn.id,
+            mode: turn.mode,
+            modelId: model.id,
+            estimatedInputTokens: Math.ceil(input / 4),
+            estimatedOutputTokens: output,
+          })
+        : undefined;
     let response: ModelResponse | undefined;
-    if (profile.capabilities.streaming) {
-      for await (const event of model.provider.stream(request, { signal, timeoutMs: 180_000 })) {
-        signal.throwIfAborted();
-        if (event.type === "completed") response = event.response;
-      }
-    } else response = await model.provider.generate(request, { signal, timeoutMs: 180_000 });
-    signal.throwIfAborted();
-    if (!response || response.provider !== model.provider.id || response.model !== model.model)
+    try {
+      if (profile.capabilities.streaming) {
+        for await (const event of model.provider.stream(request, { signal, timeoutMs: 180_000 })) {
+          signal.throwIfAborted();
+          if (event.type === "completed") response = event.response;
+        }
+      } else response = await model.provider.generate(request, { signal, timeoutMs: 180_000 });
+    } catch (error) {
+      if (quotaReservation) await context.quota?.release(quotaReservation).catch(() => undefined);
+      throw error;
+    }
+    if (!response || response.provider !== model.provider.id || response.model !== model.model) {
+      if (quotaReservation) await context.quota?.release(quotaReservation);
       throw new ChatError("PROVIDER_RESPONSE", "Provider returned an invalid response.", 502);
+    }
     const usage = response.usage;
     if (
       ![usage.inputTokens, usage.outputTokens, usage.totalTokens].every(
@@ -186,6 +205,8 @@ export async function runChatAgent(
       usage.inputTokens + usage.outputTokens !== usage.totalTokens
     )
       throw new ChatError("PROVIDER_USAGE", "Provider usage is invalid.", 502);
+    if (quotaReservation) await context.quota?.settle(quotaReservation, usage, response.provider);
+    signal.throwIfAborted();
     state = {
       ...state,
       usageUnknown: previousUnknown,

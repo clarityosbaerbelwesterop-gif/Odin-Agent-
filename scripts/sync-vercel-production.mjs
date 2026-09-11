@@ -151,6 +151,12 @@ async function configureDatabase(report, envKeys) {
     );
     await pool.query(botEventMigration);
     report.checks.push("Odin Bot M7-M9 GitHub event/PR lifecycle schema reconciled");
+    const quotaMigration = await readFile(
+      new URL("../migrations/009_quota_and_provider_pool.sql", import.meta.url),
+      "utf8",
+    );
+    await pool.query(quotaMigration);
+    report.checks.push("M10-M12 quota/provider-pool schema reconciled");
 
     const eventSchema = await pool.query(
       `SELECT to_regclass('odin_control.bot_github_hooks')::text AS hooks,
@@ -291,13 +297,25 @@ async function main() {
     const productionAuthorized = safeSecret("ODIN_NVIDIA_PRODUCTION_AUTHORIZED") === "true";
     const productionNvidia = safeSecret("NVIDIA_PRODUCTION_API_KEY");
     const productionNvidia2 = safeSecret("NVIDIA_PRODUCTION_API_KEY_2");
+    const productionNvidia3 = safeSecret("NVIDIA_PRODUCTION_API_KEY_3");
+    const productionNvidia4 = safeSecret("NVIDIA_PRODUCTION_API_KEY_4");
+    const productionNvidia5 = safeSecret("NVIDIA_PRODUCTION_API_KEY_5");
     if (productionAuthorized && productionNvidia) {
       await upsert("ODIN_NVIDIA_PRODUCTION_AUTHORIZED", "true", envKeys);
       await upsert("NVIDIA_PRODUCTION_API_KEY", productionNvidia, envKeys);
       if (productionNvidia2)
         await upsert("NVIDIA_PRODUCTION_API_KEY_2", productionNvidia2, envKeys);
+      if (productionNvidia3)
+        await upsert("NVIDIA_PRODUCTION_API_KEY_3", productionNvidia3, envKeys);
+      if (productionNvidia4)
+        await upsert("NVIDIA_PRODUCTION_API_KEY_4", productionNvidia4, envKeys);
+      if (productionNvidia5)
+        await upsert("NVIDIA_PRODUCTION_API_KEY_5", productionNvidia5, envKeys);
       report.synced.push("ODIN_NVIDIA_PRODUCTION_AUTHORIZED", "NVIDIA_PRODUCTION_API_KEY");
       if (productionNvidia2) report.synced.push("NVIDIA_PRODUCTION_API_KEY_2");
+      if (productionNvidia3) report.synced.push("NVIDIA_PRODUCTION_API_KEY_3");
+      if (productionNvidia4) report.synced.push("NVIDIA_PRODUCTION_API_KEY_4");
+      if (productionNvidia5) report.synced.push("NVIDIA_PRODUCTION_API_KEY_5");
     } else {
       await upsert("ODIN_NVIDIA_PRODUCTION_AUTHORIZED", "false", envKeys);
       report.operatorGates.push(

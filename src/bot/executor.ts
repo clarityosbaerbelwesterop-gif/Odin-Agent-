@@ -13,6 +13,7 @@ import {
   ProductStore,
   planAllows,
 } from "../chat/product.js";
+import { QuotaStore } from "../chat/quota.js";
 import { WikipediaResearchAdapter } from "../chat/research.js";
 import { ChatError, type ChatModel } from "../chat/types.js";
 import { botRuntimeAccess } from "./autonomy.js";
@@ -97,6 +98,7 @@ export class OdinBotWorker {
     const product = new ProductStore(db, new CredentialVault(this.options.credentialEncryptionKey));
     const account = await product.account();
     const plan = effectivePlan(account);
+    const quota = new QuotaStore(db, plan);
     const limits = botPlanLimits(plan);
     if (!limits.enabled) {
       await bot.updateTask(task.id, "blocked", "Pro entitlement required", "task.blocked", {
@@ -214,6 +216,7 @@ export class OdinBotWorker {
             }
           : {}),
         ...(readToolsAllowed ? { research: new WikipediaResearchAdapter("de") } : {}),
+        quota,
       });
     };
 

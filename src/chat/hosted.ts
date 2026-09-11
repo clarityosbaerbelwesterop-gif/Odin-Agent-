@@ -38,6 +38,7 @@ import {
   subscriptionPriceId,
   verifyStripeSignature,
 } from "./product.js";
+import { QuotaStore } from "./quota.js";
 import { WikipediaResearchAdapter } from "./research.js";
 import { hashText, identifier, integer, object, publicError } from "./safety.js";
 import { createSharedNvidiaModels } from "./server-models.js";
@@ -358,6 +359,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       db,
       new CredentialVault(process.env.ODIN_CREDENTIAL_ENCRYPTION_KEY),
     );
+    const quota = new QuotaStore(db, effectivePlan(await product.account()));
     const githubConnection = await product.github();
     const githubToken = githubConnection.connected ? await product.githubToken() : undefined;
     const githubWorkspaceReady = Boolean(
@@ -419,6 +421,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
             }
           : {}),
         research: new WikipediaResearchAdapter("de"),
+        quota,
         ...(signal ? { signal } : {}),
       });
     };
@@ -441,6 +444,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
         ...createEngine(db).capabilities(),
         user: { email: identity.email },
         account: { ...account, effectivePlan: effectivePlan(account) },
+        quota: await quota.snapshot(),
         providers: await product.credentials(),
         github: await product.github(),
         billing: {

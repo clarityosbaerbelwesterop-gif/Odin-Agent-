@@ -1,5 +1,5 @@
 import { CapabilityRegistry, makeCapabilities } from "../providers/capabilities.js";
-import { NvidiaProvider } from "../providers/nvidia.js";
+import { type NvidiaPoolCredential, PooledNvidiaProvider } from "../providers/nvidia-pool.js";
 import type { ModelCapabilities, ReasoningEffort } from "../providers/types.js";
 import type { ChatModel, ProductPlan } from "./types.js";
 
@@ -12,7 +12,6 @@ interface NvidiaSharedModelDefinition {
   readonly plan: ProductPlan;
   readonly summary: string;
   readonly recommendedFor: readonly string[];
-  readonly credentialSlot: "primary" | "secondary";
   readonly version: string;
   readonly reference: string;
   readonly capabilities: Partial<ModelCapabilities> & {
@@ -21,11 +20,7 @@ interface NvidiaSharedModelDefinition {
   readonly timeoutMs: number;
 }
 
-/**
- * Shared Odin capacity is deliberately separate from NVIDIA Developer Program/API Catalog keys.
- * Build/API Catalog access is suitable for evaluation and preview work, while public production
- * capacity must be explicitly backed by a production-authorized credential.
- */
+/** Shared capacity catalog. All models use the same bounded credential pool. */
 export const NVIDIA_SHARED_MODEL_DEFINITIONS: readonly NvidiaSharedModelDefinition[] =
   Object.freeze([
     {
@@ -35,7 +30,6 @@ export const NVIDIA_SHARED_MODEL_DEFINITIONS: readonly NvidiaSharedModelDefiniti
       plan: "free",
       summary: "Schnelles Reasoning- und Tool-Modell für normale Chat- und Agent-Aufgaben.",
       recommendedFor: ["Chat", "Fast reasoning", "Tool use"],
-      credentialSlot: "primary",
       version: "nvidia-api-2026-09-10",
       reference: "https://docs.api.nvidia.com/nim/reference/openai-gpt-oss-20b-infer",
       capabilities: {
@@ -56,7 +50,6 @@ export const NVIDIA_SHARED_MODEL_DEFINITIONS: readonly NvidiaSharedModelDefiniti
       plan: "pro",
       summary: "Größeres Reasoning-Modell für anspruchsvollere Pro-Aufgaben und Tool-Nutzung.",
       recommendedFor: ["Thinking", "Research", "Tool use"],
-      credentialSlot: "primary",
       version: "nvidia-api-2026-09-10",
       reference: "https://docs.api.nvidia.com/nim/reference/openai-gpt-oss-120b-infer",
       capabilities: {
@@ -77,7 +70,6 @@ export const NVIDIA_SHARED_MODEL_DEFINITIONS: readonly NvidiaSharedModelDefiniti
       plan: "developer",
       summary: "Schnelles 1M-Kontext-Modell für Coding, Reasoning und agentische Workflows.",
       recommendedFor: ["Coding", "Long context", "Agents"],
-      credentialSlot: "secondary",
       version: "nvidia-api-2026-09-10",
       reference: "https://docs.api.nvidia.com/nim/re/reference/deepseek-ai-deepseek-v4-flash-0731",
       capabilities: {
@@ -98,7 +90,6 @@ export const NVIDIA_SHARED_MODEL_DEFINITIONS: readonly NvidiaSharedModelDefiniti
       summary:
         "Natives multimodales 1M-Kontext-Modell für langes Coding, Reasoning und Tool-Nutzung.",
       recommendedFor: ["Coding", "Long horizon", "Vision", "Tool use"],
-      credentialSlot: "primary",
       version: "nvidia-api-2026-09-10",
       reference: "https://docs.api.nvidia.com/nim/re/reference/moonshotai-kimi-k3-infer",
       capabilities: {
@@ -122,7 +113,6 @@ export const NVIDIA_SHARED_MODEL_DEFINITIONS: readonly NvidiaSharedModelDefiniti
       summary:
         "Frontier-starkes 1M-Kontext-Modell für schwieriges Coding, Reasoning und agentische Aufgaben.",
       recommendedFor: ["Ultra", "Hard coding", "Reasoning", "Agents"],
-      credentialSlot: "primary",
       version: "nvidia-api-2026-09-10",
       reference: "https://docs.api.nvidia.com/nim/reference/deepseek-ai-deepseek-v4-pro-0813",
       capabilities: {
@@ -142,7 +132,6 @@ export const NVIDIA_SHARED_MODEL_DEFINITIONS: readonly NvidiaSharedModelDefiniti
       plan: "ultra",
       summary: "Flagship-Modell für Coding, Reasoning, Vision und native Function Calls.",
       recommendedFor: ["Ultra", "Coding", "Vision", "Structured work"],
-      credentialSlot: "secondary",
       version: "nvidia-api-2026-09-10",
       reference:
         "https://docs.api.nvidia.com/nim/reference/mistralai-mistral-medium-3-5-128b-infer",
@@ -166,24 +155,37 @@ function isProduction(env: Environment): boolean {
     : env.NODE_ENV === "production";
 }
 
-export function sharedNvidiaCredential(env: Environment, slot: "primary" | "secondary"): string {
+export function sharedNvidiaCredentials(env: Environment): readonly NvidiaPoolCredential[] {
   if (isProduction(env)) {
-    if (env.ODIN_NVIDIA_PRODUCTION_AUTHORIZED !== "true") return "";
-    const primary = env.NVIDIA_PRODUCTION_API_KEY ?? "";
-    if (slot === "secondary") return env.NVIDIA_PRODUCTION_API_KEY_2 ?? primary;
-    return primary;
+    if (env.ODIN_NVIDIA_PRODUCTION_AUTHORIZED !== "true") return [];
+    return [1, 2, 3, 4, 5]
+      .map((index) => ({
+        slot: `production-${index}`,
+        value:
+          index === 1
+            ? (env.NVIDIA_PRODUCTION_API_KEY ?? "")
+            : (env[`NVIDIA_PRODUCTION_API_KEY_${index}`] ?? ""),
+      }))
+      .filter((credential) => credential.value !== "");
   }
 
-  const primary = env.NV_API_KEY ?? env.NVIDIA_API_KEY ?? "";
-  if (slot === "secondary") return env.NV_API_KEY_2 ?? env.NV_PRO_API_KEY ?? primary;
-  return primary;
+  const fallback = env.NVIDIA_API_KEY ?? "";
+  return [1, 2, 3, 4, 5]
+    .map((index) => ({
+      slot: `preview-${index}`,
+      value:
+        index === 1
+          ? (env.NV_API_KEY ?? fallback)
+          : (env[`NV_API_KEY_${index}`] ?? (index === 2 ? (env.NV_PRO_API_KEY ?? "") : "")),
+    }))
+    .filter((credential) => credential.value !== "");
 }
 
 export function createSharedNvidiaModels(env: Environment = process.env): ChatModel[] {
+  const credentials = sharedNvidiaCredentials(env);
+  if (credentials.length === 0) return [];
   const models: ChatModel[] = [];
   for (const definition of NVIDIA_SHARED_MODEL_DEFINITIONS) {
-    const credential = sharedNvidiaCredential(env, definition.credentialSlot);
-    if (!credential) continue;
     const capabilities = new CapabilityRegistry([
       {
         model: definition.model,
@@ -204,9 +206,10 @@ export function createSharedNvidiaModels(env: Environment = process.env): ChatMo
       plan: definition.plan,
       summary: definition.summary,
       recommendedFor: definition.recommendedFor,
-      provider: new NvidiaProvider({
+      sharedCapacity: true,
+      provider: new PooledNvidiaProvider({
         capabilities,
-        credential: () => credential,
+        credentials,
         reasoningParameter: "reasoning_effort",
         defaultTimeoutMs: definition.timeoutMs,
       }),

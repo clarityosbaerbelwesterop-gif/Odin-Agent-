@@ -10,7 +10,11 @@ on:
       - migrations/006_odin_bot_m1_m3.sql
       - migrations/007_odin_bot_m4_m6.sql
       - migrations/008_odin_bot_m7_m9.sql
+      - migrations/009_quota_and_provider_pool.sql
       - src/bot/**
+      - src/providers/nvidia-pool.ts
+      - src/chat/quota.ts
+      - src/chat/server-models.ts
       - src/chat/github-*.ts
       - src/chat/hosted.ts
       - web/bot.*
@@ -52,6 +56,9 @@ jobs:
           FREE_API_KEY: ${{ secrets.FREE_API_KEY }}
           NVIDIA_PRODUCTION_API_KEY: ${{ secrets.NV_API_KEY }}
           NVIDIA_PRODUCTION_API_KEY_2: ${{ secrets.NV_API_KEY_2 }}
+          NVIDIA_PRODUCTION_API_KEY_3: ${{ secrets.NV_API_KEY_3 }}
+          NVIDIA_PRODUCTION_API_KEY_4: ${{ secrets.NV_API_KEY_4 }}
+          NVIDIA_PRODUCTION_API_KEY_5: ${{ secrets.NV_API_KEY_5 }}
           ODIN_NVIDIA_PRODUCTION_AUTHORIZED: "true"
         run: |
           node scripts/configure-neon-github-auth.mjs
