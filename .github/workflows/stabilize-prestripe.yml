@@ -61,14 +61,125 @@ jobs:
           text = text.replace('const identity = await auth.verifyToken(body.token);', 'await auth.verifyToken(body.token);')
           path.write_text(text)
           PY
+      - name: Align UI compatibility and current product contracts
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new, label):
+              file = Path(path)
+              text = file.read_text()
+              if old not in text:
+                  raise SystemExit(f'Missing anchor: {label}')
+              file.write_text(text.replace(old, new, 1))
+
+          replace(
+              'web/chat.js',
+              '        attachments: screenshotAttachment ? [screenshotAttachment] : [],',
+              '        ...(screenshotAttachment ? { attachments: [screenshotAttachment] } : {}),',
+              'optional screenshot payload',
+          )
+
+          replace(
+              'web/login.js',
+              '      "Erstelle deine Identity. Danach bestätigst du deine E-Mail.",',
+              '      "Erstelle deine Identity und öffne danach direkt deinen Workspace.",',
+              'signup copy',
+          )
+
+          replace(
+              'web/login.js',
+              '''    if (mode === "signup") {
+      $("auth-password").value = "";
+      await clearIncompleteSession();
+      applyMode("verify");
+      try {
+        await request("/api/auth/sendCode", { email });
+        status("Konto erstellt. Der Bestätigungscode wurde per E-Mail gesendet.", "success");
+      } catch {
+        status(
+          "Konto erstellt. Der Code konnte nicht automatisch gesendet werden. Nutze „Code senden“.",
+          "error",
+        );
+      }
+    } else if (mode === "forgot") {''',
+              '''    if (mode === "signup") {
+      $("auth-password").value = "";
+      try {
+        await request("/api/config");
+        status("Konto erstellt. Workspace wird geöffnet …", "success");
+        window.location.replace(safeReturnTo());
+      } catch (error) {
+        if (error.status !== 401) throw error;
+        applyMode("login");
+        status("Konto erstellt. Du kannst dich jetzt anmelden.", "success");
+      }
+    } else if (mode === "forgot") {''',
+              'signup without forced verification',
+          )
+
+          login_test = Path('scripts/login.test.mjs')
+          text = login_test.read_text()
+          start = text.index('test("registration sends a verification code automatically and enters verification state"')
+          end = text.index('\ntest("password recovery is an explicit state"', start)
+          replacement = '''test("registration does not force email verification when the server accepts the account", async () => {
+  const client = await loginClient();
+  try {
+    client.get("switch-mode").click();
+    assert.equal(client.get("login-title").textContent, "Odin Account erstellen");
+    assert.equal(client.get("name-field").hidden, false);
+    assert.equal(client.get("name-field").style.display, "");
+    assert.equal(client.get("code-field").style.display, "none");
+    assert.equal(client.get("auth-password").minLength, 14);
+
+    client.get("auth-email").value = "person@example.com";
+    client.get("auth-name").value = "Person";
+    client.get("auth-password").value = "correct-password";
+    client
+      .get("auth-form")
+      .dispatchEvent(new client.window.Event("submit", { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.ok(client.requests.find((item) => item.path === "/api/auth/signup"));
+    assert.equal(client.requests.find((item) => item.path === "/api/auth/logout"), undefined);
+    assert.equal(client.requests.find((item) => item.path === "/api/auth/sendCode"), undefined);
+    assert.equal(client.get("login-title").textContent, "Bei Odin anmelden");
+    assert.equal(client.get("code-field").hidden, true);
+    assert.equal(client.get("password-field").style.display, "");
+    assert.match(client.get("auth-status").textContent, /Konto erstellt/u);
+  } finally {
+    client.close();
+  }
+});
+'''
+          login_test.write_text(text[:start] + replacement + text[end:])
+
+          product_test = Path('scripts/product-info.test.mjs')
+          text = product_test.read_text()
+          old = '''  assert.match(pages[0], /PREVIEW-ENTWURF/u);
+  assert.match(pages[0], /\\[BETREIBERNAME/u);
+  assert.match(pages[1], /Verbindliche Preise werden ausschließlich im Stripe Checkout angezeigt/u);
+  assert.match(pages[2], /PARTIALLY VERIFIED/u);
+  assert.match(pages[3], /BLOCKED · BETREIBERANGABEN FEHLEN/u);'''
+          new = '''  assert.match(pages[0], /TESTBETRIEB/u);
+  assert.match(pages[0], /\\[BETREIBERNAME/u);
+  assert.match(pages[0], /Launch-Gate/u);
+  assert.match(pages[1], /Pre-Stripe-Testbetrieb/u);
+  assert.match(pages[2], /PARTIALLY VERIFIED/u);
+  assert.match(pages[3], /BLOCKED · BETREIBERANGABEN FEHLEN/u);'''
+          if old not in text:
+              raise SystemExit('Missing anchor: legal product test')
+          product_test.write_text(text.replace(old, new, 1))
+          PY
       - name: Format changed code, tests, and legal surfaces
-        run: npx biome check --write scripts/stabilize-prestripe.mjs src/chat/product.ts src/chat/neon-auth.ts src/chat/modes.ts src/chat/types.ts src/chat/engine.ts src/chat/agent.ts src/chat/neon-store.ts src/chat/hosted.ts src/bot/executor.ts test/chat/hosted.test.ts test/chat/neon-auth.test.ts test/chat/product.test.ts web/login.js web/workspace.js web/chat.js web/bot.js web/chat.css web/bot.css web/login.html web/chat.html web/bot.html web/eula.html web/privacy.html web/cookies.html web/ai-act.html web/imprint.html web/gdpr.html
+        run: npx biome check --write scripts/stabilize-prestripe.mjs src/chat/product.ts src/chat/neon-auth.ts src/chat/modes.ts src/chat/types.ts src/chat/engine.ts src/chat/agent.ts src/chat/neon-store.ts src/chat/hosted.ts src/bot/executor.ts test/chat/hosted.test.ts test/chat/neon-auth.test.ts test/chat/product.test.ts scripts/login.test.mjs scripts/product-info.test.mjs web/login.js web/workspace.js web/chat.js web/bot.js web/chat.css web/bot.css web/login.html web/chat.html web/bot.html web/eula.html web/privacy.html web/cookies.html web/ai-act.html web/imprint.html web/gdpr.html
       - name: Verify full repository
         run: npm run verify
       - name: Commit verified product tree
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/chat/product.ts src/chat/neon-auth.ts src/chat/modes.ts src/chat/types.ts src/chat/engine.ts src/chat/agent.ts src/chat/neon-store.ts src/chat/hosted.ts src/bot/executor.ts test/chat/hosted.test.ts test/chat/neon-auth.test.ts test/chat/product.test.ts web/login.html web/login.js web/workspace.js web/chat.html web/chat.js web/chat.css web/bot.html web/bot.js web/bot.css web/eula.html web/privacy.html web/cookies.html web/ai-act.html web/imprint.html web/gdpr.html
+          git add src/chat/product.ts src/chat/neon-auth.ts src/chat/modes.ts src/chat/types.ts src/chat/engine.ts src/chat/agent.ts src/chat/neon-store.ts src/chat/hosted.ts src/bot/executor.ts test/chat/hosted.test.ts test/chat/neon-auth.test.ts test/chat/product.test.ts scripts/login.test.mjs scripts/product-info.test.mjs web/login.html web/login.js web/workspace.js web/chat.html web/chat.js web/chat.css web/bot.html web/bot.js web/bot.css web/eula.html web/privacy.html web/cookies.html web/ai-act.html web/imprint.html web/gdpr.html
           git commit -m 'feat: open full pre-Stripe test lane and stabilize auth workspace legal UX'
           git push origin HEAD:stabilize/prestripe-full-access-legal
