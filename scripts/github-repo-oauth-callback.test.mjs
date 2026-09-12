@@ -17,7 +17,10 @@ test("repository OAuth callback preserves session across GitHub top-level naviga
   const callbackIndex = config.rewrites.findIndex((item) => item.source === "/api/github/callback");
   const catchAllIndex = config.rewrites.findIndex((item) => item.source === "/api/:path*");
   assert(callbackIndex >= 0, "dedicated GitHub callback rewrite is required");
-  assert(catchAllIndex >= 0 && callbackIndex < catchAllIndex, "callback rewrite must precede catch-all API routing");
+  assert(
+    catchAllIndex >= 0 && callbackIndex < catchAllIndex,
+    "callback rewrite must precede catch-all API routing",
+  );
   assert.equal(config.rewrites[callbackIndex].destination, "/api/github-callback");
   assert.equal(config.functions["api/github-callback.mjs"].maxDuration, 60);
 });
