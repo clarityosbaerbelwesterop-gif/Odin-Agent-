@@ -275,10 +275,7 @@ function isComplex(goal: string, mode: ChatMode): boolean {
   return signals.filter(Boolean).length >= 2;
 }
 
-function specialistObjective(
-  id: BotSpecialistId,
-  phase: BotTeamAssignment["phase"],
-): string {
+function specialistObjective(id: BotSpecialistId, phase: BotTeamAssignment["phase"]): string {
   if (phase === "review")
     return "Independently verify the primary result against the full primary objective and identify any unproven claim or release blocker.";
   if (phase === "primary") return "Execute the full primary objective end to end.";
