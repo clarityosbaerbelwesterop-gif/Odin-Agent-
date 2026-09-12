@@ -31,21 +31,23 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           path = Path('scripts/stabilize-prestripe.mjs')
           text = path.read_text()
           generated_placeholders = [
-              '${origin}',
-              '${attachment.mediaType}',
-              '${model.label}',
-              '${tier}',
-              '${github.repository}',
-              '${github.branch}',
-              '${snapshot.connectors?.models?.length ?? 0}',
-              '${item.label}',
-              '${item.provider}',
+              'origin',
+              'attachment.mediaType',
+              'model.label',
+              'tier',
+              'github.repository',
+              'github.branch',
+              'snapshot.connectors?.models?.length ?? 0',
+              'item.label',
+              'item.provider',
           ]
-          for placeholder in generated_placeholders:
-              text = text.replace(placeholder, '\\' + placeholder)
+          for expression in generated_placeholders:
+              pattern = rf'(?<!\\)\$\{{{re.escape(expression)}\}}'
+              text = re.sub(pattern, lambda match: '\\' + match.group(0), text)
           path.write_text(text)
           PY
           node scripts/stabilize-prestripe.mjs
