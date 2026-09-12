@@ -5,6 +5,9 @@ on:
     branches: [stabilize/prestripe-full-access-legal]
     paths:
       - scripts/stabilize-prestripe.mjs
+      - test/chat/hosted.test.ts
+      - test/chat/neon-auth.test.ts
+      - test/chat/product.test.ts
       - .github/workflows/stabilize-prestripe.yml
 
 permissions:
@@ -58,14 +61,14 @@ jobs:
           text = text.replace('const identity = await auth.verifyToken(body.token);', 'await auth.verifyToken(body.token);')
           path.write_text(text)
           PY
-      - name: Format changed code and generated legal surfaces
-        run: npx biome check --write scripts/stabilize-prestripe.mjs src/chat/product.ts src/chat/neon-auth.ts src/chat/modes.ts src/chat/types.ts src/chat/engine.ts src/chat/agent.ts src/chat/neon-store.ts src/chat/hosted.ts src/bot/executor.ts web/login.js web/workspace.js web/chat.js web/bot.js web/chat.css web/bot.css web/login.html web/chat.html web/bot.html web/eula.html web/privacy.html web/cookies.html web/ai-act.html web/imprint.html web/gdpr.html
+      - name: Format changed code, tests, and legal surfaces
+        run: npx biome check --write scripts/stabilize-prestripe.mjs src/chat/product.ts src/chat/neon-auth.ts src/chat/modes.ts src/chat/types.ts src/chat/engine.ts src/chat/agent.ts src/chat/neon-store.ts src/chat/hosted.ts src/bot/executor.ts test/chat/hosted.test.ts test/chat/neon-auth.test.ts test/chat/product.test.ts web/login.js web/workspace.js web/chat.js web/bot.js web/chat.css web/bot.css web/login.html web/chat.html web/bot.html web/eula.html web/privacy.html web/cookies.html web/ai-act.html web/imprint.html web/gdpr.html
       - name: Verify full repository
         run: npm run verify
       - name: Commit verified product tree
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/chat/product.ts src/chat/neon-auth.ts src/chat/modes.ts src/chat/types.ts src/chat/engine.ts src/chat/agent.ts src/chat/neon-store.ts src/chat/hosted.ts src/bot/executor.ts web/login.html web/login.js web/workspace.js web/chat.html web/chat.js web/chat.css web/bot.html web/bot.js web/bot.css web/eula.html web/privacy.html web/cookies.html web/ai-act.html web/imprint.html web/gdpr.html
+          git add src/chat/product.ts src/chat/neon-auth.ts src/chat/modes.ts src/chat/types.ts src/chat/engine.ts src/chat/agent.ts src/chat/neon-store.ts src/chat/hosted.ts src/bot/executor.ts test/chat/hosted.test.ts test/chat/neon-auth.test.ts test/chat/product.test.ts web/login.html web/login.js web/workspace.js web/chat.html web/chat.js web/chat.css web/bot.html web/bot.js web/bot.css web/eula.html web/privacy.html web/cookies.html web/ai-act.html web/imprint.html web/gdpr.html
           git commit -m 'feat: open full pre-Stripe test lane and stabilize auth workspace legal UX'
           git push origin HEAD:stabilize/prestripe-full-access-legal
