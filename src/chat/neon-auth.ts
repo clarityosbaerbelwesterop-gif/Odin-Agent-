@@ -102,12 +102,17 @@ export class NeonAuth {
     }
     return undefined;
   }
+  /**
+   * Repository OAuth returns to Odin as a top-level GET navigation from github.com.
+   * SameSite=Lax is required so the first-party session survives that standards-based
+   * OAuth callback. Mutating Odin routes still require the same-origin CSRF header.
+   */
   oauthJwtCookie(token: string): string {
     if (!token || token.length > 16000 || /[\r\n]/u.test(token)) throw denied();
-    return `${OAUTH_JWT_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${OAUTH_JWT_MAX_AGE_SECONDS}`;
+    return `${OAUTH_JWT_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${OAUTH_JWT_MAX_AGE_SECONDS}`;
   }
   clearOauthJwtCookie(): string {
-    return `${OAUTH_JWT_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`;
+    return `${OAUTH_JWT_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
   }
   async session(cookie: string, origin: string): Promise<NeonIdentity> {
     const oauthToken = this.oauthJwt(cookie);
@@ -183,7 +188,7 @@ export class NeonAuth {
       const age = /;\s*Max-Age=(-?\d+)/iu.exec(raw)?.[1];
       const expires = /;\s*Expires=([^;]+)/iu.exec(raw)?.[1];
       return [
-        `${pair}; Path=/; HttpOnly; Secure; SameSite=Strict${age ? `; Max-Age=${Math.max(0, Math.min(Number(age), 604800))}` : ""}${expires ? `; Expires=${expires}` : ""}`,
+        `${pair}; Path=/; HttpOnly; Secure; SameSite=Lax${age ? `; Max-Age=${Math.max(0, Math.min(Number(age), 604800))}` : ""}${expires ? `; Expires=${expires}` : ""}`,
       ];
     });
   }
