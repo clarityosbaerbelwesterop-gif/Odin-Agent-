@@ -44,6 +44,8 @@ export interface BotMemoryRecord extends BotMemoryInput {
 const iso = (value: Date | string | null | undefined) =>
   value ? new Date(value).toISOString() : null;
 
+const jsonb = (value: unknown): string => JSON.stringify(value);
+
 export class BotControlStore {
   constructor(readonly db: ActorDatabase) {}
 
@@ -254,10 +256,10 @@ export class BotControlStore {
       const row = (
         await client.query(
           `INSERT INTO odin_api.bot_focus(task_id,primary_objective,definition_of_done,team_plan)
-           VALUES($1,$2,$3,$4) ON CONFLICT(owner_id,task_id) DO UPDATE SET
+           VALUES($1,$2,$3::jsonb,$4::jsonb) ON CONFLICT(owner_id,task_id) DO UPDATE SET
              team_plan=CASE WHEN odin_api.bot_focus.team_plan='{}'::jsonb THEN excluded.team_plan ELSE odin_api.bot_focus.team_plan END
            RETURNING *`,
-          [taskId, clean, defaultDefinitionOfDone(clean), teamPlan],
+          [taskId, clean, jsonb(defaultDefinitionOfDone(clean)), jsonb(teamPlan)],
         )
       ).rows[0];
       return mapFocus(row);
@@ -292,14 +294,14 @@ export class BotControlStore {
       const row = (
         await client.query(
           `UPDATE odin_api.bot_focus SET
-           current_plan=COALESCE($2,current_plan),completed_steps=COALESCE($3,completed_steps),open_blockers=COALESCE($4,open_blockers),
+           current_plan=COALESCE($2::jsonb,current_plan),completed_steps=COALESCE($3::jsonb,completed_steps),open_blockers=COALESCE($4::jsonb,open_blockers),
            drift_count=drift_count+CASE WHEN $5 THEN 1 ELSE 0 END,revision=revision+1,updated_at=now()
            WHERE task_id=$1 RETURNING *`,
           [
             taskId,
-            input.currentPlan ?? null,
-            input.completedSteps ?? null,
-            input.openBlockers ?? null,
+            input.currentPlan === undefined ? null : jsonb(input.currentPlan),
+            input.completedSteps === undefined ? null : jsonb(input.completedSteps),
+            input.openBlockers === undefined ? null : jsonb(input.openBlockers),
             assessment.shouldReplan,
           ],
         )
