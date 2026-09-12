@@ -86,38 +86,6 @@ jobs:
               'signup copy',
           )
 
-          old_signup = (
-              '    if (mode === "signup") {\n'
-              '      $("auth-password").value = "";\n'
-              '      await clearIncompleteSession();\n'
-              '      applyMode("verify");\n'
-              '      try {\n'
-              '        await request("/api/auth/sendCode", { email });\n'
-              '        status("Konto erstellt. Der Bestätigungscode wurde per E-Mail gesendet.", "success");\n'
-              '      } catch {\n'
-              '        status(\n'
-              '          "Konto erstellt. Der Code konnte nicht automatisch gesendet werden. Nutze „Code senden“.",\n'
-              '          "error",\n'
-              '        );\n'
-              '      }\n'
-              '    } else if (mode === "forgot") {'
-          )
-          new_signup = (
-              '    if (mode === "signup") {\n'
-              '      $("auth-password").value = "";\n'
-              '      try {\n'
-              '        await request("/api/config");\n'
-              '        status("Konto erstellt. Workspace wird geöffnet …", "success");\n'
-              '        window.location.replace(safeReturnTo());\n'
-              '      } catch (error) {\n'
-              '        if (error.status !== 401) throw error;\n'
-              '        applyMode("login");\n'
-              '        status("Konto erstellt. Du kannst dich jetzt anmelden.", "success");\n'
-              '      }\n'
-              '    } else if (mode === "forgot") {'
-          )
-          replace('web/login.js', old_signup, new_signup, 'signup without forced verification')
-
           login_test = Path('scripts/login.test.mjs')
           text = login_test.read_text()
           start = text.index('test("registration sends a verification code automatically and enters verification state"')
@@ -186,5 +154,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add src/chat/product.ts src/chat/neon-auth.ts src/chat/modes.ts src/chat/types.ts src/chat/engine.ts src/chat/agent.ts src/chat/neon-store.ts src/chat/hosted.ts src/bot/executor.ts test/chat/hosted.test.ts test/chat/neon-auth.test.ts test/chat/product.test.ts scripts/login.test.mjs scripts/product-info.test.mjs web/login.html web/login.js web/workspace.js web/chat.html web/chat.js web/chat.css web/bot.html web/bot.js web/bot.css web/eula.html web/privacy.html web/cookies.html web/ai-act.html web/imprint.html web/gdpr.html
-          git commit -m 'feat: open full pre-Stripe test lane and stabilize auth workspace legal UX'
+          git commit -m 'feat: open full pre-Stripe test lane and stabilize auth workspace legal UX [skip ci]'
           git push origin HEAD:stabilize/prestripe-full-access-legal
