@@ -117,12 +117,14 @@ test("FreeLLM key classification never mistakes catalog licensing for inference 
   assert.equal(classifyFreeKey("synthetic-other"), "UNRECOGNIZED_PROVIDER_ENDPOINT_REQUIRED");
 });
 
-test("Vercel function entry uses the repository-built JavaScript artifact", async () => {
+test("Vercel function entries use the repository-built JavaScript artifact", async () => {
   const config = JSON.parse(await readFile(new URL("../vercel.json", import.meta.url), "utf8"));
-  assert.deepEqual(Object.keys(config.functions), ["api/index.mjs"]);
-  const wrapper = await readFile(new URL("../api/index.mjs", import.meta.url), "utf8");
-  assert.match(wrapper, /\.\.\/dist\/src\/chat\/hosted\.js/u);
-  assert.doesNotMatch(wrapper, /\.\.\/src\/chat\/hosted\.js/u);
+  assert.deepEqual(Object.keys(config.functions), ["api/index.mjs", "api/github-callback.mjs"]);
+  for (const entry of ["index.mjs", "github-callback.mjs"]) {
+    const wrapper = await readFile(new URL(`../api/${entry}`, import.meta.url), "utf8");
+    assert.match(wrapper, /\.\.\/dist\/src\/chat\/hosted\.js/u);
+    assert.doesNotMatch(wrapper, /\.\.\/src\/chat\/hosted\.js/u);
+  }
 });
 
 test("hosted smoke reuses only a short-lived share belonging to the pinned deployment", () => {
