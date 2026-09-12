@@ -159,6 +159,23 @@ async function main() {
       assert.equal(runtimeRole[key], false, `ODIN_RUNTIME_${key}`);
     report.checks.push("odin_runtime is a non-login, non-privileged, non-RLS-bypass role");
 
+    const runtimeControlGrants = (
+      await pool.query(
+        `SELECT
+          has_schema_privilege('odin_runtime','odin_control','USAGE') AS schema_usage,
+          has_function_privilege(
+            'odin_runtime',
+            'odin_control.enqueue_bot_wakeup(text,uuid,timestamptz,text,integer)',
+            'EXECUTE'
+          ) AS enqueue_execute`,
+      )
+    ).rows[0];
+    assert.equal(runtimeControlGrants?.schema_usage, true, "ODIN_RUNTIME_CONTROL_SCHEMA_USAGE");
+    assert.equal(runtimeControlGrants?.enqueue_execute, true, "ODIN_RUNTIME_ENQUEUE_EXECUTE");
+    report.checks.push(
+      "odin_runtime can resolve and execute the scoped bot wakeup API without direct control-table grants",
+    );
+
     const planConstraint = await pool.query(
       `SELECT pg_get_constraintdef(c.oid) AS definition
        FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid
