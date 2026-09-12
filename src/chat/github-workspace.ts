@@ -17,6 +17,7 @@ type GitHubFile = {
 
 export class GitHubWorkspace implements RepositoryWorkspace, QualityCommandRunner {
   #workBranch: string | undefined;
+  readonly #persistedWrites = new Map<string, string>();
   constructor(
     readonly token: string,
     readonly repository: string,
@@ -156,13 +157,19 @@ export class GitHubWorkspace implements RepositoryWorkspace, QualityCommandRunne
     if (!file?.sha)
       throw new ChatError("GITHUB_UPSTREAM", "GitHub did not confirm the file change.", 502);
     await this.changed({ path, before, after: content, sha: hashText(content), branch });
+    this.#persistedWrites.set(path, file.sha);
     return { sha: file.sha };
   }
   branchName(): string | null {
     return this.#workBranch ?? null;
   }
   commands() {
-    return [{ id: "github-checks", label: "GitHub Actions checks on the isolated Odin branch" }];
+    return [
+      {
+        id: "github-checks",
+        label: "GitHub checks, or isolated-branch integrity when repository CI is absent",
+      },
+    ];
   }
   async run(commandId: string, signal: AbortSignal) {
     if (commandId !== "github-checks")
@@ -175,20 +182,74 @@ export class GitHubWorkspace implements RepositoryWorkspace, QualityCommandRunne
     const runs = Array.isArray(branch.check_runs)
       ? (branch.check_runs as Array<{ name?: string; status?: string; conclusion?: string }>)
       : [];
-    if (!runs.length)
+    if (runs.length) {
+      const passed = runs.every(
+        (run) =>
+          run.status === "completed" &&
+          ["success", "neutral", "skipped"].includes(String(run.conclusion)),
+      );
+      return {
+        exitCode: passed ? 0 : 1,
+        output: runs.map((run) => `${run.name}: ${run.status}/${run.conclusion}`).join("\n"),
+      };
+    }
+
+    if (await this.#hasGitHubActionsWorkflows(signal))
       return {
         exitCode: 1,
         output:
-          "Verification incomplete: this repository exposes no trusted checks for the Odin branch.",
+          "Verification pending: GitHub Actions workflows exist, but no check run is available for the Odin branch yet.",
       };
-    const passed = runs.every(
-      (run) =>
-        run.status === "completed" &&
-        ["success", "neutral", "skipped"].includes(String(run.conclusion)),
-    );
+
+    return this.#verifyPersistedWrites(signal);
+  }
+
+  async #hasGitHubActionsWorkflows(signal: AbortSignal): Promise<boolean> {
+    try {
+      const workflows = await this.#api(
+        `/contents/.github/workflows?ref=${encodeURIComponent(this.#workBranch ?? this.defaultBranch)}`,
+        { signal },
+      );
+      if (!Array.isArray(workflows)) return false;
+      return workflows.some(
+        (entry: GitHubFile) =>
+          entry.type === "file" && typeof entry.path === "string" && /\.ya?ml$/iu.test(entry.path),
+      );
+    } catch (error) {
+      if (error instanceof ChatError && error.status === 404) return false;
+      throw error;
+    }
+  }
+
+  async #verifyPersistedWrites(signal: AbortSignal) {
+    if (!this.#persistedWrites.size)
+      return {
+        exitCode: 1,
+        output: "Verification incomplete: no persisted Odin workspace writes were recorded.",
+      };
+
+    const failures: string[] = [];
+    for (const [path, expectedSha] of this.#persistedWrites) {
+      const data = await this.#api(
+        `/contents/${path}?ref=${encodeURIComponent(this.#workBranch ?? this.defaultBranch)}`,
+        { signal },
+      );
+      if (data.type !== "file" || data.sha !== expectedSha) failures.push(path);
+    }
+    if (failures.length)
+      return {
+        exitCode: 1,
+        output: `Branch integrity verification failed for: ${failures.join(", ")}`,
+      };
+
     return {
-      exitCode: passed ? 0 : 1,
-      output: runs.map((run) => `${run.name}: ${run.status}/${run.conclusion}`).join("\n"),
+      exitCode: 0,
+      output: [
+        "verification=branch-integrity-only",
+        `persistedWrites=${this.#persistedWrites.size}`,
+        "No GitHub Actions workflows are configured for this repository branch.",
+        "Verified only that Odin's intended file writes persist on its isolated branch; build/test correctness remains unverified and must not be reported as tested.",
+      ].join("\n"),
     };
   }
 }
