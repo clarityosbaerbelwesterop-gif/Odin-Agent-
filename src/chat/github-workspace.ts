@@ -15,6 +15,14 @@ type GitHubFile = {
   path?: string;
 };
 
+export interface RestoredGitHubWrite {
+  readonly path: string;
+  readonly sha: string;
+}
+
+const ODIN_WORK_BRANCH = /^odin\/\d{4}-\d{2}-\d{2}\/[0-9a-f]{8}$/u;
+const CONTENT_HASH = /^[0-9a-f]{64}$/u;
+
 export class GitHubWorkspace implements RepositoryWorkspace, QualityCommandRunner {
   #workBranch: string | undefined;
   readonly #persistedWrites = new Map<string, string>();
@@ -24,7 +32,19 @@ export class GitHubWorkspace implements RepositoryWorkspace, QualityCommandRunne
     readonly defaultBranch: string,
     readonly changed: (change: ChatChange & { branch: string }) => Promise<void>,
     readonly request: typeof fetch = fetch,
-  ) {}
+    initialWorkBranch?: string,
+    initialWrites: readonly RestoredGitHubWrite[] = [],
+  ) {
+    if (initialWorkBranch && !ODIN_WORK_BRANCH.test(initialWorkBranch))
+      throw new ChatError("INVALID_BRANCH", "Stored Odin work branch is invalid.", 409);
+    this.#workBranch = initialWorkBranch;
+    for (const write of initialWrites) {
+      const path = normalizeWorkspacePath(write.path);
+      if (!CONTENT_HASH.test(write.sha))
+        throw new ChatError("INVALID_CHECKPOINT", "Stored workspace write hash is invalid.", 409);
+      this.#persistedWrites.set(path, write.sha);
+    }
+  }
   async #api(path: string, init: RequestInit = {}) {
     const response = await this.request(`https://api.github.com/repos/${this.repository}${path}`, {
       ...init,
@@ -156,8 +176,9 @@ export class GitHubWorkspace implements RepositoryWorkspace, QualityCommandRunne
     const file = result.content as { sha?: string } | undefined;
     if (!file?.sha)
       throw new ChatError("GITHUB_UPSTREAM", "GitHub did not confirm the file change.", 502);
-    await this.changed({ path, before, after: content, sha: hashText(content), branch });
-    this.#persistedWrites.set(path, file.sha);
+    const contentHash = hashText(content);
+    await this.changed({ path, before, after: content, sha: contentHash, branch });
+    this.#persistedWrites.set(path, contentHash);
     return { sha: file.sha };
   }
   branchName(): string | null {
@@ -229,12 +250,14 @@ export class GitHubWorkspace implements RepositoryWorkspace, QualityCommandRunne
       };
 
     const failures: string[] = [];
-    for (const [path, expectedSha] of this.#persistedWrites) {
-      const data = await this.#api(
-        `/contents/${path}?ref=${encodeURIComponent(this.#workBranch ?? this.defaultBranch)}`,
-        { signal },
-      );
-      if (data.type !== "file" || data.sha !== expectedSha) failures.push(path);
+    for (const [path, expectedHash] of this.#persistedWrites) {
+      try {
+        const current = await this.read({ path, maxBytes: 262144, signal });
+        if (current.truncated || hashText(current.content) !== expectedHash) failures.push(path);
+      } catch {
+        signal.throwIfAborted();
+        failures.push(path);
+      }
     }
     if (failures.length)
       return {

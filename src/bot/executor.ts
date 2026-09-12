@@ -100,6 +100,19 @@ export class OdinBotWorker {
         await this.queue.ack(wake);
         completed.push({ kind: wake.kind, targetId: wake.targetId, result });
       } catch (error) {
+        // A durable execution quantum ending is normal continuation, not a failure attempt.
+        // Requeue it with a fresh failure budget so multi-quantum missions do not fail merely
+        // because a serverless execution window ended safely.
+        if (error instanceof ChatError && error.code === "BOT_RESUME_REQUIRED") {
+          await this.queue.retry(wake, 5);
+          await this.options.pool.query(
+            `UPDATE odin_control.bot_wakeups SET attempts=0
+             WHERE owner_id=$1 AND id=$2 AND lease_owner IS NULL AND lease_token IS NULL`,
+            [wake.ownerId, wake.id],
+          );
+          completed.push({ kind: wake.kind, targetId: wake.targetId, result: "waiting" });
+          continue;
+        }
         if (wake.attempt >= 5) {
           await this.markPermanentFailure(wake, error);
           await this.queue.ack(wake);
@@ -190,9 +203,12 @@ export class OdinBotWorker {
         ? `Continuation of task ${continuation.taskId}. Stored primary objective: ${continuation.objective}`
         : "";
     const botIdentity = await bot.ensureDefaultBot();
-    const { readToolsAllowed, workspaceWritesAllowed } = botRuntimeAccess(
-      botIdentity.autonomyLevel,
-    );
+    const runtimeAccess = botRuntimeAccess(botIdentity.autonomyLevel);
+    const readToolsAllowed = runtimeAccess.readToolsAllowed;
+    const taskWorkspaceWritesRequested =
+      task.mode === "coding" && task.permissions.workspaceWrites === true;
+    const workspaceWritesAllowed =
+      runtimeAccess.workspaceWritesAllowed && taskWorkspaceWritesRequested;
     const teamPlan = planBotTeam(objective, task.mode, limits.maxParallelTasks);
     await control.ensureFocus(
       task.id,
@@ -212,20 +228,38 @@ export class OdinBotWorker {
       })),
       autonomyLevel: botIdentity.autonomyLevel,
       readToolsAllowed,
+      taskWorkspaceWritesRequested,
       workspaceWritesAllowed,
     });
 
     let conversationId = task.conversationId;
     let turnId = task.turnId;
+    const checkpointWorkBranch =
+      typeof task.checkpoint.workBranch === "string" ? task.checkpoint.workBranch : undefined;
+    const checkpointWrites = Array.isArray(task.checkpoint.workspaceChanges)
+      ? task.checkpoint.workspaceChanges.flatMap((value) => {
+          if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+          const item = value as Record<string, unknown>;
+          return typeof item.path === "string" && typeof item.sha === "string"
+            ? [{ path: item.path, sha: item.sha }]
+            : [];
+        })
+      : [];
     let primaryGitHubSession: GitHubWorkspaceSession | undefined;
     const makeEngine = (id: string, requestedWorkspaceWrites: boolean) => {
       const allowWorkspaceWrites = requestedWorkspaceWrites && workspaceWritesAllowed;
+      const restore =
+        requestedWorkspaceWrites && checkpointWorkBranch
+          ? { branch: checkpointWorkBranch, writes: checkpointWrites }
+          : undefined;
       const githubSession =
         readToolsAllowed && githubReady
           ? new GitHubWorkspaceSession(
               githubToken as string,
               githubConnection.repository as string,
               githubConnection.defaultBranch as string,
+              undefined,
+              restore,
             )
           : undefined;
       if (requestedWorkspaceWrites && githubSession) primaryGitHubSession = githubSession;
@@ -324,15 +358,28 @@ export class OdinBotWorker {
       { turnId, teamPlanHash: teamPlan.planHash },
     );
     const engine = makeEngine(conversationId, primary.mayWriteWorkspace);
+    const beforeExecution = await engine.view(turnId);
+    if (beforeExecution.state === "PAUSED") {
+      await engine.control(turnId, "resume", beforeExecution.version);
+      await emitBotEvent(db, task.id, "runtime.resumed", {
+        turnId,
+        fromState: beforeExecution.state,
+      });
+    }
     await engine.execute(turnId);
     const view = await engine.view(turnId);
-    const mainAnswer = await answerForTurn(new NeonChatStore(db), conversationId, turnId);
+    const chatStore = new NeonChatStore(db);
+    const agentCheckpoint = await chatStore.checkpoint(turnId);
+    const mainAnswer = await answerForTurn(chatStore, conversationId, turnId);
     const focusCheckpoint = await control.checkpointFocus(task.id, {
       currentObjective: objective,
       completedSteps:
         view.state === "COMPLETED" ? ["Primary agent completed and verified its mission"] : [],
       openBlockers: view.state === "BLOCKED" ? ["Primary mission entered BLOCKED state"] : [],
     });
+    const workBranch = primaryGitHubSession?.branchName() ?? checkpointWorkBranch ?? null;
+    const workspaceChanges =
+      agentCheckpoint?.changes.map(({ path, sha }) => ({ path, sha })) ?? checkpointWrites;
     await bot.saveCheckpoint(task.id, {
       missionState: view.state,
       missionVersion: view.version,
@@ -340,6 +387,8 @@ export class OdinBotWorker {
       teamPlan,
       focusRevision: focusCheckpoint.focus.revision,
       focusDriftCount: focusCheckpoint.focus.driftCount,
+      workBranch,
+      workspaceChanges,
       specialists: preflightResults.map((result) => ({
         id: result.assignment.specialistId,
         state: result.state,
@@ -407,14 +456,14 @@ export class OdinBotWorker {
         }
       }
       if (task.mode === "coding" && githubReady && workspaceWritesAllowed) {
-        const workBranch = primaryGitHubSession?.branchName();
-        if (workBranch) {
+        const completedWorkBranch = primaryGitHubSession?.branchName() ?? checkpointWorkBranch;
+        if (completedWorkBranch) {
           const delivery = await new GitHubPullRequestClient(
             githubToken as string,
             githubConnection.repository as string,
             githubConnection.defaultBranch as string,
           ).ensurePullRequest({
-            branch: workBranch,
+            branch: completedWorkBranch,
             title: `Odin Bot: ${task.goal.replace(/\s+/gu, " ").slice(0, 180)}`,
             body: `Odin Bot completed task ${task.id} and passed its configured verification plus independent review.\n\nMerge remains a separate user-controlled action.`,
           });
@@ -422,7 +471,7 @@ export class OdinBotWorker {
             delivery: {
               kind: "github_pull_request",
               repository: githubConnection.repository,
-              branch: workBranch,
+              branch: completedWorkBranch,
               baseBranch: githubConnection.defaultBranch,
               pullNumber: delivery.number,
               url: delivery.url,
@@ -432,7 +481,7 @@ export class OdinBotWorker {
           });
           await emitBotEvent(db, task.id, "delivery.pull_request.ready", {
             repository: githubConnection.repository,
-            branch: workBranch,
+            branch: completedWorkBranch,
             pullNumber: delivery.number,
             url: delivery.url,
           });
@@ -514,7 +563,7 @@ export class OdinBotWorker {
       "waiting",
       `Checkpointed at ${view.state}`,
       "runtime.checkpointed",
-      { turnId, state: view.state },
+      { turnId, state: view.state, workBranch },
     );
     throw new ChatError(
       "BOT_RESUME_REQUIRED",

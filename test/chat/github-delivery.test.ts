@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import { GitHubPullRequestClient } from "../../src/chat/github-delivery.js";
 import { GitHubWorkspaceSession } from "../../src/chat/github-workspace-session.js";
@@ -123,6 +124,43 @@ test("M8 verifies persisted branch writes when the target repository has no CI",
   assert.match(result.output, /verification=branch-integrity-only/u);
   assert.match(result.output, /build\/test correctness remains unverified/u);
   assert.ok(requests.some((call) => call.includes("/contents/.github/workflows")));
+});
+
+test("M8 restores a durable Odin branch and its persisted write evidence", async () => {
+  const requests: string[] = [];
+  const branch = "odin/2026-09-12/1234abcd";
+  const contentHash = createHash("sha256").update("new").digest("hex");
+  const request: typeof fetch = async (input, init) => {
+    const url = String(input);
+    const method = init?.method ?? "GET";
+    requests.push(`${method} ${url}`);
+    if (url.includes("/contents/src/file.ts"))
+      return json({
+        type: "file",
+        encoding: "base64",
+        content: Buffer.from("new").toString("base64"),
+        sha: "sha-new",
+      });
+    if (url.includes("/check-runs")) return json({ check_runs: [] });
+    if (url.includes("/contents/.github/workflows")) return json({ message: "Not Found" }, 404);
+    if (url.endsWith("/git/refs") && method === "POST")
+      throw new Error("a restored session must never create a replacement branch");
+    throw new Error(`unexpected ${method} ${url}`);
+  };
+
+  const session = new GitHubWorkspaceSession("token", "acme/odin", "main", request, {
+    branch,
+    writes: [{ path: "src/file.ts", sha: contentHash }],
+  });
+  session.workspace(async () => {});
+  assert.equal(session.branchName(), branch);
+  const result = await session.run("github-checks", AbortSignal.timeout(5_000));
+  assert.equal(result.exitCode, 0);
+  assert.match(result.output, /persistedWrites=1/u);
+  assert.equal(
+    requests.some((call) => call.startsWith("POST ")),
+    false,
+  );
 });
 
 test("M8 does not bypass configured CI when checks are not available yet", async () => {
