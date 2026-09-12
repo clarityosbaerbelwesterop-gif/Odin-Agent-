@@ -131,17 +131,17 @@ test("Neon sessions require a current server session and matching signed user id
   assert.equal(identity.emailVerified, false);
 });
 
-test("OAuth JWT bridge accepts signed Neon identities and expires locally", async () => {
+test("OAuth JWT bridge accepts signed Neon identities and uses Lax for top-level OAuth callbacks", async () => {
   const auth = new NeonAuth(base, fetch, keys);
   const jwt = await token();
   const cookie = auth.oauthJwtCookie(jwt);
   assert.match(cookie, /^__Host-odin-neon-jwt=/u);
-  assert.match(cookie, /; Path=\/; HttpOnly; Secure; SameSite=Strict; Max-Age=840$/u);
+  assert.match(cookie, /; Path=\/; HttpOnly; Secure; SameSite=Lax; Max-Age=840$/u);
   assert.equal(auth.oauthJwt(cookie), jwt);
   assert.equal((await auth.session(cookie, "https://odin.example")).id, "user-a");
   assert.equal(
     auth.clearOauthJwtCookie(),
-    "__Host-odin-neon-jwt=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0",
+    "__Host-odin-neon-jwt=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0",
   );
   const unverified = await token({ emailVerified: false });
   const identity = await auth.session(auth.oauthJwtCookie(unverified), "https://odin.example");
@@ -160,7 +160,7 @@ test("Auth broker forwards only approved session cookies and never follows arbit
   headers.append("set-cookie", "__Secure-neonauth.session_token=wrong-prefix; Path=/");
   const cookies = auth.cookies(new Response("{}", { headers }));
   assert.deepEqual(cookies, [
-    "__Secure-better-auth.session_token=fixture; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=604800",
+    "__Secure-better-auth.session_token=fixture; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800",
   ]);
   await assert.rejects(
     auth.upstream("../admin/delete-user", "POST", "https://odin.example"),
