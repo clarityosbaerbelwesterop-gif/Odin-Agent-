@@ -8,6 +8,9 @@
     "api/index.mjs": {
       "maxDuration": 300,
       "includeFiles": "docs/evals/*.json"
+    },
+    "api/github-callback.mjs": {
+      "maxDuration": 60
     }
   },
   "rewrites": [
@@ -22,6 +25,10 @@
     {
       "source": "/bot",
       "destination": "/bot.html"
+    },
+    {
+      "source": "/api/github/callback",
+      "destination": "/api/github-callback"
     },
     {
       "source": "/api/:path*",
