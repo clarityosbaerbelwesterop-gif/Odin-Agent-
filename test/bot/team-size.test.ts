@@ -11,7 +11,9 @@ test("long coding missions keep persisted team plans below the database budget",
 
   assert.ok(encoded < 50_000, `team plan must stay below 50 KB, got ${encoded}`);
   assert.ok(plan.assignments.every((assignment) => assignment.objective.length < 500));
-  assert.ok(plan.assignments.every((assignment) => !assignment.objective.includes(goal.slice(0, 100))));
+  assert.ok(
+    plan.assignments.every((assignment) => !assignment.objective.includes(goal.slice(0, 100))),
+  );
 });
 
 test("specialist prompts still receive the complete primary objective", () => {
