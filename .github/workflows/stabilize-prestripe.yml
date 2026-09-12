@@ -51,8 +51,15 @@ jobs:
           path.write_text(text)
           PY
           node scripts/stabilize-prestripe.mjs
-      - name: Format changed code
-        run: npx biome check --write src/chat/product.ts src/chat/neon-auth.ts src/chat/modes.ts src/chat/types.ts src/chat/engine.ts src/chat/agent.ts src/chat/neon-store.ts src/chat/hosted.ts src/bot/executor.ts web/login.js web/workspace.js web/chat.js web/bot.js
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('src/chat/hosted.ts')
+          text = path.read_text()
+          text = text.replace('const identity = await auth.verifyToken(body.token);', 'await auth.verifyToken(body.token);')
+          path.write_text(text)
+          PY
+      - name: Format changed code and generated legal surfaces
+        run: npx biome check --write scripts/stabilize-prestripe.mjs src/chat/product.ts src/chat/neon-auth.ts src/chat/modes.ts src/chat/types.ts src/chat/engine.ts src/chat/agent.ts src/chat/neon-store.ts src/chat/hosted.ts src/bot/executor.ts web/login.js web/workspace.js web/chat.js web/bot.js web/chat.css web/bot.css web/login.html web/chat.html web/bot.html web/eula.html web/privacy.html web/cookies.html web/ai-act.html web/imprint.html web/gdpr.html
       - name: Verify full repository
         run: npm run verify
       - name: Commit verified product tree
