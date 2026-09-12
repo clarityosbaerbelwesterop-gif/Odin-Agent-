@@ -32,7 +32,7 @@ test("hosted request transport preserves origin and unauthenticated APIs remain 
     assert.equal(config.status, 200);
     assert.deepEqual(await config.json(), {
       provider: "neon",
-      emailVerificationRequired: true,
+      emailVerificationRequired: false,
       oauth: {
         github: {
           available: true,
