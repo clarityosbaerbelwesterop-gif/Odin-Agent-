@@ -187,7 +187,7 @@ export function planBotTeam(goal: string, mode: ChatMode, maxParallelTasks: numb
       phase,
       mode: phase === "primary" ? mode : definition.defaultMode,
       mayWriteWorkspace: phase === "primary" && definition.mayWriteWorkspace,
-      objective: specialistObjective(id, clean, phase),
+      objective: specialistObjective(id, phase),
     };
   });
 
@@ -196,6 +196,9 @@ export function planBotTeam(goal: string, mode: ChatMode, maxParallelTasks: numb
     throw new Error("Bot team planner violated single-writer ownership.");
   }
 
+  // Keep the persisted team plan compact. The full primary goal is stored on the task and
+  // supplied separately to every specialist prompt, so repeating it in every assignment is
+  // redundant and can overflow the database's bounded team-plan checkpoint for long missions.
   const base = {
     version: 1 as const,
     primary,
@@ -274,12 +277,11 @@ function isComplex(goal: string, mode: ChatMode): boolean {
 
 function specialistObjective(
   id: BotSpecialistId,
-  goal: string,
   phase: BotTeamAssignment["phase"],
 ): string {
   if (phase === "review")
-    return `Independently verify the result against this objective and identify any unproven claim or release blocker: ${goal}`;
-  if (phase === "primary") return goal;
+    return "Independently verify the primary result against the full primary objective and identify any unproven claim or release blocker.";
+  if (phase === "primary") return "Execute the full primary objective end to end.";
   const definition = DEFINITIONS[id];
-  return `Produce a concise ${definition.purpose.toLowerCase()} preflight that materially helps the primary agent complete: ${goal}`;
+  return `Produce a concise ${definition.purpose.toLowerCase()} preflight that materially helps the primary agent complete the full primary objective.`;
 }
