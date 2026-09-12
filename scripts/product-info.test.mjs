@@ -69,9 +69,10 @@ test("public legal surfaces keep incomplete operator and compliance gates visibl
   const pages = await Promise.all(
     ["privacy", "eula", "gdpr", "imprint"].map((name) => read(`web/${name}.html`)),
   );
-  assert.match(pages[0], /PREVIEW-ENTWURF/u);
+  assert.match(pages[0], /TESTBETRIEB/u);
   assert.match(pages[0], /\[BETREIBERNAME/u);
-  assert.match(pages[1], /Verbindliche Preise werden ausschließlich im Stripe Checkout angezeigt/u);
+  assert.match(pages[0], /Launch-Gate/u);
+  assert.match(pages[1], /Pre-Stripe-Testbetrieb/u);
   assert.match(pages[2], /PARTIALLY VERIFIED/u);
   assert.match(pages[3], /BLOCKED · BETREIBERANGABEN FEHLEN/u);
   for (const page of pages) {

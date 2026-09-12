@@ -29,11 +29,12 @@ import { PREVIEW_CSP } from "./preview.js";
 import {
   CredentialVault,
   configuredStripePrice,
-  effectivePlan,
   MODE_MINIMUM_PLAN,
   ProductStore,
   planAllows,
+  preStripeTestMode,
   provider,
+  runtimePlan,
   stripePricePlan,
   subscriptionPriceId,
   verifyStripeSignature,
@@ -145,7 +146,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       );
       send(res, 200, {
         provider: "neon",
-        emailVerificationRequired: true,
+        emailVerificationRequired: false,
         oauth: {
           github: {
             available: githubAvailable,
@@ -173,7 +174,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
         eventDb,
         new CredentialVault(process.env.ODIN_CREDENTIAL_ENCRYPTION_KEY),
       );
-      const limits = botPlanLimits(effectivePlan(await eventProduct.account()));
+      const limits = botPlanLimits(runtimePlan(await eventProduct.account()));
       if (!limits.enabled) {
         await bridge.markProcessed(delivery.ownerId, delivery.deliveryId);
         send(res, 202, { accepted: true, duplicate: false, fired: 0 });
@@ -224,13 +225,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       const body = object(await jsonBody(req), ["token"]);
       if (typeof body.token !== "string" || body.token.length < 32 || body.token.length > 16000)
         throw new ChatError("INVALID_AUTH_TOKEN", "Invalid identity token.", 400);
-      const identity = await auth.verifyToken(body.token);
-      if (!identity.emailVerified)
-        throw new ChatError(
-          "EMAIL_UNVERIFIED",
-          "Verify your email before opening the workspace.",
-          403,
-        );
+      await auth.verifyToken(body.token);
       res.setHeader("Set-Cookie", auth.oauthJwtCookie(body.token));
       send(res, 200, { ok: true });
       return;
@@ -350,7 +345,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
           "Authentication failed. Check your details and email verification.",
           upstream.status === 429 ? 429 : 400,
         );
-      send(res, 200, { ok: true, requiresVerification: operation === "signup" });
+      send(res, 200, { ok: true, requiresVerification: false });
       return;
     }
     const identity = await auth.session(req.headers.cookie ?? "", origin);
@@ -359,7 +354,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       db,
       new CredentialVault(process.env.ODIN_CREDENTIAL_ENCRYPTION_KEY),
     );
-    const quota = new QuotaStore(db, effectivePlan(await product.account()));
+    const quota = new QuotaStore(db, runtimePlan(await product.account()));
     const githubConnection = await product.github();
     const githubToken = githubConnection.connected ? await product.githubToken() : undefined;
     const githubWorkspaceReady = Boolean(
@@ -374,7 +369,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
     const botControl = new BotControlStore(db);
     const botAccess = async () => {
       const account = await product.account();
-      const plan = effectivePlan(account);
+      const plan = runtimePlan(account);
       const limits = botPlanLimits(plan);
       if (!limits.enabled)
         throw new ChatError("BOT_ENTITLEMENT_REQUIRED", "Odin Bot requires Pro or higher.", 403);
@@ -443,7 +438,8 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       send(res, 200, {
         ...createEngine(db).capabilities(),
         user: { email: identity.email },
-        account: { ...account, effectivePlan: effectivePlan(account) },
+        account: { ...account, effectivePlan: runtimePlan(account) },
+        testing: { preStripeAccess: preStripeTestMode() },
         quota: await quota.snapshot(),
         providers: await product.credentials(),
         github: await product.github(),
@@ -458,7 +454,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
         },
         execution: "request",
         bot: {
-          available: botPlanLimits(effectivePlan(account)).enabled,
+          available: botPlanLimits(runtimePlan(account)).enabled,
           durable: true,
           path: "/bot",
         },
@@ -494,6 +490,24 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
         inbox: await botStore.inbox(),
         team: botSpecialists(),
         limits,
+        testing: { preStripeAccess: preStripeTestMode() },
+        connectors: {
+          github: {
+            connected: githubConnection.connected,
+            login: githubConnection.connected ? githubConnection.login : null,
+            repository: githubConnection.connected ? githubConnection.repository : null,
+            branch: githubConnection.connected ? githubConnection.defaultBranch : null,
+            ready: githubWorkspaceReady,
+          },
+          research: { connected: true, label: "Wikipedia / Wikimedia" },
+          models: availableModels.map((model) => ({
+            id: model.id,
+            label: model.label,
+            provider: model.provider.id,
+            imageInput: model.provider.capabilities(model.model).capabilities.imageInput,
+          })),
+          providers: await product.credentials(),
+        },
         runtime: {
           durable: true,
           browserIndependent: true,
@@ -787,32 +801,41 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       return;
     }
     if (url.pathname === "/api/github/callback" && method === "GET") {
-      await product.consumeOAuthState(url.searchParams.get("state") ?? "");
-      const code = url.searchParams.get("code");
-      const client = process.env.GITHUB_REPO_OAUTH_CLIENT_ID;
-      const secret = process.env.GITHUB_REPO_OAUTH_CLIENT_SECRET;
-      if (!code || !client || !secret)
-        throw new ChatError("GITHUB_OAUTH", "GitHub authorization failed.", 400);
-      const response = await fetch("https://github.com/login/oauth/access_token", {
-        method: "POST",
-        headers: { Accept: "application/json", "Content-Type": "application/json" },
-        body: JSON.stringify({
-          client_id: client,
-          client_secret: secret,
-          code,
-          redirect_uri: `${origin}/api/github/callback`,
-        }),
-      });
-      const token = (await response.json()) as { access_token?: string };
-      if (!response.ok || !token.access_token)
-        throw new ChatError("GITHUB_OAUTH", "GitHub authorization failed.", 502);
-      const user = await github(token.access_token, "/user");
-      if (Array.isArray(user) || typeof user.login !== "string")
-        throw new ChatError("GITHUB_UPSTREAM", "GitHub user response was invalid.", 502);
-      await product.saveGithub(token.access_token, user.login);
-      res.statusCode = 303;
-      res.setHeader("Location", "/app?settings=github");
-      res.end();
+      try {
+        await product.consumeOAuthState(url.searchParams.get("state") ?? "");
+        const code = url.searchParams.get("code");
+        const client = process.env.GITHUB_REPO_OAUTH_CLIENT_ID;
+        const secret = process.env.GITHUB_REPO_OAUTH_CLIENT_SECRET;
+        if (!code || !client || !secret)
+          throw new ChatError("GITHUB_OAUTH", "GitHub authorization failed.", 400);
+        const response = await fetch("https://github.com/login/oauth/access_token", {
+          method: "POST",
+          headers: { Accept: "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({
+            client_id: client,
+            client_secret: secret,
+            code,
+            redirect_uri: `${origin}/api/github/callback`,
+          }),
+          redirect: "error",
+          signal: AbortSignal.timeout(10_000),
+        });
+        const token = (await response.json()) as { access_token?: string; error?: string };
+        if (!response.ok || !token.access_token)
+          throw new ChatError("GITHUB_OAUTH", "GitHub authorization failed.", 502);
+        const user = await github(token.access_token, "/user");
+        if (Array.isArray(user) || typeof user.login !== "string")
+          throw new ChatError("GITHUB_UPSTREAM", "GitHub user response was invalid.", 502);
+        await product.saveGithub(token.access_token, user.login);
+        res.statusCode = 303;
+        res.setHeader("Location", "/app?workspace=connected");
+        res.end();
+      } catch (error) {
+        const code = error instanceof ChatError ? error.code : "GITHUB_OAUTH";
+        res.statusCode = 303;
+        res.setHeader("Location", `/app?workspace=error&code=${encodeURIComponent(code)}`);
+        res.end();
+      }
       return;
     }
     if (url.pathname === "/api/github" && method === "GET") {
@@ -1037,7 +1060,13 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
         const token = await db.claim(`submit:${id}`, 15);
         if (!token) throw new ChatError("BUSY", "A submission is already being saved.", 409);
         try {
-          const body = object(await jsonBody(req), ["text", "mode", "modelId", "requestId"]);
+          const body = object(await jsonBody(req, 2_100_000), [
+            "text",
+            "mode",
+            "modelId",
+            "requestId",
+            "attachments",
+          ]);
           const account = await product.account();
           const selectedModel = availableModels.find((model) => model.id === body.modelId);
           const mode = typeof body.mode === "string" ? body.mode : "";
@@ -1046,7 +1075,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
           const modePlan = MODE_MINIMUM_PLAN[mode as keyof typeof MODE_MINIMUM_PLAN];
           const modelPlan = selectedModel?.plan ?? "free";
           const requiredPlan = planAllows(modePlan, modelPlan) ? modePlan : modelPlan;
-          if (!planAllows(effectivePlan(account), requiredPlan))
+          if (!planAllows(runtimePlan(account), requiredPlan))
             throw new ChatError(
               "ENTITLEMENT_REQUIRED",
               `This mission requires the ${requiredPlan} plan.`,
@@ -1067,6 +1096,18 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
               mode: body.mode,
               modelId: identifier(body.modelId),
               requestId: identifier(body.requestId),
+              attachments: Array.isArray(body.attachments)
+                ? body.attachments.map((item) => {
+                    if (!item || typeof item !== "object" || Array.isArray(item))
+                      throw new ChatError("INVALID_ATTACHMENT", "Invalid screenshot attachment.");
+                    const value = item as Record<string, unknown>;
+                    return {
+                      type: "image_url" as const,
+                      url: String(value.url ?? ""),
+                      mediaType: String(value.mediaType ?? ""),
+                    };
+                  })
+                : [],
             }),
           );
         } finally {
@@ -1140,7 +1181,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       if (turn[2] === "run" && method === "POST") {
         await jsonBody(req);
         const resource = `run:${id}`;
-        const runLimit = planQuota(effectivePlan(await product.account())).maxConcurrentMissions;
+        const runLimit = planQuota(runtimePlan(await product.account())).maxConcurrentMissions;
         const claimed = await db.claimBounded(resource, "run:", runLimit);
         if (claimed.status === "busy")
           throw new ChatError("BUSY", "This task already has an active worker.", 409);
@@ -1210,7 +1251,7 @@ async function rate(
       throw new ChatError("RATE_LIMIT", "Too many requests. Try again shortly.", 429);
   });
 }
-async function jsonBody(req: IncomingMessage): Promise<unknown> {
+async function jsonBody(req: IncomingMessage, maxBytes = 64_000): Promise<unknown> {
   if (
     !String(req.headers["content-type"] ?? "")
       .toLowerCase()
@@ -1222,7 +1263,7 @@ async function jsonBody(req: IncomingMessage): Promise<unknown> {
   for await (const chunk of req) {
     const data = Buffer.from(chunk);
     size += data.length;
-    if (size > 64000) throw new ChatError("BODY_LIMIT", "Request is too large.", 413);
+    if (size > maxBytes) throw new ChatError("BODY_LIMIT", "Request is too large.", 413);
     chunks.push(data);
   }
   try {

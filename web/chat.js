@@ -8,6 +8,7 @@ let stream = null;
 let cursor = 0;
 let sending = false;
 let pendingRequest = null;
+let screenshotAttachment = null;
 const changes = new Map();
 const sources = new Map();
 const terminal = new Set(["COMPLETED", "CANCELLED", "BLOCKED", "FAILED"]);
@@ -352,7 +353,10 @@ async function initialize() {
   }
   for (const model of config.models) {
     const tier = model.plan ? model.plan.toUpperCase() : "MODEL";
-    const option = element("option", `${model.label} · ${tier}`);
+    const option = element(
+      "option",
+      config.testing?.preStripeAccess ? model.label : `${model.label} · ${tier}`,
+    );
     option.value = model.id;
     $("model").append(option);
   }
@@ -374,6 +378,65 @@ function updateMode() {
     "Choose how Odin approaches the work.";
 }
 
+function renderScreenshotPreview() {
+  const target = $("attachment-preview");
+  target.replaceChildren();
+  target.hidden = !screenshotAttachment;
+  if (!screenshotAttachment) return;
+  const img = document.createElement("img");
+  img.src = screenshotAttachment.url;
+  img.alt = "Angehängter Screenshot";
+  const remove = element("button", "Entfernen");
+  remove.type = "button";
+  remove.onclick = () => {
+    screenshotAttachment = null;
+    $("screenshot-input").value = "";
+    renderScreenshotPreview();
+  };
+  target.append(img, remove);
+}
+async function compressScreenshot(file) {
+  if (!["image/png", "image/jpeg", "image/webp"].includes(file.type))
+    throw new Error("Nur PNG, JPEG oder WebP werden unterstützt.");
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  let quality = 0.86;
+  let url = canvas.toDataURL("image/jpeg", quality);
+  while (url.length > 900_000 && quality > 0.5) {
+    quality -= 0.08;
+    url = canvas.toDataURL("image/jpeg", quality);
+  }
+  if (url.length > 950_000) throw new Error("Screenshot ist nach Komprimierung noch zu groß.");
+  return { type: "image_url", url, mediaType: "image/jpeg" };
+}
+$("screenshot-button").onclick = () => $("screenshot-input").click();
+$("screenshot-input").onchange = async () => {
+  const file = $("screenshot-input").files?.[0];
+  if (!file) return;
+  try {
+    screenshotAttachment = await compressScreenshot(file);
+    renderScreenshotPreview();
+  } catch (error) {
+    errorBanner(error);
+    $("screenshot-input").value = "";
+  }
+};
+window.addEventListener("odin:workspace-changed", async () => {
+  try {
+    config = await api("/api/config");
+    $("workspace-status").textContent = config.workspace?.writable
+      ? "Workspace verbunden"
+      : "Workspace nicht verbunden";
+  } catch (error) {
+    errorBanner(error);
+  }
+});
+
 $("composer").onsubmit = async (event) => {
   event.preventDefault();
   if (sending) return;
@@ -389,11 +452,17 @@ $("composer").onsubmit = async (event) => {
         const item = await api("/api/conversations", { title: text.slice(0, 90) });
         await openConversation(item.id);
       }
+      const selectedModel = config.models.find((model) => model.id === $("model").value);
+      if (screenshotAttachment && !selectedModel?.profile?.capabilities?.imageInput)
+        throw new Error(
+          "Das ausgewählte Modell unterstützt keine Bilder. Wähle ein Vision-Modell.",
+        );
       const identity = JSON.stringify({
         conversationId,
         text,
         mode: $("mode").value,
         modelId: $("model").value,
+        attachment: screenshotAttachment?.url ?? null,
       });
       if (pendingRequest?.identity !== identity)
         pendingRequest = { identity, requestId: crypto.randomUUID() };
@@ -402,8 +471,11 @@ $("composer").onsubmit = async (event) => {
         mode: $("mode").value,
         modelId: $("model").value,
         requestId: pendingRequest.requestId,
+        ...(screenshotAttachment ? { attachments: [screenshotAttachment] } : {}),
       });
       pendingRequest = null;
+      screenshotAttachment = null;
+      renderScreenshotPreview();
       startExecution(active);
     }
     $("prompt").value = "";

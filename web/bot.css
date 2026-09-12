@@ -390,3 +390,37 @@ dd {
     padding-right: 4px;
   }
 }
+
+.bot-selectors {
+  display: flex;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+.bot-selectors select {
+  background: #111318;
+  border: 1px solid #303640;
+  color: #dce2eb;
+  border-radius: 10px;
+  padding: 8px;
+}
+.connector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+.connector-card {
+  border: 1px solid #292e37;
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.connector-card small,
+.bot-ai-note {
+  color: #7f8794;
+}
+.bot-ai-note {
+  font-size: 11px;
+  line-height: 1.5;
+}

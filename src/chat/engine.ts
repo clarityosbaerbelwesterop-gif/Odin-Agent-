@@ -145,6 +145,7 @@ export class ChatEngine {
     mode: unknown;
     modelId: string;
     requestId: string;
+    attachments?: readonly { type: "image_url"; url: string; mediaType: string }[];
   }): Promise<ChatTurnView> {
     if (this.#closed) throw new ChatError("SHUTTING_DOWN", "The server is shutting down.", 503);
     const conversationId = identifier(input.conversationId);
@@ -153,14 +154,39 @@ export class ChatEngine {
     if (!text) throw new ChatError("EMPTY_MESSAGE", "Write a message before sending.");
     const mode = parseMode(input.mode);
     const modelId = identifier(input.modelId);
-    if (!this.#models.has(modelId))
+    const selectedModel = this.#models.get(modelId);
+    if (!selectedModel)
       throw new ChatError(
         "MODEL_UNAVAILABLE",
         "No provider is configured for the selected model.",
         409,
       );
+    const attachments = [...(input.attachments ?? [])];
+    if (attachments.length > 2)
+      throw new ChatError("ATTACHMENT_LIMIT", "Attach at most two screenshots per mission.", 413);
+    for (const attachment of attachments) {
+      if (
+        !["image/png", "image/jpeg", "image/webp"].includes(attachment.mediaType) ||
+        !attachment.url.startsWith(`data:${attachment.mediaType};base64,`) ||
+        attachment.url.length > 950_000
+      )
+        throw new ChatError(
+          "INVALID_ATTACHMENT",
+          "Screenshots must be PNG, JPEG or WebP and stay below the upload limit.",
+          400,
+        );
+    }
+    if (
+      attachments.length &&
+      !selectedModel.provider.capabilities(selectedModel.model).capabilities.imageInput
+    )
+      throw new ChatError(
+        "IMAGE_UNSUPPORTED",
+        "The selected model does not support screenshot input. Choose a vision-capable model.",
+        409,
+      );
     const key = identifier(input.requestId);
-    const requestHash = hashText(JSON.stringify({ text, mode, modelId }));
+    const requestHash = hashText(JSON.stringify({ text, mode, modelId, attachments }));
     const turn = await this.#atomic(async () => {
       const replay = await this.store.replay(conversationId, key, requestHash);
       if (replay) return replay;
@@ -179,6 +205,7 @@ export class ChatEngine {
         modelId,
         mode,
         objective: text,
+        ...(attachments.length ? { attachments } : {}),
         createdAt: new Date().toISOString(),
       };
       await this.#mission.create(
@@ -206,7 +233,11 @@ export class ChatEngine {
         `chat:${key}`,
       );
       await this.store.addTurn(created, key, requestHash);
-      await this.store.emit(created, "message.user", { text, mode });
+      await this.store.emit(created, "message.user", {
+        text,
+        mode,
+        attachmentCount: attachments.length,
+      });
       await this.#publishState(created);
       return created;
     });

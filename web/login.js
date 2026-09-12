@@ -131,7 +131,7 @@ function renderMode() {
     signup: [
       "NEUES KONTO",
       "Odin Account erstellen",
-      "Erstelle deine Identity. Danach bestätigst du deine E-Mail.",
+      "Erstelle deine Identity und öffne danach direkt deinen Workspace.",
     ],
     verify: [
       "E-MAIL BESTÄTIGEN",
@@ -440,16 +440,14 @@ $("auth-form").addEventListener("submit", async (event) => {
     }
     if (mode === "signup") {
       $("auth-password").value = "";
-      await clearIncompleteSession();
-      applyMode("verify");
       try {
-        await request("/api/auth/sendCode", { email });
-        status("Konto erstellt. Der Bestätigungscode wurde per E-Mail gesendet.", "success");
+        await request("/api/config");
+        status("Konto erstellt. Workspace wird geöffnet …", "success");
+        window.location.replace(safeReturnTo());
+        return;
       } catch {
-        status(
-          "Konto erstellt. Der Code konnte nicht automatisch gesendet werden. Nutze „Code senden“.",
-          "error",
-        );
+        applyMode("login");
+        status("Konto erstellt. Melde dich jetzt an.", "success");
       }
     } else if (mode === "forgot") {
       applyMode("reset");

@@ -109,7 +109,7 @@ export class NeonChatStore implements ChatRepository {
     });
   }
   async addTurn(turn: ChatTurn, key: string, requestHash: string): Promise<void> {
-    const [data, hash] = encode(turn, 40000);
+    const [data, hash] = encode(turn, 2_000_000);
     await this.db.transaction(async (c) => {
       const count = (
         await c.query("SELECT count(*)::int AS n FROM odin_api.turns WHERE conversation_id=$1", [

@@ -48,7 +48,10 @@ export async function runChatAgent(
     messages: [
       { role: "system", content: [{ type: "text", text: modePrompt(turn.mode) }] },
       ...(await store.history(turn.conversationId, turn.id)),
-      { role: "user", content: [{ type: "text", text: turn.objective }] },
+      {
+        role: "user",
+        content: [{ type: "text", text: turn.objective }, ...(turn.attachments ?? [])],
+      },
     ],
     calls: 0,
     toolCalls: 0,

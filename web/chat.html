@@ -17,7 +17,7 @@
 
         <div class="side-label">PRODUKT</div>
         <button id="chat-view" type="button" class="nav-item selected">Missionen <span>01</span></button>
-        <a href="/bot" class="nav-item">Odin Bot <span>PRO</span></a>
+        <a href="/bot" class="nav-item">Odin Bot <span>TEST</span></a>
         <button id="models-view" type="button" class="nav-item">Modelle <span id="model-count-nav">0</span></button>
         <button id="system-view" type="button" class="nav-item">Odin System <span>03</span></button>
         <button id="benchmark-view" type="button" class="nav-item">Benchmarks <span>04</span></button>
@@ -55,8 +55,11 @@
               <form id="composer" class="composer">
                 <label class="sr-only" for="prompt">Aufgabe für Odin</label>
                 <textarea id="prompt" rows="2" placeholder="Was soll Odin erledigen?" maxlength="16000"></textarea>
+                <div id="attachment-preview" class="attachment-preview" hidden></div>
                 <div class="composer-bottom">
                   <div class="selectors">
+                    <input id="screenshot-input" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+                    <button id="screenshot-button" type="button" class="attachment-button" aria-label="Screenshot anhängen">Bild +</button>
                     <label class="sr-only" for="mode">Arbeitsmodus</label>
                     <select id="mode"><option value="chat">Chat</option><option value="coding">Coding</option><option value="thinking">Thinking</option><option value="research">Research</option><option value="ultra">Ultra</option></select>
                     <span class="selector-divider"></span>
@@ -67,6 +70,7 @@
                 </div>
               </form>
               <div class="composer-meta"><span id="mode-description">Wähle, wie Odin die Aufgabe bearbeitet.</span><span>Enter sendet · Umschalt + Enter fügt eine neue Zeile ein</span></div>
+              <p class="ai-disclosure">KI-Hinweis: Du interagierst mit einem KI-System. Modell, Provider, Tool-Nutzung und Prüfstatus werden im Workspace sichtbar gemacht.</p>
             </div>
           </section>
 

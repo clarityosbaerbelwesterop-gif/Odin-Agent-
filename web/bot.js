@@ -111,7 +111,50 @@ function render() {
   $("inbox-count").textContent = String(
     (snapshot.inbox ?? []).filter((item) => !item.readAt).length,
   );
-  $("plan-pill").textContent = String(snapshot.limits?.plan ?? "pro").toUpperCase();
+  $("plan-pill").textContent = snapshot.testing?.preStripeAccess
+    ? "TEST ACCESS"
+    : String(snapshot.limits?.plan ?? "pro").toUpperCase();
+  renderConnectors();
+}
+
+function renderConnectors() {
+  const target = $("connectors");
+  if (!target || !snapshot) return;
+  target.replaceChildren();
+  const github = snapshot.connectors?.github;
+  const cards = [
+    [
+      "GitHub",
+      github?.ready
+        ? `${github.repository} · ${github.branch}`
+        : github?.connected
+          ? "Account verbunden · Repository auswählen"
+          : "Nicht verbunden",
+    ],
+    [
+      "Research",
+      snapshot.connectors?.research?.connected
+        ? snapshot.connectors.research.label
+        : "Nicht verbunden",
+    ],
+    ["Modelle", `${snapshot.connectors?.models?.length ?? 0} serverseitig verfügbar`],
+  ];
+  for (const [name, detail] of cards) {
+    const card = document.createElement("div");
+    card.className = "connector-card";
+    const strong = document.createElement("strong");
+    const small = document.createElement("small");
+    strong.textContent = name;
+    small.textContent = detail;
+    card.append(strong, small);
+    target.append(card);
+  }
+  const model = $("bot-model");
+  const current = model.value;
+  model.replaceChildren(new Option("Auto model", ""));
+  for (const item of snapshot.connectors?.models ?? [])
+    model.append(new Option(`${item.label} · ${item.provider}`, item.id));
+  if ([...model.options].some((option) => option.value === current)) model.value = current;
 }
 
 async function load() {
@@ -175,7 +218,12 @@ $("task-form").addEventListener("submit", async (event) => {
   try {
     const created = await api("/api/bot/tasks", {
       method: "POST",
-      body: JSON.stringify({ goal, idempotencyKey: crypto.randomUUID() }),
+      body: JSON.stringify({
+        goal,
+        mode: $("bot-mode").value,
+        modelId: $("bot-model").value || undefined,
+        idempotencyKey: crypto.randomUUID(),
+      }),
     });
     $("goal").value = "";
     await load();
