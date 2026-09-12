@@ -28,7 +28,15 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Apply stabilization patch
-        run: node scripts/stabilize-prestripe.mjs
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/stabilize-prestripe.mjs')
+          text = path.read_text()
+          text = text.replace('${origin}', r'\${origin}')
+          path.write_text(text)
+          PY
+          node scripts/stabilize-prestripe.mjs
       - name: Format changed code
         run: npx biome check --write src/chat/product.ts src/chat/neon-auth.ts src/chat/modes.ts src/chat/types.ts src/chat/engine.ts src/chat/agent.ts src/chat/neon-store.ts src/chat/hosted.ts src/bot/executor.ts web/login.js web/workspace.js web/chat.js web/bot.js
       - name: Verify full repository
