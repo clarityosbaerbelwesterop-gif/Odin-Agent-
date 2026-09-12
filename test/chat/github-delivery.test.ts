@@ -157,7 +157,10 @@ test("M8 restores a durable Odin branch and its persisted write evidence", async
   const result = await session.run("github-checks", AbortSignal.timeout(5_000));
   assert.equal(result.exitCode, 0);
   assert.match(result.output, /persistedWrites=1/u);
-  assert.equal(requests.some((call) => call.startsWith("POST ")), false);
+  assert.equal(
+    requests.some((call) => call.startsWith("POST ")),
+    false,
+  );
 });
 
 test("M8 does not bypass configured CI when checks are not available yet", async () => {
