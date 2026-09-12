@@ -3,49 +3,66 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="dark" />
-    <meta name="description" content="Odin ist ein kontrollierter Agent-Workspace für Missionen, Modelle, Coding, Research und überprüfbare Ergebnisse." />
-    <title>Odin — Agent Workspace</title>
+    <meta name="color-scheme" content="light" />
+    <meta name="description" content="Odin ist dein persönlicher agentischer Workspace für Projekte, Wissen und überprüfbare Arbeit." />
+    <title>Odin — Personal Agentic Workspace</title>
     <link rel="stylesheet" href="/chat.css" />
     <link rel="stylesheet" href="/product-info.css" />
+    <link rel="stylesheet" href="/product-m1.css" />
   </head>
   <body>
     <div class="shell">
       <aside class="sidebar" aria-label="Odin Navigation">
         <a class="brand" href="/" aria-label="Odin Startseite"><span class="brand-mark">O</span><span>odin<span class="brand-dot">.</span></span></a>
-        <button id="new-chat" class="new-chat" type="button"><span aria-hidden="true">+</span> Neue Mission</button>
+        <button id="new-chat" class="new-chat" type="button"><span aria-hidden="true">+</span> Neues Projekt</button>
 
-        <div class="side-label">PRODUKT</div>
-        <button id="chat-view" type="button" class="nav-item selected">Missionen <span>01</span></button>
-        <a href="/bot" class="nav-item">Odin Bot <span>TEST</span></a>
-        <button id="models-view" type="button" class="nav-item">Modelle <span id="model-count-nav">0</span></button>
-        <button id="system-view" type="button" class="nav-item">Odin System <span>03</span></button>
-        <button id="benchmark-view" type="button" class="nav-item">Benchmarks <span>04</span></button>
+        <div class="side-label">WORKSPACE</div>
+        <button id="home-view" type="button" class="nav-item selected"><span class="nav-icon">⌂</span>Home</button>
+        <button id="projects-view" type="button" class="nav-item"><span class="nav-icon">◫</span>Projects <span id="project-count-nav">0</span></button>
+        <button id="knowledge-view" type="button" class="nav-item"><span class="nav-icon">◎</span>Knowledge</button>
+        <a href="/bot" class="nav-item"><span class="nav-icon">↻</span>Automations</a>
+        <button id="skills-view" type="button" class="nav-item"><span class="nav-icon">◇</span>Skills</button>
+        <button id="activity-view" type="button" class="nav-item"><span class="nav-icon">≋</span>Activity</button>
 
-        <div class="history-heading"><span class="side-label">LETZTE MISSIONEN</span><span id="conversation-count">0</span></div>
-        <nav id="conversation-list" aria-label="Missionsverlauf"></nav>
+        <div class="side-label">ODIN</div>
+        <button id="models-view" type="button" class="nav-item">Connections <span id="model-count-nav">0</span></button>
+        <button id="system-view" type="button" class="nav-item">System</button>
+        <button id="benchmark-view" type="button" class="nav-item">Evidence</button>
+
+        <div class="history-heading"><span class="side-label">RECENT PROJECTS</span><span id="conversation-count">0</span></div>
+        <nav id="conversation-list" aria-label="Recent projects"></nav>
         <div class="sidebar-footer"><span class="status-dot" aria-hidden="true"></span><span id="workspace-status">Workspace wird geprüft</span><button id="settings" type="button" aria-label="Einstellungen und Informationen">Einstellungen</button></div>
       </aside>
 
       <main class="main">
         <header class="topbar">
-          <button id="history-toggle" type="button" aria-expanded="false">Missionen</button>
-          <div><span class="breadcrumb">Arbeitsbereich /</span> <strong id="page-title">Mission</strong></div>
+          <button id="history-toggle" type="button" aria-expanded="false">Projects</button>
+          <div><span class="breadcrumb">Workspace /</span> <strong id="page-title">Home</strong></div>
           <div class="top-actions"><span id="connection" role="status">Verbindung wird geprüft</span><button id="activity-toggle" type="button" aria-expanded="true">Run-Details</button></div>
         </header>
         <div id="error-banner" role="alert" hidden></div>
+
+        <nav id="project-nav" class="project-nav" aria-label="Project navigation" hidden>
+          <button type="button" data-project-section="overview">Overview</button>
+          <button type="button" data-project-section="workspace" class="selected">Workspace</button>
+          <button type="button" data-project-section="knowledge">Knowledge</button>
+          <button type="button" data-project-section="tasks">Tasks</button>
+          <button type="button" data-project-section="runs">Runs</button>
+          <button type="button" data-project-section="activity">Activity</button>
+        </nav>
 
         <div id="chat-layout" class="chat-layout">
           <section class="conversation" aria-label="Odin Mission">
             <div id="messages" class="messages" role="log" aria-live="polite">
               <div id="welcome" class="welcome">
-                <span class="welcome-tag">ODIN AGENT WORKSPACE</span>
-                <h1>Eine Mission.<br /><span>Odin erledigt die Arbeit.</span></h1>
-                <p>Plane, recherchiere, bearbeite Dateien, nutze Werkzeuge und prüfe das Ergebnis. Du siehst Modell, Run, Änderungen und Evidenz an einem Ort.</p>
+                <div id="companion" class="companion" data-state="IDLE" aria-live="polite"><div class="companion-orbit"><span></span><span></span><span></span><i>O</i></div><div><strong id="companion-label">Ready when you are</strong><small id="companion-detail">Describe a goal. I’ll turn it into a project and keep the work together.</small></div></div>
+                <span class="welcome-tag">PERSONAL AGENTIC WORKSPACE</span>
+                <h1>What are we<br /><span>building today?</span></h1>
+                <p>Start with a goal. Odin creates a persistent project, plans the work, uses your connected tools and shows what happened as it works.</p>
                 <div class="suggestions">
-                  <button type="button" data-prompt="Prüfe die verbundene Codebasis, priorisiere die wichtigsten Fehler und setze die sinnvollen Korrekturen kontrolliert um." data-mode="coding"><span>CODING</span>Codebasis bearbeiten</button>
-                  <button type="button" data-prompt="Analysiere dieses Problem strukturiert, prüfe Annahmen und liefere eine verifizierbare Empfehlung." data-mode="thinking"><span>THINKING</span>Problem analysieren</button>
-                  <button type="button" data-prompt="Recherchiere dieses Thema mit den verbundenen Quellen und trenne Belege klar von Schlussfolgerungen." data-mode="research"><span>RESEARCH</span>Quellen recherchieren</button>
+                  <button type="button" data-prompt="Prüfe die verbundene Codebasis, priorisiere die wichtigsten Fehler und setze die sinnvollen Korrekturen kontrolliert um." data-mode="coding"><span>BUILD</span>Improve a codebase</button>
+                  <button type="button" data-prompt="Analysiere dieses Problem strukturiert, prüfe Annahmen und liefere eine verifizierbare Empfehlung." data-mode="thinking"><span>THINK</span>Work through a decision</button>
+                  <button type="button" data-prompt="Recherchiere dieses Thema mit den verbundenen Quellen und trenne Belege klar von Schlussfolgerungen." data-mode="research"><span>RESEARCH</span>Explore a topic</button>
                 </div>
               </div>
             </div>
@@ -74,8 +91,9 @@
             </div>
           </section>
 
-          <aside id="inspector" class="inspector" aria-label="Run-Details">
-            <div class="inspector-heading"><span class="status-dot" aria-hidden="true"></span><h2>Run-Status</h2><span id="call-count">—</span></div>
+          <aside id="inspector" class="inspector" aria-label="Run details">
+            <div class="companion-mini" data-companion-state="IDLE"><span class="companion-pulse"></span><div><strong id="run-companion-label">Odin is ready</strong><small id="run-companion-state">IDLE</small></div></div>
+            <div class="inspector-heading"><span class="status-dot" aria-hidden="true"></span><h2>Current run</h2><span id="call-count">—</span></div>
             <div class="inspector-tabs" role="tablist"><button type="button" role="tab" aria-selected="true" data-tab="activity">Ablauf</button><button type="button" role="tab" aria-selected="false" data-tab="files">Dateien</button><button type="button" role="tab" aria-selected="false" data-tab="preview">Vorschau</button></div>
             <div class="inspector-body">
               <section id="activity-panel" role="tabpanel"><div class="inspector-note" id="activity-empty">Plan, Werkzeugaufrufe und Verifikation erscheinen hier, sobald eine Mission startet.</div><ol id="plan" class="plan"></ol><div id="activity" class="activity"></div><div id="sources" class="sources"></div><div id="verification" class="verification" hidden></div></section>
@@ -85,6 +103,11 @@
             <div class="inspector-footer"><span>Tokens <strong id="token-count">0</strong></span><span id="cost-status">Kosten nicht gemeldet</span></div>
           </aside>
         </div>
+
+        <section id="projects-panel" class="workspace-surface" hidden aria-labelledby="projects-title"><header class="surface-hero"><span class="welcome-tag">YOUR WORK</span><h1 id="projects-title">Projects that remember where you left off.</h1><p>Each project keeps its goals, runs, files and activity together.</p><button id="project-create" type="button" class="surface-action">Create project</button></header><div id="project-grid" class="project-grid"></div></section>
+        <section id="knowledge-panel" class="workspace-surface" hidden aria-labelledby="knowledge-title"><header class="surface-hero"><span class="welcome-tag">MEMORY BRAIN</span><h1 id="knowledge-title">Knowledge with a source.</h1><p>Odin’s scoped memory keeps provenance, sensitivity and conflicts visible. The visual graph will grow from this same memory foundation.</p></header><div class="empty-product-card"><span class="brain-glyph">◎</span><h2>Your knowledge map begins with real work</h2><p>Project memories will appear here after verified runs create or retrieve them.</p></div></section>
+        <section id="skills-panel" class="workspace-surface" hidden aria-labelledby="skills-title"><header class="surface-hero"><span class="welcome-tag">SKILLS</span><h1 id="skills-title">Ways Odin knows how to work.</h1><p>Skills provide procedures. Permissions remain controlled by Odin’s runtime.</p></header><div class="skill-grid"><article><span>01</span><h2>Repository work</h2><p>Inspect, edit, test and review connected code.</p></article><article><span>02</span><h2>Research</h2><p>Retrieve sources and keep evidence attached.</p></article><article><span>03</span><h2>Deep reasoning</h2><p>Plan, challenge assumptions and verify outcomes.</p></article></div></section>
+        <section id="activity-page" class="workspace-surface" hidden aria-labelledby="activity-title"><header class="surface-hero"><span class="welcome-tag">ACTIVITY</span><h1 id="activity-title">A clear record of the work.</h1><p>Open a project to see its plan, tools, changes and verification events.</p></header><div id="global-activity" class="project-grid"></div></section>
 
         <section id="models-panel" class="product-surface" hidden aria-labelledby="models-title">
           <header class="product-surface-header"><div><span class="welcome-tag">SERVERSEITIG VERBUNDEN</span><h1 id="models-title">Modelle, die Odin wirklich nutzen kann.</h1></div><p class="muted">Die Liste kommt aus dem Backend. Ein Modell erscheint nur, wenn sein Provider-Credential im Deployment vorhanden ist.</p></header>

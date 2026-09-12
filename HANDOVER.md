@@ -1,5 +1,20 @@
 # Engineering handover
 
+## PRODUCT M1 checkpoint — 2026-09-12
+
+The active PRODUCT M1 branch rebuilds the product experience around the existing Odin runtime. It adds
+a responsive warm shell, state-backed Companion, persistent Project compatibility API, real M2 plan,
+durable-event Activity projection, active-project reload URL and project navigation. No second project,
+activity, memory, auth, provider, billing or credential authority was introduced.
+
+Source decisions and credential-name handling are in `docs/PRODUCT_M1_MIGRATION_MATRIX.md` and
+`docs/PRODUCT_M1_INTEGRATION_AUDIT.md`. The binding contract is
+`docs/milestones/PRODUCT_M1_PRODUCT_TRANSFORMATION.md`. A fresh `npm run verify` passed on 2026-09-12,
+including foundation, lint/format, typecheck, the complete test suite, 36 UI checks, dry-run provider
+smoke and production build. The cloud browser could not reach the loopback-only server, so live
+desktop/iPad browser evidence and production deployment remain external gates and are not inferred from
+JSDOM or responsive CSS checks.
+
 ## PR #44 S–U checkpoint (2026-09-09)
 
 The repository now implements the four-tier Free/Pro/Developer/Ultra contract, fail-closed effective

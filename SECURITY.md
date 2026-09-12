@@ -1,5 +1,13 @@
 # Security model
 
+## PRODUCT M1 projections
+
+Projects and Activity add no storage or authorization bypass. `/api/projects` uses the existing
+tenant-scoped conversation repository, and hosted requests still set the transaction-local actor before
+repository access. Human-readable Activity labels are derived from durable events and returned with the
+raw event identity; labels cannot alter evidence or completion. Companion state and visible plan steps
+are derived from canonical M2 snapshots. Project URLs contain only scoped identifiers, never credentials.
+
 ## S–U entitlement and GitHub MCP boundary
 
 An account's stored plan is audit state, not sufficient authorization. Only `active` and `trialing`

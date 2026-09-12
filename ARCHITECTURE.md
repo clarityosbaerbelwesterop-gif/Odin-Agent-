@@ -1,5 +1,18 @@
 # Odin architecture
 
+## PRODUCT M1 product boundary (2026-09-12)
+
+The Personal Agentic Workspace is a product layer over Odin's existing authorities. A persisted chat
+conversation is exposed as a Project compatibility projection; its turns are Runs, its M2 tasks are the
+visible plan, and its durable chat events feed Activity. The Companion is a reversible mapping of M2
+mission states. These product views cannot write mission state or accept completion.
+
+The global shell presents Home, Projects, Knowledge, Automations, Skills and Activity. A Project
+presents Overview, Workspace, Knowledge, Tasks, Runs and Activity. Existing auth/RLS, provider,
+credential, Stripe, GitHub, tool, verification, memory and skill boundaries remain the only
+authorities. The full decisions are recorded in
+`docs/PRODUCT_M1_MIGRATION_MATRIX.md` and `docs/PRODUCT_M1_INTEGRATION_AUDIT.md`.
+
 ## S–U product completion contract (2026-09-09)
 
 The product control plane has exactly four ordered plans: Free, Pro, Developer and Ultra. Runtime

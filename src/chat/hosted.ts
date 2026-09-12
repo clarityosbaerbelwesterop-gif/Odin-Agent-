@@ -1018,9 +1018,23 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       send(res, 200, await readBenchmarks(join(process.cwd(), "docs/evals")));
       return;
     }
-    if (url.pathname === "/api/conversations") {
+    if (["/api/conversations", "/api/projects"].includes(url.pathname)) {
       if (method === "GET") {
-        send(res, 200, { conversations: await store.conversations() });
+        const engine = createEngine(db);
+        const projects = await engine.projects();
+        send(
+          res,
+          200,
+          url.pathname === "/api/projects"
+            ? { projects }
+            : {
+                conversations: projects.map(({ id, title, createdAt }) => ({
+                  id,
+                  title,
+                  createdAt,
+                })),
+              },
+        );
         return;
       }
       if (method === "POST") {
@@ -1036,9 +1050,10 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
         return;
       }
     }
-    const conversation = /^\/api\/conversations\/([\w-]+)(?:\/(turns|events|preview))?$/u.exec(
-      url.pathname,
-    );
+    const conversation =
+      /^\/api\/(?:conversations|projects)\/([\w-]+)(?:\/(turns|events|activity|preview))?$/u.exec(
+        url.pathname,
+      );
     if (conversation) {
       const id = identifier(conversation[1]);
       await store.conversation(id);
@@ -1053,6 +1068,15 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
         res.setHeader("Content-Security-Policy", PREVIEW_CSP);
         res.setHeader("Content-Type", "text/html; charset=utf-8");
         res.end(html);
+        return;
+      }
+      if (conversation[2] === "activity" && method === "GET") {
+        const after = integer(
+          Number(url.searchParams.get("after") ?? 0),
+          0,
+          Number.MAX_SAFE_INTEGER,
+        );
+        send(res, 200, { activity: await engine.activity(id, after, 100) });
         return;
       }
       if (conversation[2] === "turns" && method === "POST") {

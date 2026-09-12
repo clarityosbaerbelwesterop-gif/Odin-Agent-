@@ -586,13 +586,24 @@ function renderFrontier(target, reference, gpt55) {
 }
 
 async function openBenchmarks() {
-  byId("chat-layout").hidden = true;
-  byId("models-panel").hidden = true;
-  byId("system-panel").hidden = true;
+  for (const id of [
+    "chat-layout",
+    "projects-panel",
+    "knowledge-panel",
+    "skills-panel",
+    "activity-page",
+    "models-panel",
+    "system-panel",
+  ])
+    byId(id).hidden = true;
   byId("benchmarks").hidden = false;
   byId("page-title").textContent = "Benchmarks";
   byId("benchmark-view").classList.add("selected");
-  byId("chat-view").classList.remove("selected");
+  byId("home-view").classList.remove("selected");
+  byId("projects-view").classList.remove("selected");
+  byId("knowledge-view").classList.remove("selected");
+  byId("skills-view").classList.remove("selected");
+  byId("activity-view").classList.remove("selected");
   byId("models-view").classList.remove("selected");
   byId("system-view").classList.remove("selected");
   const target = byId("benchmark-content");
@@ -629,12 +640,28 @@ const benchmark = byId("benchmark-view");
 if (benchmark) benchmark.onclick = () => void openBenchmarks();
 
 function surface(id, title, nav) {
-  byId("chat-layout").hidden = true;
+  for (const surfaceId of [
+    "chat-layout",
+    "projects-panel",
+    "knowledge-panel",
+    "skills-panel",
+    "activity-page",
+  ])
+    byId(surfaceId).hidden = true;
   byId("benchmarks").hidden = true;
   byId("models-panel").hidden = id !== "models-panel";
   byId("system-panel").hidden = id !== "system-panel";
   byId("page-title").textContent = title;
-  for (const buttonId of ["chat-view", "models-view", "system-view", "benchmark-view"])
+  for (const buttonId of [
+    "home-view",
+    "projects-view",
+    "knowledge-view",
+    "skills-view",
+    "activity-view",
+    "models-view",
+    "system-view",
+    "benchmark-view",
+  ])
     byId(buttonId)?.classList.toggle("selected", buttonId === nav);
 }
 
@@ -663,7 +690,7 @@ function modelCard(model) {
   use.type = "button";
   use.onclick = () => {
     byId("model").value = model.id;
-    byId("chat-view").click();
+    byId("home-view").click();
     byId("prompt").focus();
   };
   item.append(use);

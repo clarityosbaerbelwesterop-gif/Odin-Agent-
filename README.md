@@ -1,19 +1,18 @@
-# Odin Agent
+# Odin — Personal Agentic Workspace
 
-Odin is a provider-independent runtime for complex, long-running AI missions. Its purpose is to turn a
-model call into a controlled system with planning, task state, tools, verification, repair, checkpoints,
-budgets, durable recovery, auditable evidence, adaptive routing, reusable skills, and a safe client
-protocol.
+Odin is a personal agentic workspace built on a provider-independent runtime for complex, long-running
+AI missions. A user starts with a goal; Odin keeps the project, plan, run, workspace and evidence
+together while its runtime controls tools, verification, repair, budgets and durable recovery.
 
-Odin is at the **early core stage**. M0–M11 are verified, and M12-A/B local execution hardening is
-**PARTIALLY_VERIFIED**: canonical workspace enforcement, bounded trusted subprocesses, outbound
-destination policy, exact provider/model/profile-to-sandbox binding, and replay-safe remote sandbox
-lifecycle contracts are implemented and contract-tested.
+The historical engineering milestones M0–M28 describe the runtime's evolution and remain valid. The
+separate product roadmap uses names such as **PRODUCT M1**. PRODUCT M1 adds the coherent product shell,
+Companion, persistent Projects, Workspace foundation and Activity projections without replacing those
+runtime authorities. See the [PRODUCT M1 contract](docs/milestones/PRODUCT_M1_PRODUCT_TRANSFORMATION.md).
 
 The repository does **not** yet claim kernel/container isolation, a live hosted sandbox adapter,
-arbitrary shell execution, a public hosted service, production authentication/realtime transport,
-native mobile binaries, a distributed worker queue, or live-provider end-to-end smoke proof. Current
-status and verified capabilities are tracked in [ROADMAP.md](ROADMAP.md) and [HANDOVER.md](HANDOVER.md).
+arbitrary shell execution, native mobile binaries, a distributed worker queue, or proof for a live
+environment unless separate external evidence is recorded. Current status and verified capabilities
+are tracked in [ROADMAP.md](ROADMAP.md) and [HANDOVER.md](HANDOVER.md).
 
 ## Product contract
 
