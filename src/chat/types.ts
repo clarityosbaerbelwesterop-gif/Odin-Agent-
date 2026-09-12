@@ -32,6 +32,11 @@ export interface ChatTurn {
   readonly mode: ChatMode;
   readonly modelId: string;
   readonly objective: string;
+  readonly attachments?: readonly {
+    readonly type: "image_url";
+    readonly url: string;
+    readonly mediaType: string;
+  }[];
   readonly createdAt: string;
 }
 export interface ChatEvent {

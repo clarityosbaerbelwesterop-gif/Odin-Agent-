@@ -68,7 +68,7 @@ test("login hides registration and verification-only fields", async () => {
   }
 });
 
-test("registration sends a verification code automatically and enters verification state", async () => {
+test("registration does not force email verification when the server accepts the account", async () => {
   const client = await loginClient();
   try {
     client.get("switch-mode").click();
@@ -88,16 +88,18 @@ test("registration sends a verification code automatically and enters verificati
     await new Promise((resolve) => setImmediate(resolve));
 
     assert.ok(client.requests.find((item) => item.path === "/api/auth/signup"));
-    assert.ok(client.requests.find((item) => item.path === "/api/auth/logout"));
-    assert.ok(client.requests.find((item) => item.path === "/api/auth/sendCode"));
-    assert.equal(client.get("login-title").textContent, "Konto verifizieren");
-    assert.equal(client.get("code-field").hidden, false);
-    assert.equal(client.get("code-field").style.display, "");
-    assert.equal(client.get("password-field").style.display, "none");
-    assert.match(
-      client.get("auth-status").textContent,
-      /Bestätigungscode wurde per E-Mail gesendet/u,
+    assert.equal(
+      client.requests.find((item) => item.path === "/api/auth/logout"),
+      undefined,
     );
+    assert.equal(
+      client.requests.find((item) => item.path === "/api/auth/sendCode"),
+      undefined,
+    );
+    assert.equal(client.get("login-title").textContent, "Bei Odin anmelden");
+    assert.equal(client.get("code-field").hidden, true);
+    assert.equal(client.get("password-field").style.display, "");
+    assert.match(client.get("auth-status").textContent, /Konto erstellt/u);
   } finally {
     client.close();
   }

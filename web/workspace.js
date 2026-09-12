@@ -182,8 +182,16 @@ function renderBranches(branches, preferred) {
   }
   choose(branches.find((branch) => branch.name === preferred) ?? branches[0]);
 }
-async function refreshConfig() {
-  config = await request("/api/config");
+async function refreshConfig(retries = 0) {
+  try {
+    config = await request("/api/config");
+  } catch (error) {
+    if (retries < 3 && [401, 409, 502, 503].includes(error.status)) {
+      await new Promise((resolve) => setTimeout(resolve, 350 * (retries + 1)));
+      return refreshConfig(retries + 1);
+    }
+    throw error;
+  }
   updatePill();
   const github = config.github;
   $("workspace-disconnected").hidden = Boolean(github?.connected);
@@ -247,6 +255,26 @@ $("workspace-save").addEventListener("click", async () => {
   }
 });
 
-refreshConfig().catch(() => {
-  currentValue.textContent = "Workspace";
-});
+async function bootstrapWorkspace() {
+  try {
+    await refreshConfig();
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("workspace") === "connected") {
+      await openPicker();
+      window.history.replaceState({}, "", "/app");
+    } else if (params.get("workspace") === "error") {
+      await openPicker();
+      showError(
+        new Error(
+          `GitHub-Verbindung fehlgeschlagen (${params.get("code") ?? "GITHUB_OAUTH"}). Bitte erneut versuchen.`,
+        ),
+      );
+      window.history.replaceState({}, "", "/app");
+    } else if (params.get("workspace") === "1") {
+      await openPicker();
+    }
+  } catch {
+    currentValue.textContent = "Workspace";
+  }
+}
+void bootstrapWorkspace();

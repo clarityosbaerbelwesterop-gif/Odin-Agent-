@@ -8,10 +8,10 @@ import { NeonChatStore, NeonMissionStore } from "../chat/neon-store.js";
 import { NeonWorkspace } from "../chat/neon-workspace.js";
 import {
   CredentialVault,
-  effectivePlan,
   MODE_MINIMUM_PLAN,
   ProductStore,
   planAllows,
+  runtimePlan,
 } from "../chat/product.js";
 import { QuotaStore } from "../chat/quota.js";
 import { WikipediaResearchAdapter } from "../chat/research.js";
@@ -118,7 +118,7 @@ export class OdinBotWorker {
     const db = new NeonActorDatabase(this.options.pool, { id: wake.ownerId });
     const product = new ProductStore(db, new CredentialVault(this.options.credentialEncryptionKey));
     const account = await product.account();
-    const limits = botPlanLimits(effectivePlan(account));
+    const limits = botPlanLimits(runtimePlan(account));
     if (!limits.enabled) return "entitlement-paused";
     const store = new BotStore(db);
     const automation = await store.automation(wake.targetId);
@@ -140,7 +140,7 @@ export class OdinBotWorker {
 
     const product = new ProductStore(db, new CredentialVault(this.options.credentialEncryptionKey));
     const account = await product.account();
-    const plan = effectivePlan(account);
+    const plan = runtimePlan(account);
     const quota = new QuotaStore(db, plan);
     const limits = botPlanLimits(plan);
     if (!limits.enabled) {

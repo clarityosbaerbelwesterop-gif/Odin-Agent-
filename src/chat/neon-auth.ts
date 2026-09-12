@@ -113,12 +113,6 @@ export class NeonAuth {
     const oauthToken = this.oauthJwt(cookie);
     if (oauthToken) {
       const identity = await this.verifyToken(oauthToken);
-      if (!identity.emailVerified)
-        throw new ChatError(
-          "EMAIL_UNVERIFIED",
-          "Verify your email before opening the workspace.",
-          403,
-        );
       return identity;
     }
     const selected = this.cookie(cookie);
@@ -147,12 +141,6 @@ export class NeonAuth {
     if (!token) throw denied();
     const identity = await this.verifyToken(token);
     if (identity.id !== body.user.id) throw denied();
-    if (!identity.emailVerified)
-      throw new ChatError(
-        "EMAIL_UNVERIFIED",
-        "Verify your email before opening the workspace.",
-        403,
-      );
     return identity;
   }
   async upstream(

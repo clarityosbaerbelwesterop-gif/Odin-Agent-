@@ -96,7 +96,9 @@ export function modePolicy(mode: ChatMode, profile: CapabilityProfile, limits: C
 export function toolAllowed(mode: ChatMode, name: string): boolean {
   if (name === "task.plan" || name === "math.calculate") return true;
   if (name.startsWith("research.")) return mode === "research" || mode === "ultra";
-  if (name.startsWith("repo.")) return mode === "coding" || mode === "ultra";
+  if (name === "repo.search" || name === "repo.read") return true;
+  if (name === "repo.patch" || name === "repo.quality")
+    return mode === "coding" || mode === "ultra";
   return false;
 }
 

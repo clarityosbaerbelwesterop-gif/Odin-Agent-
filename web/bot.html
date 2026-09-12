@@ -12,7 +12,7 @@
     <div class="bot-shell">
       <header class="bot-topbar">
         <a class="brand" href="/app" aria-label="Back to Odin"><span>O</span> odin<span class="dot">.</span></a>
-        <div class="top-actions"><span id="plan-pill">PRO</span><a href="/app">Missions</a></div>
+        <div class="top-actions"><span id="plan-pill">TEST ACCESS</span><a href="/app">Missions</a></div>
       </header>
 
       <main>
@@ -23,10 +23,13 @@
           <form id="task-form" class="command">
             <label class="sr-only" for="goal">Goal for Odin Bot</label>
             <textarea id="goal" maxlength="16000" rows="2" placeholder="What should I take care of?" required></textarea>
+            <div class="bot-selectors"><select id="bot-mode" aria-label="Bot mode"><option value="thinking">Thinking</option><option value="research">Research</option><option value="coding">Coding</option><option value="ultra">Ultra</option><option value="chat">Chat</option></select><select id="bot-model" aria-label="Bot model"><option value="">Auto model</option></select></div>
             <button type="submit" aria-label="Give task to Odin Bot">↑</button>
           </form>
           <div id="status" role="status" aria-live="polite"></div>
         </section>
+
+        <section class="stream" aria-label="Connected tools"><div class="section-head"><h2>Connectors</h2><a href="/app?workspace=1">Manage</a></div><div id="connectors" class="connector-grid"></div><p class="bot-ai-note">KI-Hinweis: Odin Bot ist ein KI-System. Hintergrundaufgaben, Modellwahl, Werkzeuge und Freigaben bleiben im Missionsprotokoll nachvollziehbar.</p></section>
 
         <section class="stream" aria-label="Odin Bot activity">
           <div class="section-head"><h2>Active</h2><span id="active-count">0</span></div>

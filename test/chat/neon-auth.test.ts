@@ -78,7 +78,7 @@ test("Neon sessions accept canonical Better Auth and legacy Neon session cookies
   }
 });
 
-test("Neon sessions require current server session, verified email and matching signed user identity", async () => {
+test("Neon sessions require a current server session and matching signed user identity", async () => {
   const jwt = await token();
   let state: "active" | "revoked" | "different" | "expired" = "active";
   const transport: typeof fetch = async () =>
@@ -109,8 +109,9 @@ test("Neon sessions require current server session, verified email and matching 
     );
   }
   await assert.rejects(auth.session("unrelated=private", "https://odin.example"));
+
   const unverified = await token({ emailVerified: false });
-  const verifyRequired = new NeonAuth(
+  const unverifiedAuth = new NeonAuth(
     base,
     async () =>
       new Response(
@@ -122,13 +123,15 @@ test("Neon sessions require current server session, verified email and matching 
       ),
     keys,
   );
-  await assert.rejects(
-    verifyRequired.session("__Secure-better-auth.session_token=fixture", "https://odin.example"),
-    /Verify your email/u,
+  const identity = await unverifiedAuth.session(
+    "__Secure-better-auth.session_token=fixture",
+    "https://odin.example",
   );
+  assert.equal(identity.id, "user-a");
+  assert.equal(identity.emailVerified, false);
 });
 
-test("OAuth JWT bridge accepts only a signed verified Neon identity and expires locally", async () => {
+test("OAuth JWT bridge accepts signed Neon identities and expires locally", async () => {
   const auth = new NeonAuth(base, fetch, keys);
   const jwt = await token();
   const cookie = auth.oauthJwtCookie(jwt);
@@ -141,10 +144,9 @@ test("OAuth JWT bridge accepts only a signed verified Neon identity and expires 
     "__Host-odin-neon-jwt=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0",
   );
   const unverified = await token({ emailVerified: false });
-  await assert.rejects(
-    auth.session(auth.oauthJwtCookie(unverified), "https://odin.example"),
-    /Verify your email/u,
-  );
+  const identity = await auth.session(auth.oauthJwtCookie(unverified), "https://odin.example");
+  assert.equal(identity.id, "user-a");
+  assert.equal(identity.emailVerified, false);
 });
 
 test("Auth broker forwards only approved session cookies and never follows arbitrary upstream routes", async () => {

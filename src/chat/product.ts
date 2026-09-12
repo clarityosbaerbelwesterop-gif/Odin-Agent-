@@ -39,6 +39,18 @@ export function effectivePlan(account: Pick<ProductAccount, "plan" | "subscripti
     : "free";
 }
 
+/** Temporary product-wide test lane. It closes automatically once Stripe is configured. */
+export function preStripeTestMode(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.ODIN_PRESTRIPE_TEST_MODE === "true" || !env.STRIPE_SECRET_KEY;
+}
+
+export function runtimePlan(
+  account: Pick<ProductAccount, "plan" | "subscriptionStatus">,
+  env: NodeJS.ProcessEnv = process.env,
+): Plan {
+  return preStripeTestMode(env) ? "ultra" : effectivePlan(account);
+}
+
 export function planAllows(actual: Plan, required: Plan): boolean {
   return PLAN_RANK[actual] >= PLAN_RANK[required];
 }
