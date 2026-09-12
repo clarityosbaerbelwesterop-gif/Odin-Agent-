@@ -5,6 +5,7 @@ import { MissionRuntime, type MissionState } from "../mission/runtime.js";
 import type { QualityCommandRunner, RepositoryWorkspace } from "../tools/repository.js";
 import { runChatAgent } from "./agent.js";
 import { DEFAULT_CHAT_LIMITS, MODE_POLICIES, parseMode } from "./modes.js";
+import { activityLabel, companionState, productPlan } from "./product-projection.js";
 import type { ChatQuotaController } from "./quota.js";
 import type { ChatRepository } from "./repository.js";
 import { hashText, identifier, integer, publicError, safeText } from "./safety.js";
@@ -125,6 +126,8 @@ export class ChatEngine {
       ...turn,
       state: snapshot.state,
       version: snapshot.version,
+      companionState: companionState(snapshot.state),
+      plan: productPlan(snapshot),
       usage: (await this.store.checkpoint(turn.id))?.usage ?? {
         inputTokens: 0,
         outputTokens: 0,
@@ -132,12 +135,33 @@ export class ChatEngine {
       },
     };
   }
+  async projects() {
+    return Promise.all(
+      (await this.store.conversations()).map(async (project) => {
+        const turns = await this.store.turns(project.id);
+        const last = turns.at(-1);
+        return {
+          ...project,
+          kind: "project" as const,
+          runCount: turns.length,
+          ...(last ? { lastRun: await this.view(last.id) } : {}),
+        };
+      }),
+    );
+  }
   async conversation(id: string) {
     const conversation = await this.store.conversation(id);
     return {
       conversation,
       turns: await Promise.all((await this.store.turns(id)).map((turn) => this.view(turn.id))),
     };
+  }
+  async activity(id: string, after = 0, limit = 100) {
+    await this.store.conversation(id);
+    return (await this.store.events(id, after, limit)).flatMap((event) => {
+      const label = activityLabel(event);
+      return label ? [{ ...event, label }] : [];
+    });
   }
   async submit(input: {
     conversationId: string;
@@ -215,10 +239,26 @@ export class ChatEngine {
           focus: mode === "ultra" ? "critical" : mode === "chat" ? "routine" : "complex",
           tasks: [
             {
+              id: "understand",
+              title: "Understand the goal and prepare the work",
+              definitionOfDone: [
+                "The objective, available context and relevant boundaries are clear.",
+              ],
+            },
+            {
               id: "work",
               title: MODE_POLICIES[mode].label,
+              dependsOn: ["understand"],
               definitionOfDone: [
-                "Deliver the response and verify the applicable delivery or workspace quality contract.",
+                "Produce the requested result through the configured provider and scoped tools.",
+              ],
+            },
+            {
+              id: "verify",
+              title: "Verify the result and deliver evidence",
+              dependsOn: ["work"],
+              definitionOfDone: [
+                "Check the applicable delivery or workspace quality contract before completion.",
               ],
             },
           ],
@@ -339,15 +379,31 @@ export class ChatEngine {
       await this.#atomic(async () => {
         const snapshot = await this.#mission.load(turn.id);
         if (snapshot.state === "CREATED") {
-          for (const state of [
-            "UNDERSTANDING",
-            "RETRIEVING",
-            "PLANNING",
-            "RISK_CHECK",
-            "EXECUTING",
-          ] as const)
+          await this.#transition(turn, "UNDERSTANDING");
+          let current = await this.#mission.load(turn.id);
+          if (current.taskStatuses.understand === "PENDING") {
+            await this.#mission.setTaskStatus(
+              turn.id,
+              current.version,
+              "understand",
+              "RUNNING",
+              randomUUID(),
+            );
+          }
+          for (const state of ["RETRIEVING", "PLANNING", "RISK_CHECK"] as const)
             await this.#transition(turn, state);
-          const current = await this.#mission.load(turn.id);
+          current = await this.#mission.load(turn.id);
+          if (current.taskStatuses.understand === "RUNNING") {
+            await this.#mission.setTaskStatus(
+              turn.id,
+              current.version,
+              "understand",
+              "VERIFIED",
+              randomUUID(),
+            );
+          }
+          await this.#transition(turn, "EXECUTING");
+          current = await this.#mission.load(turn.id);
           await this.#mission.setTaskStatus(
             turn.id,
             current.version,
@@ -429,6 +485,16 @@ export class ChatEngine {
             randomUUID(),
           );
           snapshot = await this.#mission.load(turn.id);
+          if (result.verified && snapshot.taskStatuses.verify === "PENDING") {
+            await this.#mission.setTaskStatus(
+              turn.id,
+              snapshot.version,
+              "verify",
+              "RUNNING",
+              randomUUID(),
+            );
+            snapshot = await this.#mission.load(turn.id);
+          }
           if (snapshot.state === "EXECUTING")
             for (const next of ["OBSERVING", "VERIFYING"] as const)
               await this.#transition(turn, next);
@@ -436,10 +502,19 @@ export class ChatEngine {
             text: result.text,
             verification: result.verified ? "DELIVERY_CHECKED" : "UNVERIFIED",
           });
-          if (result.verified)
+          if (result.verified) {
+            snapshot = await this.#mission.load(turn.id);
+            if (snapshot.taskStatuses.verify === "RUNNING")
+              await this.#mission.setTaskStatus(
+                turn.id,
+                snapshot.version,
+                "verify",
+                "VERIFIED",
+                randomUUID(),
+              );
             for (const next of ["CHECKPOINTING", "FINAL_AUDIT", "COMPLETED"] as const)
               await this.#transition(turn, next);
-          else await this.#transition(turn, "BLOCKED");
+          } else await this.#transition(turn, "BLOCKED");
           return true;
         });
         if (committed) break;

@@ -1,5 +1,22 @@
 # Odin delivery roadmap
 
+## Product roadmap (separate from historical engineering M0–M28)
+
+- **PRODUCT M1:** product transformation, shell, Companion, Projects, Workspace foundation, Activity
+  projection, runtime bridge, integration audits and responsive experience.
+- **PRODUCT M2:** Workspace OS, files, artifacts, documents, previews and project context.
+- **PRODUCT M3:** Memory Brain visualization and memory hygiene over M6/M24.
+- **PRODUCT M4:** runtime productization for plans, DAGs, routing, verification, repair and checkpoints.
+- **PRODUCT M5:** Skills OS discovery, installation, permissions and verification experience.
+- **PRODUCT M6:** Build Mode from goal through preview.
+- **PRODUCT M7:** Coding Mode for repositories, diffs, branches, tests, review, PR and CI.
+- **PRODUCT M8:** Act/Browser Mode for research, connected apps and scoped actions.
+- **PRODUCT M9:** Automations, schedules, watches, background runs and approval budgets.
+- **PRODUCT M10:** billing, security, RLS, observability, performance, mobile/PWA, onboarding and release.
+
+PRODUCT M1 is specified in `docs/milestones/PRODUCT_M1_PRODUCT_TRANSFORMATION.md`. The sections below
+retain the original engineering milestone names as historical technical evidence.
+
 ## S–U — four-tier plans, GitHub MCP and Coding/Ultra semantics
 
 Repository implementation is complete for deterministic four-tier ranking, effective subscription

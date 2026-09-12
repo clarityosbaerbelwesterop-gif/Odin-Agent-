@@ -33,7 +33,17 @@ test("chat submits a real durable mission, stores response and survives reopenin
   try {
     const turn = await f.submit();
     await f.engine.idle();
-    assert.equal((await f.engine.view(turn.id)).state, "COMPLETED");
+    const completed = await f.engine.view(turn.id);
+    assert.equal(completed.state, "COMPLETED");
+    assert.equal(completed.companionState, "SUCCESS");
+    assert.deepEqual(
+      completed.plan.map(({ id, status }) => [id, status]),
+      [
+        ["understand", "done"],
+        ["work", "done"],
+        ["verify", "done"],
+      ],
+    );
     assert.equal(
       f.store.events(f.conversation.id).filter((event) => event.type === "answer").length,
       1,
@@ -42,6 +52,7 @@ test("chat submits a real durable mission, stores response and survives reopenin
     const reopened = new ChatStore(join(f.root, "chat.sqlite"));
     assert.equal(reopened.turn(turn.id).objective, "A user task");
     assert.equal(reopened.checkpoint(turn.id)?.usage.totalTokens, 50);
+    assert.equal(reopened.conversation(f.conversation.id).id, f.conversation.id);
     reopened.close();
   } finally {
     await f.close();

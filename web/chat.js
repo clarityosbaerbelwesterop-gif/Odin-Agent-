@@ -9,6 +9,7 @@ let cursor = 0;
 let sending = false;
 let pendingRequest = null;
 let screenshotAttachment = null;
+let projects = [];
 const changes = new Map();
 const sources = new Map();
 const terminal = new Set(["COMPLETED", "CANCELLED", "BLOCKED", "FAILED"]);
@@ -146,6 +147,43 @@ function activity(text, at, failed = false) {
   $("activity").append(item);
   if ($("activity").children.length > 150) $("activity").firstElementChild.remove();
 }
+const companionCopy = {
+  IDLE: ["Ready when you are", "Describe a goal. I’ll keep the work together."],
+  UNDERSTANDING: ["Understanding your goal", "Gathering the context that matters."],
+  PLANNING: ["Shaping the plan", "Turning the goal into clear work."],
+  WORKING: ["Working on it", "The run continues even if you leave this page."],
+  VERIFYING: ["Checking the result", "Looking for evidence before calling it complete."],
+  REPAIRING: ["Repairing a problem", "Using the failed check to guide the fix."],
+  BLOCKED: ["Needs your attention", "Progress is saved and ready to continue."],
+  SUCCESS: ["Work complete", "The result and its evidence are ready."],
+};
+function updateCompanion(state = "IDLE") {
+  const copy = companionCopy[state] ?? companionCopy.IDLE;
+  $("companion").dataset.state = state;
+  $("companion-label").textContent = copy[0];
+  $("companion-detail").textContent = copy[1];
+  document.querySelector(".companion-mini").dataset.companionState = state;
+  $("run-companion-label").textContent = copy[0];
+  $("run-companion-state").textContent = state;
+}
+function renderCanonicalPlan(steps = []) {
+  if (!steps.length) return;
+  $("plan").replaceChildren();
+  $("activity-empty").hidden = true;
+  for (const step of steps) {
+    const row = element("li", undefined, step.status);
+    const marker =
+      step.status === "done"
+        ? "DONE"
+        : step.status === "active"
+          ? "RUN"
+          : step.status === "failed"
+            ? "ISSUE"
+            : "WAIT";
+    row.append(element("span", marker, "step-marker"), element("span", step.title));
+    $("plan").append(row);
+  }
+}
 function updateControls() {
   const running = active && !terminal.has(active.state);
   $("task-controls").hidden = !running;
@@ -169,6 +207,8 @@ function renderEvent(event) {
   else if (event.type === "answer") message(data.text, "assistant", event.turnId);
   else if (event.type === "state") {
     active = data;
+    updateCompanion(data.companionState);
+    renderCanonicalPlan(data.plan);
     updateControls();
   } else if (event.type === "plan") {
     $("plan").replaceChildren();
@@ -255,10 +295,14 @@ function renderFiles() {
   }
 }
 async function loadConversations() {
-  const data = await api("/api/conversations");
+  const data = await api("/api/projects");
+  projects = data.projects;
   $("conversation-list").replaceChildren();
-  $("conversation-count").textContent = data.conversations.length;
-  for (const item of data.conversations) {
+  $("project-grid").replaceChildren();
+  $("global-activity").replaceChildren();
+  $("conversation-count").textContent = projects.length;
+  $("project-count-nav").textContent = String(projects.length);
+  for (const item of projects) {
     const button = element(
       "button",
       item.title,
@@ -267,8 +311,36 @@ async function loadConversations() {
     button.type = "button";
     button.onclick = () => openConversation(item.id).catch(errorBanner);
     $("conversation-list").append(button);
+    const state = item.lastRun?.companionState ?? "IDLE";
+    const card = element("button", undefined, "project-card");
+    card.type = "button";
+    card.append(
+      element("span", state, `project-state state-${state.toLowerCase()}`),
+      element("h2", item.title),
+      element("p", item.lastRun?.objective ?? "Ready for its first goal"),
+      element(
+        "small",
+        `${item.runCount} run${item.runCount === 1 ? "" : "s"} · ${new Date(item.createdAt).toLocaleDateString()}`,
+      ),
+    );
+    card.onclick = () => openConversation(item.id).catch(errorBanner);
+    $("project-grid").append(card);
+    if (item.lastRun) {
+      const activityCard = card.cloneNode(true);
+      activityCard.classList.add("activity-card");
+      activityCard.onclick = () => openConversation(item.id).catch(errorBanner);
+      $("global-activity").append(activityCard);
+    }
   }
-  return data.conversations;
+  if (!projects.length) {
+    $("project-grid").append(
+      element("p", "No projects yet. Start with a goal on Home.", "empty-copy"),
+    );
+    $("global-activity").append(
+      element("p", "Activity will appear after your first run.", "empty-copy"),
+    );
+  }
+  return projects;
 }
 function resetConversation() {
   stream?.close();
@@ -287,6 +359,7 @@ function resetConversation() {
   $("preview").removeAttribute("src");
   $("call-count").textContent = "—";
   $("token-count").textContent = "0";
+  updateCompanion("IDLE");
   updateControls();
 }
 function resetSession() {
@@ -306,11 +379,14 @@ async function openConversation(id) {
   resetConversation();
   conversationId = id;
   showChat();
-  const data = await api(`/api/conversations/${id}`);
+  window.history.replaceState({}, "", `/app?project=${encodeURIComponent(id)}`);
+  const data = await api(`/api/projects/${id}`);
   if (conversationId !== id) return;
   active = data.turns.at(-1) ?? null;
+  updateCompanion(active?.companionState ?? "IDLE");
+  renderCanonicalPlan(active?.plan);
   $("page-title").textContent = data.conversation.title;
-  stream = new EventSource(`/api/conversations/${id}/events?after=0`);
+  stream = new EventSource(`/api/projects/${id}/events?after=0`);
   stream.onopen = () => {
     $("connection").textContent = "Connected";
     if (active && !terminal.has(active.state) && active.state !== "PAUSED") startExecution(active);
@@ -334,14 +410,50 @@ async function openConversation(id) {
   await loadConversations();
 }
 function showChat() {
-  $("benchmarks").hidden = true;
-  $("models-panel").hidden = true;
-  $("system-panel").hidden = true;
+  hideSurfaces();
   $("chat-layout").hidden = false;
-  $("chat-view").classList.add("selected");
-  $("benchmark-view").classList.remove("selected");
-  $("models-view").classList.remove("selected");
-  $("system-view").classList.remove("selected");
+  $("project-nav").hidden = !conversationId;
+  selectNav(conversationId ? "projects-view" : "home-view");
+}
+const surfaceIds = [
+  "chat-layout",
+  "projects-panel",
+  "knowledge-panel",
+  "skills-panel",
+  "activity-page",
+  "models-panel",
+  "system-panel",
+  "benchmarks",
+];
+const navIds = [
+  "home-view",
+  "projects-view",
+  "knowledge-view",
+  "skills-view",
+  "activity-view",
+  "models-view",
+  "system-view",
+  "benchmark-view",
+];
+function hideSurfaces() {
+  for (const id of surfaceIds) $(id).hidden = true;
+}
+function selectNav(id) {
+  for (const nav of navIds) $(nav).classList.toggle("selected", nav === id);
+}
+function showSurface(surface, nav, title) {
+  hideSurfaces();
+  $("project-nav").hidden = true;
+  $(surface).hidden = false;
+  selectNav(nav);
+  $("page-title").textContent = title;
+}
+function showHome() {
+  conversationId = null;
+  resetConversation();
+  showChat();
+  $("page-title").textContent = "Home";
+  window.history.replaceState({}, "", "/app");
 }
 async function initialize() {
   config = await api("/api/config");
@@ -370,7 +482,10 @@ async function initialize() {
   updateControls();
   updateMode();
   const conversations = await loadConversations();
-  if (conversations.length) await openConversation(conversationId ?? conversations[0].id);
+  const requestedProject = new URLSearchParams(window.location.search).get("project");
+  if (requestedProject && conversations.some((item) => item.id === requestedProject))
+    await openConversation(requestedProject);
+  else showHome();
 }
 function updateMode() {
   $("mode-description").textContent =
@@ -449,7 +564,7 @@ $("composer").onsubmit = async (event) => {
     if (active && !terminal.has(active.state)) await api(`/api/turns/${active.id}/steer`, { text });
     else {
       if (!conversationId) {
-        const item = await api("/api/conversations", { title: text.slice(0, 90) });
+        const item = await api("/api/projects", { title: text.slice(0, 90) });
         await openConversation(item.id);
       }
       const selectedModel = config.models.find((model) => model.id === $("model").value);
@@ -466,7 +581,7 @@ $("composer").onsubmit = async (event) => {
       });
       if (pendingRequest?.identity !== identity)
         pendingRequest = { identity, requestId: crypto.randomUUID() };
-      active = await api(`/api/conversations/${conversationId}/turns`, {
+      active = await api(`/api/projects/${conversationId}/turns`, {
         text,
         mode: $("mode").value,
         modelId: $("model").value,
@@ -493,14 +608,16 @@ $("prompt").onkeydown = (event) => {
   }
 };
 $("new-chat").onclick = () => {
-  conversationId = null;
   pendingRequest = null;
-  resetConversation();
-  showChat();
-  $("page-title").textContent = "Mission";
+  showHome();
   $("prompt").focus();
 };
-$("chat-view").onclick = showChat;
+$("project-create").onclick = () => $("new-chat").click();
+$("home-view").onclick = showHome;
+$("projects-view").onclick = () => showSurface("projects-panel", "projects-view", "Projects");
+$("knowledge-view").onclick = () => showSurface("knowledge-panel", "knowledge-view", "Knowledge");
+$("skills-view").onclick = () => showSurface("skills-panel", "skills-view", "Skills");
+$("activity-view").onclick = () => showSurface("activity-page", "activity-view", "Activity");
 $("mode").onchange = updateMode;
 for (const button of document.querySelectorAll("[data-prompt]"))
   button.onclick = () => {
@@ -546,6 +663,23 @@ for (const button of document.querySelectorAll("[data-tab]"))
       $(`${tab.dataset.tab}-panel`).hidden = !selected;
     }
   };
+for (const button of document.querySelectorAll("[data-project-section]"))
+  button.onclick = () => {
+    if (!conversationId) return;
+    for (const item of document.querySelectorAll("[data-project-section]"))
+      item.classList.toggle("selected", item === button);
+    if (button.dataset.projectSection === "knowledge") {
+      showSurface("knowledge-panel", "projects-view", "Project knowledge");
+      $("project-nav").hidden = false;
+      return;
+    }
+    showChat();
+    if (["tasks", "runs", "activity"].includes(button.dataset.projectSection)) {
+      document.querySelector('[data-tab="activity"]').click();
+      $("inspector").hidden = false;
+      $("chat-layout").classList.remove("hide-inspector");
+    }
+  };
 $("preview-file").onchange = () => {
   const change = changes.get($("preview-file").value);
   if (!change) {
@@ -555,7 +689,7 @@ $("preview-file").onchange = () => {
   }
   $("preview").removeAttribute("srcdoc");
   $("preview").src =
-    `/api/conversations/${conversationId}/preview?file=${encodeURIComponent($("preview-file").value)}`;
+    `/api/projects/${conversationId}/preview?file=${encodeURIComponent($("preview-file").value)}`;
 };
 $("settings").onclick = () => {
   $("details-body").replaceChildren(
@@ -677,8 +811,7 @@ $("benchmark-view").onclick = async () => {
   $("chat-layout").hidden = true;
   $("benchmarks").hidden = false;
   $("page-title").textContent = "Benchmarks";
-  $("benchmark-view").classList.add("selected");
-  $("chat-view").classList.remove("selected");
+  selectNav("benchmark-view");
   try {
     const evidence = await api("/api/benchmarks");
     const target = $("benchmark-content");

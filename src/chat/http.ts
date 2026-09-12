@@ -138,9 +138,22 @@ export async function startChatServer(options: ChatHttpOptions) {
         send(res, 200, options.benchmark ?? { status: "UNAVAILABLE" });
         return;
       }
-      if (url.pathname === "/api/conversations") {
+      if (["/api/conversations", "/api/projects"].includes(url.pathname)) {
         if (method === "GET") {
-          send(res, 200, { conversations: await options.engine.store.conversations() });
+          const projects = await options.engine.projects();
+          send(
+            res,
+            200,
+            url.pathname === "/api/projects"
+              ? { projects }
+              : {
+                  conversations: projects.map(({ id, title, createdAt }) => ({
+                    id,
+                    title,
+                    createdAt,
+                  })),
+                },
+          );
           return;
         }
         if (method === "POST") {
@@ -155,9 +168,10 @@ export async function startChatServer(options: ChatHttpOptions) {
           return;
         }
       }
-      const conversation = /^\/api\/conversations\/([\w-]+)(?:\/(turns|events|preview))?$/u.exec(
-        url.pathname,
-      );
+      const conversation =
+        /^\/api\/(?:conversations|projects)\/([\w-]+)(?:\/(turns|events|activity|preview))?$/u.exec(
+          url.pathname,
+        );
       if (conversation) {
         const id = identifier(conversation[1]);
         if (conversation[2] === "preview" && method === "GET") {
@@ -259,6 +273,15 @@ export async function startChatServer(options: ChatHttpOptions) {
             session.streams--;
           });
           poll();
+          return;
+        }
+        if (conversation[2] === "activity" && method === "GET") {
+          const after = integer(
+            Number(url.searchParams.get("after") ?? 0),
+            0,
+            Number.MAX_SAFE_INTEGER,
+          );
+          send(res, 200, { activity: await options.engine.activity(id, after, 100) });
           return;
         }
       }

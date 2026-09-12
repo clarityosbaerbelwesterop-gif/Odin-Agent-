@@ -1,5 +1,6 @@
 import type { MissionState } from "../mission/runtime.js";
 import type { ModelMessage, ModelProvider, TokenUsage } from "../providers/types.js";
+import type { CompanionState, ProductPlanStep } from "./product-projection.js";
 
 export type ChatMode = "chat" | "coding" | "thinking" | "research" | "ultra";
 export type ProductPlan = "free" | "pro" | "developer" | "ultra";
@@ -51,6 +52,8 @@ export interface ChatTurnView extends ChatTurn {
   readonly state: MissionState;
   readonly version: number;
   readonly usage: TokenUsage;
+  readonly companionState: CompanionState;
+  readonly plan: readonly ProductPlanStep[];
 }
 export interface ChatSource {
   readonly id: string;

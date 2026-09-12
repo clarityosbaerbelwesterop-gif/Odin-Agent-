@@ -51,6 +51,13 @@ test("real HTTP service enforces auth/CSRF, submits tasks and resumes durable ev
     const config = await fetch(`${app.origin}/api/config`, { headers: auth });
     assert.equal(config.status, 200);
     assert.doesNotMatch(await config.text(), new RegExp(TOKEN));
+    const projects = (await (
+      await fetch(`${app.origin}/api/projects`, { headers: auth })
+    ).json()) as { projects: { id: string; kind: string }[] };
+    assert.deepEqual(
+      projects.projects.map(({ id, kind }) => [id, kind]),
+      [[f.conversation.id, "project"]],
+    );
     const sent = await fetch(`${app.origin}/api/conversations/${f.conversation.id}/turns`, {
       method: "POST",
       headers: auth,
@@ -63,6 +70,10 @@ test("real HTTP service enforces auth/CSRF, submits tasks and resumes durable ev
     });
     assert.equal(sent.status, 202);
     await f.engine.idle();
+    const activity = (await (
+      await fetch(`${app.origin}/api/projects/${f.conversation.id}/activity`, { headers: auth })
+    ).json()) as { activity: { type: string; label: string }[] };
+    assert(activity.activity.some((event) => event.type === "answer" && event.label));
     const page = (await (
       await fetch(`${app.origin}/api/conversations/${f.conversation.id}/events`, { headers: auth })
     ).json()) as { events: { type: string; cursor: number }[] };

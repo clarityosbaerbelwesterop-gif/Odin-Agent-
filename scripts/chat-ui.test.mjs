@@ -92,6 +92,19 @@ async function client({ unavailable = false, mode = "" } = {}) {
   };
 }
 
+test("workspace shell declares desktop, iPad and narrow responsive layouts", async () => {
+  const [base, product] = await Promise.all([
+    readFile("web/chat.css", "utf8"),
+    readFile("web/product-m1.css", "utf8"),
+  ]);
+  assert.match(base, /@media \(max-width: 1150px\)/u);
+  assert.match(base, /@media \(max-width: 900px\)/u);
+  assert.match(product, /@media \(max-width: 1100px\)/u);
+  assert.match(product, /@media \(max-width: 900px\)/u);
+  assert.match(product, /@media \(max-width: 620px\)/u);
+  assert.match(product, /\.project-nav[\s\S]*overflow-x: auto/u);
+});
+
 test("landing links select a known mode without sending a task or accepting unknown modes", async () => {
   for (const mode of ["coding", "research", "ultra", "untrusted-mode"]) {
     const c = await client({ mode });
@@ -109,15 +122,29 @@ test("shipped UI sends real HTTP missions, changes modes, reopens history and cl
   const c = await client();
   try {
     await until(() => c.get("connection").textContent === "Connected");
+    assert.deepEqual(
+      [...c.window.document.querySelectorAll(".sidebar [id$='-view']")].map(
+        (item) =>
+          item.textContent
+            .trim()
+            .replace(/^[^A-Za-z]+/u, "")
+            .split(/\s+/u)[0],
+      ),
+      ["Home", "Projects", "Knowledge", "Skills", "Activity", "Connections", "System", "Evidence"],
+    );
     for (const mode of ["chat", "thinking", "ultra"]) {
       await c.send(`DOM ${mode} scenario`, mode);
       await until(() => !c.get("send").disabled && c.get("task-controls").hidden);
       assert.match(c.get("messages").textContent, /Browser fixture response/u);
+      assert.equal(c.get("run-companion-state").textContent, "SUCCESS");
+      assert.equal(c.get("plan").querySelectorAll("li.done").length, 3);
     }
     c.click("new-chat");
     await until(() => c.get("messages").querySelectorAll("article").length === 0);
     c.get("conversation-list").querySelector("button").click();
     await until(() => c.get("messages").textContent.includes("DOM ultra scenario"));
+    assert.match(c.window.location.search, /project=/u);
+    assert.equal(c.get("project-nav").hidden, false);
     c.click("sign-out");
     await until(() => c.get("login").open);
     assert.equal(c.get("messages").querySelectorAll("article").length, 0);
