@@ -16,13 +16,38 @@ test("long coding missions keep persisted team plans below the database budget",
   );
 });
 
-test("specialist prompts still receive the complete primary objective", () => {
-  const goal = `${"A".repeat(15_900)}TAIL_MARKER`;
+test("primary specialist preserves the complete near-limit objective without overflowing chat input", () => {
+  const goal = `${"A".repeat(15_980)}TAIL_MARKER`;
+  assert.ok(goal.length <= 16_000);
   const plan = planBotTeam(goal, "coding", 4);
   const primary = plan.assignments.find((assignment) => assignment.phase === "primary");
   assert.ok(primary);
 
-  const prompt = specialistPrompt(primary, goal);
+  const prompt = specialistPrompt(
+    primary,
+    goal,
+    "supplemental context that cannot displace the goal",
+  );
+  assert.equal(prompt, goal);
   assert.ok(prompt.includes("TAIL_MARKER"));
-  assert.ok(prompt.includes(`PRIMARY OBJECTIVE: ${goal}`));
+  assert.ok(prompt.length <= 16_000);
+});
+
+test("supplemental specialists stay within chat input bounds while retaining permission rules", () => {
+  const goal = `${"Build and verify security, UI, deployment and repository behavior. ".repeat(260)}END`;
+  const plan = planBotTeam(goal, "coding", 4);
+  const preflight = plan.assignments.find((assignment) => assignment.phase === "preflight");
+  const reviewer = plan.assignments.find((assignment) => assignment.phase === "review");
+  assert.ok(preflight);
+  assert.ok(reviewer);
+
+  const context = "PRIMARY RESULT: ".concat("verified output ".repeat(1200));
+  const preflightPrompt = specialistPrompt(preflight, goal, context);
+  const reviewPrompt = specialistPrompt(reviewer, goal, context);
+
+  assert.ok(preflightPrompt.length <= 16_000);
+  assert.match(preflightPrompt, /read-only/u);
+  assert.ok(reviewPrompt.length <= 16_000);
+  assert.match(reviewPrompt, /VERDICT: PASS/u);
+  assert.match(reviewPrompt, /PRIMARY RESULT/u);
 });
