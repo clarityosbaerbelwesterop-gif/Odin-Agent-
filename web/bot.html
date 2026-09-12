@@ -30,9 +30,9 @@
         </section>
 
         <section class="stream" aria-label="Connected tools">
-          <div class="section-head"><h2>Connectors</h2><a href="/app?workspace=1">GitHub & Repos verwalten</a></div>
+          <div class="section-head"><h2>Connectors</h2><a href="/bot?workspace=1">GitHub & Repos verwalten</a></div>
           <div id="connectors" class="connector-grid"></div>
-          <p class="connector-help">GitHub-Repository und Branch werden über „GitHub & Repos verwalten“ gewählt und gelten danach auch für Odin Bot. Neon ist aktuell Odins interne Auth-/Datenbank-Infrastruktur und kein auswählbarer Nutzer-Connector. Higgsfield ist noch nicht in Odin Bot integriert.</p>
+          <p class="connector-help">GitHub-Repository und Branch kannst du direkt in Odin Bot über „GitHub & Repos verwalten“ oder den Repository-Picker oben wählen. Die Auswahl gilt auch für Coding-Aufgaben des Bots. Neon ist aktuell Odins interne Auth-/Datenbank-Infrastruktur und kein auswählbarer Nutzer-Connector. Higgsfield ist noch nicht in Odin Bot integriert.</p>
           <p class="bot-ai-note">KI-Hinweis: Odin Bot ist ein KI-System. Hintergrundaufgaben, Modellwahl, Werkzeuge und Freigaben bleiben im Missionsprotokoll nachvollziehbar.</p>
         </section>
 
@@ -69,6 +69,7 @@
         <div class="detail-actions"><button id="stop-task" type="button">Stop task</button></div>
       </dialog>
     </div>
+    <script type="module" src="/workspace.js"></script>
     <script type="module" src="/bot.js"></script>
   </body>
 </html>
