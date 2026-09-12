@@ -12,7 +12,12 @@ export default async function githubCallback(req, res) {
     res.statusCode = 405;
     res.setHeader("Allow", "GET");
     res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.end(JSON.stringify({ code: "METHOD_NOT_ALLOWED", message: "GitHub OAuth callback requires GET." }));
+    res.end(
+      JSON.stringify({
+        code: "METHOD_NOT_ALLOWED",
+        message: "GitHub OAuth callback requires GET.",
+      }),
+    );
     return;
   }
 
@@ -20,7 +25,9 @@ export default async function githubCallback(req, res) {
   if (!host) {
     res.statusCode = 400;
     res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.end(JSON.stringify({ code: "INVALID_CALLBACK", message: "Invalid GitHub OAuth callback." }));
+    res.end(
+      JSON.stringify({ code: "INVALID_CALLBACK", message: "Invalid GitHub OAuth callback." }),
+    );
     return;
   }
 
