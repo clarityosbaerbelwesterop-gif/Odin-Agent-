@@ -8,7 +8,9 @@ import {
   ODIN_STRIPE_PRICES,
   PLAN_RANK,
   planAllows,
+  preStripeTestMode,
   provider,
+  runtimePlan,
   stripePricePlan,
   subscriptionPriceId,
   verifyStripeSignature,
@@ -41,6 +43,23 @@ test("S-U effective paid entitlement requires an approved Stripe status", () => 
     "unknown",
   ])
     assert.equal(effectivePlan({ plan: "ultra", subscriptionStatus: status }), "free");
+});
+
+test("pre-Stripe test mode exposes the complete product only until billing is configured", () => {
+  const freeAccount = { plan: "free" as const, subscriptionStatus: "unknown" };
+  assert.equal(preStripeTestMode({}), true);
+  assert.equal(runtimePlan(freeAccount, {}), "ultra");
+
+  const stripeConfigured = { STRIPE_SECRET_KEY: "sk_test_fixture" } as NodeJS.ProcessEnv;
+  assert.equal(preStripeTestMode(stripeConfigured), false);
+  assert.equal(runtimePlan(freeAccount, stripeConfigured), "free");
+
+  const explicitTestLane = {
+    STRIPE_SECRET_KEY: "sk_test_fixture",
+    ODIN_PRESTRIPE_TEST_MODE: "true",
+  } as NodeJS.ProcessEnv;
+  assert.equal(preStripeTestMode(explicitTestLane), true);
+  assert.equal(runtimePlan(freeAccount, explicitTestLane), "ultra");
 });
 
 test("S-U Stripe mapping accepts only exact configured Odin prices", () => {
