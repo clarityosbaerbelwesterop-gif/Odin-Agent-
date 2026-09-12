@@ -1,0 +1,42 @@
+name: Stabilize pre-Stripe product
+
+on:
+  push:
+    branches: [stabilize/prestripe-full-access-legal]
+    paths:
+      - scripts/stabilize-prestripe.mjs
+      - .github/workflows/stabilize-prestripe.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stabilize-prestripe-product
+  cancel-in-progress: false
+
+jobs:
+  stabilize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: stabilize/prestripe-full-access-legal
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply stabilization patch
+        run: node scripts/stabilize-prestripe.mjs
+      - name: Format changed code
+        run: npx biome check --write src/chat/product.ts src/chat/neon-auth.ts src/chat/modes.ts src/chat/types.ts src/chat/engine.ts src/chat/agent.ts src/chat/neon-store.ts src/chat/hosted.ts src/bot/executor.ts web/login.js web/workspace.js web/chat.js web/bot.js
+      - name: Verify full repository
+        run: npm run verify
+      - name: Commit verified product tree
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/chat/product.ts src/chat/neon-auth.ts src/chat/modes.ts src/chat/types.ts src/chat/engine.ts src/chat/agent.ts src/chat/neon-store.ts src/chat/hosted.ts src/bot/executor.ts web/login.html web/login.js web/workspace.js web/chat.html web/chat.js web/chat.css web/bot.html web/bot.js web/bot.css web/eula.html web/privacy.html web/cookies.html web/ai-act.html web/imprint.html web/gdpr.html
+          git commit -m 'feat: open full pre-Stripe test lane and stabilize auth workspace legal UX'
+          git push origin HEAD:stabilize/prestripe-full-access-legal
