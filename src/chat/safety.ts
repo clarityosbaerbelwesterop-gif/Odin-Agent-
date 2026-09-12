@@ -25,7 +25,10 @@ export function object(value: unknown, allowed: readonly string[]): Record<strin
 }
 
 export function identifier(value: unknown): string {
-  if (typeof value !== "string" || !/^[a-zA-Z0-9_-]{1,100}$/u.test(value)) {
+  // Colons are allowed for bounded internal composite/idempotency keys such as
+  // <task-id>:<specialist-id>:<phase>. They remain path-safe and SQL-safe while avoiding
+  // accidental INVALID_ID failures in durable agent orchestration.
+  if (typeof value !== "string" || !/^[a-zA-Z0-9_:-]{1,100}$/u.test(value)) {
     throw new ChatError("INVALID_ID", "Invalid identifier.");
   }
   return value;
