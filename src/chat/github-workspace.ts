@@ -213,9 +213,7 @@ export class GitHubWorkspace implements RepositoryWorkspace, QualityCommandRunne
       if (!Array.isArray(workflows)) return false;
       return workflows.some(
         (entry: GitHubFile) =>
-          entry.type === "file" &&
-          typeof entry.path === "string" &&
-          /\.ya?ml$/iu.test(entry.path),
+          entry.type === "file" && typeof entry.path === "string" && /\.ya?ml$/iu.test(entry.path),
       );
     } catch (error) {
       if (error instanceof ChatError && error.status === 404) return false;
