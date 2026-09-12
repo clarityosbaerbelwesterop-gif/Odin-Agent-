@@ -1,4 +1,5 @@
 const RECOVERY_KEY = "odin.auth.github-recovery";
+const STATE_RETRY_KEY = "odin.auth.github-state-retry";
 const LAST_EMAIL_KEY = "odin.auth.last-email";
 const ATTEMPT_EMAIL_KEY = "odin.auth.github-attempt-email";
 const RECOVERABLE_ERRORS = new Set([
@@ -41,6 +42,23 @@ function setRecoveryPending(value) {
     else window.sessionStorage.removeItem(RECOVERY_KEY);
   } catch {
     // Recovery remains optional when browser storage is unavailable.
+  }
+}
+
+function stateRetryUsed() {
+  try {
+    return window.sessionStorage.getItem(STATE_RETRY_KEY) === "1";
+  } catch {
+    return true;
+  }
+}
+
+function setStateRetryUsed(value) {
+  try {
+    if (value) window.sessionStorage.setItem(STATE_RETRY_KEY, "1");
+    else window.sessionStorage.removeItem(STATE_RETRY_KEY);
+  } catch {
+    // Fail closed: without session storage we do not auto-loop OAuth.
   }
 }
 
@@ -153,10 +171,34 @@ async function restartGitHubOAuth() {
   window.location.assign(target);
 }
 
+async function recoverStateMismatchOnce() {
+  if (stateRetryUsed()) {
+    setStatus(
+      "GitHub konnte die Login-Sitzung auch beim sicheren Wiederholungsversuch nicht bestätigen. Starte den GitHub-Login bitte erneut.",
+      "error",
+    );
+    return;
+  }
+  setStateRetryUsed(true);
+  setStatus("GitHub-Sitzung wird einmal sicher neu gestartet …");
+  try {
+    await restartGitHubOAuth();
+  } catch (error) {
+    setStatus(
+      error instanceof Error ? error.message : "GitHub Login konnte nicht neu gestartet werden.",
+      "error",
+    );
+  }
+}
+
 function markRecoverableOAuthFailure() {
   const params = new URLSearchParams(window.location.search);
   if (params.get("oauth") !== "error") return;
   const code = params.get("error") ?? params.get("error_code") ?? "";
+  if (code === "state_mismatch") {
+    void recoverStateMismatchOnce();
+    return;
+  }
   if (RECOVERABLE_ERRORS.has(code)) {
     setRecoveryPending(true);
     const attemptEmail = githubAttemptEmail();
@@ -251,6 +293,7 @@ if (githubButton) {
   githubButton.addEventListener(
     "click",
     () => {
+      setStateRetryUsed(false);
       const email = document.getElementById("auth-email")?.value.trim() ?? "";
       rememberGitHubAttemptEmail(email);
     },
