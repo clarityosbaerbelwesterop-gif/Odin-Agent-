@@ -23,7 +23,11 @@ test("primary specialist preserves the complete near-limit objective without ove
   const primary = plan.assignments.find((assignment) => assignment.phase === "primary");
   assert.ok(primary);
 
-  const prompt = specialistPrompt(primary, goal, "supplemental context that cannot displace the goal");
+  const prompt = specialistPrompt(
+    primary,
+    goal,
+    "supplemental context that cannot displace the goal",
+  );
   assert.equal(prompt, goal);
   assert.ok(prompt.includes("TAIL_MARKER"));
   assert.ok(prompt.length <= 16_000);
