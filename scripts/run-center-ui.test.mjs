@@ -161,42 +161,39 @@ async function app() {
   return { window, calls, close: () => window.close() };
 }
 
-test(
-  "PRODUCT M4 Run Center renders canonical history, dependencies, evidence and context",
-  async () => {
-    const current = await app();
-    try {
-      current.window.document.querySelector('[data-project-section="runs"]').click();
-      await tick();
-      await tick();
-      assert.equal(current.window.document.querySelectorAll(".m4-run-row").length, 1);
-      assert.match(current.window.document.getElementById("m4-goal").textContent, /Productize/u);
-      assert.match(
-        current.window.document.getElementById("m4-dag").textContent,
-        /Depends on understand/u,
-      );
-      assert.match(
-        current.window.document.getElementById("m4-verification").textContent,
-        /2 tests failed/u,
-      );
-      assert.match(current.window.document.getElementById("m4-verification").textContent, /PASS/u);
-      assert.match(
-        current.window.document.getElementById("m4-context").textContent,
-        /1 Memory · 1 Workspace/u,
-      );
-      assert.match(
-        current.window.document.getElementById("m4-context").textContent,
-        /Verification report/u,
-      );
-      assert.match(
-        current.window.document.getElementById("m4-governance").textContent,
-        /Repair cycles/u,
-      );
-    } finally {
-      current.close();
-    }
-  },
-);
+test("PRODUCT M4 Run Center renders canonical history, dependencies, evidence and context", async () => {
+  const current = await app();
+  try {
+    current.window.document.querySelector('[data-project-section="runs"]').click();
+    await tick();
+    await tick();
+    assert.equal(current.window.document.querySelectorAll(".m4-run-row").length, 1);
+    assert.match(current.window.document.getElementById("m4-goal").textContent, /Productize/u);
+    assert.match(
+      current.window.document.getElementById("m4-dag").textContent,
+      /Depends on understand/u,
+    );
+    assert.match(
+      current.window.document.getElementById("m4-verification").textContent,
+      /2 tests failed/u,
+    );
+    assert.match(current.window.document.getElementById("m4-verification").textContent, /PASS/u);
+    assert.match(
+      current.window.document.getElementById("m4-context").textContent,
+      /1 Memory · 1 Workspace/u,
+    );
+    assert.match(
+      current.window.document.getElementById("m4-context").textContent,
+      /Verification report/u,
+    );
+    assert.match(
+      current.window.document.getElementById("m4-governance").textContent,
+      /Repair cycles/u,
+    );
+  } finally {
+    current.close();
+  }
+});
 
 test("PRODUCT M4 controls remain server-authoritative and replan is steering", async () => {
   const current = await app();
@@ -221,19 +218,16 @@ test("PRODUCT M4 controls remain server-authoritative and replan is steering", a
   }
 });
 
-test(
-  "PRODUCT M4 Run Center contains no private-reasoning projection and keeps iPad layouts",
-  async () => {
-    const [client, css, projection] = await Promise.all([
-      readFile("web/run-center.js", "utf8"),
-      readFile("web/product-m4.css", "utf8"),
-      readFile("src/chat/product-projection.ts", "utf8"),
-    ]);
-    assert.match(client, /See the work, not hidden reasoning/u);
-    assert.doesNotMatch(client, /chain[- ]of[- ]thought|private reasoning|reasoning trace/iu);
-    assert.match(projection, /dependsOn: \[\.\.\.\(task\.dependsOn \?\? \[\]\)\]/u);
-    assert.match(css, /@media\s*\(max-width:\s*820px\)/u);
-    assert.match(css, /env\(safe-area-inset-bottom\)/u);
-    assert.match(css, /scroll-snap-type:\s*x proximity/u);
-  },
-);
+test("PRODUCT M4 Run Center contains no private-reasoning projection and keeps iPad layouts", async () => {
+  const [client, css, projection] = await Promise.all([
+    readFile("web/run-center.js", "utf8"),
+    readFile("web/product-m4.css", "utf8"),
+    readFile("src/chat/product-projection.ts", "utf8"),
+  ]);
+  assert.match(client, /See the work, not hidden reasoning/u);
+  assert.doesNotMatch(client, /chain[- ]of[- ]thought|private reasoning|reasoning trace/iu);
+  assert.match(projection, /dependsOn: \[\.\.\.\(task\.dependsOn \?\? \[\]\)\]/u);
+  assert.match(css, /@media\s*\(max-width:\s*820px\)/u);
+  assert.match(css, /env\(safe-area-inset-bottom\)/u);
+  assert.match(css, /scroll-snap-type:\s*x proximity/u);
+});

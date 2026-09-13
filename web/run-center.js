@@ -149,8 +149,7 @@ function m4ReadableActivity(event) {
     return `Quality ${data.passed === true ? "passed" : "failed"}: ${String(data.commandId ?? "configured check")}`;
   if (event.type === "verification")
     return data.outcome === "PASS" ? "Verification passed" : "Verification requires repair";
-  if (event.type === "file.changed")
-    return `Updated ${String(data.path ?? "a workspace file")}`;
+  if (event.type === "file.changed") return `Updated ${String(data.path ?? "a workspace file")}`;
   if (event.type === "model.start")
     return data.role === "reviewer" ? "Independent review started" : "Model work started";
   if (event.type === "state")
@@ -405,8 +404,7 @@ function m4RenderGovernance(run) {
   );
   const repairs = events.filter(
     (event) =>
-      (event.type === "state" &&
-        ["DIAGNOSING", "REPAIRING"].includes(String(event.data?.state))) ||
+      (event.type === "state" && ["DIAGNOSING", "REPAIRING"].includes(String(event.data?.state))) ||
       (event.type === "verification" && event.data?.outcome !== "PASS") ||
       (event.type === "quality" && event.data?.passed !== true),
   );
@@ -488,11 +486,7 @@ function m4RenderSelected() {
       String(toolCalls),
       `${m4State.config?.limits?.maxToolCalls ?? "—"} configured ceiling`,
     ),
-    m4Metric(
-      "Repair states",
-      String(repairStates),
-      "Derived only from canonical state events",
-    ),
+    m4Metric("Repair states", String(repairStates), "Derived only from canonical state events"),
   );
   m4RenderControls(run);
   m4RenderDag(run);
