@@ -281,4 +281,4 @@ void bootstrapWorkspace();
 
 // PRODUCT M2 is a product layer over the existing Workspace/GitHub selector. Keep the selector's
 // authority unchanged and load the persistent Workspace OS as a separate client projection.
-void import("/workspace-os.js");
+void import("./workspace-os.js");
