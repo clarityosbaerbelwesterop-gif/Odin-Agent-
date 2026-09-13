@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import type { CapabilityDomain } from "../capability-packs/types.js";
+import { containsObviousSecret } from "../security/secret-text.js";
 import { normalizePackage } from "../skills/registry.js";
 import type { SkillPackage } from "../skills/types.js";
-import { containsObviousSecret } from "../security/secret-text.js";
 import { ChatError } from "./types.js";
 
 export type ProductSkillScope = "global" | "project";
@@ -281,7 +281,8 @@ export function productSkillById(id: string): ProductSkillDescriptor {
 export function productRuntimeSkill(id: string): ProductSkillRuntime {
   productSkillById(id);
   const runtime = PRODUCT_SKILL_RUNTIME.get(id);
-  if (!runtime) throw new ChatError("SKILL_INTEGRITY", "Skill runtime package is unavailable.", 500);
+  if (!runtime)
+    throw new ChatError("SKILL_INTEGRITY", "Skill runtime package is unavailable.", 500);
   return runtime;
 }
 
