@@ -5,9 +5,9 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS odin_api.memory_records (
   owner_id text NOT NULL DEFAULT odin_api.actor(),
   project_id uuid NOT NULL,
-  id text NOT NULL CHECK(length(id) BETWEEN 1 AND 200 AND position(chr(0) in id)=0),
+  id text NOT NULL CHECK(length(id) BETWEEN 1 AND 200),
   mission_id text,
-  memory_key text NOT NULL CHECK(length(memory_key) BETWEEN 1 AND 200 AND position(chr(0) in memory_key)=0),
+  memory_key text NOT NULL CHECK(length(memory_key) BETWEEN 1 AND 200),
   kind text NOT NULL CHECK(kind IN ('working','episodic','project','semantic','user_preference')),
   content text,
   tags jsonb NOT NULL DEFAULT '[]'::jsonb,
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS odin_api.memory_records (
   updated_at timestamptz NOT NULL,
   PRIMARY KEY(owner_id,project_id,id),
   FOREIGN KEY(owner_id,project_id) REFERENCES odin_api.conversations(owner_id,id) ON DELETE CASCADE,
-  CHECK(mission_id IS NULL OR (length(mission_id) BETWEEN 1 AND 200 AND position(chr(0) in mission_id)=0)),
+  CHECK(mission_id IS NULL OR length(mission_id) BETWEEN 1 AND 200),
   CHECK(jsonb_typeof(tags)='array' AND jsonb_array_length(tags)<=32 AND octet_length(tags::text)<=4096),
   CHECK(kind<>'working' OR mission_id IS NOT NULL),
   CHECK(
@@ -103,7 +103,8 @@ BEGIN
     EXECUTE format('ALTER TABLE odin_api.%I ENABLE ROW LEVEL SECURITY',tab);
     EXECUTE format('ALTER TABLE odin_api.%I FORCE ROW LEVEL SECURITY',tab);
     IF NOT EXISTS (
-      SELECT 1 FROM pg_policies WHERE schemaname='odin_api' AND tablename=tab AND policyname='owner_isolation'
+      SELECT 1 FROM pg_policies
+      WHERE schemaname='odin_api' AND tablename=tab AND policyname='owner_isolation'
     ) THEN
       EXECUTE format(
         'CREATE POLICY owner_isolation ON odin_api.%I TO odin_runtime USING(owner_id=(SELECT odin_api.actor())) WITH CHECK(owner_id=(SELECT odin_api.actor()))',
