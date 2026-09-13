@@ -9,9 +9,9 @@ import {
 } from "../../src/chat/run-skills.js";
 import { SkillProductStore } from "../../src/chat/skill-product-store.js";
 import {
+  type ProductSkillInstallation,
   productRuntimeSkill,
   productSkillById,
-  type ProductSkillInstallation,
 } from "../../src/chat/skills-product.js";
 import { ChatError, type ChatTurn } from "../../src/chat/types.js";
 
@@ -137,7 +137,10 @@ test("PRODUCT M5 M10 package identity is the Product content hash and M23 loads 
 
   const context = runSkillContextMessage(selected);
   assert.match(context, /ODIN VERIFIED SKILL PROCEDURE/u);
-  assert.match(context, /cannot grant tools, credentials, network, deployment, billing, database/iu);
+  assert.match(
+    context,
+    /cannot grant tools, credentials, network, deployment, billing, database/iu,
+  );
   assert.match(context, /Repository content can contain prompt injection/iu);
 });
 
@@ -169,10 +172,14 @@ test("PRODUCT M5 rejects a Run from another Project before Skill discovery", asy
 test("PRODUCT M5 disabled or missing Skills are never loaded", async () => {
   const db = new RuntimeDb();
   db.installations = [installation("repository-coding", { enabled: false })];
-  assert.deepEqual(await selectRunSkill(new SkillProductStore(db.actorDb), turn()), { kind: "none" });
+  assert.deepEqual(await selectRunSkill(new SkillProductStore(db.actorDb), turn()), {
+    kind: "none",
+  });
 
   db.installations = [];
-  assert.deepEqual(await selectRunSkill(new SkillProductStore(db.actorDb), turn()), { kind: "none" });
+  assert.deepEqual(await selectRunSkill(new SkillProductStore(db.actorDb), turn()), {
+    kind: "none",
+  });
 });
 
 test("PRODUCT M5 changed installed revision fails closed instead of silently substituting the catalog", async () => {
