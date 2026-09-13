@@ -1,6 +1,6 @@
 # PRODUCT M5 — Skills OS
 
-Status: implementation and regression hardening complete on the M5 staging branch; full canonical verification, exact-head PR CI and merge evidence pending
+Status: staging implementation, focused regressions, governance synchronization and canonical verification complete; final PR #80 exact-head CI and merge pending
 
 PRODUCT M5 turns Odin's existing Skill authorities into a usable Skills OS. It does **not** create a
 second Skill runtime and it does not let installation become permission authority.
@@ -158,25 +158,29 @@ authority for Project rows.
 
 It does not create roles, execute grants, credential authority or a parallel Project/Run system.
 
+Migration 014 is repository-verified but was not applied to the canonical production database during
+this M5 staging pass. Source verification must not be relabeled as production schema evidence.
+
 ## Verified Neon cleanup — migration 015
 
-The canonical Odin Neon project is `cold-mode-01560070`, default branch `production`, database `neondb`.
-A read-only M5 audit identified exactly two preserved predecessor tables from the M004 reconciliation:
+The canonical Odin Neon project is `cold-mode-01560070`, default branch `production`
+(`br-muddy-boat-b1po0mwo`), database `neondb`. Before application, the fresh live M5 audit found exactly
+two preserved predecessor tables from the M004 reconciliation:
 
-- `odin_api.github_connections_legacy_v003`;
-- `odin_api.oauth_states_legacy_v003`.
+- `odin_api.github_connections_legacy_v003` — 0 rows;
+- `odin_api.oauth_states_legacy_v003` — 0 rows.
 
-M004 explicitly records that these predecessor tables were empty before rename and replacement. The M5
-live recheck again found both at zero rows, with no foreign keys, user triggers, dependent views or
-routine references. Their canonical replacements `odin_api.github_connections` and
-`odin_api.oauth_states` exist and are active.
+For both objects, live FK, user-trigger, dependent-view and routine dependency counts were zero. Their
+canonical replacements `odin_api.github_connections` and `odin_api.oauth_states` existed, and repository
+runtime search found no query of either legacy name.
 
-`migrations/015_cleanup_legacy_product_control_plane.sql` therefore targets only those two proven legacy
-objects. It fails closed if either receives data and deliberately uses no `CASCADE`; any newly introduced
-dependency must stop the migration for review. No other empty table or zero-scan index is considered
-redundant merely from usage statistics.
+`migrations/015_cleanup_legacy_product_control_plane.sql` was then applied to that exact production
+branch. Its fail-closed row checks ran first, and the two drops executed without `CASCADE`. The immediate
+post-application audit verified both legacy relations are absent while both canonical replacements,
+`conversations`, `turns`, `events` and `workspace_files` remain present. A subsequent table audit showed
+RLS and FORCE RLS still enabled on every remaining `odin_api` base table.
 
-Application evidence is recorded only after the migration is actually applied and re-audited.
+No other empty table or zero-scan index was removed.
 
 ## Security invariants
 
@@ -207,7 +211,7 @@ Desktop uses catalog + detail columns. iPad/tablet collapses to one primary deta
 usable touch targets. Mobile uses one-column catalog/draft layouts and does not rely on `!important`
 overrides.
 
-## Verification contract
+## Verification contract and evidence
 
 Canonical acceptance is the repository-standard `npm run verify`, covering foundation checks, Biome,
 strict TypeScript, deterministic domain/security tests, Product/UI tests, provider dry smoke and the
@@ -227,5 +231,9 @@ production build. PRODUCT M5 additionally has regressions for:
 - cursor-ordered Project+Run event projection;
 - UI server-authoritative lifecycle wiring and no-evidence rendering.
 
-A final exact-head PR #80 GitHub Actions success is required before merge. Repository tests are not a
-claim of Vercel availability or a physical-device session; external preview evidence remains separate.
+Staging CI #878 passed the complete repository-standard `npm run verify` on
+`8053ae99dbb816d193e8fe3e5346dc73d5fcd2ad`, including Foundation, Biome, strict TypeScript, all 645
+deterministic tests, the full UI suite, credential-free provider dry smoke and the production/base build.
+After governance synchronization, a fresh exact-head staging success remains required before moving PR
+#80. PR #80 then requires its own exact-head GitHub Actions success before merge. Repository tests are not
+a claim of Vercel availability or a physical-device session; external preview evidence remains separate.
