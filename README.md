@@ -16,6 +16,14 @@ Selected Workspace Context is compiled through the existing M6 `DeterministicCon
 lower-authority P3 project data before a hosted Run; it cannot mint permissions, approvals or
 verification. See the [PRODUCT M2 contract](docs/milestones/PRODUCT_M2_WORKSPACE_OS.md).
 
+**PRODUCT M3** productizes the existing M6/M24 Memory authority as a visible, project-scoped Memory
+Brain. The hosted Neon adapter implements the canonical `MemoryStore` contract with version integrity,
+provenance, sensitivity, expiry, history and tombstones under FORCE RLS. The Knowledge surface renders
+only canonical Memory and real Workspace sources, while M24 stale/conflict/retention/compression logic
+remains authoritative. Brain Pulse exposes only references selected by the canonical Context Compiler;
+it does not expose chain-of-thought. See the
+[PRODUCT M3 contract](docs/milestones/PRODUCT_M3_MEMORY_BRAIN.md).
+
 The repository does **not** yet claim kernel/container isolation, a live hosted sandbox adapter,
 arbitrary shell execution, native mobile binaries, a distributed worker queue, or proof for a live
 environment unless separate external evidence is recorded. Current status and verified capabilities
@@ -94,7 +102,8 @@ distributed queue.
 ### Memory, specialists, clients, skills, and routing
 
 M6 provides scoped versioned memory and P0–P6 context compilation with current-source precedence and
-sensitive-cache exclusion. Its memory adapter remains in-memory.
+sensitive-cache exclusion. Its core test adapter remains in-memory; PRODUCT M3 adds the hosted Neon
+adapter while preserving the same `MemoryStore` contract and M24 advanced-memory authority.
 
 M7 coordinates bounded specialists with logical ownership and runtime evidence attestation. Its
 ownership is single-process logical coordination, not a distributed lock or sandbox.
@@ -135,6 +144,8 @@ sandbox metadata, or committed environment files.
 M12-A/B normal pull-request CI run `33794095989` passed with **237/237 tests**, 0 failures, and aggregate
 coverage **89.43% lines / 76.28% branches / 95.37% functions**. M12 remains partially verified because
 M12-C release/observability/recovery proof and all live infrastructure evidence are still open.
+PRODUCT M3 uses the same canonical `npm run verify` and exact-head PR CI gate; the milestone document
+records its product-specific deterministic evidence without treating CI as proof of a live deployment.
 
 ## Engineering priorities
 
