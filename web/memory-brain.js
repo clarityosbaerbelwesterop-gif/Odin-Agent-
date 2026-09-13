@@ -143,7 +143,11 @@ if (panel) {
     const counts = { ...projection.counts };
     const nodes = projection.nodes.map((node) => {
       if (node.nodeClass !== "MEMORY" || node.status === "ARCHIVED") return node;
-      const nextStatus = conflicted.has(node.id) ? "CONFLICTED" : stale.has(node.id) ? "STALE" : null;
+      const nextStatus = conflicted.has(node.id)
+        ? "CONFLICTED"
+        : stale.has(node.id)
+          ? "STALE"
+          : null;
       if (!nextStatus || nextStatus === node.status) return node;
       if (node.status && counts[node.status] > 0) counts[node.status] -= 1;
       counts[nextStatus] = (counts[nextStatus] ?? 0) + 1;
@@ -363,7 +367,8 @@ if (panel) {
       action(
         "Clear content",
         async () => {
-          if (!window.confirm("Clear this memory content? The audit tombstone will remain.")) return;
+          if (!window.confirm("Clear this memory content? The audit tombstone will remain."))
+            return;
           await request(
             `/api/memory/projects/${encodeURIComponent(state.projectId)}/records/${encodeURIComponent(node.id)}`,
             { expectedVersion: node.version },
