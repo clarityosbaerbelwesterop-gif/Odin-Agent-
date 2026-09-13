@@ -1,0 +1,27 @@
+name: PRODUCT M7 pre-PR verify
+
+on:
+  push:
+    branches:
+      - agent/product-m7-coding-mode
+
+permissions:
+  contents: read
+
+concurrency:
+  group: product-m7-pre-pr-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Full repository verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
