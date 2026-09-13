@@ -173,11 +173,7 @@ function m5RenderGrid() {
     );
     if (skill.requiredConnections.length)
       card.append(
-        m5el(
-          "span",
-          `Requires ${skill.requiredConnections.join(", ")}`,
-          "m5-requirement",
-        ),
+        m5el("span", `Requires ${skill.requiredConnections.join(", ")}`, "m5-requirement"),
       );
     card.onclick = () => {
       skillState.selected = skill.id;
