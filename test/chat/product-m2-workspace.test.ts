@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { canonicalJson } from "../../src/durable/internal.js";
 import type { ActorDatabase } from "../../src/chat/neon-database.js";
 import { NeonChatStore } from "../../src/chat/neon-store.js";
 import { activityLabel } from "../../src/chat/product-projection.js";
@@ -20,6 +21,18 @@ function dbForContext(
   rows: readonly Record<string, unknown>[],
   history: readonly Record<string, unknown>[] = [],
 ): ActorDatabase {
+  const currentTurn = {
+    id: missionId,
+    conversationId: projectId,
+    mode: "chat",
+    modelId: "test-model",
+    objective: "Continue the current Project.",
+    createdAt: "2026-09-13T07:00:00.000Z",
+  };
+  const turnRow = {
+    data: currentTurn,
+    data_hash: hashText(canonicalJson(currentTurn, 2_000_000)),
+  };
   return {
     transaction: async <T>(action: Parameters<ActorDatabase["transaction"]>[0]): Promise<T> => {
       const client = {
@@ -29,6 +42,12 @@ function dbForContext(
           if (text.includes("UPDATE odin_api.memory_product_signals")) return { rows: [] };
           if (text.includes("INSERT INTO odin_api.events")) return { rows: [] };
           if (text.includes("type IN ('message.user','answer')")) return { rows: [...history] };
+          if (text === "SELECT data,data_hash FROM odin_api.turns WHERE id=$1")
+            return { rows: [turnRow] };
+          if (text.includes("SELECT 1 FROM odin_api.turns") && text.includes("conversation_id=$2"))
+            return { rows: [{ ok: true }] };
+          if (text.includes("FROM odin_api.github_connections")) return { rows: [] };
+          if (text.includes("FROM odin_api.skill_installations")) return { rows: [] };
           throw new Error(`Unexpected test query: ${text}`);
         }) as never,
       };
