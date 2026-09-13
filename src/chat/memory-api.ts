@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { attachDatabasePool } from "@vercel/functions";
-import type { MemoryKind, MemorySensitivity, MemorySourceClass } from "../memory/types.js";
 import type { MemoryProductStatus } from "../memory/product.js";
+import type { MemoryKind, MemorySensitivity, MemorySourceClass } from "../memory/types.js";
 import { resolveNeonAuthUrl } from "./deployment.js";
 import { MemoryBrainStore } from "./memory-brain-store.js";
 import { NeonAuth } from "./neon-auth.js";
@@ -84,15 +84,9 @@ export async function memoryApiHandler(req: IncomingMessage, res: ServerResponse
     );
     if (signal && method === "POST") {
       const body = object(await jsonBody(req), ["pinned", "archived"]);
-      if (
-        body.pinned !== undefined &&
-        typeof body.pinned !== "boolean"
-      )
+      if (body.pinned !== undefined && typeof body.pinned !== "boolean")
         throw new ChatError("INVALID_MEMORY_ACTION", "pinned must be boolean.");
-      if (
-        body.archived !== undefined &&
-        typeof body.archived !== "boolean"
-      )
+      if (body.archived !== undefined && typeof body.archived !== "boolean")
         throw new ChatError("INVALID_MEMORY_ACTION", "archived must be boolean.");
       await brain.setSignal(signal[1] ?? "", signal[2] ?? "", {
         ...(typeof body.pinned === "boolean" ? { pinned: body.pinned } : {}),
@@ -120,7 +114,10 @@ export async function memoryApiHandler(req: IncomingMessage, res: ServerResponse
       if (typeof body.itemId !== "string")
         throw new ChatError("INVALID_MEMORY", "A Workspace item is required.");
       if (body.kind !== undefined && body.kind !== "project" && body.kind !== "semantic")
-        throw new ChatError("INVALID_MEMORY", "Workspace memory must be project or semantic.");
+        throw new ChatError(
+          "INVALID_MEMORY",
+          "Workspace memory must be project or semantic.",
+        );
       send(res, 201, {
         memory: await brain.promoteWorkspaceItem(promote[1] ?? "", body.itemId, {
           ...(typeof body.key === "string" ? { key: body.key } : {}),
@@ -140,7 +137,10 @@ export async function memoryApiHandler(req: IncomingMessage, res: ServerResponse
         !["project", "semantic", "user_preference"].includes(String(body.kind)) ||
         !sensitivities.has(String(body.sensitivity ?? "internal") as MemorySensitivity)
       )
-        throw new ChatError("INVALID_MEMORY", "Provide a valid key, content, kind and sensitivity.");
+        throw new ChatError(
+          "INVALID_MEMORY",
+          "Provide a valid key, content, kind and sensitivity.",
+        );
       send(res, 201, {
         memory: await brain.rememberExplicit(explicit[1] ?? "", {
           key: body.key,
