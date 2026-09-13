@@ -5,10 +5,10 @@ import {
   assertInstallRequest,
   draftCustomSkill,
   PRODUCT_SKILL_CATALOG,
+  type ProductSkillInstallation,
   productRuntimeSkill,
   productSkillById,
   projectSkillCatalog,
-  type ProductSkillInstallation,
 } from "../../src/chat/skills-product.js";
 import { ChatError } from "../../src/chat/types.js";
 
