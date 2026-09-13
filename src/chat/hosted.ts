@@ -16,6 +16,7 @@ import { OpenAIProvider } from "../providers/openai.js";
 import { OpenAICompatibleProvider } from "../providers/openai-compatible.js";
 import { OpenRouterProvider } from "../providers/openrouter.js";
 import { readBenchmarks } from "./benchmarks.js";
+import { BuildProductStore, buildPreviewRevision } from "./build-mode.js";
 import { resolveNeonAuthUrl } from "./deployment.js";
 import { ChatEngine } from "./engine.js";
 import { GitHubCatalog } from "./github-catalog.js";
@@ -367,6 +368,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
     const store = new NeonChatStore(db);
     const botStore = new BotStore(db);
     const botControl = new BotControlStore(db);
+    const buildProduct = new BuildProductStore(db, identity.id);
     const botAccess = async () => {
       const account = await product.account();
       const plan = runtimePlan(account);
@@ -379,8 +381,10 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       database: NeonActorDatabase,
       conversationId?: string,
       signal?: AbortSignal,
+      workspaceKind: "auto" | "internal" = "auto",
     ) => {
-      const githubReady = githubWorkspaceReady ? (githubToken as string) : undefined;
+      const githubReady =
+        workspaceKind === "auto" && githubWorkspaceReady ? (githubToken as string) : undefined;
       const githubSession =
         githubReady && conversationId
           ? new GitHubWorkspaceSession(
@@ -1057,13 +1061,24 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
     if (conversation) {
       const id = identifier(conversation[1]);
       await store.conversation(id);
-      const engine = createEngine(db, id);
+      const workspaceKind = await buildProduct.workspaceKind(id);
+      const engine = createEngine(db, id, undefined, workspaceKind);
       if (!conversation[2] && method === "GET") {
         send(res, 200, await engine.conversation(id));
         return;
       }
       if (conversation[2] === "preview" && method === "GET") {
         const workspace = new NeonWorkspace(db, id, async () => {});
+        const requestedRevision = url.searchParams.get("revision");
+        if (requestedRevision) {
+          const currentRevision = buildPreviewRevision(await workspace.files());
+          if (currentRevision !== requestedRevision)
+            throw new ChatError(
+              "STALE_PREVIEW",
+              "Build output changed; refresh Preview before continuing.",
+              409,
+            );
+        }
         const html = await workspace.preview(url.searchParams.get("file") ?? "index.html");
         res.setHeader("Content-Security-Policy", PREVIEW_CSP);
         res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -1175,7 +1190,8 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
     if (turn) {
       const id = identifier(turn[1]);
       const found = await store.turn(id);
-      const engine = createEngine(db, found.conversationId);
+      const workspaceKind = await buildProduct.workspaceKind(found.conversationId);
+      const engine = createEngine(db, found.conversationId, undefined, workspaceKind);
       if (!turn[2] && method === "GET") {
         send(res, 200, await engine.view(id));
         return;
@@ -1219,7 +1235,12 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
         const run = (async () => {
           const controller = new AbortController();
           const workerDb = new NeonActorDatabase(pool, identity, { resource, token: lease });
-          const worker = createEngine(workerDb, found.conversationId, controller.signal);
+          const worker = createEngine(
+            workerDb,
+            found.conversationId,
+            controller.signal,
+            workspaceKind,
+          );
           let checking = false;
           const monitor = setInterval(() => {
             if (checking) return;
