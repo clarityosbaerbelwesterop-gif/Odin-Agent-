@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { MemoryConflictError } from "../memory/store.js";
 import type {
   ActiveMemoryRecord,
   MemoryChange,
@@ -13,7 +14,6 @@ import type {
   RetrievedMemory,
   StoredMemoryRecord,
 } from "../memory/types.js";
-import { MemoryConflictError } from "../memory/store.js";
 import type { ActorDatabase } from "./neon-database.js";
 
 const KINDS = new Set<MemoryKind>([
@@ -115,7 +115,9 @@ export class NeonMemoryStore implements MemoryStore {
       const normalizedTags = normalizeTags(command.record.tags);
       const base = {
         content: command.record.content,
-        ...(command.record.expiresAt === undefined ? {} : { expiresAt: command.record.expiresAt }),
+        ...(command.record.expiresAt === undefined
+          ? {}
+          : { expiresAt: command.record.expiresAt }),
         id: command.record.id,
         key: command.record.key,
         kind: command.record.kind,
@@ -153,7 +155,14 @@ export class NeonMemoryStore implements MemoryStore {
         `INSERT INTO odin_api.memory_revisions(
            project_id,memory_id,version,action,record_hash,source_reference,updated_at)
          VALUES($1,$2,$3,'written',$4,$5,$6) RETURNING cursor`,
-        [scope.projectId, record.id, record.version, record.recordHash, record.provenance.reference, record.updatedAt],
+        [
+          scope.projectId,
+          record.id,
+          record.version,
+          record.recordHash,
+          record.provenance.reference,
+          record.updatedAt,
+        ],
       );
       await client.query(
         `INSERT INTO odin_api.memory_product_signals(project_id,memory_id)
@@ -165,12 +174,19 @@ export class NeonMemoryStore implements MemoryStore {
       await client.query(
         `INSERT INTO odin_api.memory_idempotency(project_id,memory_id,idempotency_key,fingerprint,result)
          VALUES($1,$2,$3,$4,$5::jsonb)`,
-        [scope.projectId, record.id, command.idempotencyKey, fingerprint, JSON.stringify(output)],
+        [
+          scope.projectId,
+          record.id,
+          command.idempotencyKey,
+          fingerprint,
+          JSON.stringify(output),
+        ],
       );
       return output;
     });
     this.#revision = Math.max(this.#revision, result.storeRevision);
-    if (!result.replayed) this.#notify({ id: result.record.id, scope, storeRevision: result.storeRevision });
+    if (!result.replayed)
+      this.#notify({ id: result.record.id, scope, storeRevision: result.storeRevision });
     return structuredClone(result);
   }
 
@@ -188,7 +204,10 @@ export class NeonMemoryStore implements MemoryStore {
           throw new MemoryConflictError(
             "Idempotency key was reused for a different memory command.",
           );
-        return { ...(structuredClone(replay.rows[0]?.result) as MemoryWriteResult), replayed: true };
+        return {
+          ...(structuredClone(replay.rows[0]?.result) as MemoryWriteResult),
+          replayed: true,
+        };
       }
       const current = await client.query(
         `SELECT * FROM odin_api.memory_records
@@ -196,12 +215,13 @@ export class NeonMemoryStore implements MemoryStore {
         [command.scope.projectId, command.id],
       );
       const row = current.rows[0] as MemoryRow | undefined;
-      if (!row || row.status !== "active" || Number(row.version) !== command.expectedVersion)
+      if (row?.status !== "active" || Number(row.version) !== command.expectedVersion)
         throw new MemoryConflictError("Memory scope or optimistic version did not match.");
       if (Date.parse(command.updatedAt) < Date.parse(iso(row.updated_at)))
         throw new MemoryConflictError("Memory update timestamps must not move backwards.");
       const active = fromRow(row, this.userId);
-      if (active.status !== "active") throw new MemoryConflictError("Memory scope did not match.");
+      if (active.status !== "active")
+        throw new MemoryConflictError("Memory scope did not match.");
       const base = {
         content: null,
         id: active.id,
@@ -217,13 +237,27 @@ export class NeonMemoryStore implements MemoryStore {
           source_version=NULL,source_observed_at=NULL,source_content_hash=NULL,expires_at=NULL,
           status='tombstoned',previous_content_hash=$3,version=$4,record_hash=$5,updated_at=$6
          WHERE project_id=$1 AND id=$2`,
-        [command.scope.projectId, command.id, active.provenance.contentHash, record.version, record.recordHash, record.updatedAt],
+        [
+          command.scope.projectId,
+          command.id,
+          active.provenance.contentHash,
+          record.version,
+          record.recordHash,
+          record.updatedAt,
+        ],
       );
       const revision = await client.query(
         `INSERT INTO odin_api.memory_revisions(
            project_id,memory_id,version,action,record_hash,source_reference,updated_at)
          VALUES($1,$2,$3,'tombstoned',$4,$5,$6) RETURNING cursor`,
-        [command.scope.projectId, command.id, record.version, record.recordHash, active.provenance.reference, record.updatedAt],
+        [
+          command.scope.projectId,
+          command.id,
+          record.version,
+          record.recordHash,
+          active.provenance.reference,
+          record.updatedAt,
+        ],
       );
       await client.query(
         "DELETE FROM odin_api.memory_idempotency WHERE project_id=$1 AND memory_id=$2",
@@ -234,7 +268,13 @@ export class NeonMemoryStore implements MemoryStore {
       await client.query(
         `INSERT INTO odin_api.memory_idempotency(project_id,memory_id,idempotency_key,fingerprint,result)
          VALUES($1,$2,$3,$4,$5::jsonb)`,
-        [command.scope.projectId, command.id, command.idempotencyKey, fingerprint, JSON.stringify(output)],
+        [
+          command.scope.projectId,
+          command.id,
+          command.idempotencyKey,
+          fingerprint,
+          JSON.stringify(output),
+        ],
       );
       return output;
     });
@@ -299,7 +339,10 @@ export class NeonMemoryStore implements MemoryStore {
     for (const record of records) {
       if (record.kind === "working" && record.scope.missionId !== query.missionId) continue;
       if (record.expiresAt && Date.parse(record.expiresAt) <= at) continue;
-      if (record.provenance.sourceClass === "verified_learning" && !wantedTags.has("m13-learning"))
+      if (
+        record.provenance.sourceClass === "verified_learning" &&
+        !wantedTags.has("m13-learning")
+      )
         continue;
       const score = scoreRecord(record, wantedTokens, wantedTags);
       if ((wantedTokens.size || wantedTags.size) && score === 0) continue;
@@ -321,8 +364,10 @@ export class NeonMemoryStore implements MemoryStore {
 
   #scope(scope: MemoryScope): void {
     identifier(scope.userId, "scope.userId");
-    if (scope.userId !== this.userId) throw new MemoryConflictError("Memory scope did not match.");
-    if (!UUID.test(scope.projectId)) throw new TypeError("scope.projectId must be a Project UUID.");
+    if (scope.userId !== this.userId)
+      throw new MemoryConflictError("Memory scope did not match.");
+    if (!UUID.test(scope.projectId))
+      throw new TypeError("scope.projectId must be a Project UUID.");
     if (scope.missionId !== undefined) identifier(scope.missionId, "scope.missionId");
   }
 
@@ -420,7 +465,8 @@ function validateWrite(command: MemoryWriteCommand, userId: string): void {
   identifier(record.key, "record.key");
   scope(record.scope, userId);
   if (!KINDS.has(record.kind)) throw new TypeError("record.kind is not supported.");
-  if (!SENSITIVITIES.has(record.sensitivity)) throw new TypeError("record.sensitivity is not supported.");
+  if (!SENSITIVITIES.has(record.sensitivity))
+    throw new TypeError("record.sensitivity is not supported.");
   if (!record.content.trim() || record.content.length > 65_536)
     throw new TypeError("record.content must contain 1-65536 characters.");
   normalizeTags(record.tags);
@@ -442,7 +488,8 @@ function validateWrite(command: MemoryWriteCommand, userId: string): void {
 
 function validateTombstone(command: MemoryTombstoneCommand, userId: string): void {
   expectedVersion(command.expectedVersion);
-  if (command.expectedVersion === 0) throw new TypeError("A tombstone requires an existing positive version.");
+  if (command.expectedVersion === 0)
+    throw new TypeError("A tombstone requires an existing positive version.");
   identifier(command.id, "id");
   identifier(command.idempotencyKey, "idempotencyKey");
   scope(command.scope, userId);
@@ -452,10 +499,12 @@ function validateTombstone(command: MemoryTombstoneCommand, userId: string): voi
 function validateQuery(query: MemoryRetrievalQuery, userId: string): void {
   identifier(query.userId, "query.userId");
   if (query.userId !== userId) throw new MemoryConflictError("Memory scope did not match.");
-  if (!UUID.test(query.projectId)) throw new TypeError("query.projectId must be a Project UUID.");
+  if (!UUID.test(query.projectId))
+    throw new TypeError("query.projectId must be a Project UUID.");
   if (!query.kinds.length || new Set(query.kinds).size !== query.kinds.length)
     throw new TypeError("query.kinds must be a non-empty unique list.");
-  for (const kind of query.kinds) if (!KINDS.has(kind)) throw new TypeError("Unsupported memory kind.");
+  for (const kind of query.kinds)
+    if (!KINDS.has(kind)) throw new TypeError("Unsupported memory kind.");
   if (query.kinds.includes("working") && !query.missionId)
     throw new TypeError("Retrieving working memory requires a mission scope.");
   if (!Number.isSafeInteger(query.limit) || query.limit < 1 || query.limit > 100)
@@ -468,11 +517,16 @@ function validateQuery(query: MemoryRetrievalQuery, userId: string): void {
 function scope(value: MemoryScope, userId: string): void {
   identifier(value.userId, "scope.userId");
   if (value.userId !== userId) throw new MemoryConflictError("Memory scope did not match.");
-  if (!UUID.test(value.projectId)) throw new TypeError("scope.projectId must be a Project UUID.");
+  if (!UUID.test(value.projectId))
+    throw new TypeError("scope.projectId must be a Project UUID.");
   if (value.missionId !== undefined) identifier(value.missionId, "scope.missionId");
 }
 
-function scoreRecord(record: ActiveMemoryRecord, tokens: ReadonlySet<string>, tags: ReadonlySet<string>): number {
+function scoreRecord(
+  record: ActiveMemoryRecord,
+  tokens: ReadonlySet<string>,
+  tags: ReadonlySet<string>,
+): number {
   const recordTags = new Set(record.tags);
   const keyTokens = tokenize(record.key);
   const contentTokens = tokenize(record.content);
@@ -493,7 +547,10 @@ function isActive(record: StoredMemoryRecord): record is ActiveMemoryRecord {
 function normalizeTags(tags: readonly string[]): string[] {
   if (tags.length > 32) throw new TypeError("Memory tags are limited to 32.");
   const values = tags.map((tag) => tag.trim().toLocaleLowerCase("en-US"));
-  if (values.some((tag) => !tag || tag.length > 64) || new Set(values).size !== values.length)
+  if (
+    values.some((tag) => !tag || tag.length > 64) ||
+    new Set(values).size !== values.length
+  )
     throw new TypeError("Memory tags must be unique values with 1-64 characters.");
   return values.sort();
 }
@@ -509,7 +566,8 @@ function expectedVersion(value: number): void {
 
 function identifier(value: string, name: string): void {
   text(value, name, 200);
-  if (value.includes("\u0000")) throw new TypeError(`${name} must not contain a null character.`);
+  if (value.includes(String.fromCharCode(0)))
+    throw new TypeError(`${name} must not contain a null character.`);
 }
 
 function text(value: string, name: string, max: number): void {
