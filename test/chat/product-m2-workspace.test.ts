@@ -25,6 +25,9 @@ function dbForContext(
       const client = {
         query: (async (text: string) => {
           if (text.includes("workspace_context_items")) return { rows: [...rows] };
+          if (text.includes("FROM odin_api.memory_records m")) return { rows: [] };
+          if (text.includes("UPDATE odin_api.memory_product_signals")) return { rows: [] };
+          if (text.includes("INSERT INTO odin_api.events")) return { rows: [] };
           if (text.includes("type IN ('message.user','answer')")) return { rows: [...history] };
           throw new Error(`Unexpected test query: ${text}`);
         }) as never,
@@ -67,7 +70,7 @@ test("PRODUCT M2 compiles explicit workspace context through the canonical P0-P3
   const message = workspaceContextMessage(compiled);
   assert.match(message, /untrusted project data/u);
   assert.match(message, new RegExp(itemId, "u"));
-  assert.match(message, /product-m2-workspace-context-v1/u);
+  assert.match(message, /product-m3-workspace-memory-context-v2/u);
 });
 
 test("PRODUCT M2 fails closed when selected workspace context fails integrity verification", async () => {
