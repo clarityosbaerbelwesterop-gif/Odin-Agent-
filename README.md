@@ -9,6 +9,13 @@ separate product roadmap uses names such as **PRODUCT M1**. PRODUCT M1 adds the 
 Companion, persistent Projects, Workspace foundation and Activity projections without replacing those
 runtime authorities. See the [PRODUCT M1 contract](docs/milestones/PRODUCT_M1_PRODUCT_TRANSFORMATION.md).
 
+**PRODUCT M2** turns that shell into a persistent Workspace OS: durable Project documents, canonical
+runtime Artifacts, bounded text imports, project-scoped search, optimistic document versioning,
+persisted tabs, explicit Project Context and isolated previews all extend existing Odin authorities.
+Selected Workspace Context is compiled through the existing M6 `DeterministicContextCompiler` as
+lower-authority P3 project data before a hosted Run; it cannot mint permissions, approvals or
+verification. See the [PRODUCT M2 contract](docs/milestones/PRODUCT_M2_WORKSPACE_OS.md).
+
 The repository does **not** yet claim kernel/container isolation, a live hosted sandbox adapter,
 arbitrary shell execution, native mobile binaries, a distributed worker queue, or proof for a live
 environment unless separate external evidence is recorded. Current status and verified capabilities
