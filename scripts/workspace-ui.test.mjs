@@ -69,7 +69,11 @@ async function workspaceClient() {
       headers: { "content-type": "application/json" },
     });
   };
-  window.eval(await readFile("web/workspace.js", "utf8"));
+  const source = (await readFile("web/workspace.js", "utf8")).replace(
+    'void import("./workspace-os.js");',
+    "",
+  );
+  window.eval(source);
   await tick();
   return {
     window,
