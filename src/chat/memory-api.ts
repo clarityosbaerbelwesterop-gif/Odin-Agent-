@@ -1,7 +1,13 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { attachDatabasePool } from "@vercel/functions";
+import {
+  AdvancedMemoryEngine,
+  AdvancedMemoryError,
+  type CurrentSourceObservation,
+} from "../memory/advanced.js";
 import type { MemoryProductStatus } from "../memory/product.js";
 import type { MemoryKind, MemorySensitivity, MemorySourceClass } from "../memory/types.js";
+import { containsObviousSecret } from "../security/secret-text.js";
 import { resolveNeonAuthUrl } from "./deployment.js";
 import { MemoryBrainStore } from "./memory-brain-store.js";
 import { NeonAuth } from "./neon-auth.js";
@@ -10,6 +16,10 @@ import { object, publicError } from "./safety.js";
 import { ChatError } from "./types.js";
 
 let services: ReturnType<typeof createServices> | undefined;
+const RETENTION_POLICY = Object.freeze({
+  episodicMaxAgeMs: 45 * 24 * 60 * 60 * 1000,
+  projectMaxAgeMs: 365 * 24 * 60 * 60 * 1000,
+});
 
 function createServices() {
   const connection =
@@ -63,25 +73,65 @@ export async function memoryApiHandler(req: IncomingMessage, res: ServerResponse
     const identity = await services.auth.session(req.headers.cookie ?? "", origin);
     const db = new NeonActorDatabase(services.pool, identity);
     const brain = new MemoryBrainStore(db, identity.id);
+    const advanced = new AdvancedMemoryEngine(brain.memory);
 
     const root = /^\/api\/memory\/projects\/([\w-]+)$/u.exec(url.pathname);
     if (root && method === "GET") {
+      const projectId = root[1] ?? "";
       const text = optional(url.searchParams.get("q"));
       const kinds = list(url.searchParams.get("kind")) as MemoryKind[] | undefined;
       const statuses = list(url.searchParams.get("status")) as MemoryProductStatus[] | undefined;
       const sourceClasses = list(url.searchParams.get("source")) as
         | MemorySourceClass[]
         | undefined;
-      send(
-        res,
-        200,
-        await brain.projection(root[1] ?? "", {
+      const [projection, analysis] = await Promise.all([
+        brain.projection(projectId, {
           ...(text === undefined ? {} : { text }),
           ...(kinds === undefined ? {} : { kinds }),
           ...(statuses === undefined ? {} : { statuses }),
           ...(sourceClasses === undefined ? {} : { sourceClasses }),
         }),
-      );
+        analyzeMemory(db, advanced, identity.id, projectId),
+      ]);
+      send(res, 200, {
+        ...projection,
+        advanced: {
+          conflicts: analysis.conflicts,
+          stale: analysis.stale,
+          resultHash: analysis.resultHash,
+        },
+      });
+      return;
+    }
+
+    const retention = /^\/api\/memory\/projects\/([\w-]+)\/retention$/u.exec(url.pathname);
+    if (retention && method === "GET") {
+      const projectId = retention[1] ?? "";
+      await requireProject(db, projectId);
+      send(res, 200, {
+        plan: await advanced.planRetention({
+          evaluatedAt: new Date().toISOString(),
+          policy: RETENTION_POLICY,
+          projectId,
+          userId: identity.id,
+        }),
+        destructiveAction: "explicit_only",
+      });
+      return;
+    }
+
+    const history = /^\/api\/memory\/projects\/([\w-]+)\/records\/([\w-]+)\/history$/u.exec(
+      url.pathname,
+    );
+    if (history && method === "GET") {
+      const projectId = history[1] ?? "";
+      const memoryId = history[2] ?? "";
+      await requireProject(db, projectId);
+      const record = await brain.memory.get(memoryId, { userId: identity.id, projectId });
+      if (!record) throw new ChatError("NOT_FOUND", "Memory not found.", 404);
+      send(res, 200, {
+        history: await brain.memory.history(memoryId, { userId: identity.id, projectId }),
+      });
       return;
     }
 
@@ -101,6 +151,20 @@ export async function memoryApiHandler(req: IncomingMessage, res: ServerResponse
     }
 
     const record = /^\/api\/memory\/projects\/([\w-]+)\/records\/([\w-]+)$/u.exec(url.pathname);
+    if (record && method === "GET") {
+      const projectId = record[1] ?? "";
+      const memoryId = record[2] ?? "";
+      await requireProject(db, projectId);
+      const stored = await brain.memory.get(memoryId, { userId: identity.id, projectId });
+      if (!stored) throw new ChatError("NOT_FOUND", "Memory not found.", 404);
+      send(res, 200, {
+        record:
+          stored.status === "active" && stored.sensitivity === "sensitive"
+            ? { ...stored, content: null, contentHidden: true }
+            : stored,
+      });
+      return;
+    }
     if (record && method === "DELETE") {
       const body = object(await jsonBody(req), ["expectedVersion"]);
       if (typeof body.expectedVersion !== "number")
@@ -110,15 +174,64 @@ export async function memoryApiHandler(req: IncomingMessage, res: ServerResponse
       return;
     }
 
+    const compression = /^\/api\/memory\/projects\/([\w-]+)\/compression$/u.exec(url.pathname);
+    if (compression && method === "POST") {
+      const projectId = compression[1] ?? "";
+      await requireProject(db, projectId);
+      const body = object(await jsonBody(req), [
+        "key",
+        "sourceRecordIds",
+        "summary",
+        "sensitivity",
+        "idempotencyKey",
+      ]);
+      if (
+        typeof body.key !== "string" ||
+        typeof body.summary !== "string" ||
+        !Array.isArray(body.sourceRecordIds) ||
+        !body.sourceRecordIds.every((value) => typeof value === "string") ||
+        typeof body.idempotencyKey !== "string" ||
+        !["public", "internal", "sensitive"].includes(String(body.sensitivity))
+      )
+        throw new ChatError("INVALID_MEMORY", "Compression input is invalid.");
+      const proposal = await advanced.proposeCompression({
+        key: body.key,
+        projectId,
+        sensitivity: body.sensitivity,
+        sourceRecordIds: body.sourceRecordIds,
+        summary: body.summary,
+        userId: identity.id,
+      });
+      const committed = await advanced.commitCompression(proposal, body.idempotencyKey);
+      send(res, 201, { proposal, committed });
+      return;
+    }
+
     const promote = /^\/api\/memory\/projects\/([\w-]+)\/from-workspace$/u.exec(url.pathname);
     if (promote && method === "POST") {
+      const projectId = promote[1] ?? "";
       const body = object(await jsonBody(req), ["itemId", "key", "kind"]);
       if (typeof body.itemId !== "string")
         throw new ChatError("INVALID_MEMORY", "A Workspace item is required.");
       if (body.kind !== undefined && body.kind !== "project" && body.kind !== "semantic")
         throw new ChatError("INVALID_MEMORY", "Workspace memory must be project or semantic.");
+      const source = await db.transaction(async (client) =>
+        (
+          await client.query(
+            "SELECT content FROM odin_api.workspace_files WHERE conversation_id=$1 AND item_id=$2",
+            [projectId, body.itemId],
+          )
+        ).rows[0],
+      );
+      if (!source) throw new ChatError("NOT_FOUND", "Workspace item not found.", 404);
+      if (containsObviousSecret(String(source.content)))
+        throw new ChatError(
+          "SECRET_MEMORY_DENIED",
+          "Secret-like Workspace content cannot be promoted into durable Memory.",
+          400,
+        );
       send(res, 201, {
-        memory: await brain.promoteWorkspaceItem(promote[1] ?? "", body.itemId, {
+        memory: await brain.promoteWorkspaceItem(projectId, body.itemId, {
           ...(typeof body.key === "string" ? { key: body.key } : {}),
           ...(body.kind === "project" || body.kind === "semantic" ? { kind: body.kind } : {}),
         }),
@@ -140,6 +253,12 @@ export async function memoryApiHandler(req: IncomingMessage, res: ServerResponse
           "INVALID_MEMORY",
           "Provide a valid key, content, kind and sensitivity.",
         );
+      if (containsObviousSecret(body.content))
+        throw new ChatError(
+          "SECRET_MEMORY_DENIED",
+          "Secret-like content cannot be persisted as durable product Memory.",
+          400,
+        );
       send(res, 201, {
         memory: await brain.rememberExplicit(explicit[1] ?? "", {
           key: body.key,
@@ -153,8 +272,64 @@ export async function memoryApiHandler(req: IncomingMessage, res: ServerResponse
 
     throw new ChatError("NOT_FOUND", "Endpoint not found.", 404);
   } catch (error) {
+    if (error instanceof AdvancedMemoryError) {
+      const status = error.code === "NOT_FOUND" ? 404 : error.code === "DENIED" ? 403 : 409;
+      send(res, status, { code: `MEMORY_${error.code}`, message: error.message });
+      return;
+    }
     send(res, error instanceof ChatError ? error.status : 500, publicError(error));
   }
+}
+
+async function analyzeMemory(
+  db: NeonActorDatabase,
+  advanced: AdvancedMemoryEngine,
+  userId: string,
+  projectId: string,
+) {
+  await requireProject(db, projectId);
+  const currentSources = await currentSourceObservations(db, projectId);
+  return advanced.retrieve({
+    currentSources,
+    evaluatedAt: new Date().toISOString(),
+    limit: 100,
+    projectId,
+    text: "",
+    userId,
+  });
+}
+
+async function currentSourceObservations(
+  db: NeonActorDatabase,
+  projectId: string,
+): Promise<CurrentSourceObservation[]> {
+  return db.transaction(async (client) => {
+    const rows = (
+      await client.query(
+        `SELECT DISTINCT ON(title) title,sha,version,updated_at
+           FROM odin_api.workspace_files
+          WHERE conversation_id=$1
+          ORDER BY title,updated_at DESC,item_id
+          LIMIT 64`,
+        [projectId],
+      )
+    ).rows;
+    return rows.map((row) => ({
+      key: String(row.title),
+      contentHash: String(row.sha),
+      sourceVersion: String(row.version),
+      observedAt: new Date(row.updated_at).toISOString(),
+    }));
+  });
+}
+
+async function requireProject(db: NeonActorDatabase, projectId: string): Promise<void> {
+  const found = await db.transaction(async (client) =>
+    (
+      await client.query("SELECT 1 FROM odin_api.conversations WHERE id=$1", [projectId])
+    ).rows.length,
+  );
+  if (!found) throw new ChatError("NOT_FOUND", "Project not found.", 404);
 }
 
 function optional(value: string | null): string | undefined {
