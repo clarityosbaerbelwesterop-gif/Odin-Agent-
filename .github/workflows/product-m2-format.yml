@@ -1,0 +1,54 @@
+name: PRODUCT M2 format repair
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'agent/product-m2-workspace-os'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/product-m2-workspace-os
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Repair exact M2 lint findings
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/chat/workspace-os.ts')
+          s = p.read_text()
+          s = s.replace(
+              'import type { ActorDatabase } from "./neon-database.js";',
+              'import type { ActorDatabase, DatabaseAction } from "./neon-database.js";',
+          )
+          s = s.replace('row: Record<string, any>', 'row: Record<string, unknown>')
+          s = s.replace('c: { query: Function }', 'c: Parameters<DatabaseAction<unknown>>[0]')
+          old = '''  const cleaned = raw\n    .normalize("NFKC")\n    .replace(/[\\\\/\\u0000-\\u001f\\u007f]+/gu, "-")\n    .replace(/^\\.+/u, "")\n    .replace(/\\s+/gu, " ")\n    .trim();'''
+          new = '''  const normalized = raw.normalize("NFKC");\n  const cleaned = [...normalized]\n    .map((char) => {\n      const code = char.charCodeAt(0);\n      return char === "/" || char === "\\\\" || code < 32 || code == 127 ? "-" : char;\n    })\n    .join("")\n    .replace(/^\\.+/u, "")\n    .replace(/\\s+/gu, " ")\n    .trim();'''
+          if old not in s:
+              raise SystemExit('Expected filename sanitizer block not found')
+          p.write_text(s.replace(old, new))
+          PY
+      - name: Format repository
+        run: npm run format
+      - name: Commit formatter output
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "style: normalize PRODUCT M2 implementation"
+          git push origin HEAD:agent/product-m2-workspace-os
