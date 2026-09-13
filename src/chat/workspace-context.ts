@@ -147,13 +147,7 @@ export async function compileWorkspaceContext(
         version: String(row.source_version),
         observedAt: new Date(row.source_observed_at).toISOString(),
         relevance:
-          kind === "user_preference"
-            ? 96
-            : kind === "project"
-              ? 92
-              : kind === "semantic"
-                ? 84
-                : 72,
+          kind === "user_preference" ? 96 : kind === "project" ? 92 : kind === "semantic" ? 84 : 72,
         sensitivity: row.sensitivity === "public" ? "public" : "internal",
       }),
     );

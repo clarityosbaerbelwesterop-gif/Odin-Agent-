@@ -115,9 +115,7 @@ export class NeonMemoryStore implements MemoryStore {
       const normalizedTags = normalizeTags(command.record.tags);
       const base = {
         content: command.record.content,
-        ...(command.record.expiresAt === undefined
-          ? {}
-          : { expiresAt: command.record.expiresAt }),
+        ...(command.record.expiresAt === undefined ? {} : { expiresAt: command.record.expiresAt }),
         id: command.record.id,
         key: command.record.key,
         kind: command.record.kind,
@@ -174,13 +172,7 @@ export class NeonMemoryStore implements MemoryStore {
       await client.query(
         `INSERT INTO odin_api.memory_idempotency(project_id,memory_id,idempotency_key,fingerprint,result)
          VALUES($1,$2,$3,$4,$5::jsonb)`,
-        [
-          scope.projectId,
-          record.id,
-          command.idempotencyKey,
-          fingerprint,
-          JSON.stringify(output),
-        ],
+        [scope.projectId, record.id, command.idempotencyKey, fingerprint, JSON.stringify(output)],
       );
       return output;
     });
@@ -220,8 +212,7 @@ export class NeonMemoryStore implements MemoryStore {
       if (Date.parse(command.updatedAt) < Date.parse(iso(row.updated_at)))
         throw new MemoryConflictError("Memory update timestamps must not move backwards.");
       const active = fromRow(row, this.userId);
-      if (active.status !== "active")
-        throw new MemoryConflictError("Memory scope did not match.");
+      if (active.status !== "active") throw new MemoryConflictError("Memory scope did not match.");
       const base = {
         content: null,
         id: active.id,
@@ -339,10 +330,7 @@ export class NeonMemoryStore implements MemoryStore {
     for (const record of records) {
       if (record.kind === "working" && record.scope.missionId !== query.missionId) continue;
       if (record.expiresAt && Date.parse(record.expiresAt) <= at) continue;
-      if (
-        record.provenance.sourceClass === "verified_learning" &&
-        !wantedTags.has("m13-learning")
-      )
+      if (record.provenance.sourceClass === "verified_learning" && !wantedTags.has("m13-learning"))
         continue;
       const score = scoreRecord(record, wantedTokens, wantedTags);
       if ((wantedTokens.size || wantedTags.size) && score === 0) continue;
@@ -364,10 +352,8 @@ export class NeonMemoryStore implements MemoryStore {
 
   #scope(scope: MemoryScope): void {
     identifier(scope.userId, "scope.userId");
-    if (scope.userId !== this.userId)
-      throw new MemoryConflictError("Memory scope did not match.");
-    if (!UUID.test(scope.projectId))
-      throw new TypeError("scope.projectId must be a Project UUID.");
+    if (scope.userId !== this.userId) throw new MemoryConflictError("Memory scope did not match.");
+    if (!UUID.test(scope.projectId)) throw new TypeError("scope.projectId must be a Project UUID.");
     if (scope.missionId !== undefined) identifier(scope.missionId, "scope.missionId");
   }
 
@@ -499,8 +485,7 @@ function validateTombstone(command: MemoryTombstoneCommand, userId: string): voi
 function validateQuery(query: MemoryRetrievalQuery, userId: string): void {
   identifier(query.userId, "query.userId");
   if (query.userId !== userId) throw new MemoryConflictError("Memory scope did not match.");
-  if (!UUID.test(query.projectId))
-    throw new TypeError("query.projectId must be a Project UUID.");
+  if (!UUID.test(query.projectId)) throw new TypeError("query.projectId must be a Project UUID.");
   if (!query.kinds.length || new Set(query.kinds).size !== query.kinds.length)
     throw new TypeError("query.kinds must be a non-empty unique list.");
   for (const kind of query.kinds)
@@ -517,8 +502,7 @@ function validateQuery(query: MemoryRetrievalQuery, userId: string): void {
 function scope(value: MemoryScope, userId: string): void {
   identifier(value.userId, "scope.userId");
   if (value.userId !== userId) throw new MemoryConflictError("Memory scope did not match.");
-  if (!UUID.test(value.projectId))
-    throw new TypeError("scope.projectId must be a Project UUID.");
+  if (!UUID.test(value.projectId)) throw new TypeError("scope.projectId must be a Project UUID.");
   if (value.missionId !== undefined) identifier(value.missionId, "scope.missionId");
 }
 
@@ -547,10 +531,7 @@ function isActive(record: StoredMemoryRecord): record is ActiveMemoryRecord {
 function normalizeTags(tags: readonly string[]): string[] {
   if (tags.length > 32) throw new TypeError("Memory tags are limited to 32.");
   const values = tags.map((tag) => tag.trim().toLocaleLowerCase("en-US"));
-  if (
-    values.some((tag) => !tag || tag.length > 64) ||
-    new Set(values).size !== values.length
-  )
+  if (values.some((tag) => !tag || tag.length > 64) || new Set(values).size !== values.length)
     throw new TypeError("Memory tags must be unique values with 1-64 characters.");
   return values.sort();
 }

@@ -299,12 +299,8 @@ export class MemoryBrainStore {
     projectUuid(projectId);
     const content = input.content.trim();
     if (!content || content.length > 65_536)
-      throw new ChatError(
-        "INVALID_MEMORY",
-        "Memory content must contain 1-65536 characters.",
-      );
-    if (!KINDS.has(input.kind))
-      throw new ChatError("INVALID_MEMORY", "Unsupported memory kind.");
+      throw new ChatError("INVALID_MEMORY", "Memory content must contain 1-65536 characters.");
+    if (!KINDS.has(input.kind)) throw new ChatError("INVALID_MEMORY", "Unsupported memory kind.");
     const now = new Date().toISOString();
     const id = `user-${randomUUID()}`;
     return (
