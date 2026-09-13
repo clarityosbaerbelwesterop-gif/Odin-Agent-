@@ -81,9 +81,7 @@ export async function memoryApiHandler(req: IncomingMessage, res: ServerResponse
       const text = optional(url.searchParams.get("q"));
       const kinds = list(url.searchParams.get("kind")) as MemoryKind[] | undefined;
       const statuses = list(url.searchParams.get("status")) as MemoryProductStatus[] | undefined;
-      const sourceClasses = list(url.searchParams.get("source")) as
-        | MemorySourceClass[]
-        | undefined;
+      const sourceClasses = list(url.searchParams.get("source")) as MemorySourceClass[] | undefined;
       const [projection, analysis] = await Promise.all([
         brain.projection(projectId, {
           ...(text === undefined ? {} : { text }),
@@ -185,11 +183,14 @@ export async function memoryApiHandler(req: IncomingMessage, res: ServerResponse
         "sensitivity",
         "idempotencyKey",
       ]);
+      const sourceRecordIds = Array.isArray(body.sourceRecordIds)
+        ? body.sourceRecordIds.filter((value): value is string => typeof value === "string")
+        : [];
       if (
         typeof body.key !== "string" ||
         typeof body.summary !== "string" ||
         !Array.isArray(body.sourceRecordIds) ||
-        !body.sourceRecordIds.every((value) => typeof value === "string") ||
+        sourceRecordIds.length !== body.sourceRecordIds.length ||
         typeof body.idempotencyKey !== "string" ||
         !["public", "internal", "sensitive"].includes(String(body.sensitivity))
       )
@@ -197,8 +198,8 @@ export async function memoryApiHandler(req: IncomingMessage, res: ServerResponse
       const proposal = await advanced.proposeCompression({
         key: body.key,
         projectId,
-        sensitivity: body.sensitivity,
-        sourceRecordIds: body.sourceRecordIds,
+        sensitivity: body.sensitivity as MemorySensitivity,
+        sourceRecordIds,
         summary: body.summary,
         userId: identity.id,
       });
@@ -215,13 +216,14 @@ export async function memoryApiHandler(req: IncomingMessage, res: ServerResponse
         throw new ChatError("INVALID_MEMORY", "A Workspace item is required.");
       if (body.kind !== undefined && body.kind !== "project" && body.kind !== "semantic")
         throw new ChatError("INVALID_MEMORY", "Workspace memory must be project or semantic.");
-      const source = await db.transaction(async (client) =>
-        (
-          await client.query(
-            "SELECT content FROM odin_api.workspace_files WHERE conversation_id=$1 AND item_id=$2",
-            [projectId, body.itemId],
-          )
-        ).rows[0],
+      const source = await db.transaction(
+        async (client) =>
+          (
+            await client.query(
+              "SELECT content FROM odin_api.workspace_files WHERE conversation_id=$1 AND item_id=$2",
+              [projectId, body.itemId],
+            )
+          ).rows[0],
       );
       if (!source) throw new ChatError("NOT_FOUND", "Workspace item not found.", 404);
       if (containsObviousSecret(String(source.content)))
@@ -306,16 +308,21 @@ async function currentSourceObservations(
   return db.transaction(async (client) => {
     const rows = (
       await client.query(
-        `SELECT DISTINCT ON(title) title,sha,version,updated_at
-           FROM odin_api.workspace_files
-          WHERE conversation_id=$1
-          ORDER BY title,updated_at DESC,item_id
+        `SELECT DISTINCT ON(m.memory_key)
+                m.memory_key AS key,w.sha,w.version,w.updated_at
+           FROM odin_api.memory_records m
+           JOIN odin_api.workspace_files w
+             ON w.owner_id=m.owner_id
+            AND w.conversation_id=m.project_id
+            AND m.source_reference=('odin://project/' || m.project_id::text || '/workspace/' || w.item_id::text)
+          WHERE m.project_id=$1 AND m.status='active'
+          ORDER BY m.memory_key,w.updated_at DESC,w.item_id
           LIMIT 64`,
         [projectId],
       )
     ).rows;
     return rows.map((row) => ({
-      key: String(row.title),
+      key: String(row.key),
       contentHash: String(row.sha),
       sourceVersion: String(row.version),
       observedAt: new Date(row.updated_at).toISOString(),
@@ -324,10 +331,10 @@ async function currentSourceObservations(
 }
 
 async function requireProject(db: NeonActorDatabase, projectId: string): Promise<void> {
-  const found = await db.transaction(async (client) =>
-    (
-      await client.query("SELECT 1 FROM odin_api.conversations WHERE id=$1", [projectId])
-    ).rows.length,
+  const found = await db.transaction(
+    async (client) =>
+      (await client.query("SELECT 1 FROM odin_api.conversations WHERE id=$1", [projectId])).rows
+        .length,
   );
   if (!found) throw new ChatError("NOT_FOUND", "Project not found.", 404);
 }
