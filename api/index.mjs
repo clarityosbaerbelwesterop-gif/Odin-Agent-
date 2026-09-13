@@ -3,6 +3,7 @@
 // already typechecked build artifact so the canonical `npm run build` remains the
 // sole TypeScript compilation path.
 import { hostedHandler } from "../dist/src/chat/hosted.js";
+import { memoryApiHandler } from "../dist/src/chat/memory-api.js";
 import { workspaceApiHandler } from "../dist/src/chat/workspace-api.js";
 
 const exactStripePrices = {
@@ -38,5 +39,7 @@ export default async function handler(req, res) {
   const rewrittenPath = url.searchParams.get("odin_path") ?? "";
   if (rewrittenPath === "workspace" || rewrittenPath.startsWith("workspace/"))
     return workspaceApiHandler(req, res);
+  if (rewrittenPath === "memory" || rewrittenPath.startsWith("memory/"))
+    return memoryApiHandler(req, res);
   return hostedHandler(req, res);
 }
