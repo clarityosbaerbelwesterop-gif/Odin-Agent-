@@ -458,7 +458,8 @@ function m2RenderItem(item) {
       iframe.src = `/api/projects/${encodeURIComponent(m2State.projectId)}/preview?file=${encodeURIComponent(item.path)}`;
       shell.append(previewBar, iframe);
     } else {
-      const content = item.kind === "JSON" ? m2PrettyJson(item.content ?? "") : (item.content ?? "");
+      const content =
+        item.kind === "JSON" ? m2PrettyJson(item.content ?? "") : (item.content ?? "");
       const body = m2el("pre", content, "m2-artifact-body");
       shell.append(body);
     }
@@ -472,7 +473,10 @@ function m2RenderPreservedDraft(shell, item, titleInput, bodyInput, saveState) {
   const notice = m2el("div", undefined, "m2-conflict-draft");
   notice.append(
     m2el("strong", "Unsaved draft preserved"),
-    m2el("span", "The server version is open. Restore your local draft when you are ready to retry."),
+    m2el(
+      "span",
+      "The server version is open. Restore your local draft when you are ready to retry.",
+    ),
   );
   const restore = m2el("button", "Restore my draft", "m2-secondary");
   restore.type = "button";
