@@ -131,10 +131,7 @@ test("PRODUCT M3 renders only server-projected graph nodes and real Brain Pulse 
     const nodes = app.window.document.querySelectorAll("#m3-nodes .m3-node");
     assert.equal(nodes.length, 3);
     assert.match(app.window.document.getElementById("m3-pulse-label").textContent, /2 selected/u);
-    assert.equal(
-      app.window.document.querySelectorAll("#m3-nodes .in-context").length,
-      2,
-    );
+    assert.equal(app.window.document.querySelectorAll("#m3-nodes .in-context").length, 2);
     assert.equal(app.window.document.getElementById("m3-conflicts").textContent, "1");
     assert.equal(app.window.document.getElementById("m3-noise").textContent, "1");
   } finally {
@@ -148,9 +145,9 @@ test("PRODUCT M3 node selection exposes provenance metadata and revision history
     app.window.document.getElementById("knowledge-view").click();
     await tick();
     await tick();
-    app.window.document.querySelector('[data-node-id="memory-a"]').dispatchEvent(
-      new app.window.MouseEvent("click", { bubbles: true }),
-    );
+    app.window.document
+      .querySelector('[data-node-id="memory-a"]')
+      .dispatchEvent(new app.window.MouseEvent("click", { bubbles: true }));
     await tick();
     assert.equal(app.window.document.getElementById("m3-node-title").textContent, "mobile-first");
     assert.match(app.window.document.getElementById("m3-node-meta").textContent, /explicit_user/u);
@@ -184,10 +181,10 @@ test("PRODUCT M3 search/filter reloads bounded server projection instead of inve
 
 test("PRODUCT M3 responsive graph keeps touch controls and iPad-focused inspector behavior", async () => {
   const css = await readFile("web/product-m3.css", "utf8");
-  assert.match(css, /touch-action:none/u);
-  assert.match(css, /@media\(max-width:820px\)/u);
+  assert.match(css, /touch-action:\s*none/u);
+  assert.match(css, /@media\s*\(max-width:\s*820px\)/u);
   assert.match(css, /env\(safe-area-inset-bottom\)/u);
-  assert.match(css, /max-height:58vh/u);
+  assert.match(css, /max-height:\s*58vh/u);
 });
 
 test("PRODUCT M3 server wiring fails closed for RLS, archived/stale/noise context and secret-like writes", async () => {
