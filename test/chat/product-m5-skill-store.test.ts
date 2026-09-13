@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ActorDatabase } from "../../src/chat/neon-database.js";
 import { SkillProductStore } from "../../src/chat/skill-product-store.js";
-import type { ProductSkillInstallation, ProductSkillScope } from "../../src/chat/skills-product.js";
+import type {
+  ProductSkillInstallation,
+  ProductSkillScope,
+} from "../../src/chat/skills-product.js";
 import { ChatError } from "../../src/chat/types.js";
 
 type InstallationRow = {
@@ -58,7 +61,10 @@ class LifecycleDb {
           : [],
       };
     }
-    if (sql.startsWith("SELECT installation_id") && sql.includes("FROM odin_api.skill_installations")) {
+    if (
+      sql.startsWith("SELECT installation_id") &&
+      sql.includes("FROM odin_api.skill_installations")
+    ) {
       if (sql.includes("WHERE skill_id=$1")) {
         const found = this.rows.get(
           key(
@@ -133,8 +139,7 @@ class LifecycleDb {
       const row = [...this.rows.values()].find(
         (candidate) => candidate.installation_id === String(values[0]),
       );
-      if (!row || !row.previous_version || !row.previous_content_hash)
-        return { rows: [], rowCount: 0 };
+      if (!row?.previous_version || !row.previous_content_hash) return { rows: [], rowCount: 0 };
       const nextVersion = row.previous_version;
       const nextHash = row.previous_content_hash;
       row.previous_version = String(values[1]);
@@ -164,7 +169,12 @@ function code(error: unknown): string | undefined {
 
 function assertInstallation(
   value: ProductSkillInstallation,
-  expected: { version: string; contentHash: string; previousVersion: string | null; previousHash: string | null },
+  expected: {
+    version: string;
+    contentHash: string;
+    previousVersion: string | null;
+    previousHash: string | null;
+  },
 ): void {
   assert.equal(value.version, expected.version);
   assert.equal(value.contentHash, expected.contentHash);
@@ -205,12 +215,7 @@ test("PRODUCT M5 store install → update → rollback restores the exact previo
     previousHash: hashV1,
   });
 
-  const rolledBack = await store.rollback(
-    "product-planning",
-    "project",
-    projectId,
-    hashV2,
-  );
+  const rolledBack = await store.rollback("product-planning", "project", projectId, hashV2);
   assertInstallation(rolledBack, {
     version: "1.0.0",
     contentHash: hashV1,
