@@ -253,10 +253,7 @@ class WorkspaceDb {
       source_turn_id: runtime ? String(values[6]) : null,
       source_task_id: runtime ? "work" : null,
       version: 1,
-      metadata:
-        imported && typeof values[8] === "string"
-          ? (JSON.parse(values[8]) as Row)
-          : {},
+      metadata: imported && typeof values[8] === "string" ? (JSON.parse(values[8]) as Row) : {},
       created_at: now,
       updated_at: now,
     };
@@ -382,11 +379,7 @@ test("PRODUCT M2 Run artifacts retain provenance and reject foreign/incomplete R
   harness.addRun(projectA, runA, "Verified result text");
   harness.addRun(projectB, runB, "Foreign result");
 
-  const artifact = await store.createArtifactFromRun(
-    projectA,
-    runA,
-    "Product specification",
-  );
+  const artifact = await store.createArtifactFromRun(projectA, runA, "Product specification");
   assert.equal(artifact.origin, "runtime");
   assert.equal(artifact.sourceRunId, runA);
   assert.equal(artifact.sourceTaskId, "work");
@@ -397,10 +390,7 @@ test("PRODUCT M2 Run artifacts retain provenance and reject foreign/incomplete R
     expectCode("INVALID_PROVENANCE"),
   );
   await assert.rejects(
-    store.createArtifactFromRun(
-      projectA,
-      "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
-    ),
+    store.createArtifactFromRun(projectA, "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"),
     expectCode("INVALID_PROVENANCE"),
   );
 
@@ -435,10 +425,7 @@ test("PRODUCT M2 Context is project-bound and capped at sixteen selections", asy
   const selected = await store.setContext(projectA, first.id, true, "Current product spec");
   assert.equal(selected[0]?.itemId, first.id);
   assert.equal(selected[0]?.reason, "Current product spec");
-  await assert.rejects(
-    store.setContext(projectA, foreign.id, true),
-    expectCode("NOT_FOUND"),
-  );
+  await assert.rejects(store.setContext(projectA, foreign.id, true), expectCode("NOT_FOUND"));
   assert.deepEqual(await store.setContext(projectA, first.id, false), []);
 
   const documents = await Promise.all(
@@ -479,21 +466,11 @@ test("PRODUCT M2 layout is durable, optimistic, item-bound and capped at twelve 
   assert.equal(saved.version, 1);
 
   await assert.rejects(
-    store.saveLayout(
-      projectA,
-      [documents[0]?.id ?? ""],
-      documents[0]?.id ?? null,
-      0,
-    ),
+    store.saveLayout(projectA, [documents[0]?.id ?? ""], documents[0]?.id ?? null, 0),
     expectCode("STALE_LAYOUT"),
   );
   await assert.rejects(
-    store.saveLayout(
-      projectA,
-      [documents[0]?.id ?? ""],
-      documents[1]?.id ?? null,
-      1,
-    ),
+    store.saveLayout(projectA, [documents[0]?.id ?? ""], documents[1]?.id ?? null, 1),
     expectCode("INVALID_LAYOUT"),
   );
   const missing = "34343434-3434-4434-8434-343434343434";
