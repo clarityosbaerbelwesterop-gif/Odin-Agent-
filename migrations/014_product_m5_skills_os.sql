@@ -18,7 +18,10 @@ CREATE TABLE IF NOT EXISTS odin_api.skill_installations (
   updated_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY(owner_id,installation_id),
   CHECK((scope='global' AND project_id IS NULL) OR (scope='project' AND project_id IS NOT NULL)),
-  CHECK((previous_version IS NULL) = (previous_content_hash IS NULL))
+  CHECK((previous_version IS NULL) = (previous_content_hash IS NULL)),
+  FOREIGN KEY(owner_id,project_id)
+    REFERENCES odin_api.conversations(owner_id,id)
+    ON DELETE CASCADE
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS skill_installations_global_unique
@@ -49,7 +52,10 @@ CREATE TABLE IF NOT EXISTS odin_api.custom_skill_drafts (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY(owner_id,draft_id),
-  CHECK((scope='global' AND project_id IS NULL) OR (scope='project' AND project_id IS NOT NULL))
+  CHECK((scope='global' AND project_id IS NULL) OR (scope='project' AND project_id IS NOT NULL)),
+  FOREIGN KEY(owner_id,project_id)
+    REFERENCES odin_api.conversations(owner_id,id)
+    ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS custom_skill_drafts_project_lookup
@@ -75,6 +81,6 @@ BEGIN
   END LOOP;
 END $policies$;
 
--- Project existence and ownership are checked through the actor-scoped conversations table before writes.
+-- Project-scoped Skill state is now structurally bound to the canonical Conversation/Project authority.
 -- No trigger or grant here mints tool/network/credential/deployment/database authority.
 COMMIT;
