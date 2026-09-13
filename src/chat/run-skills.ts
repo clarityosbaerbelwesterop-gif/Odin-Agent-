@@ -1,19 +1,18 @@
 import { createHash } from "node:crypto";
 import {
-  SkillOsRuntime,
   type SkillOsPackMemberRef,
   type SkillOsPackRegistration,
   type SkillOsPackSource,
   type SkillOsPackSummary,
+  SkillOsRuntime,
 } from "../skill-os/index.js";
 import { SkillRegistry } from "../skills/registry.js";
 import type { SkillPackage } from "../skills/types.js";
-import { SkillProductStore } from "./skill-product-store.js";
+import type { SkillProductStore } from "./skill-product-store.js";
 import {
   productRuntimeSkill,
   productSkillById,
   projectSkillCatalog,
-  type ProductConnectionState,
 } from "./skills-product.js";
 import { ChatError, type ChatMode, type ChatTurn } from "./types.js";
 
@@ -138,8 +137,7 @@ class ProductPackSource implements SkillOsPackSource {
 
   require(packId: string, packVersion: string): ProductPack {
     const pack = this.#packs.get(packKey(packId, packVersion));
-    if (!pack)
-      throw new ChatError("SKILL_INTEGRITY", "Product Skill pack is unavailable.", 409);
+    if (!pack) throw new ChatError("SKILL_INTEGRITY", "Product Skill pack is unavailable.", 409);
     return pack;
   }
 }
@@ -173,8 +171,7 @@ export async function selectRunSkill(
       version: blocked.installation.version,
       contentHash: blocked.installation.contentHash,
       taskClass: route.taskClass,
-      reason:
-        blocked.status === "REQUIRES_CONNECTION" ? "connection_required" : "version_mismatch",
+      reason: blocked.status === "REQUIRES_CONNECTION" ? "connection_required" : "version_mismatch",
       missingConnections: Object.freeze([...blocked.missingConnections]),
     });
   }
