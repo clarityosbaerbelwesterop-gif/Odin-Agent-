@@ -88,24 +88,28 @@ function m5ProjectFromUrl() {
 }
 
 function m5StatusLabel(status) {
-  return {
-    AVAILABLE: "Available",
-    INSTALLED: "Installed",
-    DISABLED: "Disabled",
-    REQUIRES_CONNECTION: "Requires connection",
-    UPDATE_AVAILABLE: "Update available",
-    QUARANTINED: "Quarantined",
-    INCOMPATIBLE: "Incompatible",
-  }[status] ?? status;
+  return (
+    {
+      AVAILABLE: "Available",
+      INSTALLED: "Installed",
+      DISABLED: "Disabled",
+      REQUIRES_CONNECTION: "Requires connection",
+      UPDATE_AVAILABLE: "Update available",
+      QUARANTINED: "Quarantined",
+      INCOMPATIBLE: "Incompatible",
+    }[status] ?? status
+  );
 }
 
 function m5TrustLabel(trust) {
-  return {
-    BUILT_IN_VERIFIED: "Built-in verified",
-    FIRST_PARTY: "First party",
-    EXTERNAL_COMMUNITY: "External / community",
-    PRIVATE_CUSTOM: "Private / custom",
-  }[trust] ?? trust;
+  return (
+    {
+      BUILT_IN_VERIFIED: "Built-in verified",
+      FIRST_PARTY: "First party",
+      EXTERNAL_COMMUNITY: "External / community",
+      PRIVATE_CUSTOM: "Private / custom",
+    }[trust] ?? trust
+  );
 }
 
 async function m5Load() {
@@ -168,7 +172,13 @@ function m5RenderGrid() {
       m5el("small", `${m5TrustLabel(skill.trust)} · v${skill.version}`),
     );
     if (skill.requiredConnections.length)
-      card.append(m5el("span", `Requires ${skill.requiredConnections.join(", ")}`, "m5-requirement"));
+      card.append(
+        m5el(
+          "span",
+          `Requires ${skill.requiredConnections.join(", ")}`,
+          "m5-requirement",
+        ),
+      );
     card.onclick = () => {
       skillState.selected = skill.id;
       m5RenderGrid();
@@ -176,8 +186,7 @@ function m5RenderGrid() {
     };
     target.append(card);
   }
-  if (!skills.length)
-    target.append(m5el("p", "No Skills match this view.", "m5-empty-copy"));
+  if (!skills.length) target.append(m5el("p", "No Skills match this view.", "m5-empty-copy"));
 }
 
 function m5RenderDetail(skill) {
@@ -201,13 +210,17 @@ function m5RenderDetail(skill) {
   }
   target.append(facts);
   target.append(m5List("Examples", skill.examples));
-  target.append(m5List("Required tools", skill.requiredTools.length ? skill.requiredTools : ["None declared"]));
+  target.append(
+    m5List("Required tools", skill.requiredTools.length ? skill.requiredTools : ["None declared"]),
+  );
   target.append(
     m5List(
       "Connections",
       skill.requiredConnections.length
         ? skill.requiredConnections.map((name) =>
-            skill.missingConnections.includes(name) ? `${name} · not connected` : `${name} · connected`,
+            skill.missingConnections.includes(name)
+              ? `${name} · not connected`
+              : `${name} · connected`,
           )
         : ["No connection required"],
     ),
@@ -217,7 +230,9 @@ function m5RenderDetail(skill) {
   const scope = m5$("m5-scope").value;
   const projectId = scope === "project" ? skillState.projectId : null;
   const installation =
-    skill.installation && skill.installation.scope === scope && skill.installation.projectId === projectId
+    skill.installation &&
+    skill.installation.scope === scope &&
+    skill.installation.projectId === projectId
       ? skill.installation
       : null;
   if (skill.missingConnections.includes("github")) {
@@ -229,7 +244,8 @@ function m5RenderDetail(skill) {
   if (!installation) {
     const install = m5el("button", "Install", "m5-primary");
     install.type = "button";
-    install.disabled = skill.status === "REQUIRES_CONNECTION" || !skill.supportedScopes.includes(scope);
+    install.disabled =
+      skill.status === "REQUIRES_CONNECTION" || !skill.supportedScopes.includes(scope);
     install.onclick = () =>
       m5Mutate("/api/skills/install", {
         skillId: skill.id,
@@ -373,15 +389,19 @@ m5$("m5-draft-form")?.addEventListener("submit", async (event) => {
 
 // PRODUCT M4 integration: append only canonical Skill runtime evidence. Missing evidence stays missing.
 const m5RunSection = m5el("section", undefined, "m4-section m5-run-skills");
-m5RunSection.innerHTML = '<div class="m4-section-title"><span>SKILLS USED</span><span id="m5-run-skill-count">0</span></div><div id="m5-run-skills" class="m4-evidence"></div>';
+m5RunSection.innerHTML =
+  '<div class="m4-section-title"><span>SKILLS USED</span><span id="m5-run-skill-count">0</span></div><div id="m5-run-skills" class="m4-evidence"></div>';
 m5$("m4-run")?.append(m5RunSection);
 
 async function m5RenderRunSkills(runId) {
   const target = m5$("m5-run-skills");
-  if (!target || !runId) return;
+  const projectId = m5ProjectFromUrl();
+  if (!target || !runId || !projectId) return;
   target.replaceChildren(m5el("p", "Loading canonical Skill evidence…", "m4-muted"));
   try {
-    const result = await m5request(`/api/skills/runs/${encodeURIComponent(runId)}`);
+    const result = await m5request(
+      `/api/skills/runs/${encodeURIComponent(runId)}?projectId=${encodeURIComponent(projectId)}`,
+    );
     target.replaceChildren();
     m5$("m5-run-skill-count").textContent = String(result.evidence.length);
     for (const event of result.evidence) {
