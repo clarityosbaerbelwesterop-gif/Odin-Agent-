@@ -19,6 +19,7 @@ import {
   type ChatEvent,
   type ChatTurn,
 } from "./types.js";
+import { compileWorkspaceContext, workspaceContextMessage } from "./workspace-context.js";
 
 function encode(value: unknown, limit: number) {
   const data = safeText(canonicalJson(value, limit), limit);
@@ -35,8 +36,11 @@ const missing = () => new ChatError("NOT_FOUND", "Conversation or task not found
 export class NeonChatStore implements ChatRepository {
   constructor(readonly db: ActorDatabase) {}
   close(): void {}
+  async workspaceContext(conversationId: string, missionId: string) {
+    return compileWorkspaceContext(this.db, identifier(conversationId), identifier(missionId));
+  }
   async history(conversationId: string, currentTurn: string): Promise<ModelMessage[]> {
-    return this.db.transaction(async (c) =>
+    const history = await this.db.transaction(async (c) =>
       (
         await c.query(
           "SELECT type,data,data_hash FROM odin_api.events WHERE conversation_id=$1 AND turn_id<>$2 AND type IN ('message.user','answer') ORDER BY cursor DESC LIMIT 12",
@@ -45,15 +49,24 @@ export class NeonChatStore implements ChatRepository {
       ).rows
         .reverse()
         .map((row) => ({
-          role: row.type === "answer" ? "assistant" : "user",
+          role: row.type === "answer" ? ("assistant" as const) : ("user" as const),
           content: [
             {
-              type: "text",
+              type: "text" as const,
               text: String(decode<Record<string, unknown>>(row).text).slice(0, 2000),
             },
           ],
         })),
     );
+    const context = await this.workspaceContext(conversationId, currentTurn);
+    if (!context) return history;
+    return [
+      ...history,
+      {
+        role: "user",
+        content: [{ type: "text", text: workspaceContextMessage(context) }],
+      },
+    ];
   }
   async createConversation(title: string): Promise<ChatConversation> {
     const clean = safeText(title, 160).trim() || "New conversation";
