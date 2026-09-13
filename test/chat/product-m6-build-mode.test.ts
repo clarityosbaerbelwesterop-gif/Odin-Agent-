@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { canonicalJson } from "../../src/durable/internal.js";
 import {
+  BuildProductStore,
   buildIterationObjective,
   buildIterationRunRequest,
   buildPreview,
@@ -11,6 +13,8 @@ import {
   buildStage,
   extractVisualTargets,
 } from "../../src/chat/build-mode.js";
+import type { ActorDatabase, DatabaseAction } from "../../src/chat/neon-database.js";
+import { hashText } from "../../src/chat/safety.js";
 
 test("PRODUCT M6 greenfield and existing objectives compose existing tool/verification authority", () => {
   const greenfield = buildRunObjective(
@@ -120,6 +124,57 @@ test("PRODUCT M6 visual editing exposes only explicit safe source mappings", () 
   assert.deepEqual(extractVisualTargets("<main>No mapping</main>", "index.html"), []);
 });
 
+test("PRODUCT M6 canonical Build event restores workspace kind and rejects tampering", async () => {
+  const data = {
+    requestId: "11111111-1111-4111-8111-111111111111",
+    requestKind: "initial",
+    target: "greenfield",
+    stack: "static-web",
+    goal: "Build a simple student exam planner.",
+  };
+  const encoded = canonicalJson(data, 300_000);
+  const row = {
+    cursor: 1,
+    type: "build.requested",
+    turn_id: null,
+    data,
+    data_hash: hashText(encoded),
+    created_at: "2026-09-13T15:00:00.000Z",
+  };
+  const db = databaseReturning(row);
+  const store = new BuildProductStore(db, "user-1");
+  assert.equal(await store.workspaceKind("project-1"), "internal");
+  assert.deepEqual(await store.events("project-1"), [
+    {
+      cursor: 1,
+      type: "build.requested",
+      turnId: null,
+      data,
+      createdAt: "2026-09-13T15:00:00.000Z",
+    },
+  ]);
+
+  const tampered = new BuildProductStore(databaseReturning({ ...row, data_hash: "0".repeat(64) }), "user-1");
+  await assert.rejects(tampered.events("project-1"), /failed verification/iu);
+});
+
+test("PRODUCT M6 start validation fails before any repository or database authority is used", async () => {
+  const unreachable: ActorDatabase = {
+    transaction: async () => {
+      throw new Error("database should not be reached");
+    },
+  };
+  const store = new BuildProductStore(unreachable, "user-1");
+  await assert.rejects(
+    store.start({ goal: "Add a safe dark mode to the existing application.", target: "existing" }),
+    /requires a Project/iu,
+  );
+  await assert.rejects(
+    store.start({ goal: "short", target: "greenfield" }),
+    /Describe what you want Odin to build/iu,
+  );
+});
+
 test("PRODUCT M6 progress labels are projections of canonical Run state and Preview evidence", () => {
   assert.equal(buildStage(null, false), "Designing");
   assert.equal(buildStage("UNDERSTANDING", false), "Understanding");
@@ -149,3 +204,10 @@ test("PRODUCT M6 API source binds Run to Project, keeps memory/workspace canonic
   assert.match(hosted, /NeonWorkspace/u);
   assert.match(preview, /connect-src 'none'/u);
 });
+
+function databaseReturning(row: Record<string, unknown>): ActorDatabase {
+  return {
+    transaction: async <T>(action: DatabaseAction<T>) =>
+      action({ query: async () => ({ rows: [row] }) } as never),
+  };
+}
