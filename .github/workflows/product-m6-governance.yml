@@ -1,0 +1,73 @@
+name: PRODUCT M6 temporary governance sync
+
+on:
+  push:
+    branches:
+      - agent/product-m6-build-mode
+
+permissions:
+  contents: write
+
+concurrency:
+  group: product-m6-governance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Synchronize M6 governance
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          blocks = {
+              "README.md": """## PRODUCT M6 — Build Mode\n\nPRODUCT M6 turns the existing Project/Workspace/Memory/Run/Skills/Tool/Verification stack into an end-to-end Build Mode. Product Spec, Blueprint and Design System are real editable PRODUCT M2 Workspace documents; canonical Hosted Runs perform real internal-Workspace or isolated-repository changes; PRODUCT M5 Skills remain on the M10 → M23 path; meaningful project decisions use PRODUCT M3 Memory; and isolated Preview is bound to the current output revision rather than being mislabeled as deployment. Delta iterations preserve the existing product and verified visual → source mappings are used only when explicit and safe. See the [PRODUCT M6 contract](docs/milestones/PRODUCT_M6_BUILD_MODE.md).""",
+              "ARCHITECTURE.md": """## PRODUCT M6 — Build Mode product boundary\n\nPRODUCT M6 is orchestration over existing authorities, not a second build runtime. Build product state is projected from canonical `workspace_files`, `turns` and `events`; Product Spec/Blueprint/Design System live in PRODUCT M2 Workspace; durable decisions use PRODUCT M3 Memory; execution remains the PRODUCT M4 Hosted ChatEngine/Mission Runtime; Skill procedure selection remains PRODUCT M5 M10 → M23; repository/workspace effects remain behind M25/M3 tool policy; and completion remains owned by existing quality/verification evidence. Greenfield uses the existing `NeonWorkspace`; existing-app work uses the existing isolated GitHub Workspace path.\n\nPreview identity is SHA-256-bound to the current previewable file set and is served through the existing isolated preview/CSP path. `data-odin-source` is accepted only as a validated source mapping hint and grants no write authority. Build iterations are new canonical Runs over the same Project/repository state, so reload/resume/checkpoint, budgets and repair ceilings stay in the existing runtime instead of a Build-specific state machine.""",
+              "ROADMAP.md": """## PRODUCT M6 — Build Mode (current delivery)\n\nStatus: **PRE-PR VERIFIED — final governance exact-head CI and merge pending**.\n\n- [x] Product Spec, Build Blueprint and Design System persist as real editable PRODUCT M2 Workspace documents.\n- [x] Canonical Hosted Runs perform real Workspace/repository writes; no second executor, DAG, Workspace, Memory, Skill or verification authority exists.\n- [x] PRODUCT M5 Skill selection remains on the M10 → M23 path and Run Center surfaces only server-originated Skill evidence.\n- [x] Product decisions use PRODUCT M3 Memory with Workspace provenance; transient build/test noise is not promoted automatically.\n- [x] Preview is isolated, responsive and content-revision-bound, and is explicitly distinct from deployment/production.\n- [x] Explicit safe visual → source mappings support scoped delta requests; uncertain mappings fail honestly.\n- [x] Deterministic acceptance #1 builds and then iterates a student exam planner through real repository tools and quality evidence.\n- [x] Deterministic acceptance #2 adds dark mode to an existing application as a scoped verified delta.\n- [x] Full pre-governance `npm run verify` passed on `fa44a1f05db560b8f910bd86d00a531f95b9cff1`: Foundation, Biome, strict TypeScript, 656/656 deterministic tests at 80.16% line coverage, complete UI suite, credential-free dry smoke and production/base build.\n- [ ] Fresh exact-head CI after governance synchronization.\n- [ ] Merge PR only after that exact-head CI is green and the PR remains mergeable.\n\nPRODUCT M7 starts only from merged PRODUCT M6 `main` and productizes the existing GitHubWorkspace/repository-tool/coding-verification stack rather than creating another Git client or coding runtime.""",
+              "HANDOVER.md": """## PRODUCT M6 checkpoint — Build Mode\n\nPRODUCT M6 continues directly from merged PRODUCT M5 main `1706fa16a01e61ecfd4a21565860f29e928400f5`. It composes the existing Workspace, Memory Brain, Hosted Mission/Run runtime, Skills OS, repository tools and verification authorities into Build Mode; do not create a second build executor, state machine, task graph, Skill runtime, Workspace, Memory store, Artifact store or verifier. Product Spec/Blueprint/Design System are actual Workspace documents, implementation is actual file mutation through canonical tools, and Preview is content-revision-bound and isolated.\n\nPre-governance full verification passed on `fa44a1f05db560b8f910bd86d00a531f95b9cff1` with Foundation, Biome, strict TypeScript, 656/656 deterministic tests at 80.16% line coverage, the complete UI suite, credential-free dry smoke and production/base build. Acceptance #1 builds plus iterates the student exam planner; Acceptance #2 performs the existing-app dark-mode delta. The final M6 PR must still pass fresh exact-head CI after this governance sync. Live Vercel/physical-device evidence remains external and no production deployment is inferred from Preview.""",
+              "SECURITY.md": """## PRODUCT M6 Build Mode security boundary\n\nBuild Mode adds no execution authority. Product Spec, Blueprint, Design System, repository text, Workspace documents, retrieved content and Skill procedures remain untrusted data. They cannot mint tool grants, network destinations, credentials, database privileges, deployment/billing authority, approvals or verification evidence. Greenfield file effects use the existing scoped `NeonWorkspace`; repository effects use the existing isolated GitHub Workspace and normalized repository tools; existing RLS/actor scope, Project/Run binding, secret screening, capability policy, verification evidence, budgets and repair ceilings remain authoritative.\n\nPreview is fail-closed and content-revision-bound. The hosted preview rejects a stale expected revision and retains the restrictive Preview CSP; Preview never means Published, Deployed or Production. Visual editing exposes only explicit validated `data-odin-source` mappings. Traversal/uncertain mappings are rejected or omitted, and a visual mapping never grants permission to edit a different resource. M6-specific tests layer these invariants on the repository's existing prompt-injection, secret-exfiltration, cross-scope, path/symlink, arbitrary-shell/network, Skill-integrity, forged-evidence, approval and sandbox-policy suites.""",
+          }
+
+          def prepend_after_heading(path: str, block: str) -> None:
+              p = Path(path)
+              text = p.read_text()
+              marker = block.splitlines()[0]
+              if marker in text:
+                  return
+              first, rest = text.split("\n", 1)
+              p.write_text(first + "\n\n" + block + "\n\n" + rest)
+
+          for path, block in blocks.items():
+              prepend_after_heading(path, block)
+
+          roadmap = Path("ROADMAP.md")
+          text = roadmap.read_text()
+          text = text.replace("## PRODUCT M5 — Skills OS (current delivery)", "## PRODUCT M5 — Skills OS (merged milestone)")
+          text = text.replace("Status: **STAGING VERIFIED — PR #80 exact-head move/CI/merge pending**.", "Status: **MERGED** — PR #80, merge `1706fa16a01e61ecfd4a21565860f29e928400f5`; exact-head CI #881 passed before merge.")
+          text = text.replace("- [ ] Fresh exact-head CI after this governance synchronization.\n- [ ] Fast-forward PR #80 to the final staging head once, mark ready and merge only after exact-head required checks are green.", "- [x] Exact-head PR CI #881 passed on the final verified M5 head.\n- [x] PR #80 was marked ready and merged to `main` as `1706fa16a01e61ecfd4a21565860f29e928400f5`.")
+          roadmap.write_text(text)
+
+          handover = Path("HANDOVER.md")
+          text = handover.read_text()
+          text = text.replace("Before merge, require a fresh exact-head full CI after this governance sync, then fast-forward PR #80 once and merge only if required checks are green and the PR remains mergeable. PRODUCT M6 must branch from the resulting merged `main`.", "PR #80 subsequently passed exact-head CI #881 and merged to `main` as `1706fa16a01e61ecfd4a21565860f29e928400f5`. PRODUCT M6 was branched from that authoritative merged main.")
+          handover.write_text(text)
+
+          m5 = Path("docs/milestones/PRODUCT_M5_SKILLS_OS.md")
+          text = m5.read_text()
+          text = text.replace("Status: implementation and regression hardening complete on the M5 staging branch; full canonical verification, exact-head PR CI and merge evidence pending", "Status: **MERGED** — PR #80; exact-head CI #881 passed; merge `1706fa16a01e61ecfd4a21565860f29e928400f5` is on `main`.")
+          text = text.replace("A final exact-head PR #80 GitHub Actions success is required before merge.", "PR #80 passed its exact-head GitHub Actions gate (#881) before merge.")
+          m5.write_text(text)
+          PY
+      - name: Commit governance state
+        run: |
+          git config user.name "Odin Product M6"
+          git config user.email "odin-m6@users.noreply.github.com"
+          git add README.md ARCHITECTURE.md ROADMAP.md HANDOVER.md SECURITY.md docs/milestones/PRODUCT_M5_SKILLS_OS.md
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "docs(m6): synchronize Build Mode governance"
+          git push origin HEAD:agent/product-m6-build-mode
