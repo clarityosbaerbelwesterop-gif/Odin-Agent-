@@ -79,9 +79,7 @@ export async function memoryApiHandler(req: IncomingMessage, res: ServerResponse
       return;
     }
 
-    const signal = /^\/api\/memory\/projects\/([\w-]+)\/signals\/([\w-]+)$/u.exec(
-      url.pathname,
-    );
+    const signal = /^\/api\/memory\/projects\/([\w-]+)\/signals\/([\w-]+)$/u.exec(url.pathname);
     if (signal && method === "POST") {
       const body = object(await jsonBody(req), ["pinned", "archived"]);
       if (body.pinned !== undefined && typeof body.pinned !== "boolean")
@@ -96,9 +94,7 @@ export async function memoryApiHandler(req: IncomingMessage, res: ServerResponse
       return;
     }
 
-    const record = /^\/api\/memory\/projects\/([\w-]+)\/records\/([\w-]+)$/u.exec(
-      url.pathname,
-    );
+    const record = /^\/api\/memory\/projects\/([\w-]+)\/records\/([\w-]+)$/u.exec(url.pathname);
     if (record && method === "DELETE") {
       const body = object(await jsonBody(req), ["expectedVersion"]);
       if (typeof body.expectedVersion !== "number")
@@ -114,10 +110,7 @@ export async function memoryApiHandler(req: IncomingMessage, res: ServerResponse
       if (typeof body.itemId !== "string")
         throw new ChatError("INVALID_MEMORY", "A Workspace item is required.");
       if (body.kind !== undefined && body.kind !== "project" && body.kind !== "semantic")
-        throw new ChatError(
-          "INVALID_MEMORY",
-          "Workspace memory must be project or semantic.",
-        );
+        throw new ChatError("INVALID_MEMORY", "Workspace memory must be project or semantic.");
       send(res, 201, {
         memory: await brain.promoteWorkspaceItem(promote[1] ?? "", body.itemId, {
           ...(typeof body.key === "string" ? { key: body.key } : {}),
