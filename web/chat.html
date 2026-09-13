@@ -105,20 +105,12 @@
         </div>
 
         <section id="projects-panel" class="workspace-surface" hidden aria-labelledby="projects-title"><header class="surface-hero"><span class="welcome-tag">YOUR WORK</span><h1 id="projects-title">Projects that remember where you left off.</h1><p>Each project keeps its goals, runs, files and activity together.</p><button id="project-create" type="button" class="surface-action">Create project</button></header><div id="project-grid" class="project-grid"></div></section>
-        <section id="knowledge-panel" class="workspace-surface" hidden aria-labelledby="knowledge-title"><header class="surface-hero"><span class="welcome-tag">MEMORY BRAIN</span><h1 id="knowledge-title">Knowledge with a source.</h1><p>Odin’s scoped memory keeps provenance, sensitivity and conflicts visible. The visual graph will grow from this same memory foundation.</p></header><div class="empty-product-card"><span class="brain-glyph">◎</span><h2>Your knowledge map begins with real work</h2><p>Project memories will appear here after verified runs create or retrieve them.</p></div></section>
+        <section id="knowledge-panel" class="workspace-surface" hidden aria-labelledby="knowledge-title"><header class="surface-hero"><span class="welcome-tag">MEMORY BRAIN</span><h1 id="knowledge-title">Knowledge with a source.</h1><p>Odin’s scoped memory keeps provenance, sensitivity and conflicts visible.</p></header><div class="empty-product-card"><span class="brain-glyph">◎</span><h2>Your knowledge map begins with real work</h2><p>Project memories appear here only from canonical Memory records and controlled product signals.</p></div></section>
         <section id="skills-panel" class="workspace-surface" hidden aria-labelledby="skills-title"><header class="surface-hero"><span class="welcome-tag">SKILLS</span><h1 id="skills-title">Ways Odin knows how to work.</h1><p>Skills provide procedures. Permissions remain controlled by Odin’s runtime.</p></header><div class="skill-grid"><article><span>01</span><h2>Repository work</h2><p>Inspect, edit, test and review connected code.</p></article><article><span>02</span><h2>Research</h2><p>Retrieve sources and keep evidence attached.</p></article><article><span>03</span><h2>Deep reasoning</h2><p>Plan, challenge assumptions and verify outcomes.</p></article></div></section>
         <section id="activity-page" class="workspace-surface" hidden aria-labelledby="activity-title"><header class="surface-hero"><span class="welcome-tag">ACTIVITY</span><h1 id="activity-title">A clear record of the work.</h1><p>Open a project to see its plan, tools, changes and verification events.</p></header><div id="global-activity" class="project-grid"></div></section>
 
-        <section id="models-panel" class="product-surface" hidden aria-labelledby="models-title">
-          <header class="product-surface-header"><div><span class="welcome-tag">SERVERSEITIG VERBUNDEN</span><h1 id="models-title">Modelle, die Odin wirklich nutzen kann.</h1></div><p class="muted">Die Liste kommt aus dem Backend. Ein Modell erscheint nur, wenn sein Provider-Credential im Deployment vorhanden ist.</p></header>
-          <div id="model-cards" class="product-card-grid"></div>
-        </section>
-
-        <section id="system-panel" class="product-surface" hidden aria-labelledby="system-title">
-          <header class="product-surface-header"><div><span class="welcome-tag">CONTROL PLANE</span><h1 id="system-title">Das Produkt hinter dem Chat.</h1></div><p class="muted">Mission Runtime, Modelle, Workspace, Tools, Verification, Research, Auth und RLS bleiben getrennte kontrollierte Systeme.</p></header>
-          <div id="system-content"></div>
-        </section>
-
+        <section id="models-panel" class="product-surface" hidden aria-labelledby="models-title"><header class="product-surface-header"><div><span class="welcome-tag">SERVERSEITIG VERBUNDEN</span><h1 id="models-title">Modelle, die Odin wirklich nutzen kann.</h1></div><p class="muted">Die Liste kommt aus dem Backend. Ein Modell erscheint nur, wenn sein Provider-Credential im Deployment vorhanden ist.</p></header><div id="model-cards" class="product-card-grid"></div></section>
+        <section id="system-panel" class="product-surface" hidden aria-labelledby="system-title"><header class="product-surface-header"><div><span class="welcome-tag">CONTROL PLANE</span><h1 id="system-title">Das Produkt hinter dem Chat.</h1></div><p class="muted">Mission Runtime, Modelle, Workspace, Tools, Verification, Research, Auth und RLS bleiben getrennte kontrollierte Systeme.</p></header><div id="system-content"></div></section>
         <section id="benchmarks" class="benchmarks" hidden><span class="welcome-tag">GEMESSENE EVIDENZ</span><h1>Jede Verbesserung<br />braucht ein Ergebnis.</h1><p class="muted">Live-Odin-Runs, historische Protokollevidenz und externe Frontier-Referenzen bleiben getrennt.</p><div id="benchmark-content"></div></section>
       </main>
     </div>
@@ -128,6 +120,7 @@
     <dialog id="connection-details" aria-labelledby="details-title"><h2 id="details-title">Einstellungen & Informationen</h2><div id="details-body"></div><div class="dialog-actions"><button id="sign-out" type="button">Abmelden</button><button id="close-details" type="button" class="primary">Schließen</button></div></dialog>
     <script type="module" src="/chat.js"></script>
     <script type="module" src="/workspace.js"></script>
+    <script type="module" src="/memory-brain.js"></script>
     <script type="module" src="/product-info.js"></script>
   </body>
 </html>
