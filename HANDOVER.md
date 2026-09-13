@@ -1,5 +1,12 @@
 # Engineering handover
 
+## PRODUCT M5 checkpoint — Skills OS
+
+PRODUCT M5 staging is implementation-complete and passed the full canonical staging gate in CI #878 on `8053ae99dbb816d193e8fe3e5346dc73d5fcd2ad` before final governance synchronization. Preserve the existing M10 → M23 → Hosted Run path: do not create a second Skill runtime, client-side selector or prompt-only injection path. M25 remains permission authority. Global/project lifecycle, exact rollback, connection state, Run/Project isolation, version/hash resume pinning, cursor-ordered server Skill evidence, inert custom drafts and responsive Skills/Run Center UI have focused regressions.
+
+Neon production is `cold-mode-01560070`, branch `production` (`br-muddy-boat-b1po0mwo`), database `neondb`. Migration 015 was applied after confirming both targeted legacy tables had zero rows, zero FK/trigger/view/routine dependencies, canonical replacements existed and runtime code did not query them; no `CASCADE` was used. Migration 014 remains a versioned repository migration and production application must not be inferred merely from source verification. Before merge, require a fresh exact-head full CI after this governance sync, then fast-forward PR #80 once and merge only if required checks are green and the PR remains mergeable. PRODUCT M6 must branch from the resulting merged `main`.
+
+
 ## PRODUCT M4 checkpoint — 2026-09-13
 
 PR #79 productizes Odin's existing autonomous runtime as Project → Runs without creating a second

@@ -1,5 +1,24 @@
 # Odin delivery roadmap
 
+## PRODUCT M5 — Skills OS (current delivery)
+
+Status: **STAGING VERIFIED — PR #80 exact-head move/CI/merge pending**.
+
+- [x] Product Skills bind to real M10 package identity and content hashes.
+- [x] M23 performs deterministic task-class discovery, selection and progressive loading in real Hosted Runs.
+- [x] M25 remains the tool/permission authority; installing a Skill grants no filesystem, repository, network, credential, deployment, database, billing or approval authority.
+- [x] Global/project install, enable/disable, update, rollback and removal are actor/project scoped; project overrides and global fallback are deterministic.
+- [x] Run/Project isolation, exact version/hash resume pinning, canonical `cursor` event ordering and bounded server-originated `skill.selected`, `skill.loaded` and `skill.result` evidence are regression-tested.
+- [x] Custom Skill drafts remain inert candidates and reject secret-like content or authority escalation.
+- [x] Migration 014 is repository-verified with canonical Project FKs, ENABLE/FORCE RLS, PUBLIC revocation and limited `odin_runtime` grants. Production application is not claimed here.
+- [x] Migration 015 was applied only after a fresh live dependency/row-count proof on the canonical Odin Neon production branch; both empty legacy v003 tables were removed without `CASCADE` and canonical replacements remain present.
+- [x] Full staging `npm run verify` / CI #878 passed on pre-governance head `8053ae99dbb816d193e8fe3e5346dc73d5fcd2ad`.
+- [ ] Fresh exact-head CI after this governance synchronization.
+- [ ] Fast-forward PR #80 to the final staging head once, mark ready and merge only after exact-head required checks are green.
+
+PRODUCT M6 starts only from the merged PRODUCT M5 `main` head and composes existing Workspace, Memory, Runtime, Skills, Tool and Verification authorities rather than creating a second Build engine.
+
+
 ## PRODUCT M4 — Runtime Productization (current delivery)
 
 Status: **IMPLEMENTED — final governance exact-head CI and merge pending** on PR #79.

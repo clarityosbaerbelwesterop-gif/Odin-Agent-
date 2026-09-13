@@ -1,5 +1,12 @@
 # Security model
 
+## PRODUCT M5 Skills OS security boundary
+
+Product Skill installation changes availability only. M10 remains verification/lifecycle authority, M23 remains discovery/selection/loading authority, and M25 remains tool/permission authority. A Skill cannot grant filesystem/repository writes, network, credentials, deployment, database mutation, billing or approval bypass. Repository/document/retrieved/Skill text is untrusted procedure data and cannot override runtime policy. Custom Skill drafts are inert `CANDIDATE`/`DRAFT` records until the existing independent verification authority promotes them.
+
+Actor-scoped Product state is isolated globally or by canonical Project. Run evidence additionally proves the Run belongs to the requested Project before Skill discovery or projection. Resume restores only exact `skillId`, version and content hash; mismatches fail closed. `skill.selected`, `skill.loaded`, `skill.connection_required`, `skill.verification_failed` and bounded `skill.result` rows originate server-side and use canonical event `cursor` ordering; the frontend is projection-only. Migration 014 preserves ENABLE/FORCE RLS, PUBLIC revocation, canonical `(owner_id, project_id)` foreign keys and limited `odin_runtime` grants. Migration 015 was applied only after fresh production proof of zero rows and zero dependencies for the two legacy v003 connection tables and deliberately contains no `CASCADE`.
+
+
 ## PRODUCT M4 Run Center security boundary
 
 PRODUCT M4 creates no new authorization path. Project/Run data continues through authenticated,
