@@ -1,10 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { attachDatabasePool } from "@vercel/functions";
+import { canonicalJson } from "../durable/internal.js";
 import { resolveNeonAuthUrl } from "./deployment.js";
 import { NeonAuth } from "./neon-auth.js";
 import { createNeonPool, NeonActorDatabase } from "./neon-database.js";
-import { CredentialVault, ProductStore } from "./product.js";
-import { publicError } from "./safety.js";
+import { hashText, publicError } from "./safety.js";
 import { SkillProductStore } from "./skill-product-store.js";
 import {
   assertInstallRequest,
@@ -13,7 +13,6 @@ import {
   parseScope,
   productSkillById,
   projectSkillCatalog,
-  type ProductConnectionState,
 } from "./skills-product.js";
 import { ChatError } from "./types.js";
 
@@ -53,12 +52,7 @@ export async function skillsApiHandler(req: IncomingMessage, res: ServerResponse
     const identity = await services.auth.session(req.headers.cookie ?? "", origin);
     const db = new NeonActorDatabase(services.pool, identity);
     const store = new SkillProductStore(db);
-    const product = new ProductStore(
-      db,
-      new CredentialVault(process.env.ODIN_CREDENTIAL_ENCRYPTION_KEY),
-    );
-    const github = await product.github();
-    const connections: ProductConnectionState = { github: github.connected === true };
+    const connections = await store.connections();
 
     if (url.pathname === "/api/skills" && method === "GET") {
       const projectId = optionalProject(url.searchParams.get("projectId"));
@@ -74,7 +68,7 @@ export async function skillsApiHandler(req: IncomingMessage, res: ServerResponse
         policy: {
           installDoesNotGrantAuthority: true,
           executionAuthority: "M23 Skill OS + M25 Tool Policy",
-          verificationAuthority: "M10/M5 independent evidence",
+          verificationAuthority: "M10 Skill Registry",
           credentialsRemainServerSide: true,
         },
       });
@@ -134,11 +128,19 @@ export async function skillsApiHandler(req: IncomingMessage, res: ServerResponse
       const current = await store.installation(skill.id, scope, projectId);
       if (!current) throw new ChatError("SKILL_NOT_INSTALLED", "Skill is not installed.", 404);
       if (body.expectedContentHash !== current.contentHash)
-        throw new ChatError("SKILL_INTEGRITY", "Skill installation changed before the state update.", 409);
+        throw new ChatError(
+          "SKILL_INTEGRITY",
+          "Skill installation changed before the state update.",
+          409,
+        );
       if (body.enabled) {
         const missing = skill.requiredConnections.filter((name) => !connections[name]);
         if (missing.length)
-          throw new ChatError("SKILL_CONNECTION_REQUIRED", `Connect ${missing.join(", ")} first.`, 409);
+          throw new ChatError(
+            "SKILL_CONNECTION_REQUIRED",
+            `Connect ${missing.join(", ")} first.`,
+            409,
+          );
       }
       send(res, 200, {
         installation: await store.setEnabled(skill.id, scope, projectId, body.enabled),
@@ -157,7 +159,11 @@ export async function skillsApiHandler(req: IncomingMessage, res: ServerResponse
         throw new ChatError("SKILL_INTEGRITY", "Expected installation hash is required.");
       const missing = skill.requiredConnections.filter((name) => !connections[name]);
       if (missing.length)
-        throw new ChatError("SKILL_CONNECTION_REQUIRED", `Connect ${missing.join(", ")} first.`, 409);
+        throw new ChatError(
+          "SKILL_CONNECTION_REQUIRED",
+          `Connect ${missing.join(", ")} first.`,
+          409,
+        );
       send(res, 200, {
         installation: await store.update({
           skillId: skill.id,
@@ -217,7 +223,8 @@ export async function skillsApiHandler(req: IncomingMessage, res: ServerResponse
         draft: saved,
         loadable: false,
         authorityGranted: false,
-        nextGate: "Independent validation and verification are required before M23 may select this Skill.",
+        nextGate:
+          "Independent validation and verification are required before M23 may select this Skill.",
       });
       return;
     }
@@ -225,28 +232,42 @@ export async function skillsApiHandler(req: IncomingMessage, res: ServerResponse
     const run = /^\/api\/skills\/runs\/([0-9a-f-]{36})$/iu.exec(url.pathname);
     if (run && method === "GET") {
       const runId = run[1] ?? "";
+      const projectId = parseProjectId(url.searchParams.get("projectId"));
+      const after = eventCursor(url.searchParams.get("after"));
+      await store.requireRunProject(projectId, runId);
       const events = await db.transaction(async (client) =>
         (
           await client.query(
-            `SELECT type,data,created_at
+            `SELECT cursor,type,data,data_hash,created_at
                FROM odin_api.events
-              WHERE turn_id=$1::uuid AND type IN ('skill.selected','skill.loaded','skill.result')
-              ORDER BY sequence ASC
+              WHERE conversation_id=$1::uuid AND turn_id=$2::uuid AND cursor>$3
+                AND type IN (
+                  'skill.selected','skill.loaded','skill.result',
+                  'skill.connection_required','skill.verification_failed'
+                )
+              ORDER BY cursor ASC
               LIMIT 128`,
-            [runId],
+            [projectId, runId, after],
           )
         ).rows,
       );
-      send(res, 200, {
-        runId,
-        evidence: events.map((event) => ({
+      const evidence = events.map((event) => {
+        const data = eventData(event);
+        return {
+          cursor: Number(event.cursor),
           type: String(event.type),
-          data: event.data,
+          data,
           createdAt: new Date(String(event.created_at)).toISOString(),
-        })),
+        };
+      });
+      send(res, 200, {
+        projectId,
+        runId,
+        evidence,
+        nextCursor: evidence.at(-1)?.cursor ?? after,
         note:
-          events.length > 0
-            ? "Only canonical Skill runtime events are shown."
+          evidence.length > 0
+            ? "Only canonical server-side Skill runtime events are shown."
             : "No canonical Skill runtime evidence is attached to this Run; no Skill usage is fabricated.",
       });
       return;
@@ -291,13 +312,37 @@ function text(value: unknown, name: string): string {
   return value.trim();
 }
 
+function eventCursor(value: string | null): number {
+  if (value === null || value === "") return 0;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 0)
+    throw new ChatError("INVALID_CURSOR", "Skill event cursor is invalid.");
+  return parsed;
+}
+
+function eventData(row: Record<string, unknown>): Record<string, unknown> {
+  const data = row.data;
+  if (!data || typeof data !== "object" || Array.isArray(data))
+    throw new ChatError("INTEGRITY_FAILURE", "Stored Skill event is invalid.", 500);
+  if (hashText(canonicalJson(data, 300000)) !== row.data_hash)
+    throw new ChatError("INTEGRITY_FAILURE", "Stored Skill event failed verification.", 500);
+  return data as Record<string, unknown>;
+}
+
 async function jsonObject(req: IncomingMessage): Promise<Record<string, unknown>> {
+  if (
+    !String(req.headers["content-type"] ?? "")
+      .toLowerCase()
+      .startsWith("application/json")
+  )
+    throw new ChatError("CONTENT_TYPE", "Use an application/json request body.", 415);
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const chunk of req) {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     size += buffer.length;
-    if (size > 64 * 1024) throw new ChatError("PAYLOAD_TOO_LARGE", "Skill request is too large.", 413);
+    if (size > 64 * 1024)
+      throw new ChatError("PAYLOAD_TOO_LARGE", "Skill request is too large.", 413);
     chunks.push(buffer);
   }
   try {
