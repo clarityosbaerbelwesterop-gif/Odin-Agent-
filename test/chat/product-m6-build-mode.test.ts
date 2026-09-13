@@ -3,12 +3,14 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   buildIterationObjective,
+  buildIterationRunRequest,
   buildPreview,
+  buildPreviewRevision,
   buildRunObjective,
+  buildRunRequest,
   buildStage,
   extractVisualTargets,
 } from "../../src/chat/build-mode.js";
-import { ChatError } from "../../src/chat/types.js";
 
 test("PRODUCT M6 greenfield and existing objectives compose existing tool/verification authority", () => {
   const greenfield = buildRunObjective(
@@ -28,6 +30,34 @@ test("PRODUCT M6 greenfield and existing objectives compose existing tool/verifi
   assert.match(existing, /Inspect the current repository before editing/iu);
   assert.match(existing, /delta plan/iu);
   assert.match(existing, /Do not regenerate or replace the whole application/iu);
+});
+
+test("PRODUCT M6 request envelopes retain canonical request identity and supported mode", () => {
+  const requestId = "11111111-1111-4111-8111-111111111111";
+  const initial = buildRunRequest(
+    requestId,
+    "Build a simple student exam planner.",
+    "greenfield",
+    "static-web",
+  );
+  assert.equal(initial.requestId, requestId);
+  assert.equal(initial.mode, "ultra");
+  assert.match(initial.text, /BUILD MODE/u);
+
+  const iteration = buildIterationRunRequest(
+    requestId,
+    "Make the sidebar smaller.",
+    "existing",
+    "existing",
+    null,
+  );
+  assert.equal(iteration.requestId, requestId);
+  assert.equal(iteration.mode, "coding");
+  assert.match(iteration.text, /BUILD ITERATION/u);
+  assert.throws(
+    () => buildRunObjective("Build a valid product goal.", "greenfield", "existing"),
+    /stack does not match/iu,
+  );
 });
 
 test("PRODUCT M6 iteration is delta-scoped and exact visual targets never become authority", () => {
@@ -51,7 +81,7 @@ test("PRODUCT M6 iteration is delta-scoped and exact visual targets never become
         "static-web",
         "../../secret#panel",
       ),
-    (error) => error instanceof ChatError,
+    (error) => error instanceof Error && /traversal|workspace path/iu.test(error.message),
   );
 });
 
@@ -60,23 +90,25 @@ test("PRODUCT M6 Preview identity is content-bound and excludes editable plannin
     { path: "index.html", content: "<main>One</main>", sha: "1".repeat(64) },
     { path: "styles.css", content: "main{}", sha: "2".repeat(64) },
     { path: "documents/spec.md", content: "draft", sha: "3".repeat(64) },
-  ];
+  ] as const;
   const first = buildPreview(base);
   assert.ok(first);
   assert.equal(first.file, "index.html");
   assert.match(first.revision, /^[a-f0-9]{64}$/u);
+  assert.equal(buildPreviewRevision(base), first.revision);
   const planningOnly = buildPreview([
-    base[0]!,
-    base[1]!,
+    base[0],
+    base[1],
     { path: "documents/spec.md", sha: "4".repeat(64), content: "edited planning" },
   ]);
   assert.equal(planningOnly?.revision, first.revision);
   const changedOutput = buildPreview([
     { path: "index.html", sha: "5".repeat(64), content: "<main>Two</main>" },
-    base[1]!,
-    base[2]!,
+    base[1],
+    base[2],
   ]);
   assert.notEqual(changedOutput?.revision, first.revision);
+  assert.equal(buildPreview([{ path: "notes.md", content: "none", sha: "6".repeat(64) }]), null);
 });
 
 test("PRODUCT M6 visual editing exposes only explicit safe source mappings", () => {
