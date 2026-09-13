@@ -1,5 +1,29 @@
 # Security model
 
+## PRODUCT M2 Workspace security boundary
+
+PRODUCT M2 keeps Workspace persistence behind the existing Neon Auth and transaction-local actor
+boundary. `odin_api.workspace_files`, `workspace_context_items` and `workspace_layouts` are tenant/project
+scoped with FORCE RLS; PUBLIC table privileges remain revoked. Client requests never supply authoritative
+`owner_id`, runtime `origin`, Run/Task provenance, verification state or system Activity identity. Runtime
+Artifact provenance is server-derived and additionally constrained to a canonical Run in the same
+owner/project.
+
+Workspace content is untrusted data. Explicitly selected resources enter Run construction only as bounded
+P3 context through the existing deterministic compiler; P0 system policy, P1 Project rules and P2 current
+task requirements remain superior. Embedded instructions cannot grant tools, approvals, budgets,
+verification bypasses, sandbox privileges, credentials or other authority. Integrity mismatches and
+cross-project references fail closed, and the complete Workspace is never automatically serialized into
+model context.
+
+Document writes use optimistic versions, generated runtime Artifacts are immutable through document
+routes, text imports are MIME/size bounded and secret-screened, and filenames are traversal-safe with
+control-character input rejected. HTML preview remains sandboxed without same-origin privilege and is not
+a deployment surface. Workspace mutations retain the existing same-origin/CSRF guard. Repository tests
+cover project scoping, provenance, integrity, context authority, client-forgery surfaces, bounded layout,
+autosave conflict behavior and preview isolation; repository verification is not proof that migration 012
+was applied to production or that a physical iPad/browser was exercised.
+
 ## PRODUCT M1 projections
 
 Projects and Activity add no storage or authorization bypass. `/api/projects` uses the existing
