@@ -83,5 +83,16 @@ export function activityLabel(event: Pick<ChatEvent, "type" | "data">): string |
   if (event.type === "state" && typeof data.state === "string")
     return `Run moved to ${data.state.toLowerCase().replaceAll("_", " ")}`;
   if (event.type === "error") return "The run needs attention";
+  if (event.type === "workspace.item.created")
+    return typeof data.title === "string" ? `Created ${data.title}` : "Created a workspace item";
+  if (event.type === "workspace.document.updated")
+    return typeof data.title === "string" ? `Updated ${data.title}` : "Updated a document";
+  if (event.type === "workspace.artifact.created")
+    return typeof data.title === "string" ? `Saved ${data.title} from a Run` : "Saved a Run result as an artifact";
+  if (event.type === "workspace.file.imported")
+    return typeof data.title === "string" ? `Imported ${data.title}` : "Imported a workspace file";
+  if (event.type === "workspace.context.added") return "Added an item to project context";
+  if (event.type === "workspace.context.removed") return "Removed an item from project context";
+  if (event.type === "workspace.preview.opened") return "Opened a workspace preview";
   return null;
 }
