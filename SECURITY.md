@@ -1,5 +1,12 @@
 # Security model
 
+## PRODUCT M6 Build Mode security boundary
+
+Build Mode adds no execution authority. Product Spec, Blueprint, Design System, repository text, Workspace documents, retrieved content and Skill procedures remain untrusted data. They cannot mint tool grants, network destinations, credentials, database privileges, deployment/billing authority, approvals or verification evidence. Greenfield file effects use the existing scoped `NeonWorkspace`; repository effects use the existing isolated GitHub Workspace and normalized repository tools; existing RLS/actor scope, Project/Run binding, secret screening, capability policy, verification evidence, budgets and repair ceilings remain authoritative.
+
+Preview is fail-closed and content-revision-bound. The hosted preview rejects a stale expected revision and retains the restrictive Preview CSP; Preview never means Published, Deployed or Production. Visual editing exposes only explicit validated `data-odin-source` mappings. Traversal/uncertain mappings are rejected or omitted, and a visual mapping never grants permission to edit a different resource. M6-specific tests layer these invariants on the repository's existing prompt-injection, secret-exfiltration, cross-scope, path/symlink, arbitrary-shell/network, Skill-integrity, forged-evidence, approval and sandbox-policy suites.
+
+
 ## PRODUCT M5 Skills OS security boundary
 
 Product Skill installation changes availability only. M10 remains verification/lifecycle authority, M23 remains discovery/selection/loading authority, and M25 remains tool/permission authority. A Skill cannot grant filesystem/repository writes, network, credentials, deployment, database mutation, billing or approval bypass. Repository/document/retrieved/Skill text is untrusted procedure data and cannot override runtime policy. Custom Skill drafts are inert `CANDIDATE`/`DRAFT` records until the existing independent verification authority promotes them.

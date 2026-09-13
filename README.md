@@ -1,5 +1,10 @@
 # Odin — Personal Agentic Workspace
 
+## PRODUCT M6 — Build Mode
+
+PRODUCT M6 turns the existing Project/Workspace/Memory/Run/Skills/Tool/Verification stack into an end-to-end Build Mode. Product Spec, Blueprint and Design System are real editable PRODUCT M2 Workspace documents; canonical Hosted Runs perform real internal-Workspace or isolated-repository changes; PRODUCT M5 Skills remain on the M10 → M23 path; meaningful project decisions use PRODUCT M3 Memory; and isolated Preview is bound to the current output revision rather than being mislabeled as deployment. Delta iterations preserve the existing product and verified visual → source mappings are used only when explicit and safe. See the [PRODUCT M6 contract](docs/milestones/PRODUCT_M6_BUILD_MODE.md).
+
+
 Odin is a personal agentic workspace built on a provider-independent runtime for complex, long-running
 AI missions. A user starts with a goal; Odin keeps the project, plan, run, workspace and evidence
 together while its runtime controls tools, verification, repair, budgets and durable recovery.

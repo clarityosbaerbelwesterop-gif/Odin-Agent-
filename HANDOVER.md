@@ -1,10 +1,17 @@
 # Engineering handover
 
+## PRODUCT M6 checkpoint — Build Mode
+
+PRODUCT M6 continues directly from merged PRODUCT M5 main `1706fa16a01e61ecfd4a21565860f29e928400f5`. It composes the existing Workspace, Memory Brain, Hosted Mission/Run runtime, Skills OS, repository tools and verification authorities into Build Mode; do not create a second build executor, state machine, task graph, Skill runtime, Workspace, Memory store, Artifact store or verifier. Product Spec/Blueprint/Design System are actual Workspace documents, implementation is actual file mutation through canonical tools, and Preview is content-revision-bound and isolated.
+
+Pre-governance full verification passed on `fa44a1f05db560b8f910bd86d00a531f95b9cff1` with Foundation, Biome, strict TypeScript, 656/656 deterministic tests at 80.16% line coverage, the complete UI suite, credential-free dry smoke and production/base build. Acceptance #1 builds plus iterates the student exam planner; Acceptance #2 performs the existing-app dark-mode delta. The final M6 PR must still pass fresh exact-head CI after this governance sync. Live Vercel/physical-device evidence remains external and no production deployment is inferred from Preview.
+
+
 ## PRODUCT M5 checkpoint — Skills OS
 
 PRODUCT M5 staging is implementation-complete and passed the full canonical staging gate in CI #878 on `8053ae99dbb816d193e8fe3e5346dc73d5fcd2ad` before final governance synchronization. Preserve the existing M10 → M23 → Hosted Run path: do not create a second Skill runtime, client-side selector or prompt-only injection path. M25 remains permission authority. Global/project lifecycle, exact rollback, connection state, Run/Project isolation, version/hash resume pinning, cursor-ordered server Skill evidence, inert custom drafts and responsive Skills/Run Center UI have focused regressions.
 
-Neon production is `cold-mode-01560070`, branch `production` (`br-muddy-boat-b1po0mwo`), database `neondb`. Migration 015 was applied after confirming both targeted legacy tables had zero rows, zero FK/trigger/view/routine dependencies, canonical replacements existed and runtime code did not query them; no `CASCADE` was used. Migration 014 remains a versioned repository migration and production application must not be inferred merely from source verification. Before merge, require a fresh exact-head full CI after this governance sync, then fast-forward PR #80 once and merge only if required checks are green and the PR remains mergeable. PRODUCT M6 must branch from the resulting merged `main`.
+Neon production is `cold-mode-01560070`, branch `production` (`br-muddy-boat-b1po0mwo`), database `neondb`. Migration 015 was applied after confirming both targeted legacy tables had zero rows, zero FK/trigger/view/routine dependencies, canonical replacements existed and runtime code did not query them; no `CASCADE` was used. Migration 014 remains a versioned repository migration and production application must not be inferred merely from source verification. PR #80 subsequently passed exact-head CI #881 and merged to `main` as `1706fa16a01e61ecfd4a21565860f29e928400f5`. PRODUCT M6 was branched from that authoritative merged main.
 
 
 ## PRODUCT M4 checkpoint — 2026-09-13
