@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - agent/product-m5-skills-os-staging
 
 permissions:
   contents: read

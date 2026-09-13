@@ -11,6 +11,7 @@ import {
   workspaceContextMessage,
 } from "../../src/chat/workspace-context.js";
 import { sanitizeWorkspaceFilename, WORKSPACE_ITEM_KINDS } from "../../src/chat/workspace-os.js";
+import { canonicalJson } from "../../src/durable/internal.js";
 
 const projectId = "11111111-1111-4111-8111-111111111111";
 const missionId = "22222222-2222-4222-8222-222222222222";
@@ -20,6 +21,18 @@ function dbForContext(
   rows: readonly Record<string, unknown>[],
   history: readonly Record<string, unknown>[] = [],
 ): ActorDatabase {
+  const currentTurn = {
+    id: missionId,
+    conversationId: projectId,
+    mode: "chat",
+    modelId: "test-model",
+    objective: "Continue the current Project.",
+    createdAt: "2026-09-13T07:00:00.000Z",
+  };
+  const turnRow = {
+    data: currentTurn,
+    data_hash: hashText(canonicalJson(currentTurn, 2_000_000)),
+  };
   return {
     transaction: async <T>(action: Parameters<ActorDatabase["transaction"]>[0]): Promise<T> => {
       const client = {
@@ -29,6 +42,17 @@ function dbForContext(
           if (text.includes("UPDATE odin_api.memory_product_signals")) return { rows: [] };
           if (text.includes("INSERT INTO odin_api.events")) return { rows: [] };
           if (text.includes("type IN ('message.user','answer')")) return { rows: [...history] };
+          if (
+            text.includes("FROM odin_api.events") &&
+            text.includes("type IN ('skill.selected','skill.loaded')")
+          )
+            return { rows: [] };
+          if (text === "SELECT data,data_hash FROM odin_api.turns WHERE id=$1")
+            return { rows: [turnRow] };
+          if (text.includes("SELECT 1 FROM odin_api.turns") && text.includes("conversation_id=$2"))
+            return { rows: [{ ok: true }] };
+          if (text.includes("FROM odin_api.github_connections")) return { rows: [] };
+          if (text.includes("FROM odin_api.skill_installations")) return { rows: [] };
           throw new Error(`Unexpected test query: ${text}`);
         }) as never,
       };

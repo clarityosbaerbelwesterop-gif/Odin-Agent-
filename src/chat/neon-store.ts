@@ -9,9 +9,17 @@ import {
 } from "../events/store.js";
 import type { MissionEventData } from "../mission/runtime.js";
 import type { ModelMessage } from "../providers/types.js";
-import type { ActorDatabase } from "./neon-database.js";
+import type { ActorDatabase, DatabaseAction } from "./neon-database.js";
 import type { ChatRepository } from "./repository.js";
+import {
+  restoreRunSkill,
+  runSkillContextMessage,
+  type SelectedRunSkill,
+  selectRunSkill,
+  skillEventData,
+} from "./run-skills.js";
 import { hashText, identifier, integer, safeText } from "./safety.js";
+import { SkillProductStore } from "./skill-product-store.js";
 import {
   type AgentCheckpoint,
   type ChatConversation,
@@ -25,26 +33,33 @@ function encode(value: unknown, limit: number) {
   const data = safeText(canonicalJson(value, limit), limit);
   return [data, hashText(data)];
 }
+
 function decode<T>(row: Record<string, unknown>): T {
   if (hashText(canonicalJson(row.data, 2_000_000)) !== row.data_hash)
     throw new ChatError("INTEGRITY_FAILURE", "Stored data failed verification.", 500);
   return row.data as T;
 }
+
 const iso = (date: Date | string) => new Date(date).toISOString();
 const missing = () => new ChatError("NOT_FOUND", "Conversation or task not found.", 404);
 
 export class NeonChatStore implements ChatRepository {
   constructor(readonly db: ActorDatabase) {}
+
   close(): void {}
+
   async workspaceContext(conversationId: string, missionId: string) {
     return compileWorkspaceContext(this.db, identifier(conversationId), identifier(missionId));
   }
+
   async history(conversationId: string, currentTurn: string): Promise<ModelMessage[]> {
+    const projectId = identifier(conversationId);
+    const runId = identifier(currentTurn);
     const history = await this.db.transaction(async (c) =>
       (
         await c.query(
           "SELECT type,data,data_hash FROM odin_api.events WHERE conversation_id=$1 AND turn_id<>$2 AND type IN ('message.user','answer') ORDER BY cursor DESC LIMIT 12",
-          [conversationId, currentTurn],
+          [projectId, runId],
         )
       ).rows
         .reverse()
@@ -58,9 +73,25 @@ export class NeonChatStore implements ChatRepository {
           ],
         })),
     );
-    const context = await this.workspaceContext(conversationId, currentTurn);
-    if (!context) return history;
+
+    const turn = await this.turn(runId);
+    if (turn.conversationId !== projectId)
+      throw new ChatError("RUN_PROJECT_MISMATCH", "Run does not belong to this Project.", 404);
+
+    const selectedSkill = await this.resolveRunSkill(turn);
+    const skillContext: ModelMessage[] = selectedSkill
+      ? [
+          {
+            role: "system",
+            content: [{ type: "text", text: runSkillContextMessage(selectedSkill) }],
+          },
+        ]
+      : [];
+
+    const context = await this.workspaceContext(projectId, runId);
+    if (!context) return [...skillContext, ...history];
     return [
+      ...skillContext,
       ...history,
       {
         role: "user",
@@ -68,6 +99,7 @@ export class NeonChatStore implements ChatRepository {
       },
     ];
   }
+
   async createConversation(title: string): Promise<ChatConversation> {
     const clean = safeText(title, 160).trim() || "New conversation";
     return this.db.transaction(async (c) => {
@@ -83,6 +115,7 @@ export class NeonChatStore implements ChatRepository {
       return { id: row.id, title: row.title, createdAt: iso(row.created_at) };
     });
   }
+
   async conversations(): Promise<ChatConversation[]> {
     return this.db.transaction(async (c) =>
       (
@@ -92,6 +125,7 @@ export class NeonChatStore implements ChatRepository {
       ).rows.map((r) => ({ id: r.id, title: r.title, createdAt: iso(r.created_at) })),
     );
   }
+
   async conversation(id: string): Promise<ChatConversation> {
     return this.db.transaction(async (c) => {
       const row = (
@@ -103,6 +137,7 @@ export class NeonChatStore implements ChatRepository {
       return { id: row.id, title: row.title, createdAt: iso(row.created_at) };
     });
   }
+
   async replay(conversationId: string, key: string, requestHash: string): Promise<ChatTurn | null> {
     return this.db.transaction(async (c) => {
       const row = (
@@ -121,6 +156,7 @@ export class NeonChatStore implements ChatRepository {
       return decode<ChatTurn>(row);
     });
   }
+
   async addTurn(turn: ChatTurn, key: string, requestHash: string): Promise<void> {
     const [data, hash] = encode(turn, 2_000_000);
     await this.db.transaction(async (c) => {
@@ -136,6 +172,7 @@ export class NeonChatStore implements ChatRepository {
       );
     });
   }
+
   async turn(id: string): Promise<ChatTurn> {
     return this.db.transaction(async (c) => {
       const row = (
@@ -145,6 +182,7 @@ export class NeonChatStore implements ChatRepository {
       return decode<ChatTurn>(row);
     });
   }
+
   async turns(conversationId?: string): Promise<ChatTurn[]> {
     return this.db.transaction(async (c) =>
       (
@@ -155,6 +193,7 @@ export class NeonChatStore implements ChatRepository {
       ).rows.map((r) => decode<ChatTurn>(r)),
     );
   }
+
   async emit(turn: ChatTurn, type: string, value: Record<string, unknown>): Promise<ChatEvent> {
     const [data, hash] = encode(value, 300000);
     return this.db.transaction(async (c) => {
@@ -164,7 +203,7 @@ export class NeonChatStore implements ChatRepository {
           [turn.conversationId, turn.id, type, data, hash],
         )
       ).rows[0];
-      return {
+      const event: ChatEvent = {
         cursor: Number(row.cursor),
         conversationId: turn.conversationId,
         turnId: turn.id,
@@ -172,8 +211,11 @@ export class NeonChatStore implements ChatRepository {
         data: value,
         createdAt: iso(row.created_at),
       };
+      if (type === "answer") await this.recordSkillResult(c, turn, event, value);
+      return event;
     });
   }
+
   async events(conversationId: string, after = 0, limit = 200): Promise<ChatEvent[]> {
     await this.conversation(conversationId);
     integer(after, 0, Number.MAX_SAFE_INTEGER);
@@ -194,6 +236,7 @@ export class NeonChatStore implements ChatRepository {
       })),
     );
   }
+
   async checkpoint(turnId: string): Promise<AgentCheckpoint | null> {
     return this.db.transaction(async (c) => {
       const row = (
@@ -204,6 +247,7 @@ export class NeonChatStore implements ChatRepository {
       return row ? decode<AgentCheckpoint>(row) : null;
     });
   }
+
   async save(turnId: string, state: AgentCheckpoint): Promise<void> {
     const [data, hash] = encode(state, 2000000);
     await this.db.transaction(async (c) => {
@@ -213,11 +257,121 @@ export class NeonChatStore implements ChatRepository {
       );
     });
   }
+
+  private async resolveRunSkill(turn: ChatTurn): Promise<SelectedRunSkill | null> {
+    const pinned = await this.db.transaction(
+      async (c) =>
+        (
+          await c.query(
+            `SELECT type,data,data_hash
+             FROM odin_api.events
+            WHERE conversation_id=$1 AND turn_id=$2
+              AND type IN ('skill.selected','skill.loaded')
+            ORDER BY cursor DESC
+            LIMIT 1`,
+            [turn.conversationId, turn.id],
+          )
+        ).rows[0] as Record<string, unknown> | undefined,
+    );
+    if (pinned) {
+      const restored = restoreRunSkill(decode<Record<string, unknown>>(pinned));
+      if (restored.projectId !== turn.conversationId || restored.runId !== turn.id)
+        throw new ChatError("SKILL_INTEGRITY", "Pinned Skill does not match this Run.", 409);
+      if (pinned.type === "skill.selected")
+        await this.emit(turn, "skill.loaded", { ...skillEventData(restored), contextBound: true });
+      return restored;
+    }
+
+    const resolution = await selectRunSkill(new SkillProductStore(this.db), turn);
+    if (resolution.kind === "none") return null;
+    if (resolution.kind === "blocked") {
+      const data = {
+        runId: resolution.runId,
+        projectId: resolution.projectId,
+        taskId: "work",
+        skillId: resolution.skillId,
+        skillName: resolution.skillName,
+        version: resolution.version,
+        contentHash: resolution.contentHash,
+        taskClass: resolution.taskClass,
+        reason: resolution.reason,
+        missingConnections: [...resolution.missingConnections],
+      };
+      if (resolution.reason === "connection_required") {
+        await this.emit(turn, "skill.connection_required", data);
+        throw new ChatError(
+          "SKILL_CONNECTION_REQUIRED",
+          `Required Skill connection is unavailable: ${resolution.missingConnections.join(", ")}.`,
+          409,
+        );
+      }
+      await this.emit(turn, "skill.verification_failed", data);
+      throw new ChatError(
+        "SKILL_INTEGRITY",
+        "Installed Skill revision no longer matches the verified M10 package.",
+        409,
+      );
+    }
+
+    await this.emit(turn, "skill.selected", skillEventData(resolution));
+    await this.emit(turn, "skill.loaded", { ...skillEventData(resolution), contextBound: true });
+    return resolution;
+  }
+
+  private async recordSkillResult(
+    client: Parameters<DatabaseAction<void>>[0],
+    turn: ChatTurn,
+    answer: ChatEvent,
+    answerValue: Record<string, unknown>,
+  ): Promise<void> {
+    const loaded = (
+      await client.query(
+        `SELECT data,data_hash
+           FROM odin_api.events
+          WHERE conversation_id=$1 AND turn_id=$2 AND type='skill.loaded'
+          ORDER BY cursor DESC
+          LIMIT 1`,
+        [turn.conversationId, turn.id],
+      )
+    ).rows[0];
+    if (!loaded) return;
+    const alreadyRecorded = (
+      await client.query(
+        `SELECT 1
+           FROM odin_api.events
+          WHERE conversation_id=$1 AND turn_id=$2 AND type='skill.result'
+            AND data->>'answerCursor'=$3
+          LIMIT 1`,
+        [turn.conversationId, turn.id, String(answer.cursor)],
+      )
+    ).rows.length;
+    if (alreadyRecorded) return;
+
+    const skill = restoreRunSkill(decode<Record<string, unknown>>(loaded));
+    if (skill.projectId !== turn.conversationId || skill.runId !== turn.id)
+      throw new ChatError("SKILL_INTEGRITY", "Loaded Skill does not match this Run.", 409);
+    const verification =
+      answerValue.verification === "DELIVERY_CHECKED" ? "DELIVERY_CHECKED" : "UNVERIFIED";
+    const result = {
+      ...skillEventData(skill),
+      status: verification === "DELIVERY_CHECKED" ? "VERIFIED" : "UNVERIFIED",
+      verification,
+      evidenceRefs: [`event:${answer.cursor}`],
+      artifactRefs: [],
+      answerCursor: answer.cursor,
+    };
+    const [resultData, resultHash] = encode(result, 300000);
+    await client.query(
+      "INSERT INTO odin_api.events(conversation_id,turn_id,type,data,data_hash) VALUES($1,$2,'skill.result',$3,$4)",
+      [turn.conversationId, turn.id, resultData, resultHash],
+    );
+  }
 }
 
 /** Postgres persists the original M2 event stream, without a second mission state machine. */
 export class NeonMissionStore implements EventStore<MissionEventData> {
   constructor(readonly db: ActorDatabase) {}
+
   async load(id: string): Promise<readonly StoredEvent<MissionEventData>[]> {
     return this.db.transaction(async (c) => {
       const row = (
@@ -226,6 +380,7 @@ export class NeonMissionStore implements EventStore<MissionEventData> {
       return validateEvents(row?.events ?? [], id);
     });
   }
+
   async append(
     id: string,
     expected: number,
@@ -276,6 +431,7 @@ export class NeonMissionStore implements EventStore<MissionEventData> {
     });
   }
 }
+
 function validateEvents(raw: unknown, id: string): StoredEvent<MissionEventData>[] {
   if (!Array.isArray(raw)) throw new ChatError("INTEGRITY_FAILURE", "Invalid mission stream.", 500);
   return raw.map((item, i) => {

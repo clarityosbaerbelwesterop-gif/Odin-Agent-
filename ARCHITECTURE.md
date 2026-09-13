@@ -1,5 +1,12 @@
 # Odin architecture
 
+## PRODUCT M5 — Skills OS product boundary
+
+PRODUCT M5 is a product/install/discovery projection over existing authorities, not a new Skill runtime. M10 owns package verification and lifecycle identity; M23 owns discovery, deterministic task-class selection and progressive loading; M25 owns tools, permissions and side effects. The real Hosted Run path is installed Product Skill → M10 package identity → M23 selection/load → exact version/content-hash binding → bounded verified procedure context → canonical Run execution → server-side Skill events. Installation state can be global or Project-scoped but never mints execution authority.
+
+Project/run ownership is checked through canonical actor-scoped `conversations` and `turns`. Resume restores only the same `skillId`/version/content hash; changed catalog/install revisions fail closed rather than silently substituting another Skill. Runtime evidence is server-originated and ordered by canonical event `cursor`; the browser cannot mint `skill.selected`, `skill.loaded` or `skill.result`. Migration 014 stores only installation/custom-draft product state with canonical Project FKs and FORCE RLS. Migration 015 removes only the proven-empty legacy v003 connection tables and intentionally uses no `CASCADE`.
+
+
 ## PRODUCT M4 Runtime Productization boundary (2026-09-13)
 
 PRODUCT M4 adds no new runtime authority. Project → Runs is a product projection over the existing

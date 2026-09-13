@@ -31,6 +31,15 @@ server-authoritative controls. Missing checks, approvals or recovery evidence re
 no hidden reasoning is exposed. See the
 [PRODUCT M4 contract](docs/milestones/PRODUCT_M4_RUNTIME_PRODUCTIZATION.md).
 
+**PRODUCT M5** turns Odin's existing M10/M23/M25 Skill authorities into a persistent Skills OS. Product
+Skills are exact M10 hash-bound packages; M23 discovers and progressively loads only the selected
+procedure into a real Hosted Run, while M25 and the existing tool policy remain the sole execution and
+permission authority. Global/Project installation state, enable/disable/update/rollback/remove,
+Connection requirements and inert private Skill drafts are actor/project scoped under FORCE RLS. Run
+Center renders only real server-side `skill.selected`, `skill.loaded`, `skill.result` and blocked evidence
+ordered by canonical event cursor. See the
+[PRODUCT M5 contract](docs/milestones/PRODUCT_M5_SKILLS_OS.md).
+
 The repository does **not** yet claim kernel/container isolation, a live hosted sandbox adapter,
 arbitrary shell execution, native mobile binaries, a distributed worker queue, or proof for a live
 environment unless separate external evidence is recorded. Current status and verified capabilities
@@ -121,6 +130,8 @@ public API/auth/realtime deployment.
 
 M10 provides hash-addressed progressive skills, independent verification/promotion, rollback/revocation,
 and candidate-only learned skill synthesis. Skills do not create tool authority or arbitrary execution.
+PRODUCT M5 projects those M10 packages into installed Product Skills and uses M23 for real Hosted Run
+selection/loading without changing the M10/M23/M25 authority split.
 
 M11 provides empirical quality-floor-first model routing, bounded escalation/critique/repair/branching,
 explicit call/cost/concurrency/token ceilings, sensitive cache policy, and an offline evaluation
@@ -154,6 +165,8 @@ M12-C release/observability/recovery proof and all live infrastructure evidence 
 PRODUCT M3 passed exact-head CI #853 on `9e0f5645940b963f572dc6756e97fe0a2f5b6988` before merge.
 PRODUCT M4 uses the same canonical `npm run verify` and exact-head PR CI gate; its milestone document
 records product-specific deterministic evidence without treating CI as proof of a live deployment.
+PRODUCT M5 uses the same gate plus focused Skill runtime/store/UI regressions; its exact-head PR #80 CI
+result and any live Neon migration evidence are recorded only after they actually occur.
 
 ## Engineering priorities
 
