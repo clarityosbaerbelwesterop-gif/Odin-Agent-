@@ -186,7 +186,10 @@ test("PRODUCT M3 projects exact duplicates as superseded with retained provenanc
   assert.equal(graph.nodes.find((node) => node.id === first.id)?.status, "SUPERSEDED");
   assert.equal(graph.nodes.find((node) => node.id === second.id)?.mergedCount, 2);
   assert.ok(graph.edges.some((item) => item.relation === "supersedes"));
-  assert.equal(graph.nodes.find((node) => node.id === first.id)?.sourceReference, first.provenance.reference);
+  assert.equal(
+    graph.nodes.find((node) => node.id === first.id)?.sourceReference,
+    first.provenance.reference,
+  );
 });
 
 test("PRODUCT M3 Brain Pulse marks only real selected Memory and Workspace references", () => {
