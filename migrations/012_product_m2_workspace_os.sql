@@ -21,32 +21,70 @@ ALTER TABLE odin_api.workspace_files ALTER COLUMN item_id SET NOT NULL;
 
 DO $constraints$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='workspace_files_kind_check') THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname='workspace_files_kind_check'
+      AND conrelid='odin_api.workspace_files'::regclass
+  ) THEN
     ALTER TABLE odin_api.workspace_files ADD CONSTRAINT workspace_files_kind_check
       CHECK(kind IN ('DOCUMENT','NOTE','TEXT','MARKDOWN','CODE','HTML','JSON','IMAGE_REFERENCE','FILE_REFERENCE','GENERATED_ARTIFACT','RESEARCH_RESULT','PLAN','REPORT'));
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='workspace_files_origin_check') THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname='workspace_files_origin_check'
+      AND conrelid='odin_api.workspace_files'::regclass
+  ) THEN
     ALTER TABLE odin_api.workspace_files ADD CONSTRAINT workspace_files_origin_check
       CHECK(origin IN ('user','runtime','import'));
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='workspace_files_version_check') THEN
-    ALTER TABLE odin_api.workspace_files ADD CONSTRAINT workspace_files_version_check CHECK(version BETWEEN 1 AND 1000000);
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname='workspace_files_version_check'
+      AND conrelid='odin_api.workspace_files'::regclass
+  ) THEN
+    ALTER TABLE odin_api.workspace_files ADD CONSTRAINT workspace_files_version_check
+      CHECK(version BETWEEN 1 AND 1000000);
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='workspace_files_title_check') THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname='workspace_files_title_check'
+      AND conrelid='odin_api.workspace_files'::regclass
+  ) THEN
     ALTER TABLE odin_api.workspace_files ADD CONSTRAINT workspace_files_title_check
       CHECK(title IS NULL OR length(title) BETWEEN 1 AND 200);
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='workspace_files_mime_check') THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname='workspace_files_mime_check'
+      AND conrelid='odin_api.workspace_files'::regclass
+  ) THEN
     ALTER TABLE odin_api.workspace_files ADD CONSTRAINT workspace_files_mime_check
       CHECK(mime_type IS NULL OR length(mime_type) BETWEEN 1 AND 120);
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='workspace_files_task_check') THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname='workspace_files_task_check'
+      AND conrelid='odin_api.workspace_files'::regclass
+  ) THEN
     ALTER TABLE odin_api.workspace_files ADD CONSTRAINT workspace_files_task_check
       CHECK(source_task_id IS NULL OR length(source_task_id) BETWEEN 1 AND 120);
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='workspace_files_metadata_check') THEN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname='workspace_files_metadata_check'
+      AND conrelid='odin_api.workspace_files'::regclass
+  ) THEN
     ALTER TABLE odin_api.workspace_files ADD CONSTRAINT workspace_files_metadata_check
       CHECK(jsonb_typeof(metadata)='object' AND octet_length(metadata::text)<=16000);
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname='workspace_files_source_turn_fk'
+      AND conrelid='odin_api.workspace_files'::regclass
+  ) THEN
+    ALTER TABLE odin_api.workspace_files ADD CONSTRAINT workspace_files_source_turn_fk
+      FOREIGN KEY(owner_id,conversation_id,source_turn_id)
+      REFERENCES odin_api.turns(owner_id,conversation_id,id);
   END IF;
 END $constraints$;
 
@@ -54,6 +92,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS workspace_files_item_identity
   ON odin_api.workspace_files(owner_id,conversation_id,item_id);
 CREATE INDEX IF NOT EXISTS workspace_files_recent
   ON odin_api.workspace_files(owner_id,conversation_id,updated_at DESC);
+
+-- The extension retains the original workspace authority's fail-closed tenant boundary.
+ALTER TABLE odin_api.workspace_files ENABLE ROW LEVEL SECURITY;
+ALTER TABLE odin_api.workspace_files FORCE ROW LEVEL SECURITY;
+REVOKE ALL ON odin_api.workspace_files FROM PUBLIC;
+GRANT SELECT,INSERT,UPDATE,DELETE ON odin_api.workspace_files TO odin_runtime;
 
 -- Existing product event types already allow turnId=null in TypeScript. M2 uses that existing event
 -- authority for user Workspace actions that do not belong to a Run.
