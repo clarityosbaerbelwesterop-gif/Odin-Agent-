@@ -114,6 +114,7 @@ const m2State = {
   loading: false,
   saveTimer: null,
   saveGeneration: 0,
+  conflictDrafts: new Map(),
 };
 
 function m2ProjectFromUrl() {
@@ -196,7 +197,7 @@ async function m2Load(projectId, { show = true } = {}) {
 function m2Group(item) {
   if (["DOCUMENT", "NOTE", "TEXT", "MARKDOWN"].includes(item.kind) && item.origin !== "runtime")
     return "Documents";
-  if (item.origin === "import" || item.kind === "FILE_REFERENCE") return "Files";
+  if (item.origin === "import" || item.kind === "FILE_REFERENCE") return "Imports / Files";
   return "Artifacts";
 }
 function m2RenderResources(items = [...m2State.items.values()]) {
@@ -205,32 +206,34 @@ function m2RenderResources(items = [...m2State.items.values()]) {
   const groups = new Map([
     ["Documents", []],
     ["Artifacts", []],
-    ["Files", []],
+    ["Imports / Files", []],
   ]);
   for (const item of items) groups.get(m2Group(item))?.push(item);
-  for (const [label, values] of groups) {
-    const section = m2el("section", undefined, "m2-resource-group");
-    const heading = m2el("div", undefined, "m2-resource-heading");
-    heading.append(m2el("span", label), m2el("span", String(values.length)));
-    section.append(heading);
-    if (!values.length) section.append(m2el("p", "Nothing here yet.", "m2-empty-line"));
-    for (const item of values) {
-      const row = m2el("div", undefined, "m2-resource-row");
-      const open = m2el("button", undefined, "m2-resource-open");
-      open.type = "button";
-      open.append(m2el("span", m2Icon(item)), m2el("span", item.title));
-      open.addEventListener("click", () => m2OpenItem(item.id).catch(m2ShowError));
-      const selected = m2State.workspace?.context.some((entry) => entry.itemId === item.id);
-      const context = m2el("button", selected ? "−" : "+", "m2-context-action");
-      context.type = "button";
-      context.title = selected ? "Remove from project context" : "Add to project context";
-      context.setAttribute("aria-label", context.title);
-      context.addEventListener("click", () => m2ToggleContext(item.id, !selected));
-      row.append(open, context);
-      section.append(row);
-    }
-    target.append(section);
+  for (const [label, values] of groups) m2AppendResourceGroup(target, label, values);
+  m2AppendResourceGroup(target, "Recent", items.slice(0, 5));
+}
+function m2AppendResourceGroup(target, label, values) {
+  const section = m2el("section", undefined, "m2-resource-group");
+  const heading = m2el("div", undefined, "m2-resource-heading");
+  heading.append(m2el("span", label), m2el("span", String(values.length)));
+  section.append(heading);
+  if (!values.length) section.append(m2el("p", "Nothing here yet.", "m2-empty-line"));
+  for (const item of values) {
+    const row = m2el("div", undefined, "m2-resource-row");
+    const open = m2el("button", undefined, "m2-resource-open");
+    open.type = "button";
+    open.append(m2el("span", m2Icon(item)), m2el("span", item.title));
+    open.addEventListener("click", () => m2OpenItem(item.id).catch(m2ShowError));
+    const selected = m2State.workspace?.context.some((entry) => entry.itemId === item.id);
+    const context = m2el("button", selected ? "−" : "+", "m2-context-action");
+    context.type = "button";
+    context.title = selected ? "Remove from project context" : "Add to project context";
+    context.setAttribute("aria-label", context.title);
+    context.addEventListener("click", () => m2ToggleContext(item.id, !selected));
+    row.append(open, context);
+    section.append(row);
   }
+  target.append(section);
 }
 function m2Icon(item) {
   if (item.kind === "HTML") return "▱";
@@ -436,6 +439,7 @@ function m2RenderItem(item) {
     title.addEventListener("input", queue);
     body.addEventListener("input", queue);
     shell.append(title, body, saveState);
+    m2RenderPreservedDraft(shell, item, title, body, saveState);
   } else {
     const title = m2el("h1", item.title, "m2-artifact-title");
     const provenance = m2el("p", undefined, "m2-provenance");
@@ -454,11 +458,41 @@ function m2RenderItem(item) {
       iframe.src = `/api/projects/${encodeURIComponent(m2State.projectId)}/preview?file=${encodeURIComponent(item.path)}`;
       shell.append(previewBar, iframe);
     } else {
-      const body = m2el("pre", item.content ?? "", "m2-artifact-body");
+      const content = item.kind === "JSON" ? m2PrettyJson(item.content ?? "") : (item.content ?? "");
+      const body = m2el("pre", content, "m2-artifact-body");
       shell.append(body);
     }
   }
   target.append(shell);
+}
+
+function m2RenderPreservedDraft(shell, item, titleInput, bodyInput, saveState) {
+  const draft = m2State.conflictDrafts.get(item.id);
+  if (!draft) return;
+  const notice = m2el("div", undefined, "m2-conflict-draft");
+  notice.append(
+    m2el("strong", "Unsaved draft preserved"),
+    m2el("span", "The server version is open. Restore your local draft when you are ready to retry."),
+  );
+  const restore = m2el("button", "Restore my draft", "m2-secondary");
+  restore.type = "button";
+  restore.onclick = () => {
+    titleInput.value = draft.title;
+    bodyInput.value = draft.content;
+    m2State.conflictDrafts.delete(item.id);
+    notice.remove();
+    m2QueueSave(item.id, titleInput, bodyInput, saveState);
+  };
+  notice.append(restore);
+  shell.append(notice);
+}
+
+function m2PrettyJson(content) {
+  try {
+    return JSON.stringify(JSON.parse(content), null, 2);
+  } catch {
+    return content;
+  }
 }
 
 function m2QueueSave(itemId, titleInput, bodyInput, stateNode) {
@@ -466,33 +500,61 @@ function m2QueueSave(itemId, titleInput, bodyInput, stateNode) {
   const generation = ++m2State.saveGeneration;
   stateNode.textContent = "Saving…";
   stateNode.dataset.state = "saving";
-  m2State.saveTimer = setTimeout(async () => {
-    const item = m2State.items.get(itemId);
-    if (!item || !m2State.projectId || generation !== m2State.saveGeneration) return;
-    try {
-      const result = await m2request(
-        `/api/workspace/projects/${encodeURIComponent(m2State.projectId)}/items/${encodeURIComponent(itemId)}`,
-        { title: titleInput.value, content: bodyInput.value, expectedVersion: item.version },
-        "PUT",
-      );
-      m2State.items.set(itemId, result.item);
-      if (m2State.workspace) {
-        const index = m2State.workspace.items.findIndex((candidate) => candidate.id === itemId);
-        if (index >= 0) m2State.workspace.items[index] = result.item;
-      }
-      stateNode.textContent = "Saved";
-      stateNode.dataset.state = "saved";
-      m2RenderResources();
-      m2RenderTabs();
-    } catch (error) {
-      stateNode.textContent =
-        error.code === "STALE_DOCUMENT"
-          ? "Conflict · reload required"
-          : "Save failed · retrying when you edit";
-      stateNode.dataset.state = "error";
-      m2ShowError(error);
+  m2State.saveTimer = setTimeout(
+    () => void m2SaveDocument(itemId, titleInput, bodyInput, stateNode, generation),
+    850,
+  );
+}
+
+async function m2SaveDocument(itemId, titleInput, bodyInput, stateNode, generation, attempt = 0) {
+  const item = m2State.items.get(itemId);
+  if (!item || !m2State.projectId || generation !== m2State.saveGeneration) return;
+  try {
+    const result = await m2request(
+      `/api/workspace/projects/${encodeURIComponent(m2State.projectId)}/items/${encodeURIComponent(itemId)}`,
+      { title: titleInput.value, content: bodyInput.value, expectedVersion: item.version },
+      "PUT",
+    );
+    if (generation !== m2State.saveGeneration) return;
+    m2State.items.set(itemId, result.item);
+    m2State.conflictDrafts.delete(itemId);
+    if (m2State.workspace) {
+      const index = m2State.workspace.items.findIndex((candidate) => candidate.id === itemId);
+      if (index >= 0) m2State.workspace.items[index] = result.item;
     }
-  }, 850);
+    stateNode.textContent = "Saved";
+    stateNode.dataset.state = "saved";
+    m2RenderResources();
+    m2RenderTabs();
+  } catch (error) {
+    if (generation !== m2State.saveGeneration) return;
+    if (error.code === "STALE_DOCUMENT") {
+      m2State.conflictDrafts.set(itemId, {
+        title: titleInput.value,
+        content: bodyInput.value,
+      });
+      stateNode.textContent = "Conflict · local draft preserved";
+      stateNode.dataset.state = "error";
+      m2SetStatus("This document changed on the server. Your local draft is preserved.", "error");
+      await m2OpenItem(itemId, { persist: false });
+      return;
+    }
+    if (m2TransientSaveError(error) && attempt < 2) {
+      stateNode.textContent = "Retrying…";
+      stateNode.dataset.state = "saving";
+      await new Promise((resolve) => setTimeout(resolve, 700 * 2 ** attempt));
+      if (generation !== m2State.saveGeneration) return;
+      await m2SaveDocument(itemId, titleInput, bodyInput, stateNode, generation, attempt + 1);
+      return;
+    }
+    stateNode.textContent = "Failed · edit to retry";
+    stateNode.dataset.state = "error";
+    m2ShowError(error);
+  }
+}
+
+function m2TransientSaveError(error) {
+  return [408, 425, 429, 500, 502, 503, 504].includes(Number(error.status));
 }
 
 async function m2SaveLayout() {
