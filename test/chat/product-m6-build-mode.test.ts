@@ -39,7 +39,10 @@ test("PRODUCT M6 iteration is delta-scoped and exact visual targets never become
   );
   assert.match(objective, /index\.html#exam-list/u);
   assert.match(objective, /smallest safe delta|scoped/u);
-  assert.match(objective, /Do not expand tool, network, credential, database, deployment, billing/iu);
+  assert.match(
+    objective,
+    /Do not expand tool, network, credential, database, deployment, billing/iu,
+  );
   assert.throws(
     () =>
       buildIterationObjective(

@@ -3,8 +3,12 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import {
+  buildIterationObjective,
+  buildRunObjective,
+  extractVisualTargets,
+} from "../../src/chat/build-mode.js";
 import { assemblePreview } from "../../src/chat/preview.js";
-import { buildIterationObjective, buildRunObjective, extractVisualTargets } from "../../src/chat/build-mode.js";
 import { hashText } from "../../src/chat/safety.js";
 import { fixture, provider, response } from "./helpers.js";
 
@@ -18,27 +22,49 @@ test("PRODUCT M6 acceptance #1 builds a student exam planner through the canonic
   const model = provider((_request, call) => {
     if (call === 1)
       return response("", [
-        { id: "html", name: "repo_patch", arguments: { path: "index.html", expectedSha: "absent", content: examHtml } },
+        {
+          id: "html",
+          name: "repo_patch",
+          arguments: { path: "index.html", expectedSha: "absent", content: examHtml },
+        },
       ]);
     if (call === 2)
       return response("", [
-        { id: "css", name: "repo_patch", arguments: { path: "styles.css", expectedSha: "absent", content: examCss } },
+        {
+          id: "css",
+          name: "repo_patch",
+          arguments: { path: "styles.css", expectedSha: "absent", content: examCss },
+        },
       ]);
     if (call === 3)
       return response("", [
-        { id: "js", name: "repo_patch", arguments: { path: "app.js", expectedSha: "absent", content: examJs } },
+        {
+          id: "js",
+          name: "repo_patch",
+          arguments: { path: "app.js", expectedSha: "absent", content: examJs },
+        },
       ]);
     if (call === 4)
-      return response("", [{ id: "quality", name: "repo_quality", arguments: { commandId: "acceptance" } }]);
+      return response("", [
+        { id: "quality", name: "repo_quality", arguments: { commandId: "acceptance" } },
+      ]);
     if (call === 5) return response("Exam planner implemented and verified.");
     if (call === 6)
-      return response("", [{ id: "read", name: "repo_read", arguments: { path: "styles.css", maxBytes: 10000 } }]);
+      return response("", [
+        { id: "read", name: "repo_read", arguments: { path: "styles.css", maxBytes: 10000 } },
+      ]);
     if (call === 7)
       return response("", [
-        { id: "delta", name: "repo_patch", arguments: { path: "styles.css", expectedSha: hashText(examCss), content: smallerCss } },
+        {
+          id: "delta",
+          name: "repo_patch",
+          arguments: { path: "styles.css", expectedSha: hashText(examCss), content: smallerCss },
+        },
       ]);
     if (call === 8)
-      return response("", [{ id: "delta-quality", name: "repo_quality", arguments: { commandId: "acceptance" } }]);
+      return response("", [
+        { id: "delta-quality", name: "repo_quality", arguments: { commandId: "acceptance" } },
+      ]);
     return response("The selected button was made smaller and verification passed.");
   });
   const f = await fixture(model, {
@@ -50,7 +76,13 @@ test("PRODUCT M6 acceptance #1 builds a student exam planner through the canonic
         const html = await readFile(join(root, "index.html"), "utf8").catch(() => "");
         const css = await readFile(join(root, "styles.css"), "utf8").catch(() => "");
         const js = await readFile(join(root, "app.js"), "utf8").catch(() => "");
-        const pass = /exam-list/u.test(html) && /exam-form/u.test(html) && /subject/u.test(html) && /date/u.test(html) && /localStorage/u.test(js) && /@media/u.test(css);
+        const pass =
+          /exam-list/u.test(html) &&
+          /exam-form/u.test(html) &&
+          /subject/u.test(html) &&
+          /date/u.test(html) &&
+          /localStorage/u.test(js) &&
+          /@media/u.test(css);
         return { exitCode: pass ? 0 : 1, output: pass ? "Acceptance passed" : "Acceptance failed" };
       },
     },
@@ -65,11 +97,10 @@ test("PRODUCT M6 acceptance #1 builds a student exam planner through the canonic
     assert.equal((await f.engine.view(first.id)).state, "COMPLETED");
     assert.match(await readFile(join(root, "index.html"), "utf8"), /Exam planner/u);
     assert.match(await readFile(join(root, "app.js"), "utf8"), /localStorage/u);
-    assert.deepEqual(extractVisualTargets(examHtml, "index.html").map((target) => target.sourceRef), [
-      "index.html#app-shell",
-      "index.html#exam-list",
-      "index.html#create-exam",
-    ]);
+    assert.deepEqual(
+      extractVisualTargets(examHtml, "index.html").map((target) => target.sourceRef),
+      ["index.html#app-shell", "index.html#exam-list", "index.html#create-exam"],
+    );
     const preview = assemblePreview(
       [
         { path: "index.html", content: examHtml },
@@ -110,13 +141,21 @@ test("PRODUCT M6 acceptance #2 adds dark mode to an existing fixture as a scoped
   await writeFile(join(root, "styles.css"), beforeCss);
   const model = provider((_request, call) => {
     if (call === 1)
-      return response("", [{ id: "read", name: "repo_read", arguments: { path: "styles.css", maxBytes: 10000 } }]);
+      return response("", [
+        { id: "read", name: "repo_read", arguments: { path: "styles.css", maxBytes: 10000 } },
+      ]);
     if (call === 2)
       return response("", [
-        { id: "patch", name: "repo_patch", arguments: { path: "styles.css", expectedSha: hashText(beforeCss), content: afterCss } },
+        {
+          id: "patch",
+          name: "repo_patch",
+          arguments: { path: "styles.css", expectedSha: hashText(beforeCss), content: afterCss },
+        },
       ]);
     if (call === 3)
-      return response("", [{ id: "quality", name: "repo_quality", arguments: { commandId: "existing" } }]);
+      return response("", [
+        { id: "quality", name: "repo_quality", arguments: { commandId: "existing" } },
+      ]);
     return response("Dark mode added as a scoped delta and verified.");
   });
   const f = await fixture(model, {

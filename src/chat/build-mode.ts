@@ -9,7 +9,7 @@ import { NeonChatStore } from "./neon-store.js";
 import { NeonWorkspace } from "./neon-workspace.js";
 import { hashText, identifier, safeText } from "./safety.js";
 import { ChatError, type ChatTurnView } from "./types.js";
-import { WorkspaceOsStore, type WorkspaceItem } from "./workspace-os.js";
+import { type WorkspaceItem, WorkspaceOsStore } from "./workspace-os.js";
 
 export type BuildTarget = "greenfield" | "existing";
 export type BuildStack = "static-web" | "existing";
@@ -71,7 +71,10 @@ export class BuildProductStore {
     if (containsObviousSecret(goal))
       throw new ChatError("SECRET_BUILD_DENIED", "Secrets cannot be embedded in a Build goal.");
     const target = parseTarget(input.target);
-    const stack = parseStack(input.stack ?? (target === "existing" ? "existing" : "static-web"), target);
+    const stack = parseStack(
+      input.stack ?? (target === "existing" ? "existing" : "static-web"),
+      target,
+    );
     let projectId = input.projectId ? identifier(input.projectId) : null;
     if (!projectId && target === "existing")
       throw new ChatError("BUILD_PROJECT_REQUIRED", "Existing-app Build Mode requires a Project.");
@@ -191,13 +194,17 @@ export class BuildProductStore {
     await this.#requireProject(project);
     const row = await this.db.transaction(async (client) => {
       const runRow = (
-        await client.query(
-          "SELECT 1 FROM odin_api.turns WHERE conversation_id=$1 AND id=$2",
-          [project, run],
-        )
+        await client.query("SELECT 1 FROM odin_api.turns WHERE conversation_id=$1 AND id=$2", [
+          project,
+          run,
+        ])
       ).rows[0];
       if (!runRow)
-        throw new ChatError("RUN_PROJECT_MISMATCH", "Run does not belong to this Build Project.", 404);
+        throw new ChatError(
+          "RUN_PROJECT_MISMATCH",
+          "Run does not belong to this Build Project.",
+          404,
+        );
       return (
         await client.query(
           `SELECT cursor,type,turn_id,data,data_hash,created_at
@@ -330,16 +337,17 @@ export class BuildProductStore {
   }
 
   async #initial(projectId: string): Promise<BuildEvent | null> {
-    const row = await this.db.transaction(async (client) =>
-      (
-        await client.query(
-          `SELECT cursor,type,turn_id,data,data_hash,created_at
+    const row = await this.db.transaction(
+      async (client) =>
+        (
+          await client.query(
+            `SELECT cursor,type,turn_id,data,data_hash,created_at
              FROM odin_api.events
             WHERE conversation_id=$1 AND type='build.requested' AND data->>'requestKind'='initial'
             ORDER BY cursor ASC LIMIT 1`,
-          [projectId],
-        )
-      ).rows[0] as Record<string, unknown> | undefined,
+            [projectId],
+          )
+        ).rows[0] as Record<string, unknown> | undefined,
     );
     if (!row) return null;
     return {
@@ -478,12 +486,16 @@ export function buildIterationObjective(
   ].join("\n");
 }
 
-export function buildPreview(files: readonly BuildFile[]): { file: string; revision: string } | null {
+export function buildPreview(
+  files: readonly BuildFile[],
+): { file: string; revision: string } | null {
   const eligible = files
     .filter((file) => PREVIEWABLE.test(file.path) && !file.path.startsWith("documents/"))
     .map((file) => ({ path: normalizeWorkspacePath(file.path), sha: file.sha }))
     .sort((left, right) => left.path.localeCompare(right.path));
-  const html = eligible.find((file) => file.path === "index.html") ?? eligible.find((file) => /\.html?$/iu.test(file.path));
+  const html =
+    eligible.find((file) => file.path === "index.html") ??
+    eligible.find((file) => /\.html?$/iu.test(file.path));
   if (!html) return null;
   return {
     file: html.path,
@@ -506,7 +518,8 @@ export function extractVisualTargets(html: string, renderedPath: string): BuildV
     try {
       const validated = validateTargetRef(sourceRef);
       const [path] = validated.split("#", 1);
-      if (path !== currentPath && !/\.(?:html?|css|m?js|jsx|tsx?|vue|svelte)$/iu.test(path ?? "")) return;
+      if (path !== currentPath && !/\.(?:html?|css|m?js|jsx|tsx?|vue|svelte)$/iu.test(path ?? ""))
+        return;
       const label =
         node.attrs.find((attribute) => attribute.name === "aria-label")?.value ??
         node.attrs.find((attribute) => attribute.name === "id")?.value ??
@@ -523,10 +536,7 @@ export function extractVisualTargets(html: string, renderedPath: string): BuildV
   return [...found.values()].slice(0, 128);
 }
 
-export function buildStage(
-  state: ChatTurnView["state"] | null,
-  previewReady: boolean,
-): BuildStage {
+export function buildStage(state: ChatTurnView["state"] | null, previewReady: boolean): BuildStage {
   if (state === null) return "Designing";
   if (state === "COMPLETED") return previewReady ? "Preview Ready" : "Testing";
   if (["FAILED", "BLOCKED"].includes(state)) return "Repairing";
@@ -574,7 +584,10 @@ function parseStack(value: unknown, target: BuildTarget): BuildStack {
   if (typeof value !== "string" || !BUILD_STACKS.has(value as BuildStack))
     throw new ChatError("INVALID_BUILD_STACK", "Choose a supported Build stack.");
   const stack = value as BuildStack;
-  if ((target === "greenfield" && stack !== "static-web") || (target === "existing" && stack !== "existing"))
+  if (
+    (target === "greenfield" && stack !== "static-web") ||
+    (target === "existing" && stack !== "existing")
+  )
     throw new ChatError("INVALID_BUILD_STACK", "Build stack does not match the selected target.");
   return stack;
 }
@@ -583,7 +596,10 @@ function validateTargetRef(value: string): string {
   const clean = buildText(value, 3, 240, "Visual source target is invalid.");
   const separator = clean.lastIndexOf("#");
   if (separator <= 0 || separator === clean.length - 1)
-    throw new ChatError("BUILD_TARGET_UNCERTAIN", "Visual target needs an exact source path and id.");
+    throw new ChatError(
+      "BUILD_TARGET_UNCERTAIN",
+      "Visual target needs an exact source path and id.",
+    );
   const path = normalizeWorkspacePath(clean.slice(0, separator));
   const id = clean.slice(separator + 1);
   if (!/^[A-Za-z][A-Za-z0-9:_-]{0,79}$/u.test(id))

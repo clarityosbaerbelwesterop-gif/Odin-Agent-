@@ -64,7 +64,7 @@ panel.innerHTML = `
   </div>`;
 document.querySelector("main.main")?.append(panel);
 
-let m6State = { projectId: null, summary: null, turn: null, targetRef: null, poll: null };
+const m6State = { projectId: null, summary: null, turn: null, targetRef: null, poll: null };
 
 async function m6request(path, body, method = body === undefined ? "GET" : "POST") {
   const response = await fetch(path, {
@@ -99,7 +99,8 @@ function hideProductSurfaces() {
     const node = document.querySelector(selector);
     if (node) node.hidden = true;
   }
-  for (const item of document.querySelectorAll(".sidebar .nav-item")) item.classList.remove("selected");
+  for (const item of document.querySelectorAll(".sidebar .nav-item"))
+    item.classList.remove("selected");
   buildNav.classList.add("selected");
   m6$("page-title").textContent = "Build";
 }
@@ -189,7 +190,8 @@ async function m6Render() {
     m6$("m6-preview").hidden = false;
     m6$("m6-preview-empty").hidden = true;
     m6$("m6-revision").textContent = `Revision ${summary.preview.revision.slice(0, 12)}`;
-    m6$("m6-preview").src = `/api/projects/${encodeURIComponent(summary.projectId)}/preview?file=${encodeURIComponent(summary.preview.file)}&revision=${encodeURIComponent(summary.preview.revision)}`;
+    m6$("m6-preview").src =
+      `/api/projects/${encodeURIComponent(summary.projectId)}/preview?file=${encodeURIComponent(summary.preview.file)}&revision=${encodeURIComponent(summary.preview.revision)}`;
   } else {
     m6$("m6-preview").hidden = true;
     m6$("m6-preview-empty").hidden = false;
@@ -203,9 +205,17 @@ async function m6LoadTargets() {
   target.replaceChildren();
   m6State.targetRef = null;
   try {
-    const result = await m6request(`/api/build/projects/${encodeURIComponent(m6State.projectId)}/targets`);
+    const result = await m6request(
+      `/api/build/projects/${encodeURIComponent(m6State.projectId)}/targets`,
+    );
     if (!result.targets?.length) {
-      target.append(m6el("span", "No reliable visual-source mapping. Use a normal Build instruction.", "m6-muted"));
+      target.append(
+        m6el(
+          "span",
+          "No reliable visual-source mapping. Use a normal Build instruction.",
+          "m6-muted",
+        ),
+      );
       return;
     }
     for (const item of result.targets) {
@@ -214,7 +224,8 @@ async function m6LoadTargets() {
       button.title = item.sourceRef;
       button.onclick = () => {
         m6State.targetRef = item.sourceRef;
-        for (const other of target.querySelectorAll("button")) other.classList.toggle("selected", other === button);
+        for (const other of target.querySelectorAll("button"))
+          other.classList.toggle("selected", other === button);
       };
       target.append(button);
     }
@@ -245,7 +256,8 @@ async function submitBuildRun(runRequest) {
 
 function schedulePoll() {
   if (m6State.poll) clearTimeout(m6State.poll);
-  if (!m6State.turn || ["COMPLETED", "FAILED", "BLOCKED", "CANCELLED"].includes(m6State.turn.state)) return;
+  if (!m6State.turn || ["COMPLETED", "FAILED", "BLOCKED", "CANCELLED"].includes(m6State.turn.state))
+    return;
   m6State.poll = setTimeout(async () => {
     if (!m6State.projectId) return;
     await m6Load(m6State.projectId);
@@ -304,7 +316,8 @@ buildNav.addEventListener("click", () => void openBuild());
 homeAction.addEventListener("click", () => void openBuild());
 for (const button of panel.querySelectorAll("[data-m6-viewport]")) {
   button.addEventListener("click", () => {
-    for (const other of panel.querySelectorAll("[data-m6-viewport]")) other.classList.toggle("selected", other === button);
+    for (const other of panel.querySelectorAll("[data-m6-viewport]"))
+      other.classList.toggle("selected", other === button);
     m6$("m6-preview").dataset.viewport = button.dataset.m6Viewport;
   });
 }
