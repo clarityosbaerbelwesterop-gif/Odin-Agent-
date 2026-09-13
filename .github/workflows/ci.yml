@@ -31,18 +31,5 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Capture exact PRODUCT M4 formatting
-        run: npm run format -- --files-ignore-unknown=true web/run-center.js scripts/run-center-ui.test.mjs
-
-      - name: Upload PRODUCT M4 formatted sources
-        uses: actions/upload-artifact@v4
-        with:
-          name: product-m4-formatted
-          path: |
-            web/run-center.js
-            scripts/run-center-ui.test.mjs
-          if-no-files-found: error
-          retention-days: 1
-
       - name: Verify repository
         run: npm run verify

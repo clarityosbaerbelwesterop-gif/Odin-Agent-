@@ -142,15 +142,19 @@ function m4ReadableActivity(event) {
   const data = event.data ?? {};
   if (event.type === "tool.start") return `Using ${String(data.name ?? "a connected tool")}`;
   if (event.type === "tool.end")
-    return data.status === "failed" ? String(data.message ?? "Tool failed") : "Tool activity finished";
+    return data.status === "failed"
+      ? String(data.message ?? "Tool failed")
+      : "Tool activity finished";
   if (event.type === "quality")
     return `Quality ${data.passed === true ? "passed" : "failed"}: ${String(data.commandId ?? "configured check")}`;
   if (event.type === "verification")
     return data.outcome === "PASS" ? "Verification passed" : "Verification requires repair";
-  if (event.type === "file.changed") return `Updated ${String(data.path ?? "a workspace file")}`;
+  if (event.type === "file.changed")
+    return `Updated ${String(data.path ?? "a workspace file")}`;
   if (event.type === "model.start")
     return data.role === "reviewer" ? "Independent review started" : "Model work started";
-  if (event.type === "state") return `Runtime state · ${String(data.state ?? data.companionState ?? "updated")}`;
+  if (event.type === "state")
+    return `Runtime state · ${String(data.state ?? data.companionState ?? "updated")}`;
   if (event.type === "review") return "Independent review evidence received";
   if (event.type === "memory.brain.pulse") return "Selected context compiled";
   if (event.type === "error") return String(data.message ?? "Run error");
@@ -162,7 +166,8 @@ function m4ReadableActivity(event) {
 
 function m4EventTone(event) {
   const data = event.data ?? {};
-  if (event.type === "error" || (event.type === "tool.end" && data.status === "failed")) return "failed";
+  if (event.type === "error" || (event.type === "tool.end" && data.status === "failed"))
+    return "failed";
   if (event.type === "quality" && data.passed !== true) return "failed";
   if (event.type === "verification" && data.outcome !== "PASS") return "failed";
   if (event.type === "quality" || event.type === "verification") return "passed";
@@ -179,7 +184,11 @@ function m4RenderRuns() {
     button.type = "button";
     button.dataset.selected = String(run.id === m4State.selectedRunId);
     button.append(
-      m4el("span", run.state, `m4-run-dot state-${String(run.companionState ?? "IDLE").toLowerCase()}`),
+      m4el(
+        "span",
+        run.state,
+        `m4-run-dot state-${String(run.companionState ?? "IDLE").toLowerCase()}`,
+      ),
       m4el("strong", run.objective),
       m4el("small", `${run.mode} · ${m4FormatTime(run.createdAt)}`),
     );
@@ -235,10 +244,10 @@ function m4Control(label, command, run, className = "") {
     button.disabled = true;
     try {
       const current = await m4request(`/api/turns/${encodeURIComponent(run.id)}`);
-      await m4request(
-        `/api/turns/${encodeURIComponent(run.id)}/control`,
-        { command, expectedVersion: current.version },
-      );
+      await m4request(`/api/turns/${encodeURIComponent(run.id)}/control`, {
+        command,
+        expectedVersion: current.version,
+      });
       m4SetStatus(`${label} accepted by the server-authoritative runtime.`);
       await m4Reload();
     } catch (error) {
@@ -274,7 +283,8 @@ function m4RenderDag(run) {
     }
     target.append(card);
   }
-  if (!plan.length) target.append(m4el("p", "The runtime has not published a task plan.", "m4-muted"));
+  if (!plan.length)
+    target.append(m4el("p", "The runtime has not published a task plan.", "m4-muted"));
 }
 
 function m4RenderActivity(run) {
@@ -286,7 +296,11 @@ function m4RenderActivity(run) {
   m4$("m4-activity-count").textContent = `${visible.length} events`;
   for (const { event, label } of visible.slice(-80).reverse()) {
     const row = m4el("article", undefined, `m4-event ${m4EventTone(event)}`);
-    row.append(m4el("span", event.type), m4el("strong", label), m4el("time", m4FormatTime(event.createdAt)));
+    row.append(
+      m4el("span", event.type),
+      m4el("strong", label),
+      m4el("time", m4FormatTime(event.createdAt)),
+    );
     target.append(row);
   }
   if (!visible.length) target.append(m4el("p", "No visible runtime activity yet.", "m4-muted"));
@@ -296,10 +310,16 @@ function m4RenderVerification(run) {
   const target = m4$("m4-verification");
   target.replaceChildren();
   const events = m4RunEvents(run.id);
-  const evidence = events.filter((event) => ["quality", "verification", "review"].includes(event.type));
+  const evidence = events.filter((event) =>
+    ["quality", "verification", "review"].includes(event.type),
+  );
   const failed = evidence.some((event) => m4EventTone(event) === "failed");
   const passed = evidence.some((event) => m4EventTone(event) === "passed");
-  m4$("m4-verification-state").textContent = failed ? "needs repair" : passed ? "evidence present" : "pending";
+  m4$("m4-verification-state").textContent = failed
+    ? "needs repair"
+    : passed
+      ? "evidence present"
+      : "pending";
   for (const event of evidence.slice().reverse()) {
     const data = event.data ?? {};
     const card = m4el("article", undefined, `m4-evidence-card ${m4EventTone(event)}`);
@@ -310,13 +330,26 @@ function m4RenderVerification(run) {
       detail = "Repository quality evidence emitted by the runtime.";
     } else if (event.type === "verification") {
       title = `${String(data.outcome ?? "PENDING")} · ${String(data.scope ?? "verification")}`;
-      detail = Array.isArray(data.failures) && data.failures.length ? data.failures.join(" · ") : "No failure details reported.";
+      detail =
+        Array.isArray(data.failures) && data.failures.length
+          ? data.failures.join(" · ")
+          : "No failure details reported.";
     }
-    card.append(m4el("strong", title), m4el("p", detail), m4el("small", m4FormatTime(event.createdAt)));
+    card.append(
+      m4el("strong", title),
+      m4el("p", detail),
+      m4el("small", m4FormatTime(event.createdAt)),
+    );
     target.append(card);
   }
   if (!evidence.length)
-    target.append(m4el("p", "Required evidence has not been published yet. Odin must not treat missing evidence as a pass.", "m4-muted"));
+    target.append(
+      m4el(
+        "p",
+        "Required evidence has not been published yet. Odin must not treat missing evidence as a pass.",
+        "m4-muted",
+      ),
+    );
 }
 
 function m4RenderContext(run) {
@@ -328,7 +361,11 @@ function m4RenderContext(run) {
     const memory = pulse.data?.selectedMemoryIds ?? [];
     const workspace = pulse.data?.selectedWorkspaceReferences ?? [];
     target.append(
-      m4Evidence("Selected context", `${memory.length} Memory · ${workspace.length} Workspace`, `Compiler result ${String(pulse.data?.contextResultHash ?? "unknown").slice(0, 12)}`),
+      m4Evidence(
+        "Selected context",
+        `${memory.length} Memory · ${workspace.length} Workspace`,
+        `Compiler result ${String(pulse.data?.contextResultHash ?? "unknown").slice(0, 12)}`,
+      ),
     );
   } else {
     target.append(m4el("p", "No Brain Pulse evidence is attached to this Run.", "m4-muted"));
@@ -337,9 +374,18 @@ function m4RenderContext(run) {
   for (const item of outputs)
     target.append(m4Evidence("Artifact", item.title, `${item.kind} · v${item.version}`));
   const changed = new Set(
-    events.filter((event) => event.type === "file.changed").map((event) => String(event.data?.path ?? "")),
+    events
+      .filter((event) => event.type === "file.changed")
+      .map((event) => String(event.data?.path ?? "")),
   );
-  if (changed.size) target.append(m4Evidence("Workspace changes", `${changed.size} file${changed.size === 1 ? "" : "s"}`, [...changed].slice(0, 5).join(" · ")));
+  if (changed.size)
+    target.append(
+      m4Evidence(
+        "Workspace changes",
+        `${changed.size} file${changed.size === 1 ? "" : "s"}`,
+        [...changed].slice(0, 5).join(" · "),
+      ),
+    );
 }
 
 function m4Evidence(label, title, detail) {
@@ -354,30 +400,55 @@ function m4RenderGovernance(run) {
   const events = m4RunEvents(run.id);
   const recovery = events.filter(
     (event) =>
-      event.type === "state" && event.data?.state === "CHECKPOINTING" ||
-      event.type === "activity" && event.data?.phase === "recovery",
+      (event.type === "state" && event.data?.state === "CHECKPOINTING") ||
+      (event.type === "activity" && event.data?.phase === "recovery"),
   );
   const repairs = events.filter(
     (event) =>
-      event.type === "state" && ["DIAGNOSING", "REPAIRING"].includes(String(event.data?.state)) ||
-      event.type === "verification" && event.data?.outcome !== "PASS" ||
-      event.type === "quality" && event.data?.passed !== true,
+      (event.type === "state" &&
+        ["DIAGNOSING", "REPAIRING"].includes(String(event.data?.state))) ||
+      (event.type === "verification" && event.data?.outcome !== "PASS") ||
+      (event.type === "quality" && event.data?.passed !== true),
   );
   const approvals = events.filter((event) => event.type.includes("approval"));
   target.append(
-    m4Evidence("Repair cycles", String(repairs.length), repairs.length ? "Failure and repair evidence remains visible." : "No repair cycle recorded."),
-    m4Evidence("Checkpoint / recovery", String(recovery.length), recovery.length ? "Recovery/checkpoint evidence recorded." : "No checkpoint/recovery event exposed for this Run."),
+    m4Evidence(
+      "Repair cycles",
+      String(repairs.length),
+      repairs.length ? "Failure and repair evidence remains visible." : "No repair cycle recorded.",
+    ),
+    m4Evidence(
+      "Checkpoint / recovery",
+      String(recovery.length),
+      recovery.length
+        ? "Recovery/checkpoint evidence recorded."
+        : "No checkpoint/recovery event exposed for this Run.",
+    ),
   );
   if (approvals.length) {
     for (const event of approvals)
-      target.append(m4Evidence("Approval", String(event.data?.action ?? event.type), `Risk ${String(event.data?.risk ?? "runtime-defined")}`));
+      target.append(
+        m4Evidence(
+          "Approval",
+          String(event.data?.action ?? event.type),
+          `Risk ${String(event.data?.risk ?? "runtime-defined")}`,
+        ),
+      );
   } else {
-    target.append(m4Evidence("Approvals", "None requested", "No approval event is attached to this Run; the client does not fabricate one."));
+    target.append(
+      m4Evidence(
+        "Approvals",
+        "None requested",
+        "No approval event is attached to this Run; the client does not fabricate one.",
+      ),
+    );
   }
 }
 
 function m4RenderSelected() {
-  const run = (m4State.project?.turns ?? []).find((candidate) => candidate.id === m4State.selectedRunId);
+  const run = (m4State.project?.turns ?? []).find(
+    (candidate) => candidate.id === m4State.selectedRunId,
+  );
   m4$("m4-empty").hidden = Boolean(run);
   m4$("m4-run").hidden = !run;
   if (!run) return;
@@ -387,20 +458,41 @@ function m4RenderSelected() {
   m4$("m4-goal").textContent = run.objective;
   m4$("m4-meta").textContent = `${run.mode} · ${run.modelId} · ${m4FormatTime(run.createdAt)}`;
   m4$("m4-live").dataset.state = m4Terminal.has(run.state) ? "done" : "active";
-  m4$("m4-live").querySelector("small").textContent = `${run.companionState ?? run.state} · ${events.length} recorded events`;
+  m4$("m4-live").querySelector("small").textContent =
+    `${run.companionState ?? run.state} · ${events.length} recorded events`;
   const calls = events.filter((event) => event.type === "model.start");
-  const maxCalls = calls.reduce((max, event) => Math.max(max, Number(event.data?.maxCalls ?? 0)), 0);
+  const maxCalls = calls.reduce(
+    (max, event) => Math.max(max, Number(event.data?.maxCalls ?? 0)),
+    0,
+  );
   const toolCalls = events.filter((event) => event.type === "tool.start").length;
   const usage = run.usage ?? { inputTokens: 0, outputTokens: 0, totalTokens: 0 };
   const repairStates = events.filter(
-    (event) => event.type === "state" && ["DIAGNOSING", "REPAIRING"].includes(String(event.data?.state)),
+    (event) =>
+      event.type === "state" && ["DIAGNOSING", "REPAIRING"].includes(String(event.data?.state)),
   ).length;
   const metrics = m4$("m4-metrics");
   metrics.replaceChildren(
-    m4Metric("Tokens", Number(usage.totalTokens ?? 0).toLocaleString(), `${Number(usage.inputTokens ?? 0).toLocaleString()} in · ${Number(usage.outputTokens ?? 0).toLocaleString()} out`),
-    m4Metric("Model calls", String(calls.length), maxCalls ? `${maxCalls} call ceiling observed` : "No call ceiling observed yet"),
-    m4Metric("Tool activity", String(toolCalls), `${m4State.config?.limits?.maxToolCalls ?? "—"} configured ceiling`),
-    m4Metric("Repair states", String(repairStates), "Derived only from canonical state events"),
+    m4Metric(
+      "Tokens",
+      Number(usage.totalTokens ?? 0).toLocaleString(),
+      `${Number(usage.inputTokens ?? 0).toLocaleString()} in · ${Number(usage.outputTokens ?? 0).toLocaleString()} out`,
+    ),
+    m4Metric(
+      "Model calls",
+      String(calls.length),
+      maxCalls ? `${maxCalls} call ceiling observed` : "No call ceiling observed yet",
+    ),
+    m4Metric(
+      "Tool activity",
+      String(toolCalls),
+      `${m4State.config?.limits?.maxToolCalls ?? "—"} configured ceiling`,
+    ),
+    m4Metric(
+      "Repair states",
+      String(repairStates),
+      "Derived only from canonical state events",
+    ),
   );
   m4RenderControls(run);
   m4RenderDag(run);
@@ -468,9 +560,13 @@ m4RunsButton?.addEventListener("click", () => {
   m4Watch(projectId);
 });
 
-for (const button of document.querySelectorAll('[data-project-section]:not([data-project-section="runs"])'))
+for (const button of document.querySelectorAll(
+  '[data-project-section]:not([data-project-section="runs"])',
+))
   button.addEventListener("click", m4Hide);
-for (const button of document.querySelectorAll("#home-view,#projects-view,#knowledge-view,#skills-view,#activity-view,#models-view,#system-view,#benchmark-view"))
+for (const button of document.querySelectorAll(
+  "#home-view,#projects-view,#knowledge-view,#skills-view,#activity-view,#models-view,#system-view,#benchmark-view",
+))
   button.addEventListener("click", m4Hide);
 
 window.addEventListener("popstate", () => {
