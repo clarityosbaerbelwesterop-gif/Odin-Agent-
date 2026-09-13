@@ -1,6 +1,7 @@
 import type { ActorDatabase } from "./neon-database.js";
 import type {
   CustomSkillDraft,
+  ProductConnectionState,
   ProductSkillInstallation,
   ProductSkillScope,
 } from "./skills-product.js";
@@ -30,6 +31,41 @@ export class SkillProductStore {
           .length,
     );
     if (!found) throw new ChatError("NOT_FOUND", "Project not found.", 404);
+  }
+
+  async requireRunProject(projectId: string, runId: string): Promise<void> {
+    const found = await this.db.transaction(
+      async (client) =>
+        (
+          await client.query(
+            "SELECT 1 FROM odin_api.turns WHERE id=$1::uuid AND conversation_id=$2::uuid",
+            [runId, projectId],
+          )
+        ).rows.length,
+    );
+    if (!found)
+      throw new ChatError(
+        "RUN_PROJECT_MISMATCH",
+        "Run does not belong to the requested Project.",
+        404,
+      );
+  }
+
+  async connections(): Promise<ProductConnectionState> {
+    return this.db.transaction(async (client) => {
+      const github = (
+        await client.query(
+          "SELECT repository,default_branch FROM odin_api.github_connections LIMIT 1",
+        )
+      ).rows[0] as { repository?: unknown; default_branch?: unknown } | undefined;
+      return Object.freeze({
+        github:
+          typeof github?.repository === "string" &&
+          github.repository.length > 0 &&
+          typeof github.default_branch === "string" &&
+          github.default_branch.length > 0,
+      });
+    });
   }
 
   async installations(projectId: string | null): Promise<readonly ProductSkillInstallation[]> {
@@ -196,25 +232,23 @@ export class SkillProductStore {
       if (current.content_hash !== expectedContentHash)
         throw new ChatError("SKILL_INTEGRITY", "Skill installation changed before rollback.", 409);
       if (!current.previous_version || !current.previous_content_hash)
-        throw new ChatError("SKILL_ROLLBACK_UNAVAILABLE", "No verified previous version is stored.", 409);
+        throw new ChatError(
+          "SKILL_ROLLBACK_UNAVAILABLE",
+          "No verified previous version is stored.",
+          409,
+        );
       const row = (
         await client.query(
           `UPDATE odin_api.skill_installations
               SET version=previous_version,
                   content_hash=previous_content_hash,
-                  previous_version=$4,
-                  previous_content_hash=$5,
+                  previous_version=$2,
+                  previous_content_hash=$3,
                   updated_at=now()
             WHERE installation_id=$1
           RETURNING installation_id,skill_id,version,content_hash,scope,project_id,enabled,
                     previous_version,previous_content_hash,installed_at,updated_at`,
-          [
-            current.installation_id,
-            current.scope,
-            current.project_id,
-            current.version,
-            current.content_hash,
-          ],
+          [current.installation_id, current.version, current.content_hash],
         )
       ).rows[0] as InstallationRow;
       return mapInstallation(row);
@@ -229,7 +263,8 @@ export class SkillProductStore {
             AND (($2='global' AND project_id IS NULL) OR ($2='project' AND project_id=$3::uuid))`,
         [skillId, scope, projectId],
       );
-      if (!result.rowCount) throw new ChatError("SKILL_NOT_INSTALLED", "Skill is not installed.", 404);
+      if (!result.rowCount)
+        throw new ChatError("SKILL_NOT_INSTALLED", "Skill is not installed.", 404);
     });
   }
 
