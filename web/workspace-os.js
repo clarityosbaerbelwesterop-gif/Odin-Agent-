@@ -174,7 +174,7 @@ async function m2Load(projectId, { show = true } = {}) {
     m2State.activeId =
       workspace.layout.activeItemId && m2State.openIds.includes(workspace.layout.activeItemId)
         ? workspace.layout.activeItemId
-        : m2State.openIds[0] ?? null;
+        : (m2State.openIds[0] ?? null);
     m2State.layoutVersion = workspace.layout.version;
     m2$("m2-project-title").textContent = projectData.conversation.title;
     m2RenderResources();
@@ -319,20 +319,35 @@ function m2RenderHome() {
   const turns = m2State.project?.turns ?? [];
   const current = turns.at(-1);
   const hero = m2el("section", undefined, "m2-home-hero");
-  hero.append(m2el("span", "PROJECT WORKSPACE", "m2-eyebrow"), m2el("h1", m2State.project?.conversation.title ?? "Workspace"));
-  hero.append(m2el("p", current?.objective ?? "Start a Run or create a document to begin accumulating project work."));
+  hero.append(
+    m2el("span", "PROJECT WORKSPACE", "m2-eyebrow"),
+    m2el("h1", m2State.project?.conversation.title ?? "Workspace"),
+  );
+  hero.append(
+    m2el(
+      "p",
+      current?.objective ?? "Start a Run or create a document to begin accumulating project work.",
+    ),
+  );
   target.append(hero);
 
   const grid = m2el("div", undefined, "m2-home-grid");
   const plan = m2el("article", undefined, "m2-home-card m2-plan-card");
-  plan.append(m2el("span", "CURRENT PLAN", "m2-eyebrow"), m2el("h2", current ? "What Odin is doing" : "No active plan"));
+  plan.append(
+    m2el("span", "CURRENT PLAN", "m2-eyebrow"),
+    m2el("h2", current ? "What Odin is doing" : "No active plan"),
+  );
   const steps = m2el("ol", undefined, "m2-plan-list");
   for (const step of current?.plan ?? []) {
     const row = m2el("li", undefined, step.status);
-    row.append(m2el("span", step.status === "done" ? "✓" : step.status === "active" ? "●" : "○"), m2el("span", step.title));
+    row.append(
+      m2el("span", step.status === "done" ? "✓" : step.status === "active" ? "●" : "○"),
+      m2el("span", step.title),
+    );
     steps.append(row);
   }
-  if (!steps.children.length) steps.append(m2el("li", "Create a goal from Home to start a real Run."));
+  if (!steps.children.length)
+    steps.append(m2el("li", "Create a goal from Home to start a real Run."));
   plan.append(steps);
 
   const recent = m2el("article", undefined, "m2-home-card");
@@ -341,16 +356,35 @@ function m2RenderHome() {
   for (const item of [...m2State.items.values()].slice(0, 5)) {
     const button = m2el("button", undefined);
     button.type = "button";
-    button.append(m2el("strong", item.title), m2el("small", `${m2Group(item)} · ${new Date(item.updatedAt).toLocaleDateString()}`));
+    button.append(
+      m2el("strong", item.title),
+      m2el("small", `${m2Group(item)} · ${new Date(item.updatedAt).toLocaleDateString()}`),
+    );
     button.onclick = () => m2OpenItem(item.id).catch(m2ShowError);
     recentList.append(button);
   }
-  if (!recentList.children.length) recentList.append(m2el("p", "No documents or artifacts yet.", "m2-help"));
+  if (!recentList.children.length)
+    recentList.append(m2el("p", "No documents or artifacts yet.", "m2-help"));
   recent.append(recentList);
 
   const next = m2el("article", undefined, "m2-home-card");
-  next.append(m2el("span", "NEXT ACTION", "m2-eyebrow"), m2el("h2", current && !["COMPLETED", "FAILED", "BLOCKED", "CANCELLED"].includes(current.state) ? "Continue the current Run" : "Add durable project material"));
-  next.append(m2el("p", m2State.workspace?.context.length ? `${m2State.workspace.context.length} resource${m2State.workspace.context.length === 1 ? " is" : "s are"} pinned as project context.` : "Create a document, import a supported text file, or continue the project from the composer."));
+  next.append(
+    m2el("span", "NEXT ACTION", "m2-eyebrow"),
+    m2el(
+      "h2",
+      current && !["COMPLETED", "FAILED", "BLOCKED", "CANCELLED"].includes(current.state)
+        ? "Continue the current Run"
+        : "Add durable project material",
+    ),
+  );
+  next.append(
+    m2el(
+      "p",
+      m2State.workspace?.context.length
+        ? `${m2State.workspace.context.length} resource${m2State.workspace.context.length === 1 ? " is" : "s are"} pinned as project context.`
+        : "Create a document, import a supported text file, or continue the project from the composer.",
+    ),
+  );
   if (current?.state === "COMPLETED") {
     const save = m2el("button", "Save latest result as artifact", "m2-primary");
     save.type = "button";
@@ -365,13 +399,22 @@ function m2RenderHome() {
 function m2RenderItem(item) {
   const target = m2$("m2-content");
   target.replaceChildren();
-  const editable = item.origin !== "runtime" && ["DOCUMENT", "NOTE", "TEXT", "MARKDOWN"].includes(item.kind);
+  const editable =
+    item.origin !== "runtime" && ["DOCUMENT", "NOTE", "TEXT", "MARKDOWN"].includes(item.kind);
   const shell = m2el("article", undefined, "m2-item");
   const header = m2el("header", undefined, "m2-item-header");
   const meta = m2el("div", undefined, "m2-item-meta");
-  meta.append(m2el("span", m2Group(item)), m2el("span", `v${item.version}`), m2el("span", new Date(item.updatedAt).toLocaleString()));
+  meta.append(
+    m2el("span", m2Group(item)),
+    m2el("span", `v${item.version}`),
+    m2el("span", new Date(item.updatedAt).toLocaleString()),
+  );
   const contextSelected = m2State.workspace?.context.some((entry) => entry.itemId === item.id);
-  const contextButton = m2el("button", contextSelected ? "Remove context" : "Add to context", "m2-context-pill");
+  const contextButton = m2el(
+    "button",
+    contextSelected ? "Remove context" : "Add to context",
+    "m2-context-pill",
+  );
   contextButton.type = "button";
   contextButton.onclick = () => m2ToggleContext(item.id, !contextSelected);
   header.append(meta, contextButton);
@@ -442,7 +485,10 @@ function m2QueueSave(itemId, titleInput, bodyInput, stateNode) {
       m2RenderResources();
       m2RenderTabs();
     } catch (error) {
-      stateNode.textContent = error.code === "STALE_DOCUMENT" ? "Conflict · reload required" : "Save failed · retrying when you edit";
+      stateNode.textContent =
+        error.code === "STALE_DOCUMENT"
+          ? "Conflict · reload required"
+          : "Save failed · retrying when you edit";
       stateNode.dataset.state = "error";
       m2ShowError(error);
     }
@@ -464,7 +510,9 @@ async function m2SaveLayout() {
     m2State.layoutVersion = result.layout.version;
   } catch (error) {
     if (error.code === "STALE_LAYOUT") {
-      const refreshed = await m2request(`/api/workspace/projects/${encodeURIComponent(m2State.projectId)}`);
+      const refreshed = await m2request(
+        `/api/workspace/projects/${encodeURIComponent(m2State.projectId)}`,
+      );
       m2State.layoutVersion = refreshed.layout.version;
       return;
     }
@@ -518,7 +566,13 @@ function m2RenderRun() {
     target.append(m2el("p", "No Run yet.", "m2-empty-line"));
     return;
   }
-  target.append(m2el("strong", run.objective), m2el("small", `${run.companionState ?? run.state} · ${run.plan?.filter((step) => step.status === "done").length ?? 0}/${run.plan?.length ?? 0} plan steps`));
+  target.append(
+    m2el("strong", run.objective),
+    m2el(
+      "small",
+      `${run.companionState ?? run.state} · ${run.plan?.filter((step) => step.status === "done").length ?? 0}/${run.plan?.length ?? 0} plan steps`,
+    ),
+  );
   if (run.state === "COMPLETED") {
     const button = m2el("button", "Save result as artifact", "m2-secondary");
     button.type = "button";
@@ -553,7 +607,13 @@ function m2RenderActivity(events) {
   if (!recent.length) target.append(m2el("p", "No activity yet.", "m2-empty-line"));
   for (const event of recent) {
     const row = m2el("div", undefined, "m2-activity-row");
-    row.append(m2el("span", event.label), m2el("time", new Date(event.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })));
+    row.append(
+      m2el("span", event.label),
+      m2el(
+        "time",
+        new Date(event.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      ),
+    );
     target.append(row);
   }
 }
@@ -592,7 +652,11 @@ m2$("m2-document-form").onsubmit = async (event) => {
   try {
     const result = await m2request(
       `/api/workspace/projects/${encodeURIComponent(m2State.projectId)}/documents`,
-      { title: m2$("m2-document-title").value, format: m2$("m2-document-format").value, content: "" },
+      {
+        title: m2$("m2-document-title").value,
+        format: m2$("m2-document-format").value,
+        content: "",
+      },
     );
     m2$("m2-document-dialog").close();
     m2State.items.set(result.item.id, result.item);
@@ -640,7 +704,12 @@ m2$("m2-tabs").addEventListener("keydown", (event) => {
   const tabs = [...m2$("m2-tabs").querySelectorAll('[role="tab"]')];
   if (!tabs.length) return;
   const current = Math.max(0, tabs.indexOf(document.activeElement));
-  const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (current + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+  const next =
+    event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? tabs.length - 1
+        : (current + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
   event.preventDefault();
   tabs[next].focus();
 });

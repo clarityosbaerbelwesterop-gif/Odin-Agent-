@@ -75,7 +75,11 @@ export async function compileWorkspaceContext(
     const content = String(row.content);
     const sha = String(row.sha);
     if (hashText(content) !== sha)
-      throw new ChatError("INTEGRITY_FAILURE", "Selected Workspace context failed integrity verification.", 500);
+      throw new ChatError(
+        "INTEGRITY_FAILURE",
+        "Selected Workspace context failed integrity verification.",
+        500,
+      );
     candidates.push(
       candidate({
         id: `workspace-${String(row.item_id)}`,

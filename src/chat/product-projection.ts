@@ -88,7 +88,9 @@ export function activityLabel(event: Pick<ChatEvent, "type" | "data">): string |
   if (event.type === "workspace.document.updated")
     return typeof data.title === "string" ? `Updated ${data.title}` : "Updated a document";
   if (event.type === "workspace.artifact.created")
-    return typeof data.title === "string" ? `Saved ${data.title} from a Run` : "Saved a Run result as an artifact";
+    return typeof data.title === "string"
+      ? `Saved ${data.title} from a Run`
+      : "Saved a Run result as an artifact";
   if (event.type === "workspace.file.imported")
     return typeof data.title === "string" ? `Imported ${data.title}` : "Imported a workspace file";
   if (event.type === "workspace.context.added") return "Added an item to project context";

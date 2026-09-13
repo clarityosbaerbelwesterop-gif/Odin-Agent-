@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { canonicalJson } from "../durable/internal.js";
-import type { ActorDatabase } from "./neon-database.js";
+import type { ActorDatabase, DatabaseAction } from "./neon-database.js";
 import { hashText, identifier, integer, safeText } from "./safety.js";
 import { ChatError } from "./types.js";
 
@@ -77,9 +77,16 @@ export class WorkspaceOsStore {
       context,
       layout,
       counts: {
-        documents: items.filter((item) => ["DOCUMENT", "NOTE", "TEXT", "MARKDOWN"].includes(item.kind)).length,
-        artifacts: items.filter((item) => ["GENERATED_ARTIFACT", "RESEARCH_RESULT", "PLAN", "REPORT", "HTML", "JSON"].includes(item.kind)).length,
-        files: items.filter((item) => item.origin === "import" || item.kind === "FILE_REFERENCE").length,
+        documents: items.filter((item) =>
+          ["DOCUMENT", "NOTE", "TEXT", "MARKDOWN"].includes(item.kind),
+        ).length,
+        artifacts: items.filter((item) =>
+          ["GENERATED_ARTIFACT", "RESEARCH_RESULT", "PLAN", "REPORT", "HTML", "JSON"].includes(
+            item.kind,
+          ),
+        ).length,
+        files: items.filter((item) => item.origin === "import" || item.kind === "FILE_REFERENCE")
+          .length,
       },
     };
   }
@@ -120,7 +127,11 @@ export class WorkspaceOsStore {
       ).rows[0];
       if (!row) throw missing();
       if (hashText(String(row.content)) !== row.sha)
-        throw new ChatError("INTEGRITY_FAILURE", "Workspace item failed integrity verification.", 500);
+        throw new ChatError(
+          "INTEGRITY_FAILURE",
+          "Workspace item failed integrity verification.",
+          500,
+        );
       return this.#item(project, row, String(row.content));
     });
   }
@@ -135,7 +146,8 @@ export class WorkspaceOsStore {
     if (!title) throw new ChatError("INVALID_TITLE", "Document title is required.");
     const content = safeText(input.content ?? "", 262144);
     const format = input.format ?? "markdown";
-    const kind: WorkspaceItemKind = format === "note" ? "NOTE" : format === "text" ? "TEXT" : "MARKDOWN";
+    const kind: WorkspaceItemKind =
+      format === "note" ? "NOTE" : format === "text" ? "TEXT" : "MARKDOWN";
     const extension = format === "markdown" || format === "note" ? "md" : "txt";
     const itemId = randomUUID();
     const path = `documents/${itemId}.${extension}`;
@@ -146,9 +158,23 @@ export class WorkspaceOsStore {
         `INSERT INTO odin_api.workspace_files
           (conversation_id,item_id,path,content,sha,kind,title,mime_type,origin,metadata)
          VALUES($1,$2,$3,$4,$5,$6,$7,$8,'user','{}'::jsonb)`,
-        [project, itemId, path, content, sha, kind, title, extension === "md" ? "text/markdown" : "text/plain"],
+        [
+          project,
+          itemId,
+          path,
+          content,
+          sha,
+          kind,
+          title,
+          extension === "md" ? "text/markdown" : "text/plain",
+        ],
       );
-      await this.#emit(c, project, "workspace.item.created", { itemId, kind, title, origin: "user" });
+      await this.#emit(c, project, "workspace.item.created", {
+        itemId,
+        kind,
+        title,
+        origin: "user",
+      });
     });
     return this.item(project, itemId);
   }
@@ -174,11 +200,28 @@ export class WorkspaceOsStore {
         )
       ).rows[0];
       if (!row) throw missing();
-      if (!['DOCUMENT','NOTE','TEXT','MARKDOWN'].includes(String(row.kind)) || row.origin === "runtime")
-        throw new ChatError("READ_ONLY_ARTIFACT", "Generated artifacts are read only. Create a document copy to edit them.", 409);
+      if (
+        !["DOCUMENT", "NOTE", "TEXT", "MARKDOWN"].includes(String(row.kind)) ||
+        row.origin === "runtime"
+      )
+        throw new ChatError(
+          "READ_ONLY_ARTIFACT",
+          "Generated artifacts are read only. Create a document copy to edit them.",
+          409,
+        );
       if (Number(row.version) !== expectedVersion)
-        throw new ChatError("STALE_DOCUMENT", "This document changed. Reload before saving again.", 409);
-      await this.#checkLimit(c, project, Buffer.byteLength(content), true, Buffer.byteLength(String(row.content)));
+        throw new ChatError(
+          "STALE_DOCUMENT",
+          "This document changed. Reload before saving again.",
+          409,
+        );
+      await this.#checkLimit(
+        c,
+        project,
+        Buffer.byteLength(content),
+        true,
+        Buffer.byteLength(String(row.content)),
+      );
       await c.query(
         `UPDATE odin_api.workspace_files
             SET title=$3,content=$4,sha=$5,version=version+1,updated_at=now()
@@ -199,7 +242,12 @@ export class WorkspaceOsStore {
     await this.#project(project);
     const mimeType = safeText(input.mimeType, 120).toLowerCase();
     const kind = TEXT_IMPORTS[mimeType];
-    if (!kind) throw new ChatError("UNSUPPORTED_FILE", "This file type is not supported in Workspace yet.", 415);
+    if (!kind)
+      throw new ChatError(
+        "UNSUPPORTED_FILE",
+        "This file type is not supported in Workspace yet.",
+        415,
+      );
     const content = safeText(input.content, 262144);
     if (mimeType === "application/json") {
       try {
@@ -217,33 +265,67 @@ export class WorkspaceOsStore {
         `INSERT INTO odin_api.workspace_files
           (conversation_id,item_id,path,content,sha,kind,title,mime_type,origin,metadata)
          VALUES($1,$2,$3,$4,$5,$6,$7,$8,'import',$9)`,
-        [project, itemId, path, content, hashText(content), kind, filename, mimeType, canonicalJson({ originalFilename: filename }, 16000)],
+        [
+          project,
+          itemId,
+          path,
+          content,
+          hashText(content),
+          kind,
+          filename,
+          mimeType,
+          canonicalJson({ originalFilename: filename }, 16000),
+        ],
       );
-      await this.#emit(c, project, "workspace.file.imported", { itemId, title: filename, mimeType });
+      await this.#emit(c, project, "workspace.file.imported", {
+        itemId,
+        title: filename,
+        mimeType,
+      });
     });
     return this.item(project, itemId);
   }
 
-  async createArtifactFromRun(projectId: string, turnId: string, title?: string): Promise<WorkspaceItem> {
+  async createArtifactFromRun(
+    projectId: string,
+    turnId: string,
+    title?: string,
+  ): Promise<WorkspaceItem> {
     const project = identifier(projectId);
     const run = identifier(turnId);
     await this.#project(project);
     const artifactId = randomUUID();
     await this.db.transaction(async (c) => {
-      const turn = (await c.query("SELECT id FROM odin_api.turns WHERE conversation_id=$1 AND id=$2", [project, run])).rows[0];
-      if (!turn) throw new ChatError("INVALID_PROVENANCE", "The selected Run does not belong to this Project.", 409);
+      const turn = (
+        await c.query("SELECT id FROM odin_api.turns WHERE conversation_id=$1 AND id=$2", [
+          project,
+          run,
+        ])
+      ).rows[0];
+      if (!turn)
+        throw new ChatError(
+          "INVALID_PROVENANCE",
+          "The selected Run does not belong to this Project.",
+          409,
+        );
       const answer = (
         await c.query(
           "SELECT data,data_hash FROM odin_api.events WHERE conversation_id=$1 AND turn_id=$2 AND type='answer' ORDER BY cursor DESC LIMIT 1",
           [project, run],
         )
       ).rows[0];
-      if (!answer) throw new ChatError("ARTIFACT_UNAVAILABLE", "This Run has no completed result to save.", 409);
+      if (!answer)
+        throw new ChatError(
+          "ARTIFACT_UNAVAILABLE",
+          "This Run has no completed result to save.",
+          409,
+        );
       const encoded = canonicalJson(answer.data, 300000);
       if (hashText(encoded) !== answer.data_hash)
         throw new ChatError("INTEGRITY_FAILURE", "Run output failed integrity verification.", 500);
       const content = safeText(String(answer.data.text ?? ""), 262144);
-      if (!content.trim()) throw new ChatError("ARTIFACT_UNAVAILABLE", "This Run has no textual result to save.", 409);
+      if (!content.trim())
+        throw new ChatError("ARTIFACT_UNAVAILABLE", "This Run has no textual result to save.", 409);
       const artifactTitle = safeText(title ?? "Run result", 200).trim() || "Run result";
       const path = `artifacts/${artifactId}.md`;
       await this.#checkLimit(c, project, Buffer.byteLength(content), false);
@@ -253,7 +335,11 @@ export class WorkspaceOsStore {
          VALUES($1,$2,$3,$4,$5,'GENERATED_ARTIFACT',$6,'text/markdown','runtime',$7,'{}'::jsonb)`,
         [project, artifactId, path, content, hashText(content), artifactTitle, run],
       );
-      await this.#emit(c, project, "workspace.artifact.created", { itemId: artifactId, title: artifactTitle, sourceRunId: run });
+      await this.#emit(c, project, "workspace.artifact.created", {
+        itemId: artifactId,
+        title: artifactTitle,
+        sourceRunId: run,
+      });
     });
     return this.item(project, artifactId);
   }
@@ -281,26 +367,52 @@ export class WorkspaceOsStore {
     );
   }
 
-  async setContext(projectId: string, itemId: string, selected: boolean, reason = "Selected by user") {
+  async setContext(
+    projectId: string,
+    itemId: string,
+    selected: boolean,
+    reason = "Selected by user",
+  ) {
     const project = identifier(projectId);
     const item = identifier(itemId);
     const why = safeText(reason, 240).trim() || "Selected by user";
     await this.#project(project);
     await this.db.transaction(async (c) => {
-      const exists = (await c.query("SELECT 1 FROM odin_api.workspace_files WHERE conversation_id=$1 AND item_id=$2", [project, item])).rows[0];
+      const exists = (
+        await c.query(
+          "SELECT 1 FROM odin_api.workspace_files WHERE conversation_id=$1 AND item_id=$2",
+          [project, item],
+        )
+      ).rows[0];
       if (!exists) throw missing();
       if (selected) {
-        const count = Number((await c.query("SELECT count(*)::int AS n FROM odin_api.workspace_context_items WHERE conversation_id=$1", [project])).rows[0]?.n ?? 0);
-        if (count >= 16) throw new ChatError("CONTEXT_LIMIT", "Remove a context item before adding another.", 409);
+        const count = Number(
+          (
+            await c.query(
+              "SELECT count(*)::int AS n FROM odin_api.workspace_context_items WHERE conversation_id=$1",
+              [project],
+            )
+          ).rows[0]?.n ?? 0,
+        );
+        if (count >= 16)
+          throw new ChatError("CONTEXT_LIMIT", "Remove a context item before adding another.", 409);
         await c.query(
           `INSERT INTO odin_api.workspace_context_items(conversation_id,item_id,reason)
            VALUES($1,$2,$3) ON CONFLICT(owner_id,conversation_id,item_id) DO UPDATE SET reason=excluded.reason`,
           [project, item, why],
         );
       } else {
-        await c.query("DELETE FROM odin_api.workspace_context_items WHERE conversation_id=$1 AND item_id=$2", [project, item]);
+        await c.query(
+          "DELETE FROM odin_api.workspace_context_items WHERE conversation_id=$1 AND item_id=$2",
+          [project, item],
+        );
       }
-      await this.#emit(c, project, selected ? "workspace.context.added" : "workspace.context.removed", { itemId: item });
+      await this.#emit(
+        c,
+        project,
+        selected ? "workspace.context.added" : "workspace.context.removed",
+        { itemId: item },
+      );
     });
     return this.context(project);
   }
@@ -309,7 +421,12 @@ export class WorkspaceOsStore {
     const project = identifier(projectId);
     await this.#project(project);
     return this.db.transaction(async (c) => {
-      const row = (await c.query("SELECT open_items,active_item_id,version,updated_at FROM odin_api.workspace_layouts WHERE conversation_id=$1", [project])).rows[0];
+      const row = (
+        await c.query(
+          "SELECT open_items,active_item_id,version,updated_at FROM odin_api.workspace_layouts WHERE conversation_id=$1",
+          [project],
+        )
+      ).rows[0];
       if (!row) return { openItemIds: [], activeItemId: null, version: 0, updatedAt: null };
       return {
         openItemIds: Array.isArray(row.open_items) ? row.open_items.map(String) : [],
@@ -320,36 +437,65 @@ export class WorkspaceOsStore {
     });
   }
 
-  async saveLayout(projectId: string, openItemIds: readonly string[], activeItemId: string | null, expectedVersion: number) {
+  async saveLayout(
+    projectId: string,
+    openItemIds: readonly string[],
+    activeItemId: string | null,
+    expectedVersion: number,
+  ) {
     const project = identifier(projectId);
     await this.#project(project);
     const ids = [...new Set(openItemIds.map(identifier))].slice(0, 12);
     const active = activeItemId === null ? null : identifier(activeItemId);
-    if (active && !ids.includes(active)) throw new ChatError("INVALID_LAYOUT", "Active item must be an open tab.");
+    if (active && !ids.includes(active))
+      throw new ChatError("INVALID_LAYOUT", "Active item must be an open tab.");
     integer(expectedVersion, 0, 1_000_000);
     await this.db.transaction(async (c) => {
       if (ids.length) {
-        const rows = await c.query("SELECT item_id FROM odin_api.workspace_files WHERE conversation_id=$1 AND item_id = ANY($2::uuid[])", [project, ids]);
-        if (rows.rows.length !== ids.length) throw new ChatError("INVALID_LAYOUT", "One or more tabs no longer exist.", 409);
+        const rows = await c.query(
+          "SELECT item_id FROM odin_api.workspace_files WHERE conversation_id=$1 AND item_id = ANY($2::uuid[])",
+          [project, ids],
+        );
+        if (rows.rows.length !== ids.length)
+          throw new ChatError("INVALID_LAYOUT", "One or more tabs no longer exist.", 409);
       }
-      const current = (await c.query("SELECT version FROM odin_api.workspace_layouts WHERE conversation_id=$1 FOR UPDATE", [project])).rows[0];
+      const current = (
+        await c.query(
+          "SELECT version FROM odin_api.workspace_layouts WHERE conversation_id=$1 FOR UPDATE",
+          [project],
+        )
+      ).rows[0];
       const version = Number(current?.version ?? 0);
-      if (version !== expectedVersion) throw new ChatError("STALE_LAYOUT", "Workspace layout changed; reload before retrying.", 409);
+      if (version !== expectedVersion)
+        throw new ChatError(
+          "STALE_LAYOUT",
+          "Workspace layout changed; reload before retrying.",
+          409,
+        );
       if (!current) {
-        await c.query("INSERT INTO odin_api.workspace_layouts(conversation_id,open_items,active_item_id,version) VALUES($1,$2,$3,1)", [project, canonicalJson(ids, 1200), active]);
+        await c.query(
+          "INSERT INTO odin_api.workspace_layouts(conversation_id,open_items,active_item_id,version) VALUES($1,$2,$3,1)",
+          [project, canonicalJson(ids, 1200), active],
+        );
       } else {
-        await c.query("UPDATE odin_api.workspace_layouts SET open_items=$2,active_item_id=$3,version=version+1,updated_at=now() WHERE conversation_id=$1", [project, canonicalJson(ids, 1200), active]);
+        await c.query(
+          "UPDATE odin_api.workspace_layouts SET open_items=$2,active_item_id=$3,version=version+1,updated_at=now() WHERE conversation_id=$1",
+          [project, canonicalJson(ids, 1200), active],
+        );
       }
     });
     return this.layout(project);
   }
 
   async #project(projectId: string): Promise<void> {
-    const exists = await this.db.transaction(async (c) => (await c.query("SELECT 1 FROM odin_api.conversations WHERE id=$1", [projectId])).rows[0]);
+    const exists = await this.db.transaction(
+      async (c) =>
+        (await c.query("SELECT 1 FROM odin_api.conversations WHERE id=$1", [projectId])).rows[0],
+    );
     if (!exists) throw new ChatError("NOT_FOUND", "Project not found.", 404);
   }
 
-  #item(projectId: string, row: Record<string, any>, content?: string): WorkspaceItem {
+  #item(projectId: string, row: Record<string, unknown>, content?: string): WorkspaceItem {
     return {
       id: String(row.item_id),
       projectId,
@@ -365,18 +511,40 @@ export class WorkspaceOsStore {
       updatedAt: iso(row.updated_at),
       size: Number(row.size ?? Buffer.byteLength(content ?? "")),
       sha: String(row.sha),
-      metadata: row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata) ? row.metadata : {},
+      metadata:
+        row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+          ? row.metadata
+          : {},
       ...(content === undefined ? {} : { content }),
     };
   }
 
-  async #checkLimit(c: { query: Function }, projectId: string, nextBytes: number, replacing: boolean, oldBytes = 0) {
-    const stats = (await c.query("SELECT count(*)::int AS n,coalesce(sum(octet_length(content)),0)::bigint AS bytes FROM odin_api.workspace_files WHERE conversation_id=$1", [projectId])).rows[0];
-    if ((!replacing && Number(stats.n) >= 200) || Number(stats.bytes) - oldBytes + nextBytes > 10_000_000)
+  async #checkLimit(
+    c: Parameters<DatabaseAction<unknown>>[0],
+    projectId: string,
+    nextBytes: number,
+    replacing: boolean,
+    oldBytes = 0,
+  ) {
+    const stats = (
+      await c.query(
+        "SELECT count(*)::int AS n,coalesce(sum(octet_length(content)),0)::bigint AS bytes FROM odin_api.workspace_files WHERE conversation_id=$1",
+        [projectId],
+      )
+    ).rows[0];
+    if (
+      (!replacing && Number(stats.n) >= 200) ||
+      Number(stats.bytes) - oldBytes + nextBytes > 10_000_000
+    )
       throw new ChatError("STORAGE_LIMIT", "Workspace size limit reached.", 409);
   }
 
-  async #emit(c: { query: Function }, projectId: string, type: string, data: Record<string, unknown>) {
+  async #emit(
+    c: Parameters<DatabaseAction<unknown>>[0],
+    projectId: string,
+    type: string,
+    data: Record<string, unknown>,
+  ) {
     const encoded = canonicalJson(data, 300000);
     await c.query(
       "INSERT INTO odin_api.events(conversation_id,turn_id,type,data,data_hash) VALUES($1,NULL,$2,$3,$4)",
@@ -391,12 +559,17 @@ function basename(path: string): string {
 
 function safeFilename(value: string): string {
   const raw = safeText(value, 180).trim();
-  const cleaned = raw
-    .normalize("NFKC")
-    .replace(/[\\/\u0000-\u001f\u007f]+/gu, "-")
+  const normalized = raw.normalize("NFKC");
+  const cleaned = [...normalized]
+    .map((char) => {
+      const code = char.charCodeAt(0);
+      return char === "/" || char === "\\" || code < 32 || code == 127 ? "-" : char;
+    })
+    .join("")
     .replace(/^\.+/u, "")
     .replace(/\s+/gu, " ")
     .trim();
-  if (!cleaned || cleaned === "." || cleaned === "..") throw new ChatError("INVALID_FILE", "Choose a valid filename.");
+  if (!cleaned || cleaned === "." || cleaned === "..")
+    throw new ChatError("INVALID_FILE", "Choose a valid filename.");
   return cleaned.slice(0, 160);
 }
