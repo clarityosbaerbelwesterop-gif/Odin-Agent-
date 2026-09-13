@@ -3,6 +3,7 @@
 // already typechecked build artifact so the canonical `npm run build` remains the
 // sole TypeScript compilation path.
 import { hostedHandler } from "../dist/src/chat/hosted.js";
+import { workspaceApiHandler } from "../dist/src/chat/workspace-api.js";
 
 const exactStripePrices = {
   pro: "price_1UDr55EmDA2oLCpoQJNERPTA",
@@ -32,4 +33,10 @@ console.info("Odin deployment gates", {
   },
 });
 
-export default hostedHandler;
+export default async function handler(req, res) {
+  const url = new URL(req.url ?? "/", "https://odin.invalid");
+  const rewrittenPath = url.searchParams.get("odin_path") ?? "";
+  if (rewrittenPath === "workspace" || rewrittenPath.startsWith("workspace/"))
+    return workspaceApiHandler(req, res);
+  return hostedHandler(req, res);
+}

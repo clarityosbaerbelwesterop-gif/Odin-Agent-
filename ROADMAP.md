@@ -1,5 +1,34 @@
 # Odin delivery roadmap
 
+## PRODUCT M2 — Workspace OS (current delivery)
+
+Status: **IMPLEMENTED — final governance exact-head CI and merge pending** on PR #77.
+
+- [x] Existing `odin_api.workspace_files` extended with stable item identity, bounded kinds, metadata,
+  optimistic versions, origins and canonical Run/Task provenance.
+- [x] Documents, text/Markdown/HTML/JSON imports, immutable Run-result Artifacts, project-scoped search,
+  useful Recent resources, bounded tabs/layout persistence and meaningful Workspace Activity.
+- [x] Explicit Workspace Context references compile through the existing `DeterministicContextCompiler`
+  and are consumed by real hosted Run construction as lower-authority P3 data beneath P0/P1/P2.
+- [x] Integrity, project scope, context limits and same-owner/project provenance fail closed; clients cannot
+  forge runtime origin, ownership, verification or system Activity authority.
+- [x] Autosave is server-acknowledged, versioned, bounded-retry and conflict-preserving.
+- [x] HTML preview remains sandboxed without same-origin privilege; preview is not deployment.
+- [x] Migration 012 preserves canonical actor identity, FORCE RLS and revoked PUBLIC privileges and adds
+  same-project provenance/context foreign-key protection. No production migration application is claimed.
+- [x] PRODUCT M2 focused/domain/security/UI regressions are in the repository.
+- [x] Implementation CI #817 on `4847f6a4a57a37b388f6d212c7473b4005ec69a3` passed foundation,
+  Biome, strict TypeScript, 619/619 deterministic tests, all UI tests, dry-provider smoke and build.
+- [x] Binding milestone, README, architecture, security, roadmap and handover documentation synchronized.
+- [ ] Fresh normal exact-head CI after final governance synchronization.
+- [ ] Merge PR #77 only if that exact-head CI is green and the PR remains mergeable.
+- [ ] Live Vercel/browser viewport evidence when a reachable preview is available; physical iPad proof is
+  separate and must not be inferred from responsive tests.
+
+After M2 merges, PRODUCT M3 must branch from the resulting `main` head. M3 is the visible Memory Brain
+projection over canonical M6/M24 Memory, not a second memory store. PRODUCT M4 starts only after M3 is
+verified and merged.
+
 ## Product roadmap (separate from historical engineering M0–M28)
 
 - **PRODUCT M1:** product transformation, shell, Companion, Projects, Workspace foundation, Activity

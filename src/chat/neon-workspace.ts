@@ -86,8 +86,15 @@ export class NeonWorkspace implements RepositoryWorkspace, QualityCommandRunner 
       )
         throw new ChatError("STORAGE_LIMIT", "Workspace size limit reached.", 409);
       await c.query(
-        "INSERT INTO odin_api.workspace_files(conversation_id,path,content,sha) VALUES($1,$2,$3,$4) ON CONFLICT(owner_id,conversation_id,path) DO UPDATE SET content=excluded.content,sha=excluded.sha",
-        [this.conversationId, path, content, sha],
+        `INSERT INTO odin_api.workspace_files
+          (conversation_id,path,content,sha,kind,title,mime_type,origin)
+         VALUES($1,$2,$3,$4,'GENERATED_ARTIFACT',$5,$6,'runtime')
+         ON CONFLICT(owner_id,conversation_id,path) DO UPDATE SET
+           content=excluded.content,
+           sha=excluded.sha,
+           version=odin_api.workspace_files.version+1,
+           updated_at=now()`,
+        [this.conversationId, path, content, sha, basename(path), mime(path)],
       );
       return previous?.content ?? null;
     });
@@ -156,6 +163,17 @@ function eligible(path: string): string {
       "Hosted workspaces support HTML, CSS, JavaScript, JSON and Markdown files.",
     );
   return normalized;
+}
+function basename(path: string): string {
+  return path.split("/").at(-1) || "Generated artifact";
+}
+function mime(path: string): string {
+  if (/\.html?$/iu.test(path)) return "text/html";
+  if (/\.css$/iu.test(path)) return "text/css";
+  if (/\.m?js$/iu.test(path)) return "text/javascript";
+  if (/\.json$/iu.test(path)) return "application/json";
+  if (/\.md$/iu.test(path)) return "text/markdown";
+  return "text/plain";
 }
 function walk(node: Node, visit: (node: Node) => void): void {
   visit(node);

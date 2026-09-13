@@ -1,5 +1,33 @@
 # Odin architecture
 
+## PRODUCT M2 Workspace OS boundary (2026-09-13)
+
+PRODUCT M2 extends the PRODUCT M1 Project surface without introducing replacement authorities. The
+existing `odin_api.workspace_files` table remains the canonical Workspace/Artifact store; M2 adds stable
+item IDs, bounded item kinds, title/MIME metadata, server-owned origin, optimistic versioning, timestamps
+and Run/Task provenance. `workspace_context_items` stores bounded references to canonical Workspace rows,
+and `workspace_layouts` stores only useful tab continuity. Both remain owner/project scoped under Neon
+Auth, transaction-local actor identity and FORCE RLS.
+
+Selected Workspace items enter real hosted Run construction only through Odin's existing
+`DeterministicContextCompiler`. P0 system policy, P1 Project rules and P2 current-task requirements remain
+higher authority than P3 Workspace data. Selected content is integrity checked, token bounded and
+provenanced; embedded document instructions remain untrusted data and cannot grant tools, approvals,
+budgets, verification bypasses, sandbox privileges or other runtime authority. The complete Workspace is
+never serialized into every model call.
+
+The product layer adds Documents, text imports, project-scoped search, Run-result Artifacts, bounded
+layout persistence, Context selection, Activity projection and previews. Artifact provenance is bound to
+canonical Runs in the same owner/project. Generated runtime Artifacts are read-only through document
+mutation routes. HTML preview reuses the isolated preview boundary and is sandboxed without
+`allow-same-origin`; Preview is not deployment. Autosave is optimistic and server-acknowledged, retries
+only bounded transient failures and preserves unsaved local text on semantic conflicts.
+
+Migration `012_product_m2_workspace_os.sql` preserves the existing actor/RLS boundary, explicitly keeps
+PUBLIC privileges revoked and adds same-owner/project foreign-key protection for context and Run
+provenance. Repository verification does not imply that this migration has been applied to production.
+See `docs/milestones/PRODUCT_M2_WORKSPACE_OS.md` for the binding product contract.
+
 ## PRODUCT M1 product boundary (2026-09-12)
 
 The Personal Agentic Workspace is a product layer over Odin's existing authorities. A persisted chat
