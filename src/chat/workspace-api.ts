@@ -1,9 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { attachDatabasePool } from "@vercel/functions";
+import { canonicalJson } from "../durable/internal.js";
 import { resolveNeonAuthUrl } from "./deployment.js";
 import { NeonAuth } from "./neon-auth.js";
 import { createNeonPool, NeonActorDatabase } from "./neon-database.js";
-import { object, publicError } from "./safety.js";
+import { hashText, object, publicError } from "./safety.js";
 import { ChatError } from "./types.js";
 import { WorkspaceOsStore } from "./workspace-os.js";
 
@@ -192,6 +193,31 @@ export async function workspaceApiHandler(
           body.expectedVersion,
         ),
       });
+      return;
+    }
+
+    const preview = /^\/api\/workspace\/projects\/([\w:-]+)\/preview$/u.exec(url.pathname);
+    if (preview && method === "POST") {
+      const body = object(await jsonBody(req), ["itemId"]);
+      if (typeof body.itemId !== "string")
+        throw new ChatError("INVALID_PREVIEW", "A Workspace item is required.");
+      const projectId = preview[1] ?? "";
+      const selected = await workspace.item(projectId, body.itemId);
+      if (selected.kind !== "HTML" && selected.mimeType !== "text/html")
+        throw new ChatError("PREVIEW_UNAVAILABLE", "This item has no isolated HTML preview.", 409);
+      const event = {
+        itemId: selected.id,
+        path: selected.path,
+        title: selected.title,
+      };
+      const encoded = canonicalJson(event, 300000);
+      await db.transaction(async (client) => {
+        await client.query(
+          "INSERT INTO odin_api.events(conversation_id,turn_id,type,data,data_hash) VALUES($1,NULL,'workspace.preview.opened',$2,$3)",
+          [projectId, encoded, hashText(encoded)],
+        );
+      });
+      send(res, 200, { opened: true });
       return;
     }
 
