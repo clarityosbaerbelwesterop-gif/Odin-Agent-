@@ -58,7 +58,8 @@ const TEXT_IMPORTS: Readonly<Record<string, WorkspaceItemKind>> = {
   "application/json": "JSON",
 };
 const iso = (value: Date | string) => new Date(value).toISOString();
-const isoRow = (value: unknown) => iso(value instanceof Date || typeof value === "string" ? value : new Date(0));
+const isoRow = (value: unknown) =>
+  iso(value instanceof Date || typeof value === "string" ? value : new Date(0));
 const missing = () => new ChatError("NOT_FOUND", "Workspace item not found.", 404);
 
 export class WorkspaceOsStore {
