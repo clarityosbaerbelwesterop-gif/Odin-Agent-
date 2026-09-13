@@ -1,10 +1,6 @@
 import { createHash } from "node:crypto";
 import type { MemoryConflictGroup } from "./advanced.js";
-import type {
-  ActiveMemoryRecord,
-  MemorySourceClass,
-  StoredMemoryRecord,
-} from "./types.js";
+import type { ActiveMemoryRecord, MemorySourceClass, StoredMemoryRecord } from "./types.js";
 
 export type MemoryProductStatus =
   | "ACTIVE"
@@ -172,16 +168,14 @@ export function projectMemoryBrain(input: MemoryBrainProjectionInput): MemoryBra
     if (!node.sourceReference) continue;
     const source = sourceByReference.get(node.sourceReference);
     const sourceId =
-      sourceNodeIds.get(node.sourceReference) ??
-      `source:${sha(node.sourceReference).slice(0, 20)}`;
+      sourceNodeIds.get(node.sourceReference) ?? `source:${sha(node.sourceReference).slice(0, 20)}`;
     if (!sourceNodeIds.has(node.sourceReference)) {
       sourceNodeIds.set(node.sourceReference, sourceId);
       nodes.push({
         id: sourceId,
         nodeClass: source?.nodeClass ?? classifySource(node.sourceReference),
         title: source?.title ?? sourceTitle(node.sourceReference),
-        activeInContext:
-          pulse?.selectedWorkspaceReferences.includes(node.sourceReference) ?? false,
+        activeInContext: pulse?.selectedWorkspaceReferences.includes(node.sourceReference) ?? false,
       });
     }
     edges.push(edge(node.id, sourceId, "sourced_from"));
@@ -298,7 +292,9 @@ function statusFor(
   return "ACTIVE";
 }
 
-function duplicateGroups(records: readonly StoredMemoryRecord[]): Map<string, ActiveMemoryRecord[]> {
+function duplicateGroups(
+  records: readonly StoredMemoryRecord[],
+): Map<string, ActiveMemoryRecord[]> {
   const groups = new Map<string, ActiveMemoryRecord[]>();
   for (const record of records) {
     if (record.status !== "active") continue;
@@ -334,10 +330,7 @@ function duplicateMergedCounts(records: readonly StoredMemoryRecord[]): Map<stri
   return counts;
 }
 
-function addSupersessionEdges(
-  nodes: readonly MemoryBrainNode[],
-  edges: MemoryBrainEdge[],
-): void {
+function addSupersessionEdges(nodes: readonly MemoryBrainNode[], edges: MemoryBrainEdge[]): void {
   const byKey = new Map<string, MemoryBrainNode[]>();
   for (const node of nodes) {
     const group = byKey.get(node.title) ?? [];
@@ -448,9 +441,7 @@ function edge(from: string, to: string, relation: MemoryBrainEdge["relation"]): 
   return { id: `edge:${sha(`${from}|${relation}|${to}`).slice(0, 24)}`, from, to, relation };
 }
 
-function classifySource(
-  reference: string,
-): Exclude<MemoryBrainNodeClass, "MEMORY" | "PROJECT"> {
+function classifySource(reference: string): Exclude<MemoryBrainNodeClass, "MEMORY" | "PROJECT"> {
   if (reference.includes("/workspace/")) return "WORKSPACE_SOURCE";
   if (reference.startsWith("run:") || reference.includes("/mission/")) return "RUN";
   return "SOURCE";
@@ -492,10 +483,7 @@ function emptyCounts(): Record<MemoryProductStatus, number> {
 
 function canonicalTime(value: string): string {
   const parsed = Date.parse(value);
-  if (
-    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(value) ||
-    !Number.isFinite(parsed)
-  )
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(value) || !Number.isFinite(parsed))
     throw new TypeError("Memory Brain timestamps must be canonical UTC values.");
   const canonical = new Date(parsed).toISOString();
   if (canonical !== value)
