@@ -58,6 +58,7 @@ const TEXT_IMPORTS: Readonly<Record<string, WorkspaceItemKind>> = {
   "application/json": "JSON",
 };
 const iso = (value: Date | string) => new Date(value).toISOString();
+const isoRow = (value: unknown) => iso(value instanceof Date || typeof value === "string" ? value : new Date(0));
 const missing = () => new ChatError("NOT_FOUND", "Workspace item not found.", 404);
 
 export class WorkspaceOsStore {
@@ -228,7 +229,7 @@ export class WorkspaceOsStore {
           WHERE conversation_id=$1 AND item_id=$2`,
         [project, item, title, content, hashText(content)],
       );
-      if (Date.now() - new Date(row.updated_at).getTime() > 60_000)
+      if (Date.now() - new Date(String(row.updated_at)).getTime() > 60_000)
         await this.#emit(c, project, "workspace.document.updated", { itemId: item, title });
     });
     return this.item(project, item);
@@ -256,7 +257,7 @@ export class WorkspaceOsStore {
         throw new ChatError("INVALID_FILE", "Imported JSON must be valid JSON.");
       }
     }
-    const filename = safeFilename(input.filename);
+    const filename = sanitizeWorkspaceFilename(input.filename);
     const itemId = randomUUID();
     const path = `imports/${itemId}-${filename}`;
     await this.db.transaction(async (c) => {
@@ -323,7 +324,7 @@ export class WorkspaceOsStore {
       const encoded = canonicalJson(answer.data, 300000);
       if (hashText(encoded) !== answer.data_hash)
         throw new ChatError("INTEGRITY_FAILURE", "Run output failed integrity verification.", 500);
-      const content = safeText(String(answer.data.text ?? ""), 262144);
+      const content = safeText(String((answer.data as Record<string, unknown>).text ?? ""), 262144);
       if (!content.trim())
         throw new ChatError("ARTIFACT_UNAVAILABLE", "This Run has no textual result to save.", 409);
       const artifactTitle = safeText(title ?? "Run result", 200).trim() || "Run result";
@@ -331,14 +332,15 @@ export class WorkspaceOsStore {
       await this.#checkLimit(c, project, Buffer.byteLength(content), false);
       await c.query(
         `INSERT INTO odin_api.workspace_files
-          (conversation_id,item_id,path,content,sha,kind,title,mime_type,origin,source_turn_id,metadata)
-         VALUES($1,$2,$3,$4,$5,'GENERATED_ARTIFACT',$6,'text/markdown','runtime',$7,'{}'::jsonb)`,
+          (conversation_id,item_id,path,content,sha,kind,title,mime_type,origin,source_turn_id,source_task_id,metadata)
+         VALUES($1,$2,$3,$4,$5,'GENERATED_ARTIFACT',$6,'text/markdown','runtime',$7,'work','{}'::jsonb)`,
         [project, artifactId, path, content, hashText(content), artifactTitle, run],
       );
       await this.#emit(c, project, "workspace.artifact.created", {
         itemId: artifactId,
         title: artifactTitle,
         sourceRunId: run,
+        sourceTaskId: "work",
       });
     });
     return this.item(project, artifactId);
@@ -359,10 +361,10 @@ export class WorkspaceOsStore {
         )
       ).rows.map((row) => ({
         itemId: row.item_id,
-        title: row.title ?? basename(row.path),
-        kind: row.kind,
-        reason: row.reason,
-        addedAt: iso(row.added_at),
+        title: typeof row.title === "string" ? row.title : basename(String(row.path)),
+        kind: String(row.kind),
+        reason: String(row.reason),
+        addedAt: isoRow(row.added_at),
       })),
     );
   }
@@ -430,9 +432,9 @@ export class WorkspaceOsStore {
       if (!row) return { openItemIds: [], activeItemId: null, version: 0, updatedAt: null };
       return {
         openItemIds: Array.isArray(row.open_items) ? row.open_items.map(String) : [],
-        activeItemId: row.active_item_id ?? null,
+        activeItemId: typeof row.active_item_id === "string" ? row.active_item_id : null,
         version: Number(row.version),
-        updatedAt: iso(row.updated_at),
+        updatedAt: isoRow(row.updated_at),
       };
     });
   }
@@ -496,25 +498,26 @@ export class WorkspaceOsStore {
   }
 
   #item(projectId: string, row: Record<string, unknown>, content?: string): WorkspaceItem {
+    const metadata =
+      row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+        ? (row.metadata as Record<string, unknown>)
+        : {};
     return {
       id: String(row.item_id),
       projectId,
       path: String(row.path),
       kind: String(row.kind) as WorkspaceItemKind,
       title: typeof row.title === "string" && row.title ? row.title : basename(String(row.path)),
-      mimeType: row.mime_type ?? null,
+      mimeType: typeof row.mime_type === "string" ? row.mime_type : null,
       origin: String(row.origin) as WorkspaceOrigin,
-      sourceRunId: row.source_turn_id ?? null,
-      sourceTaskId: row.source_task_id ?? null,
+      sourceRunId: typeof row.source_turn_id === "string" ? row.source_turn_id : null,
+      sourceTaskId: typeof row.source_task_id === "string" ? row.source_task_id : null,
       version: Number(row.version),
-      createdAt: iso(row.created_at),
-      updatedAt: iso(row.updated_at),
+      createdAt: isoRow(row.created_at),
+      updatedAt: isoRow(row.updated_at),
       size: Number(row.size ?? Buffer.byteLength(content ?? "")),
       sha: String(row.sha),
-      metadata:
-        row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
-          ? row.metadata
-          : {},
+      metadata,
       ...(content === undefined ? {} : { content }),
     };
   }
@@ -557,13 +560,13 @@ function basename(path: string): string {
   return path.split("/").at(-1) || "Workspace item";
 }
 
-function safeFilename(value: string): string {
+export function sanitizeWorkspaceFilename(value: string): string {
   const raw = safeText(value, 180).trim();
   const normalized = raw.normalize("NFKC");
   const cleaned = [...normalized]
     .map((char) => {
       const code = char.charCodeAt(0);
-      return char === "/" || char === "\\" || code < 32 || code == 127 ? "-" : char;
+      return char === "/" || char === "\\" || code < 32 || code === 127 ? "-" : char;
     })
     .join("")
     .replace(/^\.+/u, "")
