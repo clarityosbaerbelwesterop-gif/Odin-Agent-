@@ -1,5 +1,30 @@
 # Engineering handover
 
+## PRODUCT M4 checkpoint — 2026-09-13
+
+PR #79 productizes Odin's existing autonomous runtime as Project → Runs without creating a second
+runtime, task, event, verification, approval, Workspace, Memory, tool or credential authority. The Run
+Center projects the canonical Mission/Turn state, real task `dependsOn` edges, runtime/tool activity,
+verification and repair evidence, PRODUCT M3 Brain Pulse selections, PRODUCT M2 Run-linked Artifacts,
+usage where reported, and checkpoint/approval evidence only when the canonical event stream contains it.
+Pause/resume/cancel continue through the server-authoritative current-version control path; replan is a
+steering instruction rather than a client-authored task-graph mutation.
+
+The implementation is responsive for desktop/iPad layouts and intentionally exposes observable work and
+evidence rather than hidden reasoning. Existing cross-scope, stale-control, provenance, verification,
+approval, secret, Memory-isolation and tool/network/credential tests remain the authority boundary; M4
+adds focused Run Center regressions rather than duplicating those engines. Temporary formatter-diagnostic
+CI infrastructure was removed before the merge gate.
+
+Exact pre-governance code evidence: CI #859 passed on
+`f8d45b5581d954bc872cc8f9a18d75eb21bf9aa0`, including foundation, Biome, strict TypeScript, 627/627
+domain/security tests, the complete UI suite, credential-free smoke and production/base build. A final
+exact-head CI is still required after this governance synchronization before PR #79 may merge. Live Vercel
+preview and physical-iPad evidence remain separate external evidence and must not be inferred from local
+or CI tests.
+
+Binding PRODUCT M4 contract: `docs/milestones/PRODUCT_M4_RUNTIME_PRODUCTIZATION.md`.
+
 ## PRODUCT M2 checkpoint — 2026-09-13
 
 PRODUCT M2 continues PR #77 in place and turns the M1 Project shell into a persistent Workspace OS. The

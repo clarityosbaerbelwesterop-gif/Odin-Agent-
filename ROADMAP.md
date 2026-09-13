@@ -1,5 +1,33 @@
 # Odin delivery roadmap
 
+## PRODUCT M4 — Runtime Productization (current delivery)
+
+Status: **IMPLEMENTED — final governance exact-head CI and merge pending** on PR #79.
+
+- [x] Project → Runs exposes canonical Run history, goal/state, Companion state and the real task DAG with
+  `dependsOn` relationships; no product-only runtime state machine exists.
+- [x] Activity, tool/model/file events, verification, repair cycles, usage, checkpoint/recovery and
+  approvals are rendered only from canonical runtime evidence; missing evidence remains missing.
+- [x] PRODUCT M3 Brain Pulse/Context selections and PRODUCT M2 Run-linked Workspace Artifacts are integrated
+  without creating another Memory, Context or Artifact authority.
+- [x] Pause/resume/cancel use the current server version and existing control path; replan is steering and
+  cannot mutate task state from the client.
+- [x] Desktop, iPad landscape/portrait and mobile layouts avoid an unreadable miniature DAG/IDE by using
+  bounded responsive sections and horizontal Run history where appropriate.
+- [x] Temporary formatter diagnostics were removed; CI #859 on
+  `f8d45b5581d954bc872cc8f9a18d75eb21bf9aa0` passed foundation, Biome, strict TypeScript, 627/627
+  domain/security tests, all UI tests, dry-provider smoke and production/base build.
+- [x] M3 async Memory Brain regression harness hardened without weakening server-projection assertions.
+- [x] Binding milestone plus README/Architecture/Security/Roadmap/Handover synchronized.
+- [ ] Fresh normal exact-head CI after this final governance synchronization.
+- [ ] Mark PR #79 ready and merge only if exact-head CI is green and the PR remains mergeable.
+- [ ] Live Vercel/browser/physical-iPad proof remains separate external evidence and is not inferred from
+  repository tests or responsive CSS.
+
+After M4 merges, PRODUCT M5 must branch from the resulting `main` head and productize the existing
+M10/M23/M25 Skill infrastructure rather than creating another Skill engine. PRODUCT M6 starts only from
+the merged M5 `main` head.
+
 ## PRODUCT M2 — Workspace OS (current delivery)
 
 Status: **IMPLEMENTED — final governance exact-head CI and merge pending** on PR #77.
