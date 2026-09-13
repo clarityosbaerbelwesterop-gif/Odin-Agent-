@@ -1,4 +1,6 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
+import type { PoolClient } from "pg";
+import { canonicalJson } from "../durable/internal.js";
 import { AdvancedMemoryEngine } from "../memory/advanced.js";
 import {
   type MemoryBrainProjection,
@@ -9,21 +11,25 @@ import {
   projectMemoryBrain,
 } from "../memory/product.js";
 import type {
-  ActiveMemoryRecord,
   MemoryKind,
   MemoryScope,
   MemorySensitivity,
   MemorySourceClass,
   StoredMemoryRecord,
 } from "../memory/types.js";
-import { canonicalJson } from "../durable/internal.js";
 import type { ActorDatabase } from "./neon-database.js";
 import { NeonMemoryStore } from "./neon-memory.js";
 import { hashText, identifier } from "./safety.js";
 import { ChatError } from "./types.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
-const KINDS = new Set<MemoryKind>(["episodic", "project", "semantic", "user_preference", "working"]);
+const KINDS = new Set<MemoryKind>([
+  "episodic",
+  "project",
+  "semantic",
+  "user_preference",
+  "working",
+]);
 const STATUSES = new Set<MemoryProductStatus>([
   "ACTIVE",
   "TEMPORARY",
@@ -82,7 +88,10 @@ export class MemoryBrainStore {
     this.memory = new NeonMemoryStore(db, userId);
   }
 
-  async projection(projectId: string, filters: MemoryBrainFilters = {}): Promise<MemoryBrainProjection> {
+  async projection(
+    projectId: string,
+    filters: MemoryBrainFilters = {},
+  ): Promise<MemoryBrainProjection> {
     projectUuid(projectId);
     const evaluatedAt = new Date().toISOString();
     const { project, rows, signalRows, workspaceRows, pulseRow } = await this.db.transaction(
@@ -238,7 +247,11 @@ export class MemoryBrainStore {
     });
     const content = String(item.content);
     if (hashText(content) !== String(item.sha))
-      throw new ChatError("INTEGRITY_FAILURE", "Workspace item failed integrity verification.", 500);
+      throw new ChatError(
+        "INTEGRITY_FAILURE",
+        "Workspace item failed integrity verification.",
+        500,
+      );
     const id = `workspace-${itemId}`;
     const scope: MemoryScope = { userId: this.userId, projectId };
     const existing = await this.memory.get(id, scope);
@@ -286,8 +299,12 @@ export class MemoryBrainStore {
     projectUuid(projectId);
     const content = input.content.trim();
     if (!content || content.length > 65_536)
-      throw new ChatError("INVALID_MEMORY", "Memory content must contain 1-65536 characters.");
-    if (!KINDS.has(input.kind)) throw new ChatError("INVALID_MEMORY", "Unsupported memory kind.");
+      throw new ChatError(
+        "INVALID_MEMORY",
+        "Memory content must contain 1-65536 characters.",
+      );
+    if (!KINDS.has(input.kind))
+      throw new ChatError("INVALID_MEMORY", "Unsupported memory kind.");
     const now = new Date().toISOString();
     const id = `user-${randomUUID()}`;
     return (
@@ -323,7 +340,8 @@ function rowToRecord(row: MemoryDbRow, userId: string): StoredMemoryRecord {
     ...(row.mission_id ? { missionId: String(row.mission_id) } : {}),
   };
   if (row.status === "tombstoned") {
-    if (!row.previous_content_hash) throw new ChatError("INTEGRITY_FAILURE", "Invalid memory tombstone.", 500);
+    if (!row.previous_content_hash)
+      throw new ChatError("INTEGRITY_FAILURE", "Invalid memory tombstone.", 500);
     return {
       id: String(row.id),
       scope,
@@ -369,15 +387,22 @@ function rowToRecord(row: MemoryDbRow, userId: string): StoredMemoryRecord {
 
 function normalizeFilters(filters: MemoryBrainFilters): MemoryBrainFilters {
   const text = filters.text?.trim();
-  if (text && text.length > 240) throw new ChatError("INVALID_FILTER", "Memory search is too long.");
-  for (const kind of filters.kinds ?? []) if (!KINDS.has(kind)) throw new ChatError("INVALID_FILTER", "Unknown memory kind.");
-  for (const status of filters.statuses ?? []) if (!STATUSES.has(status)) throw new ChatError("INVALID_FILTER", "Unknown memory status.");
-  for (const source of filters.sourceClasses ?? []) if (!SOURCE_CLASSES.has(source)) throw new ChatError("INVALID_FILTER", "Unknown memory source.");
+  if (text && text.length > 240)
+    throw new ChatError("INVALID_FILTER", "Memory search is too long.");
+  for (const kind of filters.kinds ?? [])
+    if (!KINDS.has(kind)) throw new ChatError("INVALID_FILTER", "Unknown memory kind.");
+  for (const status of filters.statuses ?? [])
+    if (!STATUSES.has(status)) throw new ChatError("INVALID_FILTER", "Unknown memory status.");
+  for (const source of filters.sourceClasses ?? [])
+    if (!SOURCE_CLASSES.has(source))
+      throw new ChatError("INVALID_FILTER", "Unknown memory source.");
   return {
     ...(text ? { text } : {}),
     ...(filters.kinds?.length ? { kinds: [...new Set(filters.kinds)] } : {}),
     ...(filters.statuses?.length ? { statuses: [...new Set(filters.statuses)] } : {}),
-    ...(filters.sourceClasses?.length ? { sourceClasses: [...new Set(filters.sourceClasses)] } : {}),
+    ...(filters.sourceClasses?.length
+      ? { sourceClasses: [...new Set(filters.sourceClasses)] }
+      : {}),
   };
 }
 
@@ -410,7 +435,7 @@ function parsePulse(value: unknown): MemoryBrainPulse | null {
 }
 
 async function productEvent(
-  client: { query(text: string, values?: readonly unknown[]): Promise<{ rows: any[] }> },
+  client: Pick<PoolClient, "query">,
   projectId: string,
   type: string,
   data: Record<string, unknown>,
@@ -429,14 +454,11 @@ function projectUuid(value: string): string {
 
 function cleanKey(value: string): string {
   const key = value.trim();
-  if (!key || key.length > 200) throw new ChatError("INVALID_MEMORY", "Memory key must contain 1-200 characters.");
+  if (!key || key.length > 200)
+    throw new ChatError("INVALID_MEMORY", "Memory key must contain 1-200 characters.");
   return key;
 }
 
 function iso(value: Date | string): string {
   return new Date(value).toISOString();
-}
-
-export function memoryContentHash(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
 }
