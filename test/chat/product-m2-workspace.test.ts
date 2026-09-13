@@ -42,6 +42,11 @@ function dbForContext(
           if (text.includes("UPDATE odin_api.memory_product_signals")) return { rows: [] };
           if (text.includes("INSERT INTO odin_api.events")) return { rows: [] };
           if (text.includes("type IN ('message.user','answer')")) return { rows: [...history] };
+          if (
+            text.includes("FROM odin_api.events") &&
+            text.includes("type IN ('skill.selected','skill.loaded')")
+          )
+            return { rows: [] };
           if (text === "SELECT data,data_hash FROM odin_api.turns WHERE id=$1")
             return { rows: [turnRow] };
           if (text.includes("SELECT 1 FROM odin_api.turns") && text.includes("conversation_id=$2"))
