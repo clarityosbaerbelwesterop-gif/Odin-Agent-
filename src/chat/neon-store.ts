@@ -19,6 +19,7 @@ import {
   type ChatEvent,
   type ChatTurn,
 } from "./types.js";
+import { compileWorkspaceContext } from "./workspace-context.js";
 
 function encode(value: unknown, limit: number) {
   const data = safeText(canonicalJson(value, limit), limit);
@@ -35,6 +36,9 @@ const missing = () => new ChatError("NOT_FOUND", "Conversation or task not found
 export class NeonChatStore implements ChatRepository {
   constructor(readonly db: ActorDatabase) {}
   close(): void {}
+  async workspaceContext(conversationId: string, missionId: string) {
+    return compileWorkspaceContext(this.db, identifier(conversationId), identifier(missionId));
+  }
   async history(conversationId: string, currentTurn: string): Promise<ModelMessage[]> {
     return this.db.transaction(async (c) =>
       (
