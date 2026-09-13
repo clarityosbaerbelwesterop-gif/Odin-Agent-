@@ -24,7 +24,7 @@ function skill(status = "AVAILABLE", installation = null) {
     version: "1.0.0",
     publisher: "Odin",
     trust: "BUILT_IN_VERIFIED",
-    source: "M10/M15 capability packs",
+    source: "M10 verified built-in / M23 Skill OS",
     verification: "VERIFIED",
     examples: ["Shape a feature request"],
     requiredTools: [],
@@ -32,7 +32,7 @@ function skill(status = "AVAILABLE", installation = null) {
     permissions: ["Read selected project context"],
     risk: "LOW",
     supportedScopes: ["global", "project"],
-    canonicalAuthority: "M23 Skill OS",
+    canonicalAuthority: "M10 Skill Registry → M23 Skill OS",
     contentHash: hash,
     status,
     installation,
@@ -184,9 +184,47 @@ test("PRODUCT M5 custom authoring is inert and Run Center scopes real Skill evid
   }
 });
 
+test("PRODUCT M5 Run Center fabricates no Skill evidence when the server has none", async () => {
+  const current = await app();
+  try {
+    current.window.fetch = async (path) => {
+      const url = String(path);
+      if (url === `/api/projects/${projectId}`)
+        return response({ turns: [{ id: runId, objective: "Build verified product" }] });
+      if (url === `/api/skills/runs/${runId}?projectId=${projectId}`)
+        return response({
+          evidence: [],
+          nextCursor: 0,
+          note: "No canonical Skill runtime evidence is attached to this Run; no Skill usage is fabricated.",
+        });
+      return response({ message: `Unexpected ${url}` }, 500);
+    };
+    current.runRow.click();
+    await tick();
+    await tick();
+    const text = current.window.document.getElementById("m5-run-skills").textContent;
+    assert.match(text, /no Skill usage is fabricated/iu);
+    assert.equal(current.window.document.querySelectorAll("#m5-run-skills .m4-evidence-card").length, 0);
+  } finally {
+    current.close();
+  }
+});
+
+test("PRODUCT M5 lifecycle UI delegates every mutation to server-authoritative Skill endpoints", async () => {
+  const source = await readFile("web/skills-os.js", "utf8");
+  assert.match(source, /m5Mutate\("\/api\/skills\/install"/u);
+  assert.match(source, /m5Mutate\("\/api\/skills\/state"/u);
+  assert.match(source, /m5Mutate\("\/api\/skills\/update"/u);
+  assert.match(source, /m5Mutate\("\/api\/skills\/rollback"/u);
+  assert.match(source, /"DELETE"/u);
+  assert.match(source, /m5request\("\/api\/skills\/custom"/u);
+  assert.doesNotMatch(source, /dispatchEvent\([^\n]*skill\.(?:selected|loaded|result)/iu);
+});
+
 test("PRODUCT M5 responsive CSS provides single-column iPad/mobile fallbacks", async () => {
   const css = await readFile("web/product-m5.css", "utf8");
   assert.match(css, /@media \(max-width: 980px\)/u);
   assert.match(css, /grid-template-columns: 1fr/u);
   assert.match(css, /@media \(max-width: 700px\)/u);
+  assert.doesNotMatch(css, /!important/iu);
 });
