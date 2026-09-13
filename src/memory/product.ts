@@ -1,11 +1,10 @@
 import { createHash } from "node:crypto";
+import type { MemoryConflictGroup } from "./advanced.js";
 import type {
   ActiveMemoryRecord,
-  MemoryConflictGroup,
-  MemoryRevision,
   MemorySourceClass,
   StoredMemoryRecord,
-} from "./index.js";
+} from "./types.js";
 
 export type MemoryProductStatus =
   | "ACTIVE"
@@ -15,7 +14,6 @@ export type MemoryProductStatus =
   | "SUPERSEDED"
   | "NOISE_CANDIDATE"
   | "ARCHIVED";
-
 export type MemoryConfidence = "high" | "medium" | "low";
 export type MemoryBrainNodeClass =
   | "MEMORY"
@@ -126,10 +124,14 @@ export function projectMemoryBrain(input: MemoryBrainProjectionInput): MemoryBra
   const evaluatedAtMs = Date.parse(evaluatedAt);
   const stale = new Set(input.staleIds ?? []);
   const conflicts = new Set((input.conflicts ?? []).flatMap((group) => group.recordIds));
-  const signalById = new Map((input.signals ?? []).map((signal) => [signal.id, validateSignal(signal)]));
-  const sourceByReference = new Map((input.sources ?? []).map((source) => [source.reference, source]));
+  const signalById = new Map(
+    (input.signals ?? []).map((signal) => [signal.id, validateSignal(signal)]),
+  );
+  const sourceByReference = new Map(
+    (input.sources ?? []).map((source) => [source.reference, source]),
+  );
   const pulse = input.pulse ?? null;
-  const activePulseIds = new Set(pulse?.selectedMemoryIds ?? []);
+  const pulseIds = new Set(pulse?.selectedMemoryIds ?? []);
   const superseded = duplicateSupersededIds(input.records);
   const mergedCounts = duplicateMergedCounts(input.records);
   const maxMemoryNodes = Math.max(1, Math.min(160, input.maxMemoryNodes ?? 120));
@@ -137,70 +139,24 @@ export function projectMemoryBrain(input: MemoryBrainProjectionInput): MemoryBra
   const projected = input.records
     .map((record) => {
       const signal = signalById.get(record.id) ?? emptySignal(record.id);
-      if (record.status === "tombstoned") {
-        return {
-          id: record.id,
-          nodeClass: "MEMORY" as const,
-          title: "Archived memory",
-          status: "ARCHIVED" as const,
-          summary: "Content removed; revision history and tombstone remain auditable.",
-          importance: 0,
-          confidence: "low" as const,
-          updatedAt: record.updatedAt,
-          version: record.version,
-          recordHash: record.recordHash,
-          usageCount: signal.usageCount,
-          lastUsedAt: signal.lastUsedAt,
-          pinned: signal.pinned,
-          mergedCount: 1,
-          activeInContext: false,
-        };
-      }
+      if (record.status === "tombstoned") return tombstoneNode(record, signal);
       const status = statusFor(record, signal, {
         stale: stale.has(record.id),
         conflicted: conflicts.has(record.id),
         superseded: superseded.has(record.id),
         evaluatedAtMs,
       });
-      const importance = importanceFor(record, signal, status, evaluatedAtMs);
-      return {
-        id: record.id,
-        nodeClass: "MEMORY" as const,
-        title: record.key,
+      return activeNode(
+        record,
+        signal,
         status,
-        memoryKind: record.kind,
-        summary:
-          record.sensitivity === "sensitive"
-            ? "Sensitive memory · content hidden in the graph projection."
-            : summarize(record.content),
-        importance,
-        confidence: confidenceFor(record.provenance.sourceClass, status),
-        sensitivity: record.sensitivity,
-        sourceClass: record.provenance.sourceClass,
-        sourceReference: record.provenance.reference,
-        sourceVersion: record.provenance.sourceVersion,
-        sourceObservedAt: record.provenance.observedAt,
-        updatedAt: record.updatedAt,
-        ...(record.expiresAt === undefined ? {} : { expiresAt: record.expiresAt }),
-        version: record.version,
-        recordHash: record.recordHash,
-        tags: record.tags,
-        usageCount: signal.usageCount,
-        lastUsedAt: signal.lastUsedAt,
-        pinned: signal.pinned,
-        mergedCount: mergedCounts.get(record.id) ?? 1,
-        activeInContext: activePulseIds.has(record.id),
-      };
+        mergedCounts.get(record.id) ?? 1,
+        pulseIds.has(record.id),
+        evaluatedAtMs,
+      );
     })
     .filter((node) => matchesFilters(node, input.filters))
-    .sort(
-      (left, right) =>
-        Number(right.activeInContext) - Number(left.activeInContext) ||
-        warningRank(right.status) - warningRank(left.status) ||
-        (right.importance ?? 0) - (left.importance ?? 0) ||
-        String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")) ||
-        left.id.localeCompare(right.id),
-    );
+    .sort(compareNodes);
 
   const keptMemory = projected.slice(0, maxMemoryNodes);
   const keptIds = new Set(keptMemory.map((node) => node.id));
@@ -215,53 +171,27 @@ export function projectMemoryBrain(input: MemoryBrainProjectionInput): MemoryBra
     edges.push(edge(`project:${input.projectId}`, node.id, "contains"));
     if (!node.sourceReference) continue;
     const source = sourceByReference.get(node.sourceReference);
-    const sourceId = sourceNodeIds.get(node.sourceReference) ?? `source:${sha(node.sourceReference).slice(0, 20)}`;
+    const sourceId =
+      sourceNodeIds.get(node.sourceReference) ??
+      `source:${sha(node.sourceReference).slice(0, 20)}`;
     if (!sourceNodeIds.has(node.sourceReference)) {
       sourceNodeIds.set(node.sourceReference, sourceId);
       nodes.push({
         id: sourceId,
         nodeClass: source?.nodeClass ?? classifySource(node.sourceReference),
         title: source?.title ?? sourceTitle(node.sourceReference),
-        activeInContext: pulse?.selectedWorkspaceReferences.includes(node.sourceReference) ?? false,
+        activeInContext:
+          pulse?.selectedWorkspaceReferences.includes(node.sourceReference) ?? false,
       });
     }
     edges.push(edge(node.id, sourceId, "sourced_from"));
   }
 
-  const byKey = new Map<string, MemoryBrainNode[]>();
-  for (const node of keptMemory) {
-    if (!node.title) continue;
-    const group = byKey.get(node.title) ?? [];
-    group.push(node);
-    byKey.set(node.title, group);
-  }
-  for (const group of byKey.values()) {
-    if (group.length < 2) continue;
-    const ordered = [...group].sort(
-      (left, right) => String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")),
-    );
-    const current = ordered[0];
-    if (!current) continue;
-    for (const older of ordered.slice(1)) {
-      if (edges.length >= 320) break;
-      edges.push(edge(current.id, older.id, "supersedes"));
-    }
-  }
-
-  const tagOwner = new Map<string, string>();
-  for (const node of keptMemory) {
-    for (const tag of node.tags ?? []) {
-      const existing = tagOwner.get(tag);
-      if (existing && existing !== node.id && keptIds.has(existing) && edges.length < 320) {
-        edges.push(edge(existing, node.id, "related"));
-      } else if (!existing) {
-        tagOwner.set(tag, node.id);
-      }
-    }
-  }
-
+  addSupersessionEdges(keptMemory, edges);
+  addTagEdges(keptMemory, keptIds, edges);
   const counts = emptyCounts();
   for (const node of keptMemory) if (node.status) counts[node.status] += 1;
+
   const body = {
     projectId: input.projectId,
     evaluatedAt,
@@ -284,26 +214,91 @@ export function isMemoryNoiseCandidate(
   if (record.expiresAt !== undefined && Date.parse(record.expiresAt) <= evaluatedAtMs) return true;
   const age = evaluatedAtMs - Date.parse(record.updatedAt);
   if (record.kind === "episodic" && age > 30 * 86_400_000) return true;
-  if (record.provenance.sourceClass === "model_summary" && age > 90 * 86_400_000) return true;
-  return false;
+  return record.provenance.sourceClass === "model_summary" && age > 90 * 86_400_000;
+}
+
+function tombstoneNode(
+  record: Extract<StoredMemoryRecord, { status: "tombstoned" }>,
+  signal: MemoryProductSignal,
+): MemoryBrainNode {
+  return {
+    id: record.id,
+    nodeClass: "MEMORY",
+    title: "Archived memory",
+    status: "ARCHIVED",
+    summary: "Content removed; revision history and tombstone remain auditable.",
+    importance: 0,
+    confidence: "low",
+    updatedAt: record.updatedAt,
+    version: record.version,
+    recordHash: record.recordHash,
+    usageCount: signal.usageCount,
+    lastUsedAt: signal.lastUsedAt,
+    pinned: signal.pinned,
+    mergedCount: 1,
+    activeInContext: false,
+  };
+}
+
+function activeNode(
+  record: ActiveMemoryRecord,
+  signal: MemoryProductSignal,
+  status: MemoryProductStatus,
+  mergedCount: number,
+  activeInContext: boolean,
+  evaluatedAtMs: number,
+): MemoryBrainNode {
+  return {
+    id: record.id,
+    nodeClass: "MEMORY",
+    title: record.key,
+    status,
+    memoryKind: record.kind,
+    summary:
+      record.sensitivity === "sensitive"
+        ? "Sensitive memory · content hidden in the graph projection."
+        : summarize(record.content),
+    importance: importanceFor(record, signal, status, evaluatedAtMs),
+    confidence: confidenceFor(record.provenance.sourceClass, status),
+    sensitivity: record.sensitivity,
+    sourceClass: record.provenance.sourceClass,
+    sourceReference: record.provenance.reference,
+    sourceVersion: record.provenance.sourceVersion,
+    sourceObservedAt: record.provenance.observedAt,
+    updatedAt: record.updatedAt,
+    ...(record.expiresAt === undefined ? {} : { expiresAt: record.expiresAt }),
+    version: record.version,
+    recordHash: record.recordHash,
+    tags: record.tags,
+    usageCount: signal.usageCount,
+    lastUsedAt: signal.lastUsedAt,
+    pinned: signal.pinned,
+    mergedCount,
+    activeInContext,
+  };
 }
 
 function statusFor(
   record: ActiveMemoryRecord,
   signal: MemoryProductSignal,
-  flags: { stale: boolean; conflicted: boolean; superseded: boolean; evaluatedAtMs: number },
+  flags: {
+    stale: boolean;
+    conflicted: boolean;
+    superseded: boolean;
+    evaluatedAtMs: number;
+  },
 ): MemoryProductStatus {
   if (signal.archivedAt) return "ARCHIVED";
   if (flags.conflicted) return "CONFLICTED";
   if (flags.stale) return "STALE";
   if (flags.superseded) return "SUPERSEDED";
-  if (isMemoryNoiseCandidate(record, signal, new Date(flags.evaluatedAtMs).toISOString()))
-    return "NOISE_CANDIDATE";
+  const evaluatedAt = new Date(flags.evaluatedAtMs).toISOString();
+  if (isMemoryNoiseCandidate(record, signal, evaluatedAt)) return "NOISE_CANDIDATE";
   if (record.kind === "working" || record.expiresAt !== undefined) return "TEMPORARY";
   return "ACTIVE";
 }
 
-function duplicateSupersededIds(records: readonly StoredMemoryRecord[]): Set<string> {
+function duplicateGroups(records: readonly StoredMemoryRecord[]): Map<string, ActiveMemoryRecord[]> {
   const groups = new Map<string, ActiveMemoryRecord[]>();
   for (const record of records) {
     if (record.status !== "active") continue;
@@ -312,33 +307,83 @@ function duplicateSupersededIds(records: readonly StoredMemoryRecord[]): Set<str
     group.push(record);
     groups.set(key, group);
   }
+  return groups;
+}
+
+function orderedGroup(group: readonly ActiveMemoryRecord[]): ActiveMemoryRecord[] {
+  return [...group].sort(
+    (left, right) =>
+      right.updatedAt.localeCompare(left.updatedAt) || left.id.localeCompare(right.id),
+  );
+}
+
+function duplicateSupersededIds(records: readonly StoredMemoryRecord[]): Set<string> {
   const ids = new Set<string>();
-  for (const group of groups.values()) {
-    const ordered = [...group].sort(
-      (left, right) => right.updatedAt.localeCompare(left.updatedAt) || left.id.localeCompare(right.id),
-    );
-    for (const record of ordered.slice(1)) ids.add(record.id);
+  for (const group of duplicateGroups(records).values()) {
+    for (const record of orderedGroup(group).slice(1)) ids.add(record.id);
   }
   return ids;
 }
 
 function duplicateMergedCounts(records: readonly StoredMemoryRecord[]): Map<string, number> {
-  const groups = new Map<string, ActiveMemoryRecord[]>();
-  for (const record of records) {
-    if (record.status !== "active") continue;
-    const key = `${record.key}\u0000${record.provenance.contentHash}`;
-    const group = groups.get(key) ?? [];
-    group.push(record);
-    groups.set(key, group);
-  }
   const counts = new Map<string, number>();
-  for (const group of groups.values()) {
-    const current = [...group].sort(
-      (left, right) => right.updatedAt.localeCompare(left.updatedAt) || left.id.localeCompare(right.id),
-    )[0];
+  for (const group of duplicateGroups(records).values()) {
+    const current = orderedGroup(group)[0];
     if (current) counts.set(current.id, group.length);
   }
   return counts;
+}
+
+function addSupersessionEdges(
+  nodes: readonly MemoryBrainNode[],
+  edges: MemoryBrainEdge[],
+): void {
+  const byKey = new Map<string, MemoryBrainNode[]>();
+  for (const node of nodes) {
+    const group = byKey.get(node.title) ?? [];
+    group.push(node);
+    byKey.set(node.title, group);
+  }
+  for (const group of byKey.values()) {
+    if (group.length < 2) continue;
+    const ordered = [...group].sort((left, right) =>
+      String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")),
+    );
+    const current = ordered[0];
+    if (!current) continue;
+    for (const older of ordered.slice(1)) {
+      if (edges.length >= 320) return;
+      edges.push(edge(current.id, older.id, "supersedes"));
+    }
+  }
+}
+
+function addTagEdges(
+  nodes: readonly MemoryBrainNode[],
+  keptIds: ReadonlySet<string>,
+  edges: MemoryBrainEdge[],
+): void {
+  const tagOwner = new Map<string, string>();
+  for (const node of nodes) {
+    for (const tag of node.tags ?? []) {
+      const existing = tagOwner.get(tag);
+      if (existing && existing !== node.id && keptIds.has(existing) && edges.length < 320) {
+        edges.push(edge(existing, node.id, "related"));
+      } else if (!existing) {
+        tagOwner.set(tag, node.id);
+      }
+    }
+  }
+}
+
+function compareNodes(left: MemoryBrainNode, right: MemoryBrainNode): number {
+  return (
+    Number(right.activeInContext) - Number(left.activeInContext) ||
+    warningRank(right.status) - warningRank(left.status) ||
+    (right.importance ?? 0) - (left.importance ?? 0) ||
+    String(right.updatedAt ?? "").localeCompare(String(left.updatedAt ?? "")) ||
+    left.id.localeCompare(right.id)
+  );
 }
 
 function importanceFor(
@@ -351,7 +396,7 @@ function importanceFor(
   const recency = Math.max(0, 25 - Math.min(25, Math.floor(ageDays / 4)));
   const usage = Math.min(18, Math.floor(Math.log2(signal.usageCount + 1) * 5));
   const pinned = signal.pinned ? 22 : 0;
-  const statusPenalty =
+  const penalty =
     status === "CONFLICTED"
       ? 22
       : status === "STALE" || status === "SUPERSEDED"
@@ -359,7 +404,7 @@ function importanceFor(
         : status === "NOISE_CANDIDATE" || status === "ARCHIVED"
           ? 42
           : 0;
-  return clamp(SOURCE_WEIGHT[record.provenance.sourceClass] + recency + usage + pinned - statusPenalty);
+  return clamp(SOURCE_WEIGHT[record.provenance.sourceClass] + recency + usage + pinned - penalty);
 }
 
 function confidenceFor(source: MemorySourceClass, status: MemoryProductStatus): MemoryConfidence {
@@ -374,8 +419,10 @@ function matchesFilters(
   filters: MemoryBrainProjectionInput["filters"],
 ): boolean {
   if (!filters) return true;
-  if (filters.kinds?.length && (!node.memoryKind || !filters.kinds.includes(node.memoryKind))) return false;
-  if (filters.statuses?.length && (!node.status || !filters.statuses.includes(node.status))) return false;
+  if (filters.kinds?.length && (!node.memoryKind || !filters.kinds.includes(node.memoryKind)))
+    return false;
+  if (filters.statuses?.length && (!node.status || !filters.statuses.includes(node.status)))
+    return false;
   if (
     filters.sourceClasses?.length &&
     (!node.sourceClass || !filters.sourceClasses.includes(node.sourceClass))
@@ -401,7 +448,9 @@ function edge(from: string, to: string, relation: MemoryBrainEdge["relation"]): 
   return { id: `edge:${sha(`${from}|${relation}|${to}`).slice(0, 24)}`, from, to, relation };
 }
 
-function classifySource(reference: string): Exclude<MemoryBrainNodeClass, "MEMORY" | "PROJECT"> {
+function classifySource(
+  reference: string,
+): Exclude<MemoryBrainNodeClass, "MEMORY" | "PROJECT"> {
   if (reference.includes("/workspace/")) return "WORKSPACE_SOURCE";
   if (reference.startsWith("run:") || reference.includes("/mission/")) return "RUN";
   return "SOURCE";
@@ -443,10 +492,14 @@ function emptyCounts(): Record<MemoryProductStatus, number> {
 
 function canonicalTime(value: string): string {
   const parsed = Date.parse(value);
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(value) || !Number.isFinite(parsed))
+  if (
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(value) ||
+    !Number.isFinite(parsed)
+  )
     throw new TypeError("Memory Brain timestamps must be canonical UTC values.");
   const canonical = new Date(parsed).toISOString();
-  if (canonical !== value) throw new TypeError("Memory Brain timestamps must be canonical UTC values.");
+  if (canonical !== value)
+    throw new TypeError("Memory Brain timestamps must be canonical UTC values.");
   return canonical;
 }
 
