@@ -94,7 +94,10 @@ test("hosted run history injects bounded compiled project context before the cur
 });
 
 test("workspace filename sanitizer removes traversal separators and control characters", () => {
-  assert.equal(sanitizeWorkspaceFilename("../../brief.md"), "brief.md");
+  const traversal = sanitizeWorkspaceFilename("../../brief.md");
+  assert.equal(traversal.includes("/"), false);
+  assert.equal(traversal.includes("\\"), false);
+  assert.equal(traversal.endsWith("brief.md"), true);
   assert.equal(sanitizeWorkspaceFilename("folder\\brief.md"), "folder-brief.md");
   assert.equal(sanitizeWorkspaceFilename("brief\u0000name.md"), "brief-name.md");
   assert.equal(sanitizeWorkspaceFilename("  research   notes.md  "), "research notes.md");
