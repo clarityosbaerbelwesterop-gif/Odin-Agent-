@@ -4,6 +4,7 @@
 // sole TypeScript compilation path.
 import { hostedHandler } from "../dist/src/chat/hosted.js";
 import { memoryApiHandler } from "../dist/src/chat/memory-api.js";
+import { skillsApiHandler } from "../dist/src/chat/skills-api.js";
 import { workspaceApiHandler } from "../dist/src/chat/workspace-api.js";
 
 const exactStripePrices = {
@@ -41,5 +42,7 @@ export default async function handler(req, res) {
     return workspaceApiHandler(req, res);
   if (rewrittenPath === "memory" || rewrittenPath.startsWith("memory/"))
     return memoryApiHandler(req, res);
+  if (rewrittenPath === "skills" || rewrittenPath.startsWith("skills/"))
+    return skillsApiHandler(req, res);
   return hostedHandler(req, res);
 }
