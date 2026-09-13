@@ -20,7 +20,7 @@ import { BuildProductStore, buildPreviewRevision } from "./build-mode.js";
 import { resolveNeonAuthUrl } from "./deployment.js";
 import { ChatEngine } from "./engine.js";
 import { GitHubCatalog } from "./github-catalog.js";
-import { GitHubWorkspaceSession } from "./github-workspace-session.js";
+import { type GitHubWorkspaceRestore, GitHubWorkspaceSession } from "./github-workspace-session.js";
 import { DEFAULT_CHAT_LIMITS } from "./modes.js";
 import { NeonAuth } from "./neon-auth.js";
 import { createNeonPool, NeonActorDatabase } from "./neon-database.js";
@@ -44,7 +44,7 @@ import { planQuota, QuotaStore } from "./quota.js";
 import { WikipediaResearchAdapter } from "./research.js";
 import { hashText, identifier, integer, object, publicError } from "./safety.js";
 import { createSharedNvidiaModels } from "./server-models.js";
-import { ChatError, type ChatModel } from "./types.js";
+import { type ChatChange, ChatError, type ChatModel } from "./types.js";
 
 let services: ReturnType<typeof createServices> | undefined;
 function configuredNeonAuthBase(): string | undefined {
@@ -382,6 +382,7 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       conversationId?: string,
       signal?: AbortSignal,
       workspaceKind: "auto" | "internal" = "auto",
+      githubRestore?: GitHubWorkspaceRestore,
     ) => {
       const githubReady =
         workspaceKind === "auto" && githubWorkspaceReady ? (githubToken as string) : undefined;
@@ -391,6 +392,8 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
               githubReady,
               githubConnection.repository,
               githubConnection.defaultBranch,
+              fetch,
+              githubRestore,
             )
           : undefined;
       const quality =
@@ -1235,11 +1238,17 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
         const run = (async () => {
           const controller = new AbortController();
           const workerDb = new NeonActorDatabase(pool, identity, { resource, token: lease });
+          const checkpoint = await new NeonChatStore(workerDb).checkpoint(id);
+          const githubRestore = restoreGitHubWorkspace(
+            checkpoint?.changes,
+            githubConnection.repository,
+          );
           const worker = createEngine(
             workerDb,
             found.conversationId,
             controller.signal,
             workspaceKind,
+            githubRestore,
           );
           let checking = false;
           const monitor = setInterval(() => {
@@ -1474,6 +1483,30 @@ async function stripe(path: string, values: Record<string, string>) {
     throw new ChatError("STRIPE_UPSTREAM", "Stripe could not create this session.", 502);
   return body;
 }
+
+function restoreGitHubWorkspace(
+  changes: readonly ChatChange[] | undefined,
+  repository: string | null,
+): GitHubWorkspaceRestore | undefined {
+  if (!repository || !changes?.length) return undefined;
+  const eligible = changes.filter(
+    (change) =>
+      change.repository === repository &&
+      typeof change.branch === "string" &&
+      typeof change.baseSha === "string",
+  );
+  const latest = eligible.at(-1);
+  if (!latest?.branch || !latest.baseSha) return undefined;
+  return {
+    repository,
+    branch: latest.branch,
+    baseSha: latest.baseSha,
+    writes: eligible
+      .filter((change) => change.branch === latest.branch)
+      .map((change) => ({ path: change.path, sha: change.sha })),
+  };
+}
+
 function send(res: ServerResponse, status: number, data: unknown): void {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json; charset=utf-8");

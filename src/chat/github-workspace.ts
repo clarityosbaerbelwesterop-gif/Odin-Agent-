@@ -20,11 +20,26 @@ export interface RestoredGitHubWrite {
   readonly sha: string;
 }
 
+export interface GitHubWorkspaceRepositoryState {
+  readonly repository: string;
+  readonly baseBranch: string;
+  readonly storedBaseSha: string | null;
+  readonly currentBaseSha: string;
+  readonly workBranch: string | null;
+  readonly headSha: string | null;
+}
+
+export interface GitHubWorkspaceTreeEntry {
+  readonly path: string;
+  readonly sha: string | null;
+}
+
 const ODIN_WORK_BRANCH = /^odin\/\d{4}-\d{2}-\d{2}\/[0-9a-f]{8}$/u;
 const CONTENT_HASH = /^[0-9a-f]{64}$/u;
 
 export class GitHubWorkspace implements RepositoryWorkspace, QualityCommandRunner {
   #workBranch: string | undefined;
+  #baseSha: string | undefined;
   readonly #persistedWrites = new Map<string, string>();
   constructor(
     readonly token: string,
@@ -34,10 +49,14 @@ export class GitHubWorkspace implements RepositoryWorkspace, QualityCommandRunne
     readonly request: typeof fetch = fetch,
     initialWorkBranch?: string,
     initialWrites: readonly RestoredGitHubWrite[] = [],
+    initialBaseSha?: string,
   ) {
     if (initialWorkBranch && !ODIN_WORK_BRANCH.test(initialWorkBranch))
       throw new ChatError("INVALID_BRANCH", "Stored Odin work branch is invalid.", 409);
     this.#workBranch = initialWorkBranch;
+    if (initialBaseSha && !CONTENT_HASH.test(initialBaseSha))
+      throw new ChatError("INVALID_CHECKPOINT", "Stored repository base hash is invalid.", 409);
+    this.#baseSha = initialBaseSha;
     for (const write of initialWrites) {
       const path = normalizeWorkspacePath(write.path);
       if (!CONTENT_HASH.test(write.sha))
@@ -76,6 +95,7 @@ export class GitHubWorkspace implements RepositoryWorkspace, QualityCommandRunne
     if (!object?.sha)
       throw new ChatError("GITHUB_UPSTREAM", "Default branch reference is invalid.", 502);
     const branch = `odin/${new Date().toISOString().slice(0, 10)}/${randomUUID().slice(0, 8)}`;
+    this.#baseSha = object.sha;
     await this.#api("/git/refs", {
       method: "POST",
       body: JSON.stringify({ ref: `refs/heads/${branch}`, sha: object.sha }),
@@ -84,6 +104,34 @@ export class GitHubWorkspace implements RepositoryWorkspace, QualityCommandRunne
     this.#workBranch = branch;
     return branch;
   }
+  async tree(signal: AbortSignal, maxEntries = 500): Promise<GitHubWorkspaceTreeEntry[]> {
+    if (!Number.isSafeInteger(maxEntries) || maxEntries < 1 || maxEntries > 2000)
+      throw new ChatError("TREE_LIMIT", "Repository tree limit is invalid.");
+    const tree = await this.#api(
+      `/git/trees/${encodeURIComponent(this.#workBranch ?? this.defaultBranch)}?recursive=1`,
+      { signal },
+    );
+    const entries = Array.isArray(tree.tree) ? tree.tree : [];
+    return entries
+      .filter(
+        (entry: GitHubFile) =>
+          entry.type === "blob" && typeof entry.path === "string" && entry.path.length <= 400,
+      )
+      .flatMap((entry: GitHubFile) => {
+        try {
+          return [
+            {
+              path: normalizeWorkspacePath(String(entry.path)),
+              sha: typeof entry.sha === "string" ? entry.sha : null,
+            },
+          ];
+        } catch {
+          return [];
+        }
+      })
+      .slice(0, maxEntries);
+  }
+
   async read(input: Parameters<RepositoryWorkspace["read"]>[0]) {
     const path = normalizeWorkspacePath(input.path);
     const data = await this.#api(
@@ -174,13 +222,50 @@ export class GitHubWorkspace implements RepositoryWorkspace, QualityCommandRunne
       signal: input.signal,
     });
     const file = result.content as { sha?: string } | undefined;
-    if (!file?.sha)
+    const commit = result.commit as { sha?: string } | undefined;
+    if (!file?.sha || !commit?.sha || !this.#baseSha)
       throw new ChatError("GITHUB_UPSTREAM", "GitHub did not confirm the file change.", 502);
     const contentHash = hashText(content);
-    await this.changed({ path, before, after: content, sha: contentHash, branch });
+    await this.changed({
+      path,
+      before,
+      after: content,
+      sha: contentHash,
+      repository: this.repository,
+      baseSha: this.#baseSha,
+      branch,
+      headSha: commit.sha,
+    });
     this.#persistedWrites.set(path, contentHash);
     return { sha: file.sha };
   }
+  async repositoryState(signal: AbortSignal): Promise<GitHubWorkspaceRepositoryState> {
+    const base = await this.#api(`/git/ref/heads/${encodeURIComponent(this.defaultBranch)}`, {
+      signal,
+    });
+    const baseObject = base.object as { sha?: string } | undefined;
+    if (!baseObject?.sha)
+      throw new ChatError("GITHUB_UPSTREAM", "Base branch reference is invalid.", 502);
+    let headSha: string | null = null;
+    if (this.#workBranch) {
+      const work = await this.#api(`/git/ref/heads/${encodeURIComponent(this.#workBranch)}`, {
+        signal,
+      });
+      const workObject = work.object as { sha?: string } | undefined;
+      if (!workObject?.sha)
+        throw new ChatError("GITHUB_UPSTREAM", "Odin work branch reference is invalid.", 502);
+      headSha = workObject.sha;
+    }
+    return {
+      repository: this.repository,
+      baseBranch: this.defaultBranch,
+      storedBaseSha: this.#baseSha ?? null,
+      currentBaseSha: baseObject.sha,
+      workBranch: this.#workBranch ?? null,
+      headSha,
+    };
+  }
+
   branchName(): string | null {
     return this.#workBranch ?? null;
   }
