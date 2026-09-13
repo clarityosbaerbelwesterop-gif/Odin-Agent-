@@ -66,14 +66,20 @@ export async function memoryApiHandler(req: IncomingMessage, res: ServerResponse
 
     const root = /^\/api\/memory\/projects\/([\w-]+)$/u.exec(url.pathname);
     if (root && method === "GET") {
+      const text = optional(url.searchParams.get("q"));
+      const kinds = list(url.searchParams.get("kind")) as MemoryKind[] | undefined;
+      const statuses = list(url.searchParams.get("status")) as MemoryProductStatus[] | undefined;
+      const sourceClasses = list(url.searchParams.get("source")) as
+        | MemorySourceClass[]
+        | undefined;
       send(
         res,
         200,
         await brain.projection(root[1] ?? "", {
-          text: optional(url.searchParams.get("q")),
-          kinds: list(url.searchParams.get("kind")) as MemoryKind[] | undefined,
-          statuses: list(url.searchParams.get("status")) as MemoryProductStatus[] | undefined,
-          sourceClasses: list(url.searchParams.get("source")) as MemorySourceClass[] | undefined,
+          ...(text === undefined ? {} : { text }),
+          ...(kinds === undefined ? {} : { kinds }),
+          ...(statuses === undefined ? {} : { statuses }),
+          ...(sourceClasses === undefined ? {} : { sourceClasses }),
         }),
       );
       return;
