@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { canonicalJson } from "../../src/durable/internal.js";
 import type { ActorDatabase } from "../../src/chat/neon-database.js";
 import { NeonChatStore } from "../../src/chat/neon-store.js";
 import { activityLabel } from "../../src/chat/product-projection.js";
@@ -12,6 +11,7 @@ import {
   workspaceContextMessage,
 } from "../../src/chat/workspace-context.js";
 import { sanitizeWorkspaceFilename, WORKSPACE_ITEM_KINDS } from "../../src/chat/workspace-os.js";
+import { canonicalJson } from "../../src/durable/internal.js";
 
 const projectId = "11111111-1111-4111-8111-111111111111";
 const missionId = "22222222-2222-4222-8222-222222222222";

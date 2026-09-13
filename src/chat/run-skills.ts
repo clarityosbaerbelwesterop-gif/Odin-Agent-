@@ -55,7 +55,14 @@ class ProductPackSource implements SkillOsPackSource {
 
   add(skillId: string): SkillOsPackRegistration {
     const runtime = productRuntimeSkill(skillId);
-    const record = this.#registry.registerTrusted(runtime.package);
+    const { contentHash: expectedContentHash, ...packageInput } = runtime.package;
+    const record = this.#registry.registerTrusted(packageInput);
+    if (record.package.contentHash !== expectedContentHash)
+      throw new ChatError(
+        "SKILL_INTEGRITY",
+        "M10 Skill package identity changed during Product Skill registration.",
+        409,
+      );
     const member: SkillOsPackMemberRef = Object.freeze({
       contentHash: record.package.contentHash,
       name: record.package.name,

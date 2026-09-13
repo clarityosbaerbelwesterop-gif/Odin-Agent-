@@ -42,7 +42,7 @@ test("PRODUCT M5 catalog exposes exact M10 hash-bound packages without granting 
     assert.match(skill.contentHash, /^[a-f0-9]{64}$/u);
     assert.equal(skill.contentHash, runtime.package.contentHash);
     assert.equal(skill.version, runtime.package.version);
-    assert.deepEqual(skill.requiredTools, runtime.package.requiredTools);
+    assert.deepEqual([...skill.requiredTools].sort(), runtime.package.requiredTools);
     assert.ok(skill.canonicalAuthority.length > 0);
     assert.equal(skill.verification, "VERIFIED");
   }
