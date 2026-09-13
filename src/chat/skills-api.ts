@@ -235,10 +235,11 @@ export async function skillsApiHandler(req: IncomingMessage, res: ServerResponse
       const projectId = parseProjectId(url.searchParams.get("projectId"));
       const after = eventCursor(url.searchParams.get("after"));
       await store.requireRunProject(projectId, runId);
-      const events = await db.transaction(async (client) =>
-        (
-          await client.query(
-            `SELECT cursor,type,data,data_hash,created_at
+      const events = await db.transaction(
+        async (client) =>
+          (
+            await client.query(
+              `SELECT cursor,type,data,data_hash,created_at
                FROM odin_api.events
               WHERE conversation_id=$1::uuid AND turn_id=$2::uuid AND cursor>$3
                 AND type IN (
@@ -247,9 +248,9 @@ export async function skillsApiHandler(req: IncomingMessage, res: ServerResponse
                 )
               ORDER BY cursor ASC
               LIMIT 128`,
-            [projectId, runId, after],
-          )
-        ).rows,
+              [projectId, runId, after],
+            )
+          ).rows,
       );
       const evidence = events.map((event) => {
         const data = eventData(event);
