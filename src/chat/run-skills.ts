@@ -9,11 +9,7 @@ import {
 import { SkillRegistry } from "../skills/registry.js";
 import type { SkillPackage } from "../skills/types.js";
 import type { SkillProductStore } from "./skill-product-store.js";
-import {
-  productRuntimeSkill,
-  productSkillById,
-  projectSkillCatalog,
-} from "./skills-product.js";
+import { productRuntimeSkill, productSkillById, projectSkillCatalog } from "./skills-product.js";
 import { ChatError, type ChatMode, type ChatTurn } from "./types.js";
 
 export interface SelectedRunSkill {
