@@ -1,5 +1,31 @@
 # Engineering handover
 
+## PRODUCT M2 checkpoint — 2026-09-13
+
+PRODUCT M2 continues PR #77 in place and turns the M1 Project shell into a persistent Workspace OS. The
+canonical `odin_api.workspace_files` authority now carries stable item identity, bounded kinds, title/MIME
+metadata, origin, optimistic versions and Run/Task provenance. Context references and useful tab/layout
+continuity are tenant/project scoped; generated Run artifacts remain immutable through document mutation
+routes. No second Project, Artifact, Event, Context, Memory, Auth or Verification authority was added.
+
+Selected Workspace resources are consumed by real hosted Run construction through the existing
+`DeterministicContextCompiler`: fixed P0/P1/P2 authority remains above explicitly selected P3 Workspace
+data, integrity mismatches fail closed, and the entire Workspace is never serialized into every model
+call. The Workspace UI provides real Documents, Imports, Artifacts, project-scoped search, bounded tabs,
+server-acknowledged autosave with retry/conflict handling, real Recent items and isolated HTML preview.
+HTML preview remains sandboxed without same-origin privilege; mutation APIs do not accept client-supplied
+owner, origin, provenance or verification authority.
+
+Migration `012_product_m2_workspace_os.sql` is repository-reviewed and idempotent for the intended
+existing schema. It retains FORCE RLS/canonical actor isolation, revokes PUBLIC privileges and binds Run
+provenance to the same owner/project through composite foreign keys. This handover does **not** claim the
+migration was applied to production. Deterministic CI #817 on head
+`4847f6a4a57a37b388f6d212c7473b4005ec69a3` passed foundation, Biome, strict TypeScript, 619/619 domain
+tests, all UI tests, dry provider smoke and production build. Live Vercel/browser and physical-iPad
+proof remain separate evidence gates until actually performed.
+
+Binding PRODUCT M2 contract: `docs/milestones/PRODUCT_M2_WORKSPACE_OS.md`.
+
 ## PRODUCT M1 checkpoint — 2026-09-12
 
 The active PRODUCT M1 branch rebuilds the product experience around the existing Odin runtime. It adds
