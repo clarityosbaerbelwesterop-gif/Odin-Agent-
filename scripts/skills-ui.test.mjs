@@ -87,15 +87,17 @@ async function app() {
     }
     if (url === `/api/projects/${projectId}`)
       return response({ turns: [{ id: runId, objective: "Build verified product" }] });
-    if (url === `/api/skills/runs/${runId}`)
+    if (url === `/api/skills/runs/${runId}?projectId=${projectId}`)
       return response({
         evidence: [
           {
+            cursor: 44,
             type: "skill.selected",
             data: { skillName: "Product Planning", reason: "task-class match" },
             createdAt: "2026-09-13T10:05:00.000Z",
           },
         ],
+        nextCursor: 44,
         note: "Only canonical Skill runtime events are shown.",
       });
     return response({ message: `Unexpected ${url}` }, 500);
@@ -115,10 +117,18 @@ test("PRODUCT M5 Skills OS renders catalog, trust, permissions and persistent in
     assert.ok(card);
     assert.match(card.textContent, /Product Planning/u);
     card.click();
-    assert.match(current.window.document.getElementById("m5-detail").textContent, /Built-in verified/u);
-    assert.match(current.window.document.getElementById("m5-detail").textContent, /Permission disclosure/u);
+    assert.match(
+      current.window.document.getElementById("m5-detail").textContent,
+      /Built-in verified/u,
+    );
+    assert.match(
+      current.window.document.getElementById("m5-detail").textContent,
+      /Permission disclosure/u,
+    );
     current.window.document.getElementById("m5-scope").value = "project";
-    current.window.document.getElementById("m5-scope").dispatchEvent(new current.window.Event("change"));
+    current.window.document
+      .getElementById("m5-scope")
+      .dispatchEvent(new current.window.Event("change"));
     card.click();
     const install = [...current.window.document.querySelectorAll("#m5-detail button")].find(
       (button) => button.textContent === "Install",
@@ -133,23 +143,42 @@ test("PRODUCT M5 Skills OS renders catalog, trust, permissions and persistent in
     assert.equal(body.scope, "project");
     assert.equal(body.projectId, projectId);
     assert.equal(body.contentHash, hash);
-    assert.match(current.window.document.getElementById("m5-policy").textContent, /Installed ≠ authorized/u);
+    assert.match(
+      current.window.document.getElementById("m5-policy").textContent,
+      /Installed ≠ authorized/u,
+    );
   } finally {
     current.close();
   }
 });
 
-test("PRODUCT M5 custom authoring is presented as an inert candidate and Run Center shows only canonical Skill evidence", async () => {
+test("PRODUCT M5 custom authoring is inert and Run Center scopes real Skill evidence to Project + Run", async () => {
   const current = await app();
   try {
-    assert.match(current.window.document.getElementById("m5-draft-dialog").textContent, /inert candidate/u);
-    assert.match(current.window.document.getElementById("m5-drafts").textContent, /No private Skill drafts/u);
+    assert.match(
+      current.window.document.getElementById("m5-draft-dialog").textContent,
+      /inert candidate/u,
+    );
+    assert.match(
+      current.window.document.getElementById("m5-drafts").textContent,
+      /No private Skill drafts/u,
+    );
     current.runRow.click();
     await tick();
     await tick();
-    assert.match(current.window.document.getElementById("m5-run-skills").textContent, /Product Planning/u);
-    assert.match(current.window.document.getElementById("m5-run-skills").textContent, /task-class match/u);
-    assert.ok(current.calls.some((call) => call.url === `/api/skills/runs/${runId}`));
+    assert.match(
+      current.window.document.getElementById("m5-run-skills").textContent,
+      /Product Planning/u,
+    );
+    assert.match(
+      current.window.document.getElementById("m5-run-skills").textContent,
+      /task-class match/u,
+    );
+    assert.ok(
+      current.calls.some(
+        (call) => call.url === `/api/skills/runs/${runId}?projectId=${projectId}`,
+      ),
+    );
   } finally {
     current.close();
   }
@@ -157,7 +186,7 @@ test("PRODUCT M5 custom authoring is presented as an inert candidate and Run Cen
 
 test("PRODUCT M5 responsive CSS provides single-column iPad/mobile fallbacks", async () => {
   const css = await readFile("web/product-m5.css", "utf8");
-  assert.match(css, /@media\(max-width:980px\)/u);
-  assert.match(css, /grid-template-columns:1fr/u);
-  assert.match(css, /@media\(max-width:700px\)/u);
+  assert.match(css, /@media \(max-width: 980px\)/u);
+  assert.match(css, /grid-template-columns: 1fr/u);
+  assert.match(css, /@media \(max-width: 700px\)/u);
 });
