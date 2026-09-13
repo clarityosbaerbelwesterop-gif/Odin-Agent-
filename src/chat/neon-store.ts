@@ -14,9 +14,9 @@ import type { ChatRepository } from "./repository.js";
 import {
   restoreRunSkill,
   runSkillContextMessage,
+  type SelectedRunSkill,
   selectRunSkill,
   skillEventData,
-  type SelectedRunSkill,
 } from "./run-skills.js";
 import { hashText, identifier, integer, safeText } from "./safety.js";
 import { SkillProductStore } from "./skill-product-store.js";
@@ -259,18 +259,19 @@ export class NeonChatStore implements ChatRepository {
   }
 
   private async resolveRunSkill(turn: ChatTurn): Promise<SelectedRunSkill | null> {
-    const pinned = await this.db.transaction(async (c) =>
-      (
-        await c.query(
-          `SELECT type,data,data_hash
+    const pinned = await this.db.transaction(
+      async (c) =>
+        (
+          await c.query(
+            `SELECT type,data,data_hash
              FROM odin_api.events
             WHERE conversation_id=$1 AND turn_id=$2
               AND type IN ('skill.selected','skill.loaded')
             ORDER BY cursor DESC
             LIMIT 1`,
-          [turn.conversationId, turn.id],
-        )
-      ).rows[0] as Record<string, unknown> | undefined,
+            [turn.conversationId, turn.id],
+          )
+        ).rows[0] as Record<string, unknown> | undefined,
     );
     if (pinned) {
       const restored = restoreRunSkill(decode<Record<string, unknown>>(pinned));
