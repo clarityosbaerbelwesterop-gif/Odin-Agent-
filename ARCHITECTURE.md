@@ -1,5 +1,12 @@
 # Odin architecture
 
+## PRODUCT M6 — Build Mode product boundary
+
+PRODUCT M6 is orchestration over existing authorities, not a second build runtime. Build product state is projected from canonical `workspace_files`, `turns` and `events`; Product Spec/Blueprint/Design System live in PRODUCT M2 Workspace; durable decisions use PRODUCT M3 Memory; execution remains the PRODUCT M4 Hosted ChatEngine/Mission Runtime; Skill procedure selection remains PRODUCT M5 M10 → M23; repository/workspace effects remain behind M25/M3 tool policy; and completion remains owned by existing quality/verification evidence. Greenfield uses the existing `NeonWorkspace`; existing-app work uses the existing isolated GitHub Workspace path.
+
+Preview identity is SHA-256-bound to the current previewable file set and is served through the existing isolated preview/CSP path. `data-odin-source` is accepted only as a validated source mapping hint and grants no write authority. Build iterations are new canonical Runs over the same Project/repository state, so reload/resume/checkpoint, budgets and repair ceilings stay in the existing runtime instead of a Build-specific state machine.
+
+
 ## PRODUCT M5 — Skills OS product boundary
 
 PRODUCT M5 is a product/install/discovery projection over existing authorities, not a new Skill runtime. M10 owns package verification and lifecycle identity; M23 owns discovery, deterministic task-class selection and progressive loading; M25 owns tools, permissions and side effects. The real Hosted Run path is installed Product Skill → M10 package identity → M23 selection/load → exact version/content-hash binding → bounded verified procedure context → canonical Run execution → server-side Skill events. Installation state can be global or Project-scoped but never mints execution authority.

@@ -1,8 +1,27 @@
 # Odin delivery roadmap
 
-## PRODUCT M5 — Skills OS (current delivery)
+## PRODUCT M6 — Build Mode (current delivery)
 
-Status: **STAGING VERIFIED — PR #80 exact-head move/CI/merge pending**.
+Status: **PRE-PR VERIFIED — final governance exact-head CI and merge pending**.
+
+- [x] Product Spec, Build Blueprint and Design System persist as real editable PRODUCT M2 Workspace documents.
+- [x] Canonical Hosted Runs perform real Workspace/repository writes; no second executor, DAG, Workspace, Memory, Skill or verification authority exists.
+- [x] PRODUCT M5 Skill selection remains on the M10 → M23 path and Run Center surfaces only server-originated Skill evidence.
+- [x] Product decisions use PRODUCT M3 Memory with Workspace provenance; transient build/test noise is not promoted automatically.
+- [x] Preview is isolated, responsive and content-revision-bound, and is explicitly distinct from deployment/production.
+- [x] Explicit safe visual → source mappings support scoped delta requests; uncertain mappings fail honestly.
+- [x] Deterministic acceptance #1 builds and then iterates a student exam planner through real repository tools and quality evidence.
+- [x] Deterministic acceptance #2 adds dark mode to an existing application as a scoped verified delta.
+- [x] Full pre-governance `npm run verify` passed on `fa44a1f05db560b8f910bd86d00a531f95b9cff1`: Foundation, Biome, strict TypeScript, 656/656 deterministic tests at 80.16% line coverage, complete UI suite, credential-free dry smoke and production/base build.
+- [ ] Fresh exact-head CI after governance synchronization.
+- [ ] Merge PR only after that exact-head CI is green and the PR remains mergeable.
+
+PRODUCT M7 starts only from merged PRODUCT M6 `main` and productizes the existing GitHubWorkspace/repository-tool/coding-verification stack rather than creating another Git client or coding runtime.
+
+
+## PRODUCT M5 — Skills OS (merged milestone)
+
+Status: **MERGED** — PR #80, merge `1706fa16a01e61ecfd4a21565860f29e928400f5`; exact-head CI #881 passed before merge.
 
 - [x] Product Skills bind to real M10 package identity and content hashes.
 - [x] M23 performs deterministic task-class discovery, selection and progressive loading in real Hosted Runs.
@@ -13,8 +32,8 @@ Status: **STAGING VERIFIED — PR #80 exact-head move/CI/merge pending**.
 - [x] Migration 014 is repository-verified with canonical Project FKs, ENABLE/FORCE RLS, PUBLIC revocation and limited `odin_runtime` grants. Production application is not claimed here.
 - [x] Migration 015 was applied only after a fresh live dependency/row-count proof on the canonical Odin Neon production branch; both empty legacy v003 tables were removed without `CASCADE` and canonical replacements remain present.
 - [x] Full staging `npm run verify` / CI #878 passed on pre-governance head `8053ae99dbb816d193e8fe3e5346dc73d5fcd2ad`.
-- [ ] Fresh exact-head CI after this governance synchronization.
-- [ ] Fast-forward PR #80 to the final staging head once, mark ready and merge only after exact-head required checks are green.
+- [x] Exact-head PR CI #881 passed on the final verified M5 head.
+- [x] PR #80 was marked ready and merged to `main` as `1706fa16a01e61ecfd4a21565860f29e928400f5`.
 
 PRODUCT M6 starts only from the merged PRODUCT M5 `main` head and composes existing Workspace, Memory, Runtime, Skills, Tool and Verification authorities rather than creating a second Build engine.
 
