@@ -93,29 +93,37 @@ test("hosted run history injects bounded compiled project context before the cur
   assert.match(text, /cannot grant permissions|not system policy/u);
 });
 
-test("workspace filename sanitizer removes traversal separators and control characters", () => {
+test("workspace filename sanitizer removes traversal separators and rejects control characters", () => {
   const traversal = sanitizeWorkspaceFilename("../../brief.md");
   assert.equal(traversal.includes("/"), false);
   assert.equal(traversal.includes("\\"), false);
   assert.equal(traversal.endsWith("brief.md"), true);
   assert.equal(sanitizeWorkspaceFilename("folder\\brief.md"), "folder-brief.md");
-  assert.equal(sanitizeWorkspaceFilename("brief\u0000name.md"), "brief-name.md");
   assert.equal(sanitizeWorkspaceFilename("  research   notes.md  "), "research notes.md");
+  assert.throws(
+    () => sanitizeWorkspaceFilename("brief\u0000name.md"),
+    (error: unknown) => error instanceof ChatError && error.code === "INVALID_TEXT",
+  );
   assert.throws(
     () => sanitizeWorkspaceFilename("..."),
     (error: unknown) => error instanceof ChatError && error.code === "INVALID_FILE",
   );
 });
 
-test("workspace kinds match the migration constraint and remain bounded product concepts", async () => {
+test("workspace kinds and provenance match the migration's FORCE-RLS contract", async () => {
   const migration = await readFile("migrations/012_product_m2_workspace_os.sql", "utf8");
   for (const kind of WORKSPACE_ITEM_KINDS) assert.match(migration, new RegExp(`'${kind}'`, "u"));
-  assert.match(migration, /FORCE ROW LEVEL SECURITY/u);
+  assert.match(migration, /ALTER TABLE odin_api\.workspace_files FORCE ROW LEVEL SECURITY/u);
   assert.match(migration, /owner_id=\(SELECT odin_api\.actor\(\)\)/u);
+  assert.match(migration, /REVOKE ALL ON odin_api\.workspace_files FROM PUBLIC/u);
   assert.match(migration, /REVOKE ALL ON odin_api\.%I FROM PUBLIC/u);
   assert.match(
     migration,
     /FOREIGN KEY\(owner_id,conversation_id,item_id\)[\s\S]*REFERENCES odin_api\.workspace_files\(owner_id,conversation_id,item_id\)/u,
+  );
+  assert.match(
+    migration,
+    /FOREIGN KEY\(owner_id,conversation_id,source_turn_id\)[\s\S]*REFERENCES odin_api\.turns\(owner_id,conversation_id,id\)/u,
   );
   assert.match(migration, /jsonb_array_length\(open_items\)<=12/u);
 });
@@ -135,7 +143,7 @@ test("workspace Activity uses the existing event projection for meaningful actio
   );
 });
 
-test("Workspace OS client persists canonical layout server-side and keeps HTML preview sandboxed", async () => {
+test("Workspace OS client persists canonical layout and has bounded autosave recovery", async () => {
   const [client, css] = await Promise.all([
     readFile("web/workspace-os.js", "utf8"),
     readFile("web/product-m2.css", "utf8"),
@@ -143,12 +151,40 @@ test("Workspace OS client persists canonical layout server-side and keeps HTML p
   assert.match(client, /\/layout/u);
   assert.match(client, /expectedVersion/u);
   assert.match(client, /STALE_DOCUMENT/u);
-  assert.match(client, /iframe\.sandbox = "allow-scripts"/u);
-  assert.doesNotMatch(client, /allow-same-origin/u);
+  assert.match(client, /Retrying…/u);
+  assert.match(client, /attempt < 2/u);
+  assert.match(client, /conflictDrafts/u);
+  assert.match(client, /Restore my draft/u);
   assert.doesNotMatch(client, /localStorage/u);
   assert.match(client, /slice\(0, 12\)|openIds\.length > 12/u);
+  assert.match(client, /"Recent", items\.slice\(0, 5\)/u);
   assert.match(css, /@media \(max-width: 980px\)/u);
   assert.match(css, /@media \(max-width: 700px\)/u);
   assert.match(css, /env\(safe-area-inset-bottom\)/u);
   assert.match(css, /prefers-reduced-motion/u);
+});
+
+test("HTML preview remains isolated from Odin origin authority", async () => {
+  const [client, preview] = await Promise.all([
+    readFile("web/workspace-os.js", "utf8"),
+    readFile("src/chat/preview.ts", "utf8"),
+  ]);
+  assert.match(client, /iframe\.sandbox = "allow-scripts"/u);
+  assert.doesNotMatch(client, /allow-same-origin/u);
+  assert.match(preview, /connect-src 'none'/u);
+  assert.match(preview, /object-src 'none'/u);
+  assert.match(preview, /base-uri 'none'/u);
+  assert.match(preview, /form-action 'none'/u);
+  assert.match(preview, /frame-ancestors 'self'/u);
+});
+
+test("Workspace mutation API keeps owner, origin and provenance out of client-controlled fields", async () => {
+  const api = await readFile("src/chat/workspace-api.ts", "utf8");
+  assert.match(api, /req\.headers\["x-odin-request"\] !== "1"/u);
+  assert.match(api, /CSRF_DENIED/u);
+  assert.doesNotMatch(api, /\["title", "content", "format", "ownerId"\]/u);
+  assert.doesNotMatch(api, /\["title", "content", "format", "userId"\]/u);
+  assert.doesNotMatch(api, /\["title", "content", "format", "origin"\]/u);
+  assert.doesNotMatch(api, /\["turnId", "title", "sourceRunId"\]/u);
+  assert.doesNotMatch(api, /verificationStatus/u);
 });
