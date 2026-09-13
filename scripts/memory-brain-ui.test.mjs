@@ -5,6 +5,16 @@ import { JSDOM } from "jsdom";
 
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 
+async function waitForGraph(window, expected = 3) {
+  const deadline = Date.now() + 1_000;
+  while (window.document.querySelectorAll("#m3-nodes .m3-node").length !== expected) {
+    if (Date.now() >= deadline) {
+      assert.fail(`Timed out waiting for ${expected} server-projected Memory Brain nodes.`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+}
+
 function response(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -126,8 +136,7 @@ test("PRODUCT M3 renders only server-projected graph nodes and real Brain Pulse 
   const app = await client();
   try {
     app.window.document.getElementById("knowledge-view").click();
-    await tick();
-    await tick();
+    await waitForGraph(app.window);
     const nodes = app.window.document.querySelectorAll("#m3-nodes .m3-node");
     assert.equal(nodes.length, 3);
     assert.match(app.window.document.getElementById("m3-pulse-label").textContent, /2 selected/u);
@@ -143,8 +152,7 @@ test("PRODUCT M3 node selection exposes provenance metadata and revision history
   const app = await client();
   try {
     app.window.document.getElementById("knowledge-view").click();
-    await tick();
-    await tick();
+    await waitForGraph(app.window);
     app.window.document
       .querySelector('[data-node-id="memory-a"]')
       .dispatchEvent(new app.window.MouseEvent("click", { bubbles: true }));
@@ -162,8 +170,7 @@ test("PRODUCT M3 search/filter reloads bounded server projection instead of inve
   const app = await client();
   try {
     app.window.document.getElementById("knowledge-view").click();
-    await tick();
-    await tick();
+    await waitForGraph(app.window);
     const search = app.window.document.getElementById("m3-search");
     search.value = "mobile";
     search.dispatchEvent(new app.window.Event("input", { bubbles: true }));

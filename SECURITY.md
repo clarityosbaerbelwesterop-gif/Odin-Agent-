@@ -1,5 +1,28 @@
 # Security model
 
+## PRODUCT M4 Run Center security boundary
+
+PRODUCT M4 creates no new authorization path. Project/Run data continues through authenticated,
+tenant/project-scoped APIs and canonical mission/event state. The Run Center is an observer/controller:
+it cannot create task completion, verification, repair, approval, usage, Artifact provenance, Brain Pulse,
+tool grants, credentials or hidden reasoning. Pause/resume/cancel fetch the current server version and use
+the existing control path; stale or invalid transitions therefore remain fail-closed. Replan is steering
+input, never a browser-authored DAG mutation.
+
+Run-linked Artifacts stay in the PRODUCT M2 Workspace authority with same-owner/same-project provenance.
+Brain Pulse exposes only Context Compiler selections, not Memory contents outside scope or chain-of-thought.
+Activity renders bounded canonical events and inherits secret-safe event policy. Existing adversarial
+suites cover foreign scope/provenance, stale controls, forged evidence/approvals, secret leakage, sensitive
+Memory isolation, path/network/tool/credential escalation and fail-closed missing evidence. M4's focused
+UI regressions add proof that the browser consumes real `dependsOn`, evidence/context and fresh server
+versions rather than inventing client authority.
+
+Pre-governance CI #859 passed on `f8d45b5581d954bc872cc8f9a18d75eb21bf9aa0`, including Foundation,
+Biome, strict TypeScript, 627/627 deterministic domain/security tests, the complete UI suite,
+credential-free smoke and production/base build. A fresh exact-head CI after this governance sync remains
+mandatory before merge. No repository result is relabeled as live Vercel, production migration or
+physical-iPad evidence.
+
 ## PRODUCT M2 Workspace security boundary
 
 PRODUCT M2 keeps Workspace persistence behind the existing Neon Auth and transaction-local actor

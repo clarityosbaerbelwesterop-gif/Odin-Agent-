@@ -24,6 +24,13 @@ remains authoritative. Brain Pulse exposes only references selected by the canon
 it does not expose chain-of-thought. See the
 [PRODUCT M3 contract](docs/milestones/PRODUCT_M3_MEMORY_BRAIN.md).
 
+**PRODUCT M4** productizes Odin's existing autonomous runtime rather than duplicating it. Project → Runs
+opens a Run Center over canonical mission state, real task dependencies, observable model/tool activity,
+verification and repair evidence, Brain Pulse context, Run-linked Workspace Artifacts, usage and existing
+server-authoritative controls. Missing checks, approvals or recovery evidence remain visibly missing and
+no hidden reasoning is exposed. See the
+[PRODUCT M4 contract](docs/milestones/PRODUCT_M4_RUNTIME_PRODUCTIZATION.md).
+
 The repository does **not** yet claim kernel/container isolation, a live hosted sandbox adapter,
 arbitrary shell execution, native mobile binaries, a distributed worker queue, or proof for a live
 environment unless separate external evidence is recorded. Current status and verified capabilities
@@ -144,8 +151,9 @@ sandbox metadata, or committed environment files.
 M12-A/B normal pull-request CI run `33794095989` passed with **237/237 tests**, 0 failures, and aggregate
 coverage **89.43% lines / 76.28% branches / 95.37% functions**. M12 remains partially verified because
 M12-C release/observability/recovery proof and all live infrastructure evidence are still open.
-PRODUCT M3 uses the same canonical `npm run verify` and exact-head PR CI gate; the milestone document
-records its product-specific deterministic evidence without treating CI as proof of a live deployment.
+PRODUCT M3 passed exact-head CI #853 on `9e0f5645940b963f572dc6756e97fe0a2f5b6988` before merge.
+PRODUCT M4 uses the same canonical `npm run verify` and exact-head PR CI gate; its milestone document
+records product-specific deterministic evidence without treating CI as proof of a live deployment.
 
 ## Engineering priorities
 

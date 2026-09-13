@@ -1,5 +1,27 @@
 # Odin architecture
 
+## PRODUCT M4 Runtime Productization boundary (2026-09-13)
+
+PRODUCT M4 adds no new runtime authority. Project → Runs is a product projection over the existing
+hosted ChatEngine/M2 mission and turn state, canonical task DAG/event stream, M5 verification evidence,
+M8/M20 checkpoint/recovery semantics, existing approval/tool authority, PRODUCT M3 Context/Brain Pulse
+selection and PRODUCT M2 Workspace Artifact provenance. The Run Center reads those authorities and makes
+them navigable; it does not own a second mission, task, event, verification, repair, approval, Workspace,
+Memory, context, tool, credential or usage state machine.
+
+Task relationships come from canonical `dependsOn` edges. Pause/resume/cancel fetch the current server
+version and submit existing runtime controls; replan is ordinary steering input and cannot mutate the DAG
+from the browser. Missing verification, approval, checkpoint, recovery, Skill, cost or deployment evidence
+stays missing. Brain Pulse exposes only references selected by the Context Compiler and never hidden
+reasoning. Run-created outputs remain PRODUCT M2 Workspace Artifacts bound to canonical same-project Run
+provenance. Existing RLS, auth, capability, credential, sandbox, verification and Memory policies remain
+the enforcement boundary.
+
+CI #859 passed the pre-governance M4 code head `f8d45b5581d954bc872cc8f9a18d75eb21bf9aa0` with Foundation,
+Biome, strict TypeScript, 627/627 domain/security tests, the complete UI suite, dry provider smoke and the
+production/base build. A fresh exact-head CI after governance synchronization is still the merge gate.
+Repository tests and responsive CSS are not live Vercel or physical-iPad evidence.
+
 ## PRODUCT M2 Workspace OS boundary (2026-09-13)
 
 PRODUCT M2 extends the PRODUCT M1 Project surface without introducing replacement authorities. The
@@ -154,7 +176,7 @@ raise its own budget/quality evidence or complete a task without the required in
 
 Runs repository/filesystem/terminal/browser/database/cloud/document/data/API/research operations only
 behind policy and isolation boundaries. M3 owns tool registration, grants, approvals, schema validation,
-idempotency, timeout/retry, cancellation, handler dispatch, and audit. M25 adds uniform discovery but no
+idempotency, timeout/retry/cancellation, handler dispatch, and audit. M25 adds uniform discovery but no
 new execution authority. M12 supplies canonical workspace, process/network policy, and a provider-neutral
 remote-sandbox lifecycle. M26 defines strong-isolation contracts, while real container/VM proof remains a
 separate external release gate.

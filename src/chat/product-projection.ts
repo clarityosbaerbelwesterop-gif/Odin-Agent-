@@ -15,6 +15,7 @@ export interface ProductPlanStep {
   readonly id: string;
   readonly title: string;
   readonly status: "pending" | "active" | "done" | "failed";
+  readonly dependsOn: readonly string[];
   readonly definitionOfDone: readonly string[];
 }
 
@@ -59,6 +60,7 @@ export function productPlan(snapshot: MissionSnapshot): readonly ProductPlanStep
     id: task.id,
     title: task.title,
     status: PLAN_STATUS[snapshot.taskStatuses[task.id] ?? "PENDING"],
+    dependsOn: [...(task.dependsOn ?? [])],
     definitionOfDone: task.definitionOfDone,
   }));
 }
