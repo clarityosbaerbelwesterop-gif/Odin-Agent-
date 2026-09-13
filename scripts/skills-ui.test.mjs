@@ -175,9 +175,7 @@ test("PRODUCT M5 custom authoring is inert and Run Center scopes real Skill evid
       /task-class match/u,
     );
     assert.ok(
-      current.calls.some(
-        (call) => call.url === `/api/skills/runs/${runId}?projectId=${projectId}`,
-      ),
+      current.calls.some((call) => call.url === `/api/skills/runs/${runId}?projectId=${projectId}`),
     );
   } finally {
     current.close();
@@ -204,7 +202,10 @@ test("PRODUCT M5 Run Center fabricates no Skill evidence when the server has non
     await tick();
     const text = current.window.document.getElementById("m5-run-skills").textContent;
     assert.match(text, /no Skill usage is fabricated/iu);
-    assert.equal(current.window.document.querySelectorAll("#m5-run-skills .m4-evidence-card").length, 0);
+    assert.equal(
+      current.window.document.querySelectorAll("#m5-run-skills .m4-evidence-card").length,
+      0,
+    );
   } finally {
     current.close();
   }
