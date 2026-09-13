@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { canonicalJson } from "../../src/durable/internal.js";
 import {
   BuildProductStore,
   buildIterationObjective,
@@ -15,6 +14,7 @@ import {
 } from "../../src/chat/build-mode.js";
 import type { ActorDatabase, DatabaseAction } from "../../src/chat/neon-database.js";
 import { hashText } from "../../src/chat/safety.js";
+import { canonicalJson } from "../../src/durable/internal.js";
 
 test("PRODUCT M6 greenfield and existing objectives compose existing tool/verification authority", () => {
   const greenfield = buildRunObjective(
@@ -154,7 +154,10 @@ test("PRODUCT M6 canonical Build event restores workspace kind and rejects tampe
     },
   ]);
 
-  const tampered = new BuildProductStore(databaseReturning({ ...row, data_hash: "0".repeat(64) }), "user-1");
+  const tampered = new BuildProductStore(
+    databaseReturning({ ...row, data_hash: "0".repeat(64) }),
+    "user-1",
+  );
   await assert.rejects(tampered.events("project-1"), /failed verification/iu);
 });
 
