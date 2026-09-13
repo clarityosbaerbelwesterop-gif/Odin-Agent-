@@ -5,9 +5,12 @@ import type { ActorDatabase } from "../../src/chat/neon-database.js";
 import { NeonChatStore } from "../../src/chat/neon-store.js";
 import { activityLabel } from "../../src/chat/product-projection.js";
 import { hashText } from "../../src/chat/safety.js";
-import { compileWorkspaceContext, workspaceContextMessage } from "../../src/chat/workspace-context.js";
-import { sanitizeWorkspaceFilename, WORKSPACE_ITEM_KINDS } from "../../src/chat/workspace-os.js";
 import { ChatError } from "../../src/chat/types.js";
+import {
+  compileWorkspaceContext,
+  workspaceContextMessage,
+} from "../../src/chat/workspace-context.js";
+import { sanitizeWorkspaceFilename, WORKSPACE_ITEM_KINDS } from "../../src/chat/workspace-os.js";
 
 const projectId = "11111111-1111-4111-8111-111111111111";
 const missionId = "22222222-2222-4222-8222-222222222222";
@@ -44,7 +47,11 @@ function contextRow(content = "Mobile first is the current product decision.") {
 }
 
 test("PRODUCT M2 compiles explicit workspace context through the canonical P0-P3 hierarchy", async () => {
-  const compiled = await compileWorkspaceContext(dbForContext([contextRow()]), projectId, missionId);
+  const compiled = await compileWorkspaceContext(
+    dbForContext([contextRow()]),
+    projectId,
+    missionId,
+  );
   assert.ok(compiled);
   assert.deepEqual(
     compiled.sections.map((section) => section.priority),
