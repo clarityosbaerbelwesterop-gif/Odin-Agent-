@@ -66,13 +66,15 @@ test("PRODUCT M6 Preview identity is content-bound and excludes editable plannin
   assert.equal(first.file, "index.html");
   assert.match(first.revision, /^[a-f0-9]{64}$/u);
   const planningOnly = buildPreview([
-    ...base.slice(0, 2),
-    { ...base[2], sha: "4".repeat(64), content: "edited planning" },
+    base[0]!,
+    base[1]!,
+    { path: "documents/spec.md", sha: "4".repeat(64), content: "edited planning" },
   ]);
   assert.equal(planningOnly?.revision, first.revision);
   const changedOutput = buildPreview([
-    { ...base[0], sha: "5".repeat(64), content: "<main>Two</main>" },
-    ...base.slice(1),
+    { path: "index.html", sha: "5".repeat(64), content: "<main>Two</main>" },
+    base[1]!,
+    base[2]!,
   ]);
   assert.notEqual(changedOutput?.revision, first.revision);
 });
