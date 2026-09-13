@@ -2,10 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { ActorDatabase } from "../../src/chat/neon-database.js";
 import { SkillProductStore } from "../../src/chat/skill-product-store.js";
-import type {
-  ProductSkillInstallation,
-  ProductSkillScope,
-} from "../../src/chat/skills-product.js";
+import type { ProductSkillInstallation, ProductSkillScope } from "../../src/chat/skills-product.js";
 import { ChatError } from "../../src/chat/types.js";
 
 type InstallationRow = {
