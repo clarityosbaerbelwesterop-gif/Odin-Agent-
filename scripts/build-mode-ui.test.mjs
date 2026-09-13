@@ -18,8 +18,8 @@ test("PRODUCT M6 client exposes Build entry, canonical Run execution, revision P
   assert.match(client, /Preview ≠ Production/u);
   assert.doesNotMatch(client, /skill\.(?:selected|loaded|result).*dispatchEvent/iu);
   assert.doesNotMatch(client, /localStorage|sessionStorage/iu);
-  assert.match(css, /@media\(max-width:980px\)/u);
-  assert.match(css, /@media\(max-width:700px\)/u);
+  assert.match(css, /@media\s*\(max-width:\s*980px\)/u);
+  assert.match(css, /@media\s*\(max-width:\s*700px\)/u);
   assert.match(css, /iframe\[data-viewport="tablet"\]/u);
   assert.match(css, /iframe\[data-viewport="mobile"\]/u);
   assert.match(css, /prefers-reduced-motion/u);
