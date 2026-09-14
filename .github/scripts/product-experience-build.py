@@ -1,0 +1,727 @@
+from pathlib import Path
+
+
+def replace(path: str, old: str, new: str) -> None:
+    target = Path(path)
+    text = target.read_text()
+    if old not in text:
+        raise SystemExit(f"missing expected block in {path}: {old[:80]!r}")
+    target.write_text(text.replace(old, new, 1))
+
+
+replace("src/chat/product.ts", '  coding: "developer",', '  coding: "free",')
+replace("test/chat/product.test.ts", '    coding: "developer",', '    coding: "free",')
+replace(
+    "test/chat/product.test.ts",
+    '  assert.equal(planAllows("pro", "developer"), false);',
+    '  assert.equal(planAllows("free", MODE_MINIMUM_PLAN.coding), true);\n  assert.equal(planAllows("pro", "developer"), false);',
+)
+
+replace(
+    "src/chat/modes.ts",
+    '''  coding: {\n    label: "Coding",\n    description: "Inspect, edit and test the connected workspace",\n    calls: 16,\n    tools: 32,\n    output: 4096,\n    effort: "high",\n    review: true,\n    plan: true,\n  },''',
+    '''  coding: {\n    label: "Coding",\n    description: "Inspect, edit, test and repair the connected workspace",\n    calls: 12,\n    tools: 32,\n    output: 4096,\n    effort: "high",\n    // Repository checks are stronger evidence than a reflexive second model pass.\n    review: false,\n    plan: true,\n  },''',
+)
+
+replace(
+    "src/chat/agent.ts",
+    '          await publish("tool.start", { name, call: state.toolCalls, maxCalls: policy.tools });',
+    '''          await publish("tool.start", {\n            name,\n            toolId: tool.id,\n            call: state.toolCalls,\n            maxCalls: policy.tools,\n            input: visibleToolInput(name, tool.arguments),\n          });''',
+)
+replace(
+    "src/chat/agent.ts",
+    '          await publish("tool.end", { name, status: "success" });',
+    '''          await publish("tool.end", {\n            name,\n            toolId: tool.id,\n            status: "success",\n            summary: visibleToolResult(name, result.output),\n          });''',
+)
+replace(
+    "src/chat/agent.ts",
+    '          await publish("tool.end", { name: tool.name, status: "failed", ...normalized });',
+    '''          await publish("tool.end", {\n            name: tool.name,\n            toolId: tool.id,\n            status: "failed",\n            ...normalized,\n          });''',
+)
+agent = Path("src/chat/agent.ts")
+agent_text = agent.read_text()
+helper = r'''
+
+function visibleToolInput(name: string, value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const input = value as Record<string, unknown>;
+  const text = (key: string, max = 240): string | undefined => {
+    const candidate = input[key];
+    return typeof candidate === "string" ? candidate.slice(0, max) : undefined;
+  };
+  if (name === "repo.search")
+    return {
+      query: text("query"),
+      path: text("path"),
+      maxResults: input.maxResults,
+    };
+  if (name === "repo.read") return { path: text("path"), maxBytes: input.maxBytes };
+  if (name === "repo.patch")
+    return {
+      path: text("path"),
+      expectedSha: text("expectedSha", 16),
+      contentBytes: typeof input.content === "string" ? Buffer.byteLength(input.content) : undefined,
+    };
+  if (name === "repo.quality") return { commandId: text("commandId", 100) };
+  if (name === "research.search") return { query: text("query", 500) };
+  if (name === "math.calculate") return { expression: text("expression", 500) };
+  if (name === "task.plan")
+    return { stepCount: Array.isArray(input.steps) ? Math.min(input.steps.length, 12) : 0 };
+  return {};
+}
+
+function visibleToolResult(name: string, value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const output = value as Record<string, unknown>;
+  if (name === "repo.search")
+    return { matches: Array.isArray(output.matches) ? output.matches.length : 0 };
+  if (name === "repo.read")
+    return {
+      bytes: typeof output.content === "string" ? Buffer.byteLength(output.content) : 0,
+      truncated: output.truncated === true,
+      sha: typeof output.sha === "string" ? output.sha.slice(0, 16) : undefined,
+    };
+  if (name === "repo.patch")
+    return { sha: typeof output.sha === "string" ? output.sha.slice(0, 16) : undefined };
+  if (name === "repo.quality") return { exitCode: output.exitCode };
+  if (name === "research.search")
+    return { sources: Array.isArray(output.sources) ? output.sources.length : 0 };
+  if (name === "math.calculate") return { value: output.value };
+  if (name === "task.plan") return { recorded: output.recorded === true };
+  return {};
+}
+'''
+if "function visibleToolInput(" not in agent_text:
+    agent.write_text(agent_text.rstrip() + helper + "\n")
+
+replace(
+    "web/chat.js",
+    '''function renderEvent(event) {\n  if (event.cursor <= cursor) return;\n  cursor = event.cursor;''',
+    '''function renderEvent(event) {\n  if (event.cursor <= cursor) return;\n  cursor = event.cursor;\n  window.dispatchEvent(new CustomEvent("odin:runtime-event", { detail: event }));''',
+)
+replace(
+    "web/chat.js",
+    '''function resetConversation() {\n  stream?.close();''',
+    '''function resetConversation() {\n  window.dispatchEvent(new CustomEvent("odin:runtime-reset"));\n  stream?.close();''',
+)
+replace(
+    "web/chat.js",
+    '''  conversationId = id;\n  showChat();''',
+    '''  conversationId = id;\n  window.dispatchEvent(new CustomEvent("odin:project-changed", { detail: { projectId: id } }));\n  showChat();''',
+)
+replace(
+    "web/chat.html",
+    '    <script type="module" src="/coding-mode.js"></script>',
+    '    <script type="module" src="/coding-mode.js"></script>\n    <script type="module" src="/live-work.js"></script>',
+)
+
+replace(
+    "scripts/configure-vercel-production.mjs",
+    '    report.checks.push("M10-M12 quota/provider-pool schema reconciled");',
+    '''    report.checks.push("M10-M12 quota/provider-pool schema reconciled");
+
+    const workspaceProductMigration = await readFile(
+      new URL("../migrations/012_product_m2_workspace_os.sql", import.meta.url),
+      "utf8",
+    );
+    await pool.query(workspaceProductMigration);
+    report.checks.push("PRODUCT M2 Workspace OS schema reconciled");
+    const memoryProductMigration = await readFile(
+      new URL("../migrations/013_product_m3_memory_brain.sql", import.meta.url),
+      "utf8",
+    );
+    await pool.query(memoryProductMigration);
+    report.checks.push("PRODUCT M3 Memory Brain schema reconciled");
+    const skillsProductMigration = await readFile(
+      new URL("../migrations/014_product_m5_skills_os.sql", import.meta.url),
+      "utf8",
+    );
+    await pool.query(skillsProductMigration);
+    report.checks.push("PRODUCT M5 Skills OS schema reconciled");''',
+)
+
+replace(
+    "web/landing.js",
+    'const modes = {',
+    '''const experienceCss = document.createElement("link");
+experienceCss.rel = "stylesheet";
+experienceCss.href = "/product-experience-landing.css";
+document.head.append(experienceCss);
+
+const modes = {''',
+)
+landing = Path("web/landing.js")
+landing_text = landing.read_text()
+landing_append = r'''
+
+const hero = document.querySelector(".hero");
+const heroBottom = document.querySelector(".hero-bottom");
+if (hero && heroBottom && !document.getElementById("odin-live-demo")) {
+  const demo = document.createElement("section");
+  demo.id = "odin-live-demo";
+  demo.className = "landing-live-demo";
+  demo.setAttribute("aria-label", "Odin product preview");
+  demo.innerHTML = `<div class="landing-demo-bar"><span><i></i> ODIN IS WORKING</span><span>PRODUCT PREVIEW</span></div><div class="landing-demo-grid"><div class="landing-demo-stream"><div class="demo-step done"><b>✓</b><span><strong>Repository verstanden</strong><small>Struktur und relevante Dateien geprüft</small></span></div><div class="demo-step active"><b></b><span><strong>Tool · repo.patch</strong><small>src/routes/index.tsx · scoped change</small></span></div><div class="demo-step"><b></b><span><strong>Verifikation</strong><small>Tests starten nach der letzten Änderung</small></span></div></div><div class="landing-demo-artifact"><span>LIVE ARTIFACT</span><div class="demo-window"><i></i><i></i><i></i><h3>Your work,<br />already moving.</h3><p>Odin changes the actual workspace while the evidence stays visible.</p></div></div></div>`;
+  heroBottom.after(demo);
+}
+'''
+if 'id = "odin-live-demo"' not in landing_text:
+    landing.write_text(landing_text.rstrip() + landing_append + "\n")
+
+replace(
+    "web/landing.html",
+    '        <h1 id="hero-title">Eine Idee.<br />Und dann<br /><span class="outline-word">an die Arbeit.</span></h1>',
+    '        <h1 id="hero-title">Sag es Odin.<br />Sieh zu, wie<br /><span class="outline-word">es passiert.</span></h1>',
+)
+replace(
+    "web/landing.html",
+    '          <p>Recherchieren, durchdenken, Code bearbeiten.<br class="desktop-break" /> Odin bringt deine Aufgabe und die Arbeit daran<br class="desktop-break" /> in einen gemeinsamen Workspace.</p>',
+    '          <p>Code, Research, Tools und verbundene Apps.<br class="desktop-break" /> Du gibst das Ziel. Odin erledigt die Arbeit<br class="desktop-break" /> und zeigt dir live, was gerade passiert.</p>',
+)
+replace(
+    "web/landing.html",
+    '<div class="section-heading"><span class="eyebrow">01 / ARBEITSWEISE</span><h2 id="work-title">Die Aufgabe bestimmt<br />den Modus.</h2><p>Ein Gespräch als Ausgangspunkt.<br />Fünf Wege, daran weiterzuarbeiten.</p></div>',
+    '<div class="section-heading"><span class="eyebrow">01 / LIVE WORK</span><h2 id="work-title">Du sagst was.<br />Odin arbeitet.</h2><p>Ein einfacher Auftrag.<br />Die Arbeit bleibt sichtbar.</p></div>',
+)
+
+Path("web/live-work.js").write_text(r'''const css = document.createElement("link");
+css.rel = "stylesheet";
+css.href = "/live-work.css";
+document.head.append(css);
+
+const conversation = document.querySelector(".conversation");
+const composer = document.querySelector(".composer-wrap");
+const panel = document.createElement("details");
+panel.id = "odin-live-work";
+panel.className = "odin-live-work";
+panel.hidden = true;
+panel.open = true;
+panel.innerHTML = `<summary><span class="live-pulse" aria-hidden="true"></span><span class="live-title"><strong id="live-work-title">Odin is working</strong><small id="live-work-current">Preparing the next step</small></span><span id="live-work-badge" class="live-badge">LIVE</span></summary><div class="live-work-body"><ol id="live-work-plan" class="live-work-plan"></ol><div id="live-work-tools" class="live-work-tools"></div><div class="live-work-signals"><article><span>FOCUS</span><strong id="live-focus">Waiting for context</strong><small id="live-focus-detail">Only evidence selected by the runtime appears here.</small></article><article><span>OUTPUT</span><strong id="live-output">No changes yet</strong><small id="live-output-detail">Artifacts and file changes will appear as they happen.</small></article></div><div id="live-approval" class="live-approval" hidden><div><span>APPROVAL REQUIRED</span><strong id="live-approval-title">Odin needs your confirmation</strong><small id="live-approval-detail">Review the high-risk action before it runs.</small></div><button id="live-approval-open" type="button">Review & approve</button></div><p class="live-work-note">Visible work summaries come from Odin’s runtime events. Private chain-of-thought is never exposed.</p></div>`;
+if (conversation && composer) conversation.insertBefore(panel, composer);
+
+const byId = (id) => document.getElementById(id);
+const state = { projectId: null, runId: null, tools: new Map(), steps: [], plan: [] };
+const terminalStates = new Set(["COMPLETED", "CANCELLED", "BLOCKED", "FAILED"]);
+
+function safeObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+function shortJson(value) {
+  try {
+    const text = JSON.stringify(value);
+    return text.length > 220 ? `${text.slice(0, 217)}…` : text;
+  } catch {
+    return "{}";
+  }
+}
+function show() {
+  panel.hidden = false;
+}
+function clear() {
+  state.runId = null;
+  state.tools.clear();
+  state.steps = [];
+  state.plan = [];
+  panel.hidden = true;
+  panel.dataset.state = "idle";
+  byId("live-work-tools")?.replaceChildren();
+  byId("live-work-plan")?.replaceChildren();
+  if (byId("live-approval")) byId("live-approval").hidden = true;
+}
+function labelForState(value) {
+  return {
+    UNDERSTANDING: "Understanding the goal",
+    PLANNING: "Building the plan",
+    WORKING: "Working through the task",
+    VERIFYING: "Checking the result",
+    REPAIRING: "Repairing a failed check",
+    BLOCKED: "Waiting for your input",
+    SUCCESS: "Work complete",
+  }[value] ?? "Odin is working";
+}
+function addStep(label, status = "active", meta = "") {
+  if (!label) return;
+  const duplicate = state.steps.at(-1);
+  if (duplicate?.label === label && duplicate?.status === status) return;
+  state.steps.push({ label: String(label).slice(0, 180), status, meta: String(meta).slice(0, 180) });
+  if (state.steps.length > 8) state.steps.shift();
+  renderSteps();
+}
+function renderSteps() {
+  const target = byId("live-work-plan");
+  if (!target) return;
+  target.replaceChildren();
+  const canonical = state.plan.length ? state.plan : state.steps;
+  for (const step of canonical.slice(-8)) {
+    const item = document.createElement("li");
+    item.className = `live-step ${step.status ?? "pending"}`;
+    const marker = document.createElement("span");
+    marker.className = "live-step-marker";
+    marker.textContent = step.status === "done" ? "✓" : step.status === "failed" ? "!" : "";
+    const copy = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = step.title ?? step.label ?? "Working";
+    copy.append(title);
+    if (step.meta) {
+      const detail = document.createElement("small");
+      detail.textContent = step.meta;
+      copy.append(detail);
+    }
+    item.append(marker, copy);
+    target.append(item);
+  }
+}
+function toolCard(event) {
+  const data = safeObject(event.data);
+  const id = String(data.toolId ?? `${data.name}-${event.cursor}`);
+  const card = document.createElement("article");
+  card.className = "live-tool active";
+  card.dataset.toolId = id;
+  const header = document.createElement("div");
+  const tag = document.createElement("span");
+  tag.textContent = "TOOL";
+  const name = document.createElement("strong");
+  name.textContent = String(data.name ?? "connected tool");
+  header.append(tag, name);
+  const args = document.createElement("code");
+  args.textContent = shortJson(safeObject(data.input));
+  const status = document.createElement("small");
+  status.textContent = "Running…";
+  card.append(header, args, status);
+  byId("live-work-tools")?.prepend(card);
+  while ((byId("live-work-tools")?.children.length ?? 0) > 4)
+    byId("live-work-tools")?.lastElementChild?.remove();
+  state.tools.set(id, card);
+}
+function finishTool(event) {
+  const data = safeObject(event.data);
+  const id = String(data.toolId ?? "");
+  let card = id ? state.tools.get(id) : null;
+  if (!card) card = [...state.tools.values()].find((node) => node.classList.contains("active"));
+  if (!card) return;
+  card.classList.remove("active");
+  const failed = data.status === "failed";
+  card.classList.toggle("failed", failed);
+  card.classList.toggle("done", !failed);
+  const status = card.querySelector("small");
+  if (status)
+    status.textContent = failed
+      ? String(data.message ?? "Stopped")
+      : Object.keys(safeObject(data.summary)).length
+        ? `Done · ${shortJson(data.summary)}`
+        : "Done";
+}
+function flashChange(path) {
+  panel.classList.remove("changed");
+  requestAnimationFrame(() => panel.classList.add("changed"));
+  setTimeout(() => panel.classList.remove("changed"), 900);
+  const buttons = [...document.querySelectorAll(".file-button")];
+  const target = buttons.find((button) => button.textContent === path);
+  if (target) {
+    target.classList.add("odin-file-flash");
+    setTimeout(() => target.classList.remove("odin-file-flash"), 1200);
+  }
+}
+function handle(event) {
+  if (!event || typeof event !== "object") return;
+  const data = safeObject(event.data);
+  state.runId = event.turnId ?? state.runId;
+  show();
+  if (event.type === "state") {
+    const companion = String(data.companionState ?? data.state ?? "WORKING");
+    const runtimeState = String(data.state ?? "");
+    panel.dataset.state = terminalStates.has(runtimeState) ? "done" : companion.toLowerCase();
+    byId("live-work-title").textContent = labelForState(companion);
+    byId("live-work-current").textContent = String(data.objective ?? data.status ?? companion).slice(0, 180);
+    byId("live-work-badge").textContent = terminalStates.has(runtimeState) ? runtimeState : "LIVE";
+    if (Array.isArray(data.plan) && data.plan.length) {
+      state.plan = data.plan.map((step) => ({ ...step }));
+      renderSteps();
+    }
+    return;
+  }
+  if (event.type === "plan") {
+    state.plan = Array.isArray(data.steps) ? data.steps.map((step) => ({ ...step })) : [];
+    byId("live-work-current").textContent = "Plan updated from the canonical runtime";
+    renderSteps();
+    return;
+  }
+  if (event.type === "activity") {
+    const label = String(data.message ?? "Runtime activity");
+    byId("live-work-current").textContent = label;
+    addStep(label, data.phase === "repair" ? "active" : "done", String(data.phase ?? ""));
+    return;
+  }
+  if (event.type === "model.start") {
+    const label = data.role === "reviewer" ? "Independent review started" : "Model is working";
+    byId("live-work-current").textContent = `${label} · ${String(data.effort ?? "provider default")}`;
+    addStep(label, "active", `call ${String(data.call ?? "")} · ${String(data.effort ?? "")}`);
+    return;
+  }
+  if (event.type === "tool.start") {
+    byId("live-work-current").textContent = `Using ${String(data.name ?? "a connected tool")}`;
+    toolCard(event);
+    addStep(`Tool · ${String(data.name ?? "connected tool")}`, "active", shortJson(data.input ?? {}));
+    return;
+  }
+  if (event.type === "tool.end") {
+    finishTool(event);
+    addStep(
+      `Tool · ${String(data.name ?? "connected tool")}`,
+      data.status === "failed" ? "failed" : "done",
+      data.status === "failed" ? String(data.message ?? "failed") : shortJson(data.summary ?? {}),
+    );
+    return;
+  }
+  if (event.type === "file.changed") {
+    const path = String(data.path ?? "workspace file");
+    byId("live-output").textContent = `Changed ${path}`;
+    byId("live-output-detail").textContent = "The actual workspace changed; open Files or Preview to inspect it.";
+    addStep(`Changed ${path}`, "done", "workspace evidence");
+    flashChange(path);
+    return;
+  }
+  if (event.type === "quality") {
+    const passed = data.passed === true;
+    byId("live-work-current").textContent = `${String(data.commandId ?? "Quality check")} ${passed ? "passed" : "failed"}`;
+    addStep(`Check · ${String(data.commandId ?? "quality")}`, passed ? "done" : "failed", passed ? "passed" : "repair required");
+    return;
+  }
+  if (event.type === "verification") {
+    const passed = data.outcome === "PASS";
+    addStep("Verification", passed ? "done" : "failed", String(data.scope ?? "runtime evidence"));
+    if (passed) {
+      byId("live-output").textContent = "Verified result ready";
+      byId("live-output-detail").textContent = "The runtime has attached passing evidence to this run.";
+    }
+    return;
+  }
+  if (event.type === "memory.brain.pulse") {
+    const memories = Array.isArray(data.selectedMemoryIds) ? data.selectedMemoryIds.length : 0;
+    const workspace = Array.isArray(data.selectedWorkspaceReferences)
+      ? data.selectedWorkspaceReferences.length
+      : 0;
+    byId("live-focus").textContent = `${memories + workspace} useful context references selected`;
+    byId("live-focus-detail").textContent = `${memories} Memory · ${workspace} Workspace. Stale/noise candidates stay outside ordinary context.`;
+    return;
+  }
+  if (event.type === "source") {
+    addStep(`Source · ${String(data.title ?? data.id ?? "evidence")}`, "done", "retrieved evidence");
+    return;
+  }
+  if (event.type.includes("approval")) {
+    const approval = byId("live-approval");
+    approval.hidden = false;
+    byId("live-approval-title").textContent = String(data.action ?? "Odin needs your confirmation");
+    byId("live-approval-detail").textContent = `Risk ${String(data.risk ?? "runtime-defined")} · external action paused`;
+    byId("live-work-current").textContent = "Waiting for your approval";
+    panel.open = true;
+    return;
+  }
+  if (event.type === "answer") {
+    byId("live-work-current").textContent = "Result delivered";
+    byId("live-work-badge").textContent = "DONE";
+    panel.dataset.state = "done";
+  }
+}
+
+window.addEventListener("odin:runtime-event", (event) => handle(event.detail));
+window.addEventListener("odin:runtime-reset", clear);
+window.addEventListener("odin:project-changed", (event) => {
+  state.projectId = event.detail?.projectId ?? null;
+  clear();
+});
+byId("live-approval-open")?.addEventListener("click", () => {
+  const projectId = state.projectId ?? new URLSearchParams(location.search).get("project");
+  const runId = state.runId;
+  if (!projectId || !runId) return;
+  location.assign(`/browser?project=${encodeURIComponent(projectId)}&run=${encodeURIComponent(runId)}`);
+});
+''')
+
+Path("web/live-work.css").write_text(r''':root {
+  --odin-vibe: #6d5dfc;
+  --odin-vibe-soft: #eef0ff;
+  --odin-good: #1d9b63;
+  --odin-bad: #c34e45;
+}
+.odin-live-work {
+  margin: 0 38px 18px;
+  border: 1px solid color-mix(in srgb, var(--odin-vibe) 20%, #d9d9d2);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 18px 60px rgba(39, 35, 74, 0.08);
+  overflow: hidden;
+  backdrop-filter: blur(18px);
+  transition: border-color 220ms ease, box-shadow 220ms ease, transform 220ms ease;
+}
+.odin-live-work.changed {
+  border-color: color-mix(in srgb, var(--odin-vibe) 60%, white);
+  box-shadow: 0 22px 70px rgba(88, 75, 220, 0.18);
+  transform: translateY(-2px);
+}
+.odin-live-work > summary {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 70px;
+  padding: 14px 17px;
+  cursor: pointer;
+  user-select: none;
+}
+.odin-live-work > summary::-webkit-details-marker { display: none; }
+.live-pulse {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--odin-vibe);
+  box-shadow: 0 0 0 0 rgba(109, 93, 252, 0.35);
+  animation: odin-live-pulse 1.7s ease-out infinite;
+}
+.odin-live-work[data-state="done"] .live-pulse { background: var(--odin-good); animation: none; }
+.live-title { min-width: 0; display: grid; gap: 3px; }
+.live-title strong { font-size: 14px; letter-spacing: -0.01em; }
+.live-title small { color: #74756f; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.live-badge {
+  border: 1px solid #dedfd9;
+  border-radius: 999px;
+  padding: 5px 8px;
+  color: #686a63;
+  font: 600 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.08em;
+}
+.live-work-body { border-top: 1px solid #ecece7; padding: 16px; display: grid; gap: 14px; }
+.live-work-plan { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.live-step {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 9px;
+  align-items: start;
+  opacity: 0;
+  transform: translateY(5px);
+  animation: odin-row-in 260ms ease forwards;
+}
+.live-step-marker {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d9dad4;
+  color: #fff;
+  font-size: 11px;
+}
+.live-step.active .live-step-marker { border-color: var(--odin-vibe); box-shadow: inset 0 0 0 5px #fff; background: var(--odin-vibe); animation: odin-live-pulse 1.8s ease-out infinite; }
+.live-step.done .live-step-marker { border-color: var(--odin-good); background: var(--odin-good); }
+.live-step.failed .live-step-marker { border-color: var(--odin-bad); background: var(--odin-bad); }
+.live-step div { display: grid; gap: 2px; padding-top: 1px; }
+.live-step strong { font-size: 13px; font-weight: 610; }
+.live-step small { color: #888982; font-size: 11px; }
+.live-work-tools { display: grid; gap: 8px; }
+.live-tool {
+  padding: 11px 12px;
+  border: 1px solid #e4e4df;
+  border-radius: 14px;
+  background: #fafaf8;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px 12px;
+  animation: odin-row-in 260ms ease both;
+}
+.live-tool > div { display: flex; gap: 8px; align-items: center; }
+.live-tool span { font: 600 9px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.08em; color: var(--odin-vibe); }
+.live-tool strong { font-size: 12px; }
+.live-tool code { grid-column: 1 / -1; white-space: pre-wrap; overflow-wrap: anywhere; color: #686962; font-size: 10px; background: transparent; }
+.live-tool small { color: #8a8b85; font-size: 10px; }
+.live-tool.active { border-color: color-mix(in srgb, var(--odin-vibe) 35%, #e4e4df); background: #fbfaff; }
+.live-tool.done { border-color: color-mix(in srgb, var(--odin-good) 30%, #e4e4df); }
+.live-tool.failed { border-color: color-mix(in srgb, var(--odin-bad) 45%, #e4e4df); background: #fff9f8; }
+.live-work-signals { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.live-work-signals article { min-width: 0; border-radius: 14px; background: #f6f6f3; padding: 12px; display: grid; gap: 4px; }
+.live-work-signals span, .live-approval span { color: #85867f; font: 600 9px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.09em; }
+.live-work-signals strong, .live-approval strong { font-size: 12px; }
+.live-work-signals small, .live-approval small { color: #85867f; font-size: 10px; line-height: 1.45; }
+.live-approval { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px; border-radius: 14px; border: 1px solid #e2c887; background: #fffaf0; }
+.live-approval > div { display: grid; gap: 3px; }
+.live-approval button { border: 0; border-radius: 999px; padding: 10px 13px; background: #24231f; color: #fff; font: inherit; cursor: pointer; white-space: nowrap; }
+.live-work-note { margin: 0; color: #989992; font-size: 10px; line-height: 1.45; }
+.odin-file-flash { animation: odin-file-flash 1.1s ease both; }
+@keyframes odin-live-pulse { 70% { box-shadow: 0 0 0 9px rgba(109, 93, 252, 0); } 100% { box-shadow: 0 0 0 0 rgba(109, 93, 252, 0); } }
+@keyframes odin-row-in { to { opacity: 1; transform: translateY(0); } }
+@keyframes odin-file-flash { 0%, 100% { box-shadow: none; } 35% { box-shadow: 0 0 0 4px rgba(109, 93, 252, 0.18); background: #f4f1ff; } }
+@media (max-width: 900px) {
+  .odin-live-work { margin: 0 16px 14px; border-radius: 18px; }
+  .live-work-signals { grid-template-columns: 1fr; }
+}
+@media (max-width: 620px) {
+  .odin-live-work > summary { min-height: 62px; padding: 12px 13px; }
+  .live-work-body { padding: 13px; }
+  .live-approval { align-items: stretch; flex-direction: column; }
+  .live-approval button { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-pulse, .live-step.active .live-step-marker, .live-step, .live-tool, .odin-file-flash { animation: none; }
+}
+''')
+
+Path("web/product-experience-landing.css").write_text(r'''body {
+  background: radial-gradient(circle at 50% -15%, rgba(117, 98, 255, 0.12), transparent 34%), #f8f8f5;
+}
+.site-header {
+  min-height: 76px;
+  margin: 18px auto 0;
+  width: min(1180px, 92%);
+  padding: 0 12px 0 18px;
+  border: 1px solid rgba(28, 28, 25, 0.09);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 16px 60px rgba(38, 35, 58, 0.06);
+  backdrop-filter: blur(22px);
+}
+.wordmark { font-size: 32px; letter-spacing: -2px; }
+.wordmark span { background: #7464ff; color: #fff; border-radius: 50%; width: 24px; height: 24px; font-size: 15px; vertical-align: 4px; }
+.header-cta { border: 0; border-radius: 999px; padding: 12px 16px; background: #22221f; color: #fff; }
+.header-cta:hover { background: #7464ff; color: #fff; }
+.hero { width: min(1180px, 92%); margin: 0 auto; padding: 70px 0 46px; }
+.hero-caption { color: #777871; }
+.hero h1, h1 { max-width: 980px; margin: 60px auto 42px; text-align: center; font-size: clamp(58px, 8.1vw, 116px); line-height: 0.94; letter-spacing: -0.075em; font-weight: 600; }
+.outline-word { color: transparent; -webkit-text-stroke: 0; background: linear-gradient(100deg, #342d86 5%, #7464ff 48%, #9d72ff 85%); background-clip: text; -webkit-background-clip: text; }
+.hero-bottom { justify-content: center; flex-wrap: wrap; text-align: center; gap: 18px 28px; }
+.hero-bottom p { width: 100%; max-width: 650px; color: #686a64; font-size: 17px; }
+.button { min-height: 54px; background: #22221f; color: #fff; border-radius: 999px; padding: 16px 21px; box-shadow: 0 10px 30px rgba(29, 28, 26, 0.12); }
+.button:hover { background: #7464ff; }
+.hero-note, .section-jump, .hero-index { display: none; }
+.landing-live-demo { margin: 58px auto 0; width: min(1050px, 100%); overflow: hidden; border: 1px solid rgba(38, 37, 33, 0.1); border-radius: 30px; background: rgba(255, 255, 255, 0.82); box-shadow: 0 34px 110px rgba(47, 42, 81, 0.12); backdrop-filter: blur(18px); }
+.landing-demo-bar { min-height: 52px; padding: 0 18px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #ecece7; color: #85867f; font: 600 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.08em; }
+.landing-demo-bar span:first-child { display: flex; align-items: center; gap: 8px; color: #393839; }
+.landing-demo-bar i { width: 8px; height: 8px; border-radius: 50%; background: #6f61ff; animation: landing-pulse 1.7s ease-out infinite; }
+.landing-demo-grid { display: grid; grid-template-columns: 0.9fr 1.1fr; min-height: 390px; }
+.landing-demo-stream { padding: 28px; display: grid; align-content: center; gap: 12px; border-right: 1px solid #ecece7; background: linear-gradient(180deg, #fdfdfb, #f8f8f5); }
+.demo-step { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; padding: 12px; border-radius: 15px; }
+.demo-step b { width: 22px; height: 22px; border: 1px solid #d9dad4; border-radius: 50%; display: grid; place-items: center; font-size: 11px; color: #fff; }
+.demo-step.active { background: #f4f2ff; }
+.demo-step.active b { background: #7464ff; border-color: #7464ff; box-shadow: inset 0 0 0 6px #fff; animation: landing-pulse 1.7s ease-out infinite; }
+.demo-step.done b { background: #229a66; border-color: #229a66; }
+.demo-step span { display: grid; gap: 4px; }
+.demo-step strong { font-size: 14px; }
+.demo-step small { color: #85867f; font-size: 11px; }
+.landing-demo-artifact { padding: 28px; background: radial-gradient(circle at 75% 25%, rgba(116, 100, 255, 0.16), transparent 40%), #f4f3ef; }
+.landing-demo-artifact > span { color: #7d7e77; font: 600 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.08em; }
+.demo-window { margin-top: 18px; min-height: 290px; padding: 18px 26px 26px; border-radius: 22px; background: #fff; box-shadow: 0 18px 50px rgba(45, 41, 71, 0.1); }
+.demo-window > i { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 50%; background: #e1e1dc; }
+.demo-window h3 { margin: 62px 0 14px; font-size: 40px; line-height: 0.98; letter-spacing: -0.055em; }
+.demo-window p { max-width: 360px; color: #777871; font-size: 14px; line-height: 1.55; }
+.work-section { width: min(1180px, 92%); margin: 34px auto 0; padding: 78px 44px 44px; border-radius: 38px; background: #20201e; color: #fafaf7; }
+.section-heading { grid-template-columns: 0.8fr 1.7fr 1fr; }
+.mode-workbench { border: 0; gap: 18px; }
+.mode-list { padding: 0; }
+.mode-list button { border: 0; margin-bottom: 6px; padding: 16px; border-radius: 14px; font-size: 22px; }
+.mode-list button[aria-pressed="true"] { color: #fff; background: rgba(255, 255, 255, 0.08); }
+.mode-detail { border-radius: 24px; background: #2a2928; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+.mode-detail h3 { font-size: 42px; }
+.mode-list button[aria-pressed="true"], .mode-list button:hover, .detail-topline span:first-child, .mode-steps span { color: #ab9fff; }
+.control-strip { border-top: 1px solid #3a3936; margin-top: 28px; }
+.evidence-section { width: min(1180px, 92%); margin: 0 auto; padding: 100px 0; }
+.evidence-grid { gap: 18px; border: 0; }
+.evidence-grid article { padding: 28px; border: 1px solid #e3e3de; border-radius: 24px; background: rgba(255, 255, 255, 0.72); }
+.evidence-grid .security-evidence { padding-right: 28px; border-right: 1px solid #e3e3de; }
+.evidence-grid .benchmark-evidence { padding-left: 28px; }
+.closing { width: min(1180px, 92%); margin: 0 auto 50px; padding: 64px; border: 0; border-radius: 34px; background: linear-gradient(125deg, #262329, #34306d); color: #fff; overflow: hidden; }
+.closing h2 { max-width: 760px; margin-bottom: 34px; }
+.closing .button { position: static; background: #fff; color: #22221f; }
+.closing p { color: #c9c7d4; }
+.site-footer { width: min(1180px, 92%); margin: 0 auto; border-color: #deded8; }
+@keyframes landing-pulse { 70% { box-shadow: 0 0 0 10px rgba(116, 100, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(116, 100, 255, 0); } }
+@media (max-width: 800px) {
+  .site-header nav { display: none; }
+  .hero { padding-top: 50px; }
+  .hero h1, h1 { font-size: clamp(52px, 15vw, 84px); }
+  .landing-demo-grid, .section-heading, .mode-workbench, .evidence-grid { grid-template-columns: 1fr; }
+  .landing-demo-stream { border-right: 0; border-bottom: 1px solid #ecece7; }
+  .work-section { width: 94%; padding: 56px 20px 24px; border-radius: 28px; }
+  .closing { padding: 38px 24px; }
+  .evidence-grid .security-evidence, .evidence-grid .benchmark-evidence { padding: 24px; }
+}
+@media (prefers-reduced-motion: reduce) { .landing-demo-bar i, .demo-step.active b { animation: none; } }
+''')
+
+Path("scripts/product-experience-ui.test.mjs").write_text(r'''import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+
+const [chat, live, liveCss, landing, landingCss] = await Promise.all([
+  readFile(new URL("../web/chat.js", import.meta.url), "utf8"),
+  readFile(new URL("../web/live-work.js", import.meta.url), "utf8"),
+  readFile(new URL("../web/live-work.css", import.meta.url), "utf8"),
+  readFile(new URL("../web/landing.js", import.meta.url), "utf8"),
+  readFile(new URL("../web/product-experience-landing.css", import.meta.url), "utf8"),
+]);
+
+test("product experience projects canonical SSE events into the live work accordion", () => {
+  assert.match(chat, /odin:runtime-event/u);
+  assert.match(live, /odin:runtime-event/u);
+  assert.match(live, /tool\.start/u);
+  assert.match(live, /tool\.end/u);
+  assert.match(live, /file\.changed/u);
+  assert.match(live, /quality/u);
+  assert.match(live, /verification/u);
+  assert.match(live, /approval/u);
+  assert.match(live, /Private chain-of-thought is never exposed/u);
+  assert.doesNotMatch(live, /new EventSource/u);
+});
+
+test("live work and landing are responsive, animated and reduced-motion safe", () => {
+  assert.match(liveCss, /@media \(max-width: 900px\)/u);
+  assert.match(liveCss, /@media \(prefers-reduced-motion: reduce\)/u);
+  assert.match(liveCss, /@keyframes odin-live-pulse/u);
+  assert.match(landing, /odin-live-demo/u);
+  assert.match(landingCss, /landing-live-demo/u);
+  assert.match(landingCss, /@media \(max-width: 800px\)/u);
+  assert.match(landingCss, /prefers-reduced-motion/u);
+});
+''')
+
+pkg = Path("package.json")
+pkg_text = pkg.read_text()
+old = "scripts/github-repo-oauth-callback.test.mjs"
+new = "scripts/github-repo-oauth-callback.test.mjs scripts/product-experience-ui.test.mjs"
+if new not in pkg_text:
+    if old not in pkg_text:
+        raise SystemExit("test:ui anchor missing")
+    pkg.write_text(pkg_text.replace(old, new, 1))
+
+Path("test/chat/product-experience.test.ts").write_text(r'''import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+import { MODE_POLICIES } from "../../src/chat/modes.js";
+import { MODE_MINIMUM_PLAN, planAllows } from "../../src/chat/product.js";
+
+const root = new URL("../../", import.meta.url);
+
+test("Coding proves value on free while premium tiers can still differentiate by quota", () => {
+  assert.equal(MODE_MINIMUM_PLAN.coding, "free");
+  assert.equal(planAllows("free", MODE_MINIMUM_PLAN.coding), true);
+  assert.equal(MODE_POLICIES.coding.plan, true);
+  assert.equal(MODE_POLICIES.coding.review, false);
+  assert.equal(MODE_POLICIES.coding.calls, 12);
+});
+
+test("production reconciliation includes Product Workspace, Memory and Skills schemas", async () => {
+  const source = await readFile(new URL("scripts/configure-vercel-production.mjs", root), "utf8");
+  for (const migration of [
+    "012_product_m2_workspace_os.sql",
+    "013_product_m3_memory_brain.sql",
+    "014_product_m5_skills_os.sql",
+  ]) assert.match(source, new RegExp(migration.replaceAll(".", "\\."), "u"));
+});
+
+test("tool visibility emits bounded public summaries rather than raw patch content", async () => {
+  const source = await readFile(new URL("src/chat/agent.ts", root), "utf8");
+  assert.match(source, /visibleToolInput/u);
+  assert.match(source, /contentBytes/u);
+  assert.match(source, /visibleToolResult/u);
+  assert.doesNotMatch(source, /input:\s*tool\.arguments\s*[,}]/u);
+});
+''')
