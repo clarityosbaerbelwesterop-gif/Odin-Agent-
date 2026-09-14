@@ -32,10 +32,7 @@ jobs:
           p = Path('src/bot/executor.ts')
           text = p.read_text()
           old = 'import { GitHubWorkspaceSession } from "../chat/github-workspace-session.js";'
-          new = '''import {
-  type GitHubWorkspaceRestore,
-  GitHubWorkspaceSession,
-} from "../chat/github-workspace-session.js";'''
+          new = 'import {\n  type GitHubWorkspaceRestore,\n  GitHubWorkspaceSession,\n} from "../chat/github-workspace-session.js";'
           if old not in text:
             raise SystemExit('workspace session import anchor missing')
           text = text.replace(old, new, 1)
