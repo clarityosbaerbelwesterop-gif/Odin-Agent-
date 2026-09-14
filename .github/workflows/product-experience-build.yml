@@ -1,4 +1,4 @@
-name: Product Experience Build
+name: Product Experience Verify
 
 on:
   push:
@@ -6,44 +6,22 @@ on:
       - agent/product-experience-runtime-quality
     paths:
       - .github/workflows/product-experience-build.yml
-      - .github/scripts/product-experience-build.py
-      - .github/scripts/fix-product-experience-builder.py
-      - .github/scripts/fix-product-experience-output.py
-      - .github/scripts/fix-product-experience-tests.py
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  build:
+  verify:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
         with:
           ref: agent/product-experience-runtime-quality
-          fetch-depth: 0
       - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
-      - name: Apply product experience changes
-        run: |
-          python .github/scripts/fix-product-experience-builder.py
-          python .github/scripts/product-experience-build.py
-          python .github/scripts/fix-product-experience-output.py
-          python .github/scripts/fix-product-experience-tests.py
       - run: npm ci
-      - run: npm run format
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run test:ui
-      - name: Commit implementation
-        run: |
-          git config user.name "odin-product-bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add src test scripts web package.json
-          git status --short
-          git commit -m "feat: make Odin work visible and efficient"
-          git push origin HEAD:agent/product-experience-runtime-quality
-# temporary staging workflow; remove before PR
+      - run: npm run verify
+# temporary verification workflow; remove before PR
