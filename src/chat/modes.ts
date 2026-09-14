@@ -14,12 +14,13 @@ export const MODE_POLICIES = Object.freeze({
   },
   coding: {
     label: "Coding",
-    description: "Inspect, edit and test the connected workspace",
-    calls: 16,
+    description: "Inspect, edit, test and repair the connected workspace",
+    calls: 12,
     tools: 32,
     output: 4096,
     effort: "high",
-    review: true,
+    // Repository checks are stronger evidence than a reflexive second model pass.
+    review: false,
     plan: true,
   },
   thinking: {

@@ -309,13 +309,20 @@ export async function runChatAgent(
         let failed = false;
         try {
           const name = tools.resolveName(tool.name);
-          await publish("tool.start", { name, call: state.toolCalls, maxCalls: policy.tools });
+          const runtimeInput = tool.arguments;
+          await publish("tool.start", {
+            name,
+            toolId: tool.id,
+            call: state.toolCalls,
+            maxCalls: policy.tools,
+            input: visibleToolInput(name, runtimeInput),
+          });
           const result = await runtime.execute({
             missionId: turn.id,
             taskId: "work",
             tool: name,
             version: "1",
-            input: tool.arguments,
+            input: runtimeInput,
             idempotencyKey: `${turn.id}-${state.calls}-${tool.id}`,
             signal,
           });
@@ -335,14 +342,24 @@ export async function runChatAgent(
               output: output.slice(0, 16_000),
             });
           }
-          await publish("tool.end", { name, status: "success" });
+          await publish("tool.end", {
+            name,
+            toolId: tool.id,
+            status: "success",
+            summary: visibleToolResult(name, result.output),
+          });
           repeatedErrors = 0;
         } catch (error) {
           signal.throwIfAborted();
           const normalized = publicError(error);
           failed = true;
           output = JSON.stringify(normalized);
-          await publish("tool.end", { name: tool.name, status: "failed", ...normalized });
+          await publish("tool.end", {
+            name: tool.name,
+            toolId: tool.id,
+            status: "failed",
+            ...normalized,
+          });
           const signature = hashText(`${tool.name}:${output}`);
           repeatedErrors = signature === lastError ? repeatedErrors + 1 : 1;
           lastError = signature;
@@ -517,7 +534,84 @@ export async function runChatAgent(
         : "Response structure and citation identity; factual correctness not independently proven",
     });
     await save();
+
+    // A steering event may arrive while final quality or verification is still running.
+    // Recheck the durable event stream before completion so efficiency optimizations never
+    // let a stale draft win against the user's newest instruction.
+    let completionCursor = state.steeringCursor;
+    let lateSteering = false;
+    while (true) {
+      const events = await store.events(turn.conversationId, completionCursor, 1000);
+      for (const event of events) {
+        if (event.turnId === turn.id && event.type === "steering") {
+          lateSteering = true;
+          state = { ...state, reviewed: false };
+          await add({ role: "user", content: [{ type: "text", text: String(event.data.text) }] });
+        }
+      }
+      completionCursor = events.at(-1)?.cursor ?? completionCursor;
+      if (events.length < 1000) break;
+    }
+    state = { ...state, steeringCursor: completionCursor };
+    await save();
+    if (lateSteering) {
+      await publish("activity", {
+        phase: "steering",
+        message: "New instruction received before completion; updating the result",
+      });
+      continue;
+    }
     return { text, verified: verification.outcome === "PASS", checkpoint: state };
   }
   throw new ChatError("CALL_BUDGET", "Model-call budget exhausted. Work remains unverified.", 409);
+}
+
+function visibleToolInput(name: string, value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const input = value as Record<string, unknown>;
+  const text = (key: string, max = 240): string | undefined => {
+    const candidate = input[key];
+    return typeof candidate === "string" ? candidate.slice(0, max) : undefined;
+  };
+  if (name === "repo.search")
+    return {
+      query: text("query"),
+      path: text("path"),
+      maxResults: input.maxResults,
+    };
+  if (name === "repo.read") return { path: text("path"), maxBytes: input.maxBytes };
+  if (name === "repo.patch")
+    return {
+      path: text("path"),
+      expectedSha: text("expectedSha", 16),
+      contentBytes:
+        typeof input.content === "string" ? Buffer.byteLength(input.content) : undefined,
+    };
+  if (name === "repo.quality") return { commandId: text("commandId", 100) };
+  if (name === "research.search") return { query: text("query", 500) };
+  if (name === "math.calculate") return { expression: text("expression", 500) };
+  if (name === "task.plan")
+    return { stepCount: Array.isArray(input.steps) ? Math.min(input.steps.length, 12) : 0 };
+  return {};
+}
+
+function visibleToolResult(name: string, value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const output = value as Record<string, unknown>;
+  if (name === "repo.search")
+    return { matches: Array.isArray(output.matches) ? output.matches.length : 0 };
+  if (name === "repo.read")
+    return {
+      bytes: typeof output.content === "string" ? Buffer.byteLength(output.content) : 0,
+      truncated: output.truncated === true,
+      sha: typeof output.sha === "string" ? output.sha.slice(0, 16) : undefined,
+    };
+  if (name === "repo.patch")
+    return { sha: typeof output.sha === "string" ? output.sha.slice(0, 16) : undefined };
+  if (name === "repo.quality") return { exitCode: output.exitCode };
+  if (name === "research.search")
+    return { sources: Array.isArray(output.sources) ? output.sources.length : 0 };
+  if (name === "math.calculate") return { value: output.value };
+  if (name === "task.plan") return { recorded: output.recorded === true };
+  return {};
 }

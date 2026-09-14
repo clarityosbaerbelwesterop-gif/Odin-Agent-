@@ -23,7 +23,7 @@ export const MODE_MINIMUM_PLAN: Readonly<Record<ChatMode, Plan>> = Object.freeze
   chat: "free",
   thinking: "pro",
   research: "pro",
-  coding: "developer",
+  coding: "free",
   ultra: "ultra",
 });
 export const ODIN_STRIPE_PRICES = Object.freeze({

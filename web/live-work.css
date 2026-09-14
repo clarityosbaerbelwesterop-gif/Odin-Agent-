@@ -1,0 +1,314 @@
+:root {
+  --odin-vibe: #6d5dfc;
+  --odin-vibe-soft: #eef0ff;
+  --odin-good: #1d9b63;
+  --odin-bad: #c34e45;
+}
+.odin-live-work {
+  margin: 0 38px 18px;
+  border: 1px solid color-mix(in srgb, var(--odin-vibe) 20%, #d9d9d2);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 18px 60px rgba(39, 35, 74, 0.08);
+  overflow: hidden;
+  backdrop-filter: blur(18px);
+  transition:
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    transform 220ms ease;
+}
+.odin-live-work.changed {
+  border-color: color-mix(in srgb, var(--odin-vibe) 60%, white);
+  box-shadow: 0 22px 70px rgba(88, 75, 220, 0.18);
+  transform: translateY(-2px);
+}
+.odin-live-work > summary {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 70px;
+  padding: 14px 17px;
+  cursor: pointer;
+  user-select: none;
+}
+.odin-live-work > summary::-webkit-details-marker {
+  display: none;
+}
+.live-pulse {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--odin-vibe);
+  box-shadow: 0 0 0 0 rgba(109, 93, 252, 0.35);
+  animation: odin-live-pulse 1.7s ease-out infinite;
+}
+.odin-live-work[data-state="done"] .live-pulse {
+  background: var(--odin-good);
+  animation: none;
+}
+.live-title {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.live-title strong {
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+.live-title small {
+  color: #74756f;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.live-badge {
+  border: 1px solid #dedfd9;
+  border-radius: 999px;
+  padding: 5px 8px;
+  color: #686a63;
+  font:
+    600 10px / 1.2 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  letter-spacing: 0.08em;
+}
+.live-work-body {
+  border-top: 1px solid #ecece7;
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+.live-work-plan {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 7px;
+}
+.live-step {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 9px;
+  align-items: start;
+  opacity: 0;
+  transform: translateY(5px);
+  animation: odin-row-in 260ms ease forwards;
+}
+.live-step-marker {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d9dad4;
+  color: #fff;
+  font-size: 11px;
+}
+.live-step.active .live-step-marker {
+  border-color: var(--odin-vibe);
+  box-shadow: inset 0 0 0 5px #fff;
+  background: var(--odin-vibe);
+  animation: odin-live-pulse 1.8s ease-out infinite;
+}
+.live-step.done .live-step-marker {
+  border-color: var(--odin-good);
+  background: var(--odin-good);
+}
+.live-step.failed .live-step-marker {
+  border-color: var(--odin-bad);
+  background: var(--odin-bad);
+}
+.live-step div {
+  display: grid;
+  gap: 2px;
+  padding-top: 1px;
+}
+.live-step strong {
+  font-size: 13px;
+  font-weight: 610;
+}
+.live-step small {
+  color: #888982;
+  font-size: 11px;
+}
+.live-work-tools {
+  display: grid;
+  gap: 8px;
+}
+.live-tool {
+  padding: 11px 12px;
+  border: 1px solid #e4e4df;
+  border-radius: 14px;
+  background: #fafaf8;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px 12px;
+  animation: odin-row-in 260ms ease both;
+}
+.live-tool > div {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.live-tool span {
+  font:
+    600 9px / 1.2 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  letter-spacing: 0.08em;
+  color: var(--odin-vibe);
+}
+.live-tool strong {
+  font-size: 12px;
+}
+.live-tool code {
+  grid-column: 1 / -1;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #686962;
+  font-size: 10px;
+  background: transparent;
+}
+.live-tool small {
+  color: #8a8b85;
+  font-size: 10px;
+}
+.live-tool.active {
+  border-color: color-mix(in srgb, var(--odin-vibe) 35%, #e4e4df);
+  background: #fbfaff;
+}
+.live-tool.done {
+  border-color: color-mix(in srgb, var(--odin-good) 30%, #e4e4df);
+}
+.live-tool.failed {
+  border-color: color-mix(in srgb, var(--odin-bad) 45%, #e4e4df);
+  background: #fff9f8;
+}
+.live-work-signals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+}
+.live-work-signals article {
+  min-width: 0;
+  border-radius: 14px;
+  background: #f6f6f3;
+  padding: 12px;
+  display: grid;
+  gap: 4px;
+}
+.live-work-signals span,
+.live-approval span {
+  color: #85867f;
+  font:
+    600 9px / 1.2 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  letter-spacing: 0.09em;
+}
+.live-work-signals strong,
+.live-approval strong {
+  font-size: 12px;
+}
+.live-work-signals small,
+.live-approval small {
+  color: #85867f;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.live-approval {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid #e2c887;
+  background: #fffaf0;
+}
+.live-approval > div {
+  display: grid;
+  gap: 3px;
+}
+.live-approval button {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 13px;
+  background: #24231f;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.live-work-note {
+  margin: 0;
+  color: #989992;
+  font-size: 10px;
+  line-height: 1.45;
+}
+.odin-file-flash {
+  animation: odin-file-flash 1.1s ease both;
+}
+@keyframes odin-live-pulse {
+  70% {
+    box-shadow: 0 0 0 9px rgba(109, 93, 252, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(109, 93, 252, 0);
+  }
+}
+@keyframes odin-row-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes odin-file-flash {
+  0%,
+  100% {
+    box-shadow: none;
+  }
+  35% {
+    box-shadow: 0 0 0 4px rgba(109, 93, 252, 0.18);
+    background: #f4f1ff;
+  }
+}
+@media (max-width: 900px) {
+  .odin-live-work {
+    margin: 0 16px 14px;
+    border-radius: 18px;
+  }
+  .live-work-signals {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 620px) {
+  .odin-live-work > summary {
+    min-height: 62px;
+    padding: 12px 13px;
+  }
+  .live-work-body {
+    padding: 13px;
+  }
+  .live-approval {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .live-approval button {
+    width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-pulse,
+  .live-step.active .live-step-marker,
+  .live-step,
+  .live-tool,
+  .odin-file-flash {
+    animation: none;
+  }
+}
