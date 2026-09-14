@@ -45,9 +45,7 @@ export function effectivePlan(account: Pick<ProductAccount, "plan" | "subscripti
  */
 export function preStripeTestMode(env: NodeJS.ProcessEnv = process.env): boolean {
   const production =
-    env.VERCEL_ENV !== undefined
-      ? env.VERCEL_ENV === "production"
-      : env.NODE_ENV === "production";
+    env.VERCEL_ENV !== undefined ? env.VERCEL_ENV === "production" : env.NODE_ENV === "production";
   return !production && env.ODIN_PRESTRIPE_TEST_MODE === "true";
 }
 
