@@ -23,16 +23,6 @@ replace(
     '''            input: runtimeInput,\n            idempotencyKey: `${turn.id}-${state.calls}-${tool.id}`,''',
 )
 
-# A steering instruction can arrive while the final registered quality command is
-# running. Completion must not race that accepted instruction. Drain the durable event
-# stream once more immediately before returning; if anything new arrived, append it to
-# the same checkpoint and continue the existing Run instead of emitting a stale answer.
-replace(
-    "src/chat/agent.ts",
-    '''    await save();\n    return { text, verified: verification.outcome === "PASS", checkpoint: state };''',
-    '''    await save();\n\n    let completionCursor = state.steeringCursor;\n    let lateSteering = false;\n    while (true) {\n      const events = await store.events(turn.conversationId, completionCursor, 1000);\n      for (const event of events)\n        if (event.turnId === turn.id && event.type === "steering") {\n          lateSteering = true;\n          state = { ...state, reviewed: false };\n          await add({\n            role: "user",\n            content: [{ type: "text", text: String(event.data.text) }],\n          });\n        }\n      completionCursor = events.at(-1)?.cursor ?? completionCursor;\n      if (events.length < 1000) break;\n    }\n    state = { ...state, steeringCursor: completionCursor };\n    await save();\n    if (lateSteering) {\n      await publish("activity", {\n        phase: "steering",\n        message: "A new instruction arrived during verification; continuing this Run before completion.",\n      });\n      continue;\n    }\n\n    return { text, verified: verification.outcome === "PASS", checkpoint: state };''',
-)
-
 # Coding no longer spends a reflexive second-model review call when repository evidence
 # is available, so this regression fixture reaches the post-steering answer on call 3.
 replace(
