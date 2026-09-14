@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { MissionSnapshot } from "../mission/runtime.js";
-import type { ModelMessage, ModelRequest, ModelResponse } from "../providers/types.js";
+import type { ModelMessage, ModelRequest, ModelResponse, ToolCall } from "../providers/types.js";
 import { InMemoryCapabilityPolicy } from "../tools/policy.js";
 import type { QualityCommandRunner, RepositoryWorkspace } from "../tools/repository.js";
 import { ToolRuntime } from "../tools/runtime.js";
@@ -107,14 +107,31 @@ export async function runChatAgent(
   };
   // A crash may leave an assistant tool proposal with no durable result. Never replay it blindly.
   let uncertainEffects = false;
-  const pending = new Set<string>();
+  const pending = new Map<string, ToolCall>();
   for (const message of state.messages) {
     if (message.role === "assistant")
-      for (const call of message.toolCalls ?? []) pending.add(call.id);
+      for (const call of message.toolCalls ?? []) pending.set(call.id, call);
     if (message.role === "tool") pending.delete(message.toolCallId);
   }
-  for (const id of pending) {
+  for (const [id, call] of pending) {
     uncertainEffects = true;
+    try {
+      const name = tools.resolveName(call.name);
+      const registration = tools.registry.resolveRegistration(name, "1");
+      if (registration.manifest.riskClass === "high") {
+        const inputHash = hashText(JSON.stringify(call.arguments));
+        const approvalId = hashText(`${turn.id}\u0000${name}\u0000${inputHash}`);
+        await publish("approval.outcome_unknown", {
+          approvalId,
+          tool: name,
+          inputHash,
+          risk: "high",
+          action: registration.manifest.summary,
+        });
+      }
+    } catch {
+      // The unresolved proposal remains untrusted and is not replayed even if the tool vanished.
+    }
     await add({
       role: "tool",
       toolCallId: id,
@@ -366,10 +383,16 @@ export async function runChatAgent(
             tool: name,
             version: "1",
             input: runtimeInput,
-            idempotencyKey: `${turn.id}-${state.calls}-${tool.id}`,
+            idempotencyKey: approval?.approvalId ?? `${turn.id}-${state.calls}-${tool.id}`,
             ...(approval ? { approval } : {}),
             signal,
           });
+          if (approval)
+            await publish("approval.consumed", {
+              approvalId: approval.approvalId,
+              tool: name,
+              inputHash,
+            });
           signal.throwIfAborted();
           output = safeText(JSON.stringify(result.output), 300_000);
           if (name === "repo.patch") lastQualityPassed = false;
@@ -728,17 +751,29 @@ async function approvedEvidence(
   let cursor = 0;
   let granted: ChatEvent | undefined;
   let denied = false;
+  let consumed = false;
+  let requested = false;
   while (true) {
     const events = await store.events(conversationId, cursor, 1000);
     for (const event of events) {
       if (event.turnId !== turnId || event.data.approvalId !== approvalId) continue;
-      if (event.type === "approval.granted") granted = event;
-      if (event.type === "approval.denied") denied = true;
+      if (event.type === "approval.requested") {
+        requested = true;
+        granted = undefined;
+        denied = false;
+        consumed = false;
+      } else if (requested && event.type === "approval.granted") granted = event;
+      else if (requested && event.type === "approval.denied") denied = true;
+      else if (
+        requested &&
+        (event.type === "approval.consumed" || event.type === "approval.outcome_unknown")
+      )
+        consumed = true;
     }
     cursor = events.at(-1)?.cursor ?? cursor;
     if (events.length < 1000) break;
   }
-  if (!granted || denied) return undefined;
+  if (!requested || !granted || denied || consumed) return undefined;
   const expiresAt = String(granted.data.expiresAt ?? "");
   if (Date.parse(expiresAt) <= Date.now()) return undefined;
   if (granted.data.tool !== tool || granted.data.inputHash !== inputHash) return undefined;

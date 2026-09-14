@@ -231,16 +231,25 @@ export class ConnectorStore {
   async saveTokenSet(
     id: string,
     token: ConnectorTokenSet,
-    metadata: { readonly issuer: string; readonly resource: string; readonly clientId: string },
+    metadata: {
+      readonly issuer: string;
+      readonly resource: string;
+      readonly clientId: string;
+      readonly clientSecret?: string;
+    },
   ): Promise<ConnectorConnection> {
     const access = this.vault.seal(token.accessToken).ciphertext;
     const refresh = token.refreshToken ? this.vault.seal(token.refreshToken).ciphertext : null;
+    const clientSecret = metadata.clientSecret
+      ? this.vault.seal(metadata.clientSecret).ciphertext
+      : null;
     return this.db.transaction(async (client) => {
       const row = (
         await client.query(
           `UPDATE odin_api.connector_connections SET
              status='connected',access_token_ciphertext=$2,refresh_token_ciphertext=$3,token_type=$4,
              token_expires_at=$5,scopes=$6,issuer=$7,resource=$8,client_id=$9,
+             client_secret_ciphertext=COALESCE($10,client_secret_ciphertext),
              last_verified_at=now(),last_error_code=NULL,updated_at=now()
            WHERE id=$1 RETURNING *`,
           [
@@ -253,6 +262,7 @@ export class ConnectorStore {
             metadata.issuer,
             metadata.resource,
             metadata.clientId,
+            clientSecret,
           ],
         )
       ).rows[0] as Record<string, unknown> | undefined;

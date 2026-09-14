@@ -11,6 +11,11 @@ test("first-class MCP catalog is secure-by-default for requested providers", () 
   assert.equal(neon.trust, "official");
   assert.match(neon.officialMcpUrl ?? "", /^https:\/\/mcp\.neon\.tech\/mcp\?readonly=true$/u);
   assert.deepEqual(neon.defaultScopes, ["read"]);
+  assert.deepEqual(neon.policy.blockedTools, ["get_connection_string"]);
+  const migration = classifyRemoteTool(neon, tool("prepare_database_migration"));
+  assert.equal(migration.operation, "write");
+  assert.equal(migration.riskClass, "high");
+  assert.equal(migration.requiresApproval, true);
   assert.equal(connectorDescriptor("vercel").officialMcpUrl, "https://mcp.vercel.com");
   assert.equal(connectorDescriptor("google-workspace").endpointRequired, true);
   assert.equal(connectorDescriptor("linkedin").trust, "community");
@@ -50,4 +55,19 @@ test("connector platform keeps credentials server-side and reuses canonical Tool
   assert.doesNotMatch(bridge, /child_process|exec\(|spawn\(/u);
   assert.match(migration, /FORCE ROW LEVEL SECURITY/u);
   assert.match(migration, /access_token_ciphertext/u);
+});
+
+test("connector security hardening preserves OAuth secrets and pins official overrides", async () => {
+  const service = await readFile(join(process.cwd(), "src/connectors/service.ts"), "utf8");
+  const store = await readFile(join(process.cwd(), "src/connectors/store.ts"), "utf8");
+  const migration = await readFile(
+    join(process.cwd(), "migrations/017_connector_platform.sql"),
+    "utf8",
+  );
+  assert.match(service, /requestedUrl\.origin !== officialUrl\.origin/u);
+  assert.match(service, /blockedTools/u);
+  assert.match(store, /client_secret_ciphertext=COALESCE\(\$10,client_secret_ciphertext\)/u);
+  assert.match(store, /metadata\.clientSecret/u);
+  assert.doesNotMatch(migration, /UNIQUE\(owner_id,tool_name\)/u);
+  assert.match(migration, /UNIQUE\(owner_id,connection_id,tool_name\)/u);
 });

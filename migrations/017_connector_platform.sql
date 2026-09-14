@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS odin_api.connector_tool_cache (
   observed_at timestamptz NOT NULL DEFAULT now(),
   expires_at timestamptz NOT NULL,
   PRIMARY KEY(owner_id,connection_id,remote_name),
-  UNIQUE(owner_id,tool_name),
+  UNIQUE(owner_id,connection_id,tool_name),
   FOREIGN KEY(owner_id,connection_id) REFERENCES odin_api.connector_connections(owner_id,id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS odin_connector_tool_cache_expiry

@@ -21,6 +21,7 @@ export interface ConnectorPolicy {
   readonly searchPrefixes: readonly string[];
   readonly writePrefixes: readonly string[];
   readonly alwaysApprovalPrefixes: readonly string[];
+  readonly blockedTools?: readonly string[];
   readonly metered: boolean;
 }
 

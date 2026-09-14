@@ -6,7 +6,7 @@ import { createNeonPool, NeonActorDatabase } from "../chat/neon-database.js";
 import { NeonChatStore } from "../chat/neon-store.js";
 import { CredentialVault, planAllows, ProductStore, runtimePlan } from "../chat/product.js";
 import { publicError } from "../chat/safety.js";
-import { ChatError } from "../chat/types.js";
+import { ChatError, type ChatEvent } from "../chat/types.js";
 import { connectorDescriptor } from "./catalog.js";
 import { ConnectorService } from "./service.js";
 import { ConnectorStore } from "./store.js";
@@ -182,7 +182,13 @@ export async function connectorApiHandler(
         throw new ChatError("INVALID_INPUT", "Choose approve or deny.");
       const chat = new NeonChatStore(db);
       const turn = await chat.turn(approval[1] ?? "");
-      const request = await approvalRequest(chat, turn.conversationId, turn.id, approval[2] ?? "");
+      const requestEvent = await approvalRequest(
+        chat,
+        turn.conversationId,
+        turn.id,
+        approval[2] ?? "",
+      );
+      const request = requestEvent.data;
       if (Date.parse(String(request.expiresAt ?? "")) <= Date.now())
         throw new ChatError(
           "APPROVAL_EXPIRED",
@@ -194,6 +200,7 @@ export async function connectorApiHandler(
         turn.conversationId,
         turn.id,
         approval[2] ?? "",
+        requestEvent.cursor,
       );
       if (resolved)
         throw new ChatError(
@@ -231,6 +238,7 @@ async function approvalRequest(
   approvalId: string,
 ) {
   let cursor = 0;
+  let latest: ChatEvent | undefined;
   while (true) {
     const events = await store.events(conversationId, cursor, 1000);
     for (const event of events)
@@ -239,10 +247,11 @@ async function approvalRequest(
         event.type === "approval.requested" &&
         event.data.approvalId === approvalId
       )
-        return event.data;
+        latest = event;
     cursor = events.at(-1)?.cursor ?? cursor;
     if (events.length < 1000) break;
   }
+  if (latest) return latest;
   throw new ChatError("APPROVAL_NOT_FOUND", "Approval request not found.", 404);
 }
 
@@ -251,8 +260,9 @@ async function approvalResolution(
   conversationId: string,
   turnId: string,
   approvalId: string,
+  afterCursor: number,
 ) {
-  let cursor = 0;
+  let cursor = afterCursor;
   while (true) {
     const events = await store.events(conversationId, cursor, 1000);
     for (const event of events)

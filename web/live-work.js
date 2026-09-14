@@ -280,6 +280,13 @@ function handle(event) {
     );
     return;
   }
+  if (event.type === "approval.outcome_unknown") {
+    state.approval = null;
+    byId("live-approval").hidden = true;
+    byId("live-work-current").textContent = "External action outcome needs inspection";
+    addStep("External action outcome unknown", "failed", "Odin will not repeat it automatically");
+    return;
+  }
   if (event.type === "answer") {
     byId("live-work-current").textContent = "Result delivered";
     byId("live-work-badge").textContent = "DONE";

@@ -57,6 +57,31 @@ function publicDescriptor(descriptor: ConnectorDescriptor): ConnectorDescriptor 
   return Object.freeze(structuredClone(descriptor));
 }
 
+function connectorEndpoint(descriptor: ConnectorDescriptor, requested: string | undefined): string {
+  const candidate =
+    requested && (descriptor.endpointRequired || descriptor.allowEndpointOverride)
+      ? requested
+      : (descriptor.officialMcpUrl ?? requested);
+  if (!candidate) throw new ConnectorError("INVALID_INPUT", "A remote MCP endpoint is required.");
+  if (requested && descriptor.officialMcpUrl && descriptor.allowEndpointOverride) {
+    let requestedUrl: URL;
+    let officialUrl: URL;
+    try {
+      requestedUrl = new URL(requested);
+      officialUrl = new URL(descriptor.officialMcpUrl);
+    } catch {
+      throw new ConnectorError("ENDPOINT_DENIED", "Connector endpoint is invalid.");
+    }
+    if (requestedUrl.origin !== officialUrl.origin)
+      throw new ConnectorError(
+        "ENDPOINT_DENIED",
+        "Official connector overrides must stay on the official MCP origin.",
+        403,
+      );
+  }
+  return candidate;
+}
+
 export class ConnectorService {
   constructor(
     readonly store: ConnectorStore,
@@ -106,12 +131,7 @@ export class ConnectorService {
         "Link a Vercel Connect connector UID for this catalog provider.",
         409,
       );
-    const rawEndpoint =
-      input.endpoint && (descriptor.endpointRequired || descriptor.allowEndpointOverride)
-        ? input.endpoint
-        : (descriptor.officialMcpUrl ?? input.endpoint);
-    if (!rawEndpoint)
-      throw new ConnectorError("INVALID_INPUT", "A remote MCP endpoint is required.");
+    const rawEndpoint = connectorEndpoint(descriptor, input.endpoint);
     const endpoint = (await authorizeConnectorUrl(rawEndpoint)).href;
     const discovery = await discoverMcpOAuth(endpoint, this.transport);
     const client = await registerOAuthClient(
@@ -207,6 +227,7 @@ export class ConnectorService {
         issuer: transaction.issuer,
         resource: transaction.resource,
         clientId: transaction.clientId,
+        ...(transaction.clientSecret ? { clientSecret: transaction.clientSecret } : {}),
       });
       await this.refreshTools(connection.id, true);
       return this.store.connection(connection.id);
@@ -235,12 +256,7 @@ export class ConnectorService {
         "API keys for brokered connectors belong in Vercel Connect, not Odin storage.",
         409,
       );
-    const rawEndpoint =
-      input.endpoint && (descriptor.endpointRequired || descriptor.allowEndpointOverride)
-        ? input.endpoint
-        : (descriptor.officialMcpUrl ?? input.endpoint);
-    if (!rawEndpoint)
-      throw new ConnectorError("INVALID_INPUT", "A remote MCP endpoint is required.");
+    const rawEndpoint = connectorEndpoint(descriptor, input.endpoint);
     const endpoint = (await authorizeConnectorUrl(rawEndpoint)).href;
     const connection = await this.store.createConnection({
       connectorId: descriptor.id,
@@ -310,7 +326,9 @@ export class ConnectorService {
         ? undefined
         : (await this.#freshCredential(connection)).accessToken;
     const client = new RemoteMcpClient(connection.endpoint, accessToken, this.transport);
-    const remote = await client.listTools();
+    const remote = (await client.listTools()).filter(
+      (tool) => !descriptor.policy.blockedTools?.includes(tool.name.toLowerCase()),
+    );
     const now = new Date();
     const expires = new Date(now.getTime() + 15 * 60_000).toISOString();
     const entries = remote.map((tool) => {
