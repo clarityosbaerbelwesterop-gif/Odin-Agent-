@@ -1,0 +1,44 @@
+name: MCP Connector Platform Build
+
+on:
+  push:
+    branches:
+      - agent/mcp-connectors-oauth-platform
+    paths:
+      - .github/workflows/mcp-platform-build.yml
+      - .github/scripts/mcp-platform-build.py
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/mcp-connectors-oauth-platform
+          fetch-depth: 0
+      - name: Fetch audited connector source branch
+        run: git fetch origin agent/odin-connectors-oauth-mcp:refs/remotes/origin/agent/odin-connectors-oauth-mcp
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Apply connector platform implementation
+        run: python .github/scripts/mcp-platform-build.py
+      - run: npm ci
+      - run: npm run format
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:ui
+      - name: Commit implementation
+        run: |
+          git config user.name "odin-product-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add src test scripts web migrations package.json api/index.mjs
+          git status --short
+          git commit -m "feat: add OAuth MCP connector platform"
+          git push origin HEAD:agent/mcp-connectors-oauth-platform
+# temporary staging workflow; remove before PR
