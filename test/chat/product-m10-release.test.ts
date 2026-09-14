@@ -101,3 +101,28 @@ test("PRODUCT M10 deployment emits transport hardening and a PWA manifest route"
   assert.match(landing, /rel="manifest" href="\/manifest\.webmanifest"/u);
   assert.match(landing, /src="\/pwa\.js"/u);
 });
+
+test("PRODUCT M10 keeps product control-plane persistence owner-isolated", async () => {
+  const migration = await readFile("migrations/003_product_accounts.sql", "utf8");
+  for (const table of ["accounts", "credentials", "github_connections", "oauth_states", "stripe_events"])
+    assert.match(migration, new RegExp(`['\"]${table}['\"]`, "u"));
+  assert.match(migration, /ENABLE ROW LEVEL SECURITY/u);
+  assert.match(migration, /FORCE ROW LEVEL SECURITY/u);
+  assert.match(migration, /owner_id=\(SELECT odin_api\.actor\(\)\)/u);
+  assert.match(migration, /REVOKE ALL ON odin_api\.%I FROM PUBLIC/u);
+});
+
+test("PRODUCT M10 onboarding starts from a goal and real connection state", async () => {
+  const [chat, productInfo] = await Promise.all([
+    readFile("web/chat.html", "utf8"),
+    readFile("web/product-info.js", "utf8"),
+  ]);
+  assert.match(chat, /What are we<br \/><span>building today\?<\/span>/u);
+  assert.match(chat, /Improve a codebase/u);
+  assert.match(chat, /Work through a decision/u);
+  assert.match(chat, /Explore a topic/u);
+  assert.match(productInfo, /Aktuelle Verbindungen/u);
+  assert.match(productInfo, /Modelle:/u);
+  assert.match(productInfo, /GitHub Workspace/u);
+  assert.match(productInfo, /Billing/u);
+});
