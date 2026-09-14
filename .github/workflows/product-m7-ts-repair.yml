@@ -31,13 +31,21 @@ jobs:
           from pathlib import Path
           p = Path('src/bot/executor.ts')
           text = p.read_text()
+          old = 'import { GitHubWorkspaceSession } from "../chat/github-workspace-session.js";'
+          new = '''import {
+  type GitHubWorkspaceRestore,
+  GitHubWorkspaceSession,
+} from "../chat/github-workspace-session.js";'''
+          if old not in text:
+            raise SystemExit('workspace session import anchor missing')
+          text = text.replace(old, new, 1)
           old = '''    const checkpointWorkBranch =\n      typeof task.checkpoint.workBranch === "string" ? task.checkpoint.workBranch : undefined;\n'''
           new = old + '''    const checkpointRepository =\n      typeof task.checkpoint.repository === "string" ? task.checkpoint.repository : undefined;\n    const checkpointBaseSha =\n      typeof task.checkpoint.baseSha === "string" ? task.checkpoint.baseSha : undefined;\n'''
           if old not in text:
             raise SystemExit('checkpoint provenance anchor missing')
           text = text.replace(old, new, 1)
           old = '''      const restore =\n        requestedWorkspaceWrites && checkpointWorkBranch\n          ? { branch: checkpointWorkBranch, writes: checkpointWrites }\n          : undefined;\n'''
-          new = '''      let restore;\n      if (requestedWorkspaceWrites && checkpointWorkBranch) {\n        if (!checkpointRepository || !checkpointBaseSha)\n          throw new ChatError(\n            "BOT_GITHUB_CHECKPOINT_INCOMPLETE",\n            "Stored GitHub work branch is missing repository/base provenance; resume is blocked rather than creating a replacement branch.",\n            409,\n          );\n        restore = {\n          repository: checkpointRepository,\n          baseSha: checkpointBaseSha,\n          branch: checkpointWorkBranch,\n          writes: checkpointWrites,\n        };\n      }\n'''
+          new = '''      let restore: GitHubWorkspaceRestore | undefined;\n      if (requestedWorkspaceWrites && checkpointWorkBranch) {\n        if (!checkpointRepository || !checkpointBaseSha)\n          throw new ChatError(\n            "BOT_GITHUB_CHECKPOINT_INCOMPLETE",\n            "Stored GitHub work branch is missing repository/base provenance; resume is blocked rather than creating a replacement branch.",\n            409,\n          );\n        restore = {\n          repository: checkpointRepository,\n          baseSha: checkpointBaseSha,\n          branch: checkpointWorkBranch,\n          writes: checkpointWrites,\n        };\n      }\n'''
           if old not in text:
             raise SystemExit('restore anchor missing')
           text = text.replace(old, new, 1)
