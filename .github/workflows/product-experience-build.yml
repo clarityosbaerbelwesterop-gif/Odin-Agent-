@@ -13,7 +13,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
         with:
@@ -30,6 +30,7 @@ jobs:
       - run: npm ci
       - run: npm run format
       - run: npm run typecheck
+      - run: npm test
       - run: npm run test:ui
       - name: Commit implementation
         run: |
@@ -39,4 +40,4 @@ jobs:
           git status --short
           git commit -m "feat: make Odin work visible and efficient"
           git push origin HEAD:agent/product-experience-runtime-quality
-# retry after correcting temporary builder syntax
+# temporary staging workflow; remove before PR
