@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Odin">
+  <rect width="512" height="512" rx="112" fill="#111111"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#f4f1ea" stroke-width="34"/>
+  <circle cx="256" cy="256" r="48" fill="#f4f1ea"/>
+  <path d="M256 40v88M256 384v88M40 256h88M384 256h88" stroke="#f4f1ea" stroke-width="34" stroke-linecap="round"/>
+</svg>
