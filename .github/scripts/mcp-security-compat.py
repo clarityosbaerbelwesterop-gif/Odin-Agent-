@@ -21,7 +21,18 @@ wrong_resolution = '''      const resolved = await approvalResolution(\n        
 right_resolution = '''      const resolved = await approvalResolution(\n        chat,\n        turn.conversationId,\n        turn.id,\n        approval[2] ?? "",\n        requestEvent.cursor,\n      );'''
 if wrong_resolution in text:
     text = text.replace(wrong_resolution, right_resolution, 1)
-if "requestEvent.cursor" not in text:
+
+wrong_request_signature = '''async function approvalRequest(\n  store: NeonChatStore,\n  conversationId: string,\n  turnId: string,\n  approvalId: string,\n  afterCursor: number,\n) {\n  let cursor = afterCursor;'''
+right_request_signature = '''async function approvalRequest(\n  store: NeonChatStore,\n  conversationId: string,\n  turnId: string,\n  approvalId: string,\n) {\n  let cursor = 0;'''
+if wrong_request_signature in text:
+    text = text.replace(wrong_request_signature, right_request_signature, 1)
+
+wrong_resolution_signature = '''async function approvalResolution(\n  store: NeonChatStore,\n  conversationId: string,\n  turnId: string,\n  approvalId: string,\n) {\n  let cursor = 0;'''
+right_resolution_signature = '''async function approvalResolution(\n  store: NeonChatStore,\n  conversationId: string,\n  turnId: string,\n  approvalId: string,\n  afterCursor: number,\n) {\n  let cursor = afterCursor;'''
+if wrong_resolution_signature in text:
+    text = text.replace(wrong_resolution_signature, right_resolution_signature, 1)
+
+if "requestEvent.cursor" not in text or "let cursor = afterCursor;" not in text:
     raise SystemExit("approval resolution cursor binding is missing")
 api.write_text(text)
 
