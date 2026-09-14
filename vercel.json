@@ -14,51 +14,22 @@
     }
   },
   "rewrites": [
-    {
-      "source": "/login",
-      "destination": "/login.html"
-    },
-    {
-      "source": "/app",
-      "destination": "/chat.html"
-    },
-    {
-      "source": "/bot",
-      "destination": "/bot.html"
-    },
-    {
-      "source": "/api/github/callback",
-      "destination": "/api/github-callback"
-    },
-    {
-      "source": "/api/:path*",
-      "destination": "/api?odin_path=:path*"
-    },
-    {
-      "source": "/reference",
-      "destination": "/reference.html"
-    }
+    { "source": "/login", "destination": "/login.html" },
+    { "source": "/app", "destination": "/chat.html" },
+    { "source": "/browser", "destination": "/browser.html" },
+    { "source": "/bot", "destination": "/bot.html" },
+    { "source": "/api/github/callback", "destination": "/api/github-callback" },
+    { "source": "/api/:path*", "destination": "/api?odin_path=:path*" },
+    { "source": "/reference", "destination": "/reference.html" }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "Referrer-Policy",
-          "value": "no-referrer"
-        },
-        {
-          "key": "Permissions-Policy",
-          "value": "camera=(), microphone=(), geolocation=()"
-        },
-        {
-          "key": "Cache-Control",
-          "value": "no-store"
-        }
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
+        { "key": "Cache-Control", "value": "no-store" }
       ]
     },
     {
@@ -68,10 +39,7 @@
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
         },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        }
+        { "key": "X-Frame-Options", "value": "DENY" }
       ]
     },
     {
@@ -81,10 +49,7 @@
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://ep-restless-cake-b1d8u9ge.neonauth.c-5.eu-central-1.aws.neon.tech; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
         },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        }
+        { "key": "X-Frame-Options", "value": "DENY" }
       ]
     },
     {
@@ -94,10 +59,7 @@
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://ep-restless-cake-b1d8u9ge.neonauth.c-5.eu-central-1.aws.neon.tech; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
         },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        }
+        { "key": "X-Frame-Options", "value": "DENY" }
       ]
     },
     {
@@ -107,10 +69,17 @@
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
         },
+        { "key": "X-Frame-Options", "value": "DENY" }
+      ]
+    },
+    {
+      "source": "/browser",
+      "headers": [
         {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        }
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+        },
+        { "key": "X-Frame-Options", "value": "DENY" }
       ]
     },
     {
@@ -120,10 +89,7 @@
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
         },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        }
+        { "key": "X-Frame-Options", "value": "DENY" }
       ]
     },
     {
@@ -133,10 +99,7 @@
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
         },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        }
+        { "key": "X-Frame-Options", "value": "DENY" }
       ]
     }
   ]
