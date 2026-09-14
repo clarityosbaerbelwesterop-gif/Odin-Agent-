@@ -19,8 +19,8 @@ test("PRODUCT M8 Browser Workspace exposes scoped navigation, approval and respo
   assert.match(client, /textContent/u);
   assert.doesNotMatch(client, /innerHTML|localStorage|sessionStorage|document\.cookie/iu);
   assert.match(css, /grid-template-columns/u);
-  assert.match(css, /@media\(max-width:900px\)/u);
-  assert.match(css, /@media\(max-width:600px\)/u);
+  assert.match(css, /@media\s*\(max-width:\s*900px\)/u);
+  assert.match(css, /@media\s*\(max-width:\s*600px\)/u);
   assert.match(css, /prefers-reduced-motion/u);
   assert.doesNotMatch(css, /!important/iu);
 });
