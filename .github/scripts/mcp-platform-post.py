@@ -43,3 +43,29 @@ replace_once(
     "  return Object.freeze<ToolRegistration>({\n",
     "tool bridge contextual typing",
 )
+
+# Domain tests execute from dist/, but they intentionally inspect the real repository source
+# and migration contracts. Resolve those files from the checkout root rather than from dist/.
+test_path = Path("test/chat/connector-platform.test.ts")
+test_text = test_path.read_text()
+if 'import { join } from "node:path";' not in test_text:
+    test_text = test_text.replace(
+        'import { readFile } from "node:fs/promises";\n',
+        'import { readFile } from "node:fs/promises";\nimport { join } from "node:path";\n',
+        1,
+    )
+for relative in [
+    "src/connectors/api.ts",
+    "src/connectors/oauth.ts",
+    "src/connectors/network.ts",
+    "src/connectors/tool-bridge.ts",
+    "src/chat/agent.ts",
+    "migrations/017_connector_platform.sql",
+]:
+    test_text = test_text.replace(
+        f'readFile(new URL("../../{relative}", import.meta.url), "utf8")',
+        f'readFile(join(process.cwd(), "{relative}"), "utf8")',
+    )
+if 'new URL("../../src/connectors/api.ts", import.meta.url)' in test_text:
+    raise SystemExit("connector platform test still resolves source paths relative to dist")
+test_path.write_text(test_text)
