@@ -31,14 +31,23 @@ surface.innerHTML = `
 </div>`;
 document.querySelector("main.main")?.append(surface);
 
-const m7State = { projectId: null, summary: null, selectedPath: null, selectedDiff: null, poll: null };
+const m7State = {
+  projectId: null,
+  summary: null,
+  selectedPath: null,
+  selectedDiff: null,
+  poll: null,
+};
 const terminalStates = new Set(["COMPLETED", "CANCELLED", "FAILED", "BLOCKED"]);
 
 async function m7request(path, body, method = body === undefined ? "GET" : "POST") {
   const response = await fetch(path, {
     method,
     credentials: "same-origin",
-    headers: { "X-Odin-Request": "1", ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
+    headers: {
+      "X-Odin-Request": "1",
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+    },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   const data = await response.json().catch(() => ({}));
@@ -50,11 +59,22 @@ function m7Project() {
   return new URLSearchParams(window.location.search).get("project");
 }
 function m7HideSurfaces() {
-  for (const selector of ["#chat-layout", "#projects-panel", "#knowledge-panel", "#skills-panel", "#activity-page", "#models-panel", "#system-panel", "#benchmarks", "#build-panel"]) {
+  for (const selector of [
+    "#chat-layout",
+    "#projects-panel",
+    "#knowledge-panel",
+    "#skills-panel",
+    "#activity-page",
+    "#models-panel",
+    "#system-panel",
+    "#benchmarks",
+    "#build-panel",
+  ]) {
     const node = document.querySelector(selector);
     if (node) node.hidden = true;
   }
-  for (const item of document.querySelectorAll(".sidebar .nav-item")) item.classList.remove("selected");
+  for (const item of document.querySelectorAll(".sidebar .nav-item"))
+    item.classList.remove("selected");
   codeNav.classList.add("selected");
   m7$("page-title").textContent = "Code";
 }
@@ -74,7 +94,9 @@ async function openCoding() {
 async function m7Load() {
   if (!m7State.projectId) return;
   try {
-    const summary = await m7request(`/api/coding/projects/${encodeURIComponent(m7State.projectId)}`);
+    const summary = await m7request(
+      `/api/coding/projects/${encodeURIComponent(m7State.projectId)}`,
+    );
     m7State.summary = summary;
     m7$("m7-repo-badge").textContent = summary.repository;
     m7$("m7-branch").textContent = summary.repositoryState.workBranch ?? summary.baseBranch;
@@ -83,8 +105,14 @@ async function m7Load() {
     m7RenderTests(summary.quality ?? []);
     m7RenderProgress(summary);
     m7$("m7-pr").disabled = !summary.prReady?.ready;
-    m7$("m7-pr-reason").textContent = summary.prReady?.ready ? "Verified isolated branch is ready for review and PR delivery." : summary.prReady?.reason ?? "Not ready.";
-    m7Status(summary.latestRun ? `${summary.latestRun.state} · ${summary.repository}` : `Ready · ${summary.repository}`);
+    m7$("m7-pr-reason").textContent = summary.prReady?.ready
+      ? "Verified isolated branch is ready for review and PR delivery."
+      : (summary.prReady?.reason ?? "Not ready.");
+    m7Status(
+      summary.latestRun
+        ? `${summary.latestRun.state} · ${summary.repository}`
+        : `Ready · ${summary.repository}`,
+    );
   } catch (error) {
     m7Status(error.message, true);
   }
@@ -113,9 +141,12 @@ async function m7LoadTree(query) {
 async function m7OpenFile(path) {
   if (!m7State.projectId) return;
   try {
-    const data = await m7request(`/api/coding/projects/${encodeURIComponent(m7State.projectId)}/file?path=${encodeURIComponent(path)}`);
+    const data = await m7request(
+      `/api/coding/projects/${encodeURIComponent(m7State.projectId)}/file?path=${encodeURIComponent(path)}`,
+    );
     m7State.selectedPath = path;
-    m7State.selectedDiff = (m7State.summary?.changes ?? []).find((change) => change.path === path)?.diff ?? null;
+    m7State.selectedDiff =
+      (m7State.summary?.changes ?? []).find((change) => change.path === path)?.diff ?? null;
     m7$("m7-file-name").textContent = path;
     const code = m7$("m7-code");
     code.replaceChildren();
@@ -168,7 +199,8 @@ function m7RenderProgress(summary) {
     m7$("m7-progress").textContent = "No Coding Run yet.";
     return;
   }
-  m7$("m7-progress").innerHTML = `<strong>${m7Escape(run.state)}</strong><span>${m7Escape(run.objective)}</span><small>${summary.changes.length} changed file(s)</small>`;
+  m7$("m7-progress").innerHTML =
+    `<strong>${m7Escape(run.state)}</strong><span>${m7Escape(run.objective)}</span><small>${summary.changes.length} changed file(s)</small>`;
 }
 
 function m7ShowFile() {
@@ -192,10 +224,14 @@ function m7Status(text, error = false) {
 }
 function m7Focus(name) {
   document.querySelector(".m7-grid")?.setAttribute("data-focus", name);
-  for (const button of document.querySelectorAll("[data-m7-focus]")) button.classList.toggle("selected", button.dataset.m7Focus === name);
+  for (const button of document.querySelectorAll("[data-m7-focus]"))
+    button.classList.toggle("selected", button.dataset.m7Focus === name);
 }
 function m7Escape(value) {
-  return String(value ?? "").replace(/[&<>"']/gu, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  return String(value ?? "").replace(
+    /[&<>"']/gu,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+  );
 }
 
 m7$("m7-search-form").addEventListener("submit", async (event) => {
@@ -203,7 +239,9 @@ m7$("m7-search-form").addEventListener("submit", async (event) => {
   const query = m7$("m7-search").value.trim();
   if (!query) return m7LoadTree("");
   try {
-    const data = await m7request(`/api/coding/projects/${encodeURIComponent(m7State.projectId)}/search?q=${encodeURIComponent(query)}`);
+    const data = await m7request(
+      `/api/coding/projects/${encodeURIComponent(m7State.projectId)}/search?q=${encodeURIComponent(query)}`,
+    );
     const root = m7$("m7-tree");
     root.replaceChildren();
     for (const result of data.results ?? []) {
@@ -214,7 +252,9 @@ m7$("m7-search-form").addEventListener("submit", async (event) => {
       root.append(button);
     }
     if (!root.children.length) root.textContent = "No search results.";
-  } catch (error) { m7Status(error.message, true); }
+  } catch (error) {
+    m7Status(error.message, true);
+  }
 });
 
 m7$("m7-task-form").addEventListener("submit", async (event) => {
@@ -234,7 +274,9 @@ m7$("m7-task-form").addEventListener("submit", async (event) => {
     });
     await m7request(`/api/turns/${encodeURIComponent(turn.id)}/run`, {});
     m7StartPolling(turn.id);
-  } catch (error) { m7Status(error.message, true); }
+  } catch (error) {
+    m7Status(error.message, true);
+  }
 });
 
 function m7StartPolling(turnId) {
@@ -257,23 +299,38 @@ m7$("m7-pr").addEventListener("click", async () => {
   if (!turnId || !m7State.projectId) return;
   try {
     m7$("m7-pr").disabled = true;
-    const result = await m7request(`/api/coding/projects/${encodeURIComponent(m7State.projectId)}/pull-request`, { turnId });
+    const result = await m7request(
+      `/api/coding/projects/${encodeURIComponent(m7State.projectId)}/pull-request`,
+      { turnId },
+    );
     m7Status(`Pull request #${result.delivery.number} is open on the verified Odin branch.`);
     await m7Load();
-  } catch (error) { m7Status(error.message, true); await m7Load(); }
+  } catch (error) {
+    m7Status(error.message, true);
+    await m7Load();
+  }
 });
 
 m7$("m7-review").addEventListener("click", async () => {
   const number = Number(m7$("m7-review-number").value);
-  if (!Number.isSafeInteger(number) || number < 1 || !m7State.projectId) return m7Status("Enter a valid PR number.", true);
+  if (!Number.isSafeInteger(number) || number < 1 || !m7State.projectId)
+    return m7Status("Enter a valid PR number.", true);
   try {
-    const data = await m7request(`/api/coding/projects/${encodeURIComponent(m7State.projectId)}/review/${number}`);
-    m7$("m7-review-result").innerHTML = `<strong>PR #${data.status.number} · ${m7Escape(data.status.state)}</strong><span>${data.files.length} changed file(s)</span>`;
-  } catch (error) { m7Status(error.message, true); }
+    const data = await m7request(
+      `/api/coding/projects/${encodeURIComponent(m7State.projectId)}/review/${number}`,
+    );
+    m7$("m7-review-result").innerHTML =
+      `<strong>PR #${data.status.number} · ${m7Escape(data.status.state)}</strong><span>${data.files.length} changed file(s)</span>`;
+  } catch (error) {
+    m7Status(error.message, true);
+  }
 });
 
 m7$("m7-view-file").addEventListener("click", m7ShowFile);
 m7$("m7-view-diff").addEventListener("click", m7ShowDiff);
 codeNav.addEventListener("click", () => void openCoding());
-for (const button of document.querySelectorAll("[data-m7-focus]")) button.addEventListener("click", () => m7Focus(button.dataset.m7Focus));
-window.addEventListener("popstate", () => { if (!surface.hidden) void openCoding(); });
+for (const button of document.querySelectorAll("[data-m7-focus]"))
+  button.addEventListener("click", () => m7Focus(button.dataset.m7Focus));
+window.addEventListener("popstate", () => {
+  if (!surface.hidden) void openCoding();
+});

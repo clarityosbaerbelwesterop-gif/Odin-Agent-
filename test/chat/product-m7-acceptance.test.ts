@@ -17,15 +17,33 @@ test("PRODUCT M7 acceptance #1 fixes a failing login test through inspect, patch
 
   const model = provider((_request, call) => {
     if (call === 1)
-      return response("", [{ id: "read-login", name: "repo_read", arguments: { path: "login.js", maxBytes: 4000 } }]);
+      return response("", [
+        { id: "read-login", name: "repo_read", arguments: { path: "login.js", maxBytes: 4000 } },
+      ]);
     if (call === 2)
-      return response("", [{ id: "patch-first", name: "repo_patch", arguments: { path: "login.js", expectedSha: hashText(before), content: wrong } }]);
+      return response("", [
+        {
+          id: "patch-first",
+          name: "repo_patch",
+          arguments: { path: "login.js", expectedSha: hashText(before), content: wrong },
+        },
+      ]);
     if (call === 3)
-      return response("", [{ id: "test-first", name: "repo_quality", arguments: { commandId: "login-tests" } }]);
+      return response("", [
+        { id: "test-first", name: "repo_quality", arguments: { commandId: "login-tests" } },
+      ]);
     if (call === 4)
-      return response("", [{ id: "patch-repair", name: "repo_patch", arguments: { path: "login.js", expectedSha: hashText(wrong), content: fixed } }]);
+      return response("", [
+        {
+          id: "patch-repair",
+          name: "repo_patch",
+          arguments: { path: "login.js", expectedSha: hashText(wrong), content: fixed },
+        },
+      ]);
     if (call === 5)
-      return response("", [{ id: "test-repair", name: "repo_quality", arguments: { commandId: "login-tests" } }]);
+      return response("", [
+        { id: "test-repair", name: "repo_quality", arguments: { commandId: "login-tests" } },
+      ]);
     return response("The login validation is fixed and the required test now passes.");
   });
 
@@ -36,7 +54,10 @@ test("PRODUCT M7 acceptance #1 fixes a failing login test through inspect, patch
       commands: () => [{ id: "login-tests", label: "login unit test" }],
       run: async () => ({
         exitCode: (await readFile(join(root, "login.js"), "utf8")) === fixed ? 0 : 1,
-        output: (await readFile(join(root, "login.js"), "utf8")) === fixed ? "1 login test passed" : "login test failed",
+        output:
+          (await readFile(join(root, "login.js"), "utf8")) === fixed
+            ? "1 login test passed"
+            : "login test failed",
       }),
     },
   });
@@ -47,7 +68,10 @@ test("PRODUCT M7 acceptance #1 fixes a failing login test through inspect, patch
     assert.equal(await readFile(join(root, "login.js"), "utf8"), fixed);
     const events = f.store.events(f.conversation.id).filter((item) => item.turnId === turn.id);
     const quality = events.filter((item) => item.type === "quality");
-    assert.deepEqual(quality.map((item) => item.data.passed), [false, true]);
+    assert.deepEqual(
+      quality.map((item) => item.data.passed),
+      [false, true],
+    );
     const changes = aggregateChanges(events);
     assert.equal(changes.length, 1);
     assert.match(changes[0]?.diff ?? "", /password\.length >= 8/u);
@@ -70,20 +94,44 @@ test("PRODUCT M7 acceptance #2 resumes the same multi-file feature Run and verif
   let waiting = false;
   const model = provider(async (_request, call, options) => {
     if (call === 1)
-      return response("", [{ id: "read-app", name: "repo_read", arguments: { path: "app.js", maxBytes: 4000 } }]);
+      return response("", [
+        { id: "read-app", name: "repo_read", arguments: { path: "app.js", maxBytes: 4000 } },
+      ]);
     if (call === 2)
-      return response("", [{ id: "patch-app", name: "repo_patch", arguments: { path: "app.js", expectedSha: hashText(appBefore), content: appAfter } }]);
+      return response("", [
+        {
+          id: "patch-app",
+          name: "repo_patch",
+          arguments: { path: "app.js", expectedSha: hashText(appBefore), content: appAfter },
+        },
+      ]);
     if (call === 3) {
       waiting = true;
-      await new Promise<void>((_resolve, reject) => options?.signal?.addEventListener("abort", () => reject(new Error("paused")), { once: true }));
+      await new Promise<void>((_resolve, reject) =>
+        options?.signal?.addEventListener("abort", () => reject(new Error("paused")), {
+          once: true,
+        }),
+      );
     }
     if (call === 4)
-      return response("", [{ id: "read-ui", name: "repo_read", arguments: { path: "ui.js", maxBytes: 4000 } }]);
+      return response("", [
+        { id: "read-ui", name: "repo_read", arguments: { path: "ui.js", maxBytes: 4000 } },
+      ]);
     if (call === 5)
-      return response("", [{ id: "patch-ui", name: "repo_patch", arguments: { path: "ui.js", expectedSha: hashText(uiBefore), content: uiAfter } }]);
+      return response("", [
+        {
+          id: "patch-ui",
+          name: "repo_patch",
+          arguments: { path: "ui.js", expectedSha: hashText(uiBefore), content: uiAfter },
+        },
+      ]);
     if (call === 6)
-      return response("", [{ id: "feature-check", name: "repo_quality", arguments: { commandId: "feature-tests" } }]);
-    return response("The existing application now has the scoped appearance feature and verification passed.");
+      return response("", [
+        { id: "feature-check", name: "repo_quality", arguments: { commandId: "feature-tests" } },
+      ]);
+    return response(
+      "The existing application now has the scoped appearance feature and verification passed.",
+    );
   });
 
   const f = await fixture(model, {
@@ -102,7 +150,10 @@ test("PRODUCT M7 acceptance #2 resumes the same multi-file feature Run and verif
     },
   });
   try {
-    const turn = await f.submit("Add a system appearance preference without replacing the existing architecture.", "coding");
+    const turn = await f.submit(
+      "Add a system appearance preference without replacing the existing architecture.",
+      "coding",
+    );
     await until(() => waiting);
     const paused = await f.engine.control(turn.id, "pause", (await f.engine.view(turn.id)).version);
     assert.equal(paused.state, "PAUSED");
@@ -114,7 +165,10 @@ test("PRODUCT M7 acceptance #2 resumes the same multi-file feature Run and verif
     assert.equal(await readFile(join(root, "ui.js"), "utf8"), uiAfter);
     const events = f.store.events(f.conversation.id).filter((item) => item.turnId === turn.id);
     assert.equal(aggregateChanges(events).length, 2);
-    assert.equal(events.filter((item) => item.type === "quality" && item.data.passed === true).length, 1);
+    assert.equal(
+      events.filter((item) => item.type === "quality" && item.data.passed === true).length,
+      1,
+    );
   } finally {
     await f.close();
     await rm(root, { recursive: true, force: true });

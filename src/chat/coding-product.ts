@@ -1,9 +1,9 @@
 import { MissionRuntime } from "../mission/runtime.js";
 import { containsObviousSecret } from "../security/secret-text.js";
-import type { ActorDatabase } from "./neon-database.js";
-import { NeonChatStore, NeonMissionStore } from "./neon-store.js";
 import { GitHubPullRequestClient } from "./github-delivery.js";
 import { GitHubWorkspace, type GitHubWorkspaceRepositoryState } from "./github-workspace.js";
+import type { ActorDatabase } from "./neon-database.js";
+import { NeonChatStore, NeonMissionStore } from "./neon-store.js";
 import { identifier, safeText } from "./safety.js";
 import { ChatError, type ChatEvent } from "./types.js";
 
@@ -49,7 +49,10 @@ export class CodingProductStore {
   async summary(projectId: string) {
     const project = identifier(projectId);
     await this.chat.conversation(project);
-    const [turns, events] = await Promise.all([this.chat.turns(project), this.chat.events(project, 0, 1000)]);
+    const [turns, events] = await Promise.all([
+      this.chat.turns(project),
+      this.chat.events(project, 0, 1000),
+    ]);
     const codingRuns = turns.filter((turn) => turn.mode === "coding" || turn.mode === "ultra");
     const latest = codingRuns.at(-1) ?? null;
     const latestView = latest
@@ -71,7 +74,13 @@ export class CodingProductStore {
       repositoryState,
       changes: changes.map(({ after: _after, before: _before, ...change }) => change),
       quality: qualities,
-      prReady: await this.prReadiness(latest?.id ?? null, scopedEvents, changes, latestQuality, repositoryState),
+      prReady: await this.prReadiness(
+        latest?.id ?? null,
+        scopedEvents,
+        changes,
+        latestQuality,
+        repositoryState,
+      ),
     };
   }
 
@@ -80,7 +89,9 @@ export class CodingProductStore {
     const workspace = await this.workspaceForProject(projectId);
     const entries = await workspace.tree(AbortSignal.timeout(15_000), 800);
     const needle = safeText(query, 200).trim().toLowerCase();
-    return needle ? entries.filter((entry) => entry.path.toLowerCase().includes(needle)).slice(0, 250) : entries;
+    return needle
+      ? entries.filter((entry) => entry.path.toLowerCase().includes(needle)).slice(0, 250)
+      : entries;
   }
 
   async file(projectId: string, path: string) {
@@ -112,30 +123,57 @@ export class CodingProductStore {
     const run = identifier(turnId);
     const turn = await this.chat.turn(run);
     if (turn.conversationId !== project)
-      throw new ChatError("CODING_RUN_SCOPE", "The selected Run does not belong to this Project.", 409);
+      throw new ChatError(
+        "CODING_RUN_SCOPE",
+        "The selected Run does not belong to this Project.",
+        409,
+      );
     const snapshot = await this.missions.load(run);
     if (snapshot.state !== "COMPLETED")
-      throw new ChatError("CODING_RUN_UNVERIFIED", "Only a completed verified Coding Run can open a PR.", 409);
+      throw new ChatError(
+        "CODING_RUN_UNVERIFIED",
+        "Only a completed verified Coding Run can open a PR.",
+        409,
+      );
 
-    const events = (await this.chat.events(project, 0, 1000)).filter((event) => event.turnId === run);
+    const events = (await this.chat.events(project, 0, 1000)).filter(
+      (event) => event.turnId === run,
+    );
     const changes = aggregateChanges(events);
     if (!changes.length)
-      throw new ChatError("CODING_NO_CHANGES", "This Run has no repository changes to deliver.", 409);
+      throw new ChatError(
+        "CODING_NO_CHANGES",
+        "This Run has no repository changes to deliver.",
+        409,
+      );
     const qualities = events.filter((event) => event.type === "quality").map(qualityEvidence);
     const latestQuality = qualities.at(-1) ?? null;
     const state = await this.repositoryState(changes);
     const readiness = await this.prReadiness(run, events, changes, latestQuality, state);
     if (!readiness.ready)
-      throw new ChatError("CODING_PR_NOT_READY", readiness.reason ?? "Pull request is not ready.", 409);
+      throw new ChatError(
+        "CODING_PR_NOT_READY",
+        readiness.reason ?? "Pull request is not ready.",
+        409,
+      );
 
     for (const change of changes) {
       if (change.repository !== this.github.repository || !change.branch)
-        throw new ChatError("CODING_SCOPE_MISMATCH", "Repository change scope cannot be verified.", 409);
+        throw new ChatError(
+          "CODING_SCOPE_MISMATCH",
+          "Repository change scope cannot be verified.",
+          409,
+        );
       if (containsObviousSecret(change.after))
-        throw new ChatError("CODING_SECRET_DENIED", "Secret-like repository output cannot be delivered.", 400);
+        throw new ChatError(
+          "CODING_SECRET_DENIED",
+          "Secret-like repository output cannot be delivered.",
+          400,
+        );
     }
     const branch = changes.at(-1)?.branch;
-    if (!branch) throw new ChatError("CODING_BRANCH_MISSING", "Verified Odin work branch is missing.", 409);
+    if (!branch)
+      throw new ChatError("CODING_BRANCH_MISSING", "Verified Odin work branch is missing.", 409);
 
     const prTitle = safeText(title ?? objectiveTitle(turn.objective), 220).trim();
     const description = pullRequestBody(turn.objective, changes, latestQuality, state);
@@ -184,8 +222,12 @@ export class CodingProductStore {
     );
   }
 
-  private async repositoryState(changes: readonly CodingChange[]): Promise<GitHubWorkspaceRepositoryState> {
-    const latest = [...changes].reverse().find((change) => change.repository === this.github.repository);
+  private async repositoryState(
+    changes: readonly CodingChange[],
+  ): Promise<GitHubWorkspaceRepositoryState> {
+    const latest = [...changes]
+      .reverse()
+      .find((change) => change.repository === this.github.repository);
     const workspace = new GitHubWorkspace(
       this.github.token,
       this.github.repository,
@@ -212,25 +254,37 @@ export class CodingProductStore {
     const snapshot = await this.missions.load(runId);
     if (snapshot.state !== "COMPLETED")
       return { ready: false, reason: `Run is ${snapshot.state}; verified completion is required.` };
-    if (!changes.length) return { ready: false, reason: "No repository changes exist for this Run." };
+    if (!changes.length)
+      return { ready: false, reason: "No repository changes exist for this Run." };
     const lastChangeCursor = Math.max(
       ...events.filter((event) => event.type === "file.changed").map((event) => event.cursor),
       0,
     );
     const lastQualityEvent = [...events].reverse().find((event) => event.type === "quality");
     if (!quality?.passed || !lastQualityEvent || lastQualityEvent.cursor <= lastChangeCursor)
-      return { ready: false, reason: "A passing repository quality check after the final change is required." };
+      return {
+        ready: false,
+        reason: "A passing repository quality check after the final change is required.",
+      };
     const latest = changes.at(-1);
     if (!latest?.branch || !latest.baseSha || latest.repository !== this.github.repository)
       return { ready: false, reason: "Isolated branch provenance is incomplete." };
     if (state.currentBaseSha !== latest.baseSha)
-      return { ready: false, reason: "Base branch moved after this Coding Run. Reconcile divergence first." };
+      return {
+        ready: false,
+        reason: "Base branch moved after this Coding Run. Reconcile divergence first.",
+      };
     if (state.workBranch !== latest.branch || !state.headSha)
       return { ready: false, reason: "The verified Odin work branch is unavailable." };
     return { ready: true, reason: null };
   }
 
-  private async emit(projectId: string, turnId: string, type: string, data: Record<string, unknown>) {
+  private async emit(
+    projectId: string,
+    turnId: string,
+    type: string,
+    data: Record<string, unknown>,
+  ) {
     const turn = await this.chat.turn(turnId);
     if (turn.conversationId !== projectId)
       throw new ChatError("CODING_RUN_SCOPE", "Run scope changed while recording delivery.", 409);
@@ -247,11 +301,18 @@ export function aggregateChanges(events: readonly ChatEvent[]): CodingChange[] {
     const sha = typeof event.data.sha === "string" ? event.data.sha : "";
     if (!path || !sha) continue;
     const prior = byPath.get(path);
-    const before = prior?.before ?? (typeof event.data.before === "string" ? event.data.before : null);
-    const repository = typeof event.data.repository === "string" ? event.data.repository : prior?.repository ?? null;
-    const baseSha = typeof event.data.baseSha === "string" ? event.data.baseSha : prior?.baseSha ?? null;
-    const branch = typeof event.data.branch === "string" ? event.data.branch : prior?.branch ?? null;
-    const headSha = typeof event.data.headSha === "string" ? event.data.headSha : prior?.headSha ?? null;
+    const before =
+      prior?.before ?? (typeof event.data.before === "string" ? event.data.before : null);
+    const repository =
+      typeof event.data.repository === "string"
+        ? event.data.repository
+        : (prior?.repository ?? null);
+    const baseSha =
+      typeof event.data.baseSha === "string" ? event.data.baseSha : (prior?.baseSha ?? null);
+    const branch =
+      typeof event.data.branch === "string" ? event.data.branch : (prior?.branch ?? null);
+    const headSha =
+      typeof event.data.headSha === "string" ? event.data.headSha : (prior?.headSha ?? null);
     byPath.set(path, {
       path,
       before,
@@ -289,7 +350,12 @@ export function unifiedDiff(path: string, before: string | null, after: string):
   const oldLines = (before ?? "").split("\n");
   const newLines = after.split("\n");
   let prefix = 0;
-  while (prefix < oldLines.length && prefix < newLines.length && oldLines[prefix] === newLines[prefix]) prefix++;
+  while (
+    prefix < oldLines.length &&
+    prefix < newLines.length &&
+    oldLines[prefix] === newLines[prefix]
+  )
+    prefix++;
   let suffix = 0;
   while (
     suffix < oldLines.length - prefix &&
@@ -319,11 +385,12 @@ function pullRequestBody(
   quality: CodingQualityEvidence | null,
   state: GitHubWorkspaceRepositoryState,
 ): string {
-  const verification = quality?.classification === "branch-integrity-only"
-    ? "Branch integrity passed; this repository exposes no CI checks, so application tests are not claimed."
-    : quality?.passed
-      ? `Repository quality gate \`${quality.commandId}\` passed.`
-      : "Required verification is unavailable.";
+  const verification =
+    quality?.classification === "branch-integrity-only"
+      ? "Branch integrity passed; this repository exposes no CI checks, so application tests are not claimed."
+      : quality?.passed
+        ? `Repository quality gate \`${quality.commandId}\` passed.`
+        : "Required verification is unavailable.";
   return [
     "## What changed",
     ...changes.map((change) => `- \`${change.path}\``),

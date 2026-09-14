@@ -11,10 +11,15 @@ import { ChatError } from "./types.js";
 let services: ReturnType<typeof createServices> | undefined;
 
 function createServices() {
-  const connection = process.env.ODIN_DATABASE_URL ?? process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
+  const connection =
+    process.env.ODIN_DATABASE_URL ?? process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
   const authUrl = resolveNeonAuthUrl(connection, process.env);
   if (!connection || !authUrl)
-    throw new ChatError("BACKEND_CONFIG", "Neon database and Auth must be configured for this deployment.", 503);
+    throw new ChatError(
+      "BACKEND_CONFIG",
+      "Neon database and Auth must be configured for this deployment.",
+      503,
+    );
   const pool = createNeonPool(connection);
   attachDatabasePool(pool);
   return { pool, auth: new NeonAuth(authUrl) };
@@ -38,7 +43,10 @@ export async function codingApiHandler(req: IncomingMessage, res: ServerResponse
     services ??= createServices();
     const identity = await services.auth.session(req.headers.cookie ?? "", origin);
     const db = new NeonActorDatabase(services.pool, identity);
-    const product = new ProductStore(db, new CredentialVault(process.env.ODIN_CREDENTIAL_ENCRYPTION_KEY));
+    const product = new ProductStore(
+      db,
+      new CredentialVault(process.env.ODIN_CREDENTIAL_ENCRYPTION_KEY),
+    );
     const connection = await product.github();
     const token = connection.connected ? await product.githubToken() : undefined;
     if (!token || !connection.repository || !connection.defaultBranch)
@@ -61,7 +69,9 @@ export async function codingApiHandler(req: IncomingMessage, res: ServerResponse
 
     const tree = /^\/api\/coding\/projects\/([\w-]+)\/tree$/u.exec(url.pathname);
     if (tree && method === "GET") {
-      send(res, 200, { entries: await coding.tree(tree[1] ?? "", url.searchParams.get("q") ?? "") });
+      send(res, 200, {
+        entries: await coding.tree(tree[1] ?? "", url.searchParams.get("q") ?? ""),
+      });
       return;
     }
 
@@ -104,7 +114,11 @@ export async function codingApiHandler(req: IncomingMessage, res: ServerResponse
 
     const review = /^\/api\/coding\/projects\/([\w-]+)\/review\/([0-9]+)$/u.exec(url.pathname);
     if (review && method === "GET") {
-      send(res, 200, await coding.review(review[1] ?? "", integer(Number(review[2]), 1, 10_000_000)));
+      send(
+        res,
+        200,
+        await coding.review(review[1] ?? "", integer(Number(review[2]), 1, 10_000_000)),
+      );
       return;
     }
 
@@ -137,7 +151,11 @@ function allowedOrigin(req: IncomingMessage): string {
 }
 
 async function jsonBody(req: IncomingMessage, maxBytes = 64_000): Promise<unknown> {
-  if (!String(req.headers["content-type"] ?? "").toLowerCase().startsWith("application/json"))
+  if (
+    !String(req.headers["content-type"] ?? "")
+      .toLowerCase()
+      .startsWith("application/json")
+  )
     throw new ChatError("CONTENT_TYPE", "Use an application/json request body.", 415);
   const chunks: Buffer[] = [];
   let size = 0;

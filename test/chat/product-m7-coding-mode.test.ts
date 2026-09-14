@@ -46,7 +46,11 @@ test("PRODUCT M7 aggregates canonical file changes into reviewable diffs with re
 
 test("PRODUCT M7 distinguishes real repository checks from branch-integrity-only fallback", () => {
   const real = qualityEvidence(
-    event(4, "quality", { passed: true, commandId: "github-checks", output: "{\"exitCode\":0,\"output\":\"CI: success\"}" }),
+    event(4, "quality", {
+      passed: true,
+      commandId: "github-checks",
+      output: '{"exitCode":0,"output":"CI: success"}',
+    }),
   );
   assert.equal(real.classification, "repository-checks");
   assert.equal(real.passed, true);
@@ -61,7 +65,9 @@ test("PRODUCT M7 distinguishes real repository checks from branch-integrity-only
   assert.equal(fallback.classification, "branch-integrity-only");
   assert.match(fallback.summary, /tests are unavailable/iu);
 
-  const failed = qualityEvidence(event(6, "quality", { passed: false, commandId: "github-checks", output: "failed" }));
+  const failed = qualityEvidence(
+    event(6, "quality", { passed: false, commandId: "github-checks", output: "failed" }),
+  );
   assert.equal(failed.classification, "failed");
 });
 

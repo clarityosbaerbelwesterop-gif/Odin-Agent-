@@ -15,7 +15,10 @@ test("PRODUCT M7 exposes repository, diff, verification and PR delivery without 
   assert.match(client, /pull-request/u);
   assert.match(client, /review\/\$\{number\}/u);
   assert.match(client, /Read-only review surface/u);
-  assert.doesNotMatch(client, /github\.com\/repos|Authorization:\s*`Bearer|localStorage|sessionStorage/iu);
+  assert.doesNotMatch(
+    client,
+    /github\.com\/repos|Authorization:\s*`Bearer|localStorage|sessionStorage/iu,
+  );
   assert.match(css, /grid-template-columns/u);
   assert.match(css, /@media\s*\(max-width:\s*900px\)/u);
   assert.match(css, /@media\s*\(max-width:\s*680px\)/u);
