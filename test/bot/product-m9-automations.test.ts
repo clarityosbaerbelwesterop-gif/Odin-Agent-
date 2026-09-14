@@ -244,7 +244,10 @@ test("PRODUCT M9 scheduled occurrences are exactly-once and inherit the server b
   assert.deepEqual(first.budget, { maxMinutes: 15 });
   assert.equal(db.taskInsertCount, 1);
   assert.equal(db.dailyUsed, 1);
-  assert.equal(db.calls.filter((call) => call.sql.includes("pg_advisory_xact_lock")).length, 2);
+  const occurrenceLocks = db.calls.filter((call) =>
+    call.sql.includes("hashtextextended(odin_api.actor(),0)"),
+  );
+  assert.equal(occurrenceLocks.length, 2);
   assert.ok(
     db.calls.some(
       (call) =>
