@@ -1,0 +1,35 @@
+name: PRODUCT M9 implementation patch
+
+on:
+  push:
+    branches:
+      - agent/product-m9-automations
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply PRODUCT M9 hardening
+        run: python scripts/product-m9-patch.py
+      - name: Format changed product sources
+        run: npx biome check --write src/bot/types.ts src/bot/store.ts src/bot/executor.ts src/chat/hosted.ts web/bot.html web/bot.js scripts/bot-ui.test.mjs
+      - name: Commit implementation
+        run: |
+          git config user.name "Odin Product M9"
+          git config user.email "odin-m9@users.noreply.github.com"
+          git add src/bot/types.ts src/bot/store.ts src/bot/executor.ts src/chat/hosted.ts web/bot.html web/bot.js scripts/bot-ui.test.mjs
+          git diff --cached --quiet && exit 0
+          git commit -m "feat(m9): harden automations for production"
+          git push origin HEAD:agent/product-m9-automations
