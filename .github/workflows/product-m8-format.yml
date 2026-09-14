@@ -20,18 +20,18 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Repair blocking lint
+      - name: Enforce single-use external approvals
         run: |
-          sed -i 's/let approval = undefined;/let approval: ReturnType<typeof approvalForBrowserAction> | undefined;/' src/chat/browser-store.ts
-          sed -i 's/let approval;/let approval: ReturnType<typeof approvalForBrowserAction> | undefined;/' src/chat/browser-store.ts
-          sed -i 's/evidence\.forms\.slice(0, 6)\.forEach((form, index) => forms\.append(buildForm(form, index)));/evidence.forms.slice(0, 6).forEach((form, index) => { forms.append(buildForm(form, index)); });/' web/browser.js
-      - name: Apply canonical Biome formatting and safe fixes
-        run: npx biome check --write src/chat/browser-api.ts src/chat/browser-http.ts src/chat/browser-mode.ts src/chat/browser-store.ts test/chat/product-m8-browser-mode.test.ts web/browser.js web/browser.css vercel.json
-      - name: Commit repaired formatting
+          if ! grep -q BROWSER_ACTION_ALREADY_ATTEMPTED src/chat/browser-store.ts; then
+            sed -i '/const prepared = await this.preparedAction(session, identifier(preparedActionId));/a\      const priorEvents = await this.chat.events(session.projectId, 0, 1000);\n      if (priorEvents.some((candidate) => ["browser.action.executed", "browser.action.outcome_unknown", "browser.action.failed"].includes(candidate.type) && candidate.data.sessionId === session.id && candidate.data.actionId === prepared.actionId))\n        throw new ChatError("BROWSER_ACTION_ALREADY_ATTEMPTED", "This approved external action was already attempted and cannot be replayed.", 409);' src/chat/browser-store.ts
+          fi
+      - name: Apply canonical Biome formatting
+        run: npx biome check --write src/chat/browser-store.ts
+      - name: Commit replay guard
         run: |
           git config user.name "Odin Product M8"
           git config user.email "odin-m8@users.noreply.github.com"
-          git add src/chat/browser-api.ts src/chat/browser-http.ts src/chat/browser-mode.ts src/chat/browser-store.ts test/chat/product-m8-browser-mode.test.ts web/browser.js web/browser.css vercel.json
+          git add src/chat/browser-store.ts
           git diff --cached --quiet && exit 0
-          git commit -m "style(m8): apply canonical formatting"
+          git commit -m "fix(m8): prevent approved action replay"
           git push origin HEAD:agent/product-m8-act-browser-mode
