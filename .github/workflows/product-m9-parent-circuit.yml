@@ -26,25 +26,8 @@ jobs:
           from pathlib import Path
           path = Path('src/bot/executor.ts')
           text = path.read_text()
-          old = '''    await bot.updateTask(
-              wake.targetId,
-              "failed",
-              "Blocked after repeated failures",
-              "runtime.failed",
-              { code, attempts: wake.attempt },
-            );
-            await bot.addInbox(
-          '''
-          new = '''    const failed = await bot.updateTask(
-              wake.targetId,
-              "failed",
-              "Blocked after repeated failures",
-              "runtime.failed",
-              { code, attempts: wake.attempt },
-            );
-            if (failed.sourceAutomationId) await bot.pauseAutomation(failed.sourceAutomationId, code);
-            await bot.addInbox(
-          '''
+          old = "    await bot.updateTask(\n      wake.targetId,\n      \"failed\",\n      \"Blocked after repeated failures\",\n      \"runtime.failed\",\n      { code, attempts: wake.attempt },\n    );\n    await bot.addInbox(\n"
+          new = "    const failed = await bot.updateTask(\n      wake.targetId,\n      \"failed\",\n      \"Blocked after repeated failures\",\n      \"runtime.failed\",\n      { code, attempts: wake.attempt },\n    );\n    if (failed.sourceAutomationId) await bot.pauseAutomation(failed.sourceAutomationId, code);\n    await bot.addInbox(\n"
           if old not in text:
               raise SystemExit('executor failure block marker missing')
           path.write_text(text.replace(old, new, 1))
