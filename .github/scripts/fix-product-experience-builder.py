@@ -1,13 +1,13 @@
 from pathlib import Path
 
-path = Path('.github/scripts/product-experience-build.py')
+path = Path(".github/scripts/product-experience-build.py")
 text = path.read_text()
 start = text.index('replace(\n    "scripts/configure-vercel-production.mjs",')
 end = text.index('\n\nreplace(\n    "web/landing.js",', start)
 replacement = r'''replace(
     "scripts/configure-vercel-production.mjs",
     '    await ownerPool.query(developerMigration);',
-    '''    await ownerPool.query(developerMigration);
+    """    await ownerPool.query(developerMigration);
 
     for (const migration of [
       "012_product_m2_workspace_os.sql",
@@ -17,7 +17,7 @@ replacement = r'''replace(
       const productMigration = await readFile(`migrations/${migration}`, "utf8");
       await ownerPool.query(productMigration);
       report.checks.push(`Production schema reconciled: ${migration}`);
-    }''',
+    }""",
 )
 replace(
     "scripts/configure-vercel-production.mjs",
