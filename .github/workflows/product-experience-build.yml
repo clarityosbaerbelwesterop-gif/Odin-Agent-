@@ -27,6 +27,7 @@ jobs:
         run: |
           python .github/scripts/fix-product-experience-builder.py
           python .github/scripts/product-experience-build.py
+          python .github/scripts/fix-product-experience-output.py
       - run: npm ci
       - run: npm run format
       - run: npm run typecheck
