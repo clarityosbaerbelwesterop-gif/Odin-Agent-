@@ -49,11 +49,7 @@ test("PRODUCT M10 production readiness blocks on each missing release dependency
     delete env[key];
     const readiness = productReleaseReadiness(env, 3);
     assert.equal(readiness.ready, false, key);
-    assert.equal(
-      readiness.checks.find((check) => check.id === checkId)?.status,
-      "blocked",
-      key,
-    );
+    assert.equal(readiness.checks.find((check) => check.id === checkId)?.status, "blocked", key);
   }
 
   const noModels = productReleaseReadiness(baseline, 0);
@@ -104,8 +100,14 @@ test("PRODUCT M10 deployment emits transport hardening and a PWA manifest route"
 
 test("PRODUCT M10 keeps product control-plane persistence owner-isolated", async () => {
   const migration = await readFile("migrations/003_product_accounts.sql", "utf8");
-  for (const table of ["accounts", "credentials", "github_connections", "oauth_states", "stripe_events"])
-    assert.match(migration, new RegExp(`['\"]${table}['\"]`, "u"));
+  for (const table of [
+    "accounts",
+    "credentials",
+    "github_connections",
+    "oauth_states",
+    "stripe_events",
+  ])
+    assert.match(migration, new RegExp(`['"]${table}['"]`, "u"));
   assert.match(migration, /ENABLE ROW LEVEL SECURITY/u);
   assert.match(migration, /FORCE ROW LEVEL SECURITY/u);
   assert.match(migration, /owner_id=\(SELECT odin_api\.actor\(\)\)/u);
