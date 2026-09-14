@@ -6,6 +6,10 @@ on:
       - agent/product-experience-runtime-quality
     paths:
       - .github/workflows/product-experience-build.yml
+      - .github/scripts/product-experience-build.py
+      - .github/scripts/fix-product-experience-builder.py
+      - .github/scripts/fix-product-experience-output.py
+      - .github/scripts/fix-product-experience-tests.py
 
 permissions:
   contents: write
