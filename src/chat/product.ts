@@ -39,9 +39,16 @@ export function effectivePlan(account: Pick<ProductAccount, "plan" | "subscripti
     : "free";
 }
 
-/** Temporary product-wide test lane. It closes automatically once Stripe is configured. */
+/**
+ * Explicit non-production product test lane.
+ * Production never infers elevated access from missing billing configuration.
+ */
 export function preStripeTestMode(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.ODIN_PRESTRIPE_TEST_MODE === "true" || !env.STRIPE_SECRET_KEY;
+  const production =
+    env.VERCEL_ENV !== undefined
+      ? env.VERCEL_ENV === "production"
+      : env.NODE_ENV === "production";
+  return !production && env.ODIN_PRESTRIPE_TEST_MODE === "true";
 }
 
 export function runtimePlan(
