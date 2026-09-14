@@ -16,7 +16,7 @@ test("landing exposes working app links, local assets and complete section targe
       assert(doc.getElementById(link.getAttribute("href").slice(1)));
     for (const element of doc.querySelectorAll("script[src],link[rel=stylesheet]")) {
       const path = element.getAttribute("src") ?? element.getAttribute("href");
-      assert.match(path, /^\/landing\.(js|css)$/u);
+      assert.match(path, /^\/(?:landing\.(?:js|css)|pwa\.js)$/u);
       assert((await readFile(`web${path}`, "utf8")).length > 0);
     }
     assert(doc.querySelectorAll('a[href^="/app"]').length >= 4);
