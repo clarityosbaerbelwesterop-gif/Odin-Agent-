@@ -4,6 +4,8 @@ import type { ModelMessage, ModelRequest, ModelResponse } from "../providers/typ
 import { InMemoryCapabilityPolicy } from "../tools/policy.js";
 import type { QualityCommandRunner, RepositoryWorkspace } from "../tools/repository.js";
 import { ToolRuntime } from "../tools/runtime.js";
+import type { ApprovalEvidence, ToolRegistration } from "../tools/types.js";
+import { ToolRuntimeError } from "../tools/types.js";
 import { IndependentVerificationEngine } from "../verification/engine.js";
 import type { VerificationRequest } from "../verification/types.js";
 import { modePolicy, modePrompt } from "./modes.js";
@@ -32,6 +34,7 @@ export interface ChatAgentContext {
   workspace?: RepositoryWorkspace;
   quality: QualityCommandRunner;
   research?: ResearchAdapter;
+  registrations?: readonly ToolRegistration[];
   snapshot: () => Promise<MissionSnapshot>;
   reserve: (input: number, output: number, tools: number) => Promise<void>;
   publish: (type: string, data: Record<string, unknown>) => ChatEvent | Promise<ChatEvent>;
@@ -69,6 +72,7 @@ export async function runChatAgent(
     quality: context.quality,
     ...(context.workspace ? { workspace: context.workspace } : {}),
     ...(context.research ? { research: context.research } : {}),
+    ...(context.registrations?.length ? { registrations: context.registrations } : {}),
     sources,
     emit: publish,
   });
@@ -274,6 +278,28 @@ export async function runChatAgent(
         if (event.turnId === turn.id && event.type === "steering") {
           state = { ...state, reviewed: false };
           await add({ role: "user", content: [{ type: "text", text: String(event.data.text) }] });
+        } else if (event.turnId === turn.id && event.type === "approval.granted") {
+          state = { ...state, reviewed: false };
+          await add({
+            role: "system",
+            content: [
+              {
+                type: "text",
+                text: `Runtime approval ${String(event.data.approvalId)} was granted for ${String(event.data.tool)}. Retry only that exact action if it is still necessary.`,
+              },
+            ],
+          });
+        } else if (event.turnId === turn.id && event.type === "approval.denied") {
+          state = { ...state, reviewed: false };
+          await add({
+            role: "system",
+            content: [
+              {
+                type: "text",
+                text: `Runtime approval ${String(event.data.approvalId)} was denied. Do not retry that external action.`,
+              },
+            ],
+          });
         }
       cursor = events.at(-1)?.cursor ?? cursor;
       if (events.length < 1000) break;
@@ -307,9 +333,26 @@ export async function runChatAgent(
         await save();
         let output: string;
         let failed = false;
+        let name = tool.name;
+        const runtimeInput = tool.arguments;
+        let registration: ToolRegistration | undefined;
+        const inputHash = hashText(JSON.stringify(runtimeInput));
+        let approvalId = "";
         try {
-          const name = tools.resolveName(tool.name);
-          const runtimeInput = tool.arguments;
+          name = tools.resolveName(tool.name);
+          registration = tools.registry.resolveRegistration(name, "1");
+          approvalId = hashText(`${turn.id}\u0000${name}\u0000${inputHash}`);
+          const approval =
+            registration.manifest.riskClass === "high"
+              ? await approvedEvidence(
+                  store,
+                  turn.conversationId,
+                  turn.id,
+                  name,
+                  inputHash,
+                  approvalId,
+                )
+              : undefined;
           await publish("tool.start", {
             name,
             toolId: tool.id,
@@ -324,6 +367,7 @@ export async function runChatAgent(
             version: "1",
             input: runtimeInput,
             idempotencyKey: `${turn.id}-${state.calls}-${tool.id}`,
+            ...(approval ? { approval } : {}),
             signal,
           });
           signal.throwIfAborted();
@@ -351,24 +395,54 @@ export async function runChatAgent(
           repeatedErrors = 0;
         } catch (error) {
           signal.throwIfAborted();
-          const normalized = publicError(error);
-          failed = true;
-          output = JSON.stringify(normalized);
-          await publish("tool.end", {
-            name: tool.name,
-            toolId: tool.id,
-            status: "failed",
-            ...normalized,
-          });
-          const signature = hashText(`${tool.name}:${output}`);
-          repeatedErrors = signature === lastError ? repeatedErrors + 1 : 1;
-          lastError = signature;
-          if (repeatedErrors >= 3)
-            throw new ChatError(
-              "NO_PROGRESS",
-              "The same tool failure repeated three times. Change the approach before resuming.",
-              409,
-            );
+          if (
+            error instanceof ToolRuntimeError &&
+            error.category === "require_approval" &&
+            registration
+          ) {
+            failed = true;
+            const expiresAt = new Date(Date.now() + 10 * 60_000).toISOString();
+            await publish("approval.requested", {
+              approvalId,
+              tool: name,
+              inputHash,
+              expiresAt,
+              risk: "high",
+              action: registration.manifest.summary,
+              input: visibleToolInput(name, runtimeInput),
+            });
+            output = JSON.stringify({
+              code: "APPROVAL_REQUIRED",
+              approvalId,
+              message: "The external action is paused until the user approves or denies it.",
+            });
+            await publish("tool.end", {
+              name,
+              toolId: tool.id,
+              status: "failed",
+              code: "APPROVAL_REQUIRED",
+              message: "Waiting for user approval.",
+            });
+          } else {
+            const normalized = publicError(error);
+            failed = true;
+            output = JSON.stringify(normalized);
+            await publish("tool.end", {
+              name: tool.name,
+              toolId: tool.id,
+              status: "failed",
+              ...normalized,
+            });
+            const signature = hashText(`${tool.name}:${output}`);
+            repeatedErrors = signature === lastError ? repeatedErrors + 1 : 1;
+            lastError = signature;
+            if (repeatedErrors >= 3)
+              throw new ChatError(
+                "NO_PROGRESS",
+                "The same tool failure repeated three times. Change the approach before resuming.",
+                409,
+              );
+          }
         }
         await add({
           role: "tool",
@@ -376,6 +450,12 @@ export async function runChatAgent(
           content: output.slice(0, 48_000),
           isError: failed,
         });
+        if (failed && output.includes('"APPROVAL_REQUIRED"'))
+          throw new ChatError(
+            "APPROVAL_REQUIRED",
+            "A high-impact connector action is waiting for user approval.",
+            409,
+          );
       }
       continue;
     }
@@ -592,6 +672,18 @@ function visibleToolInput(name: string, value: unknown): Record<string, unknown>
   if (name === "math.calculate") return { expression: text("expression", 500) };
   if (name === "task.plan")
     return { stepCount: Array.isArray(input.steps) ? Math.min(input.steps.length, 12) : 0 };
+  if (name.startsWith("connector.")) {
+    const raw = typeof input.argumentsJson === "string" ? input.argumentsJson : "{}";
+    let keys: string[] = [];
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed))
+        keys = Object.keys(parsed).slice(0, 24);
+    } catch {
+      // ToolRuntime validates the actual argument string; the public projection stays empty.
+    }
+    return { argumentKeys: keys, argumentBytes: Buffer.byteLength(raw) };
+  }
   return {};
 }
 
@@ -613,5 +705,42 @@ function visibleToolResult(name: string, value: unknown): Record<string, unknown
     return { sources: Array.isArray(output.sources) ? output.sources.length : 0 };
   if (name === "math.calculate") return { value: output.value };
   if (name === "task.plan") return { recorded: output.recorded === true };
+  if (name.startsWith("connector.")) {
+    let bytes = 0;
+    try {
+      bytes = Buffer.byteLength(JSON.stringify(value));
+    } catch {
+      bytes = 0;
+    }
+    return { resultType: Array.isArray(value) ? "array" : typeof value, bytes };
+  }
   return {};
+}
+
+async function approvedEvidence(
+  store: ChatRepository,
+  conversationId: string,
+  turnId: string,
+  tool: string,
+  inputHash: string,
+  approvalId: string,
+): Promise<ApprovalEvidence | undefined> {
+  let cursor = 0;
+  let granted: ChatEvent | undefined;
+  let denied = false;
+  while (true) {
+    const events = await store.events(conversationId, cursor, 1000);
+    for (const event of events) {
+      if (event.turnId !== turnId || event.data.approvalId !== approvalId) continue;
+      if (event.type === "approval.granted") granted = event;
+      if (event.type === "approval.denied") denied = true;
+    }
+    cursor = events.at(-1)?.cursor ?? cursor;
+    if (events.length < 1000) break;
+  }
+  if (!granted || denied) return undefined;
+  const expiresAt = String(granted.data.expiresAt ?? "");
+  if (Date.parse(expiresAt) <= Date.now()) return undefined;
+  if (granted.data.tool !== tool || granted.data.inputHash !== inputHash) return undefined;
+  return { approvalId, missionId: turnId, taskId: "work", tool, expiresAt };
 }

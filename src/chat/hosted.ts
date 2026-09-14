@@ -355,7 +355,8 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       db,
       new CredentialVault(process.env.ODIN_CREDENTIAL_ENCRYPTION_KEY),
     );
-    const quota = new QuotaStore(db, runtimePlan(await product.account()));
+    const runtimeAccessPlan = runtimePlan(await product.account());
+    const quota = new QuotaStore(db, runtimeAccessPlan);
     const githubConnection = await product.github();
     const githubToken = githubConnection.connected ? await product.githubToken() : undefined;
     const githubWorkspaceReady = Boolean(
@@ -424,6 +425,22 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
           : {}),
         research: new WikipediaResearchAdapter("de"),
         quota,
+        ...(planAllows(runtimeAccessPlan, "pro")
+          ? {
+              toolRegistrations: async () => {
+                const { ConnectorService, ConnectorStore, connectorToolRegistrations } =
+                  await import("../connectors/index.js");
+                const service = new ConnectorService(
+                  new ConnectorStore(
+                    database,
+                    new CredentialVault(process.env.ODIN_CREDENTIAL_ENCRYPTION_KEY),
+                  ),
+                  process.env,
+                );
+                return connectorToolRegistrations(service);
+              },
+            }
+          : {}),
         ...(signal ? { signal } : {}),
       });
     };

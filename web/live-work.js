@@ -14,7 +14,14 @@ panel.innerHTML = `<summary><span class="live-pulse" aria-hidden="true"></span><
 if (conversation && composer) conversation.insertBefore(panel, composer);
 
 const byId = (id) => document.getElementById(id);
-const state = { projectId: null, runId: null, tools: new Map(), steps: [], plan: [] };
+const state = {
+  projectId: null,
+  runId: null,
+  tools: new Map(),
+  steps: [],
+  plan: [],
+  approval: null,
+};
 const terminalStates = new Set(["COMPLETED", "CANCELLED", "BLOCKED", "FAILED"]);
 
 function safeObject(value) {
@@ -36,6 +43,7 @@ function clear() {
   state.tools.clear();
   state.steps = [];
   state.plan = [];
+  state.approval = null;
   panel.hidden = true;
   panel.dataset.state = "idle";
   byId("live-work-tools")?.replaceChildren();
@@ -248,14 +256,28 @@ function handle(event) {
     );
     return;
   }
-  if (event.type.includes("approval")) {
+  if (event.type === "approval.requested") {
+    state.approval = data.approvalId ? { ...data, turnId: event.turnId } : null;
     const approval = byId("live-approval");
     approval.hidden = false;
     byId("live-approval-title").textContent = String(data.action ?? "Odin needs your confirmation");
     byId("live-approval-detail").textContent =
-      `Risk ${String(data.risk ?? "runtime-defined")} · external action paused`;
+      `Risk ${String(data.risk ?? "runtime-defined")} · ${data.input ? shortJson(data.input) : "external action paused"}`;
+    byId("live-approval-open").textContent = state.approval
+      ? "Approve & continue"
+      : "Review & approve";
     byId("live-work-current").textContent = "Waiting for your approval";
     panel.open = true;
+    return;
+  }
+  if (event.type === "approval.granted" || event.type === "approval.denied") {
+    if (state.approval?.approvalId === data.approvalId) state.approval = null;
+    byId("live-approval").hidden = true;
+    addStep(
+      event.type === "approval.granted" ? "External action approved" : "External action denied",
+      event.type === "approval.granted" ? "done" : "failed",
+      String(data.tool ?? "connector action"),
+    );
     return;
   }
   if (event.type === "answer") {
@@ -271,11 +293,50 @@ window.addEventListener("odin:project-changed", (event) => {
   state.projectId = event.detail?.projectId ?? null;
   clear();
 });
-byId("live-approval-open")?.addEventListener("click", () => {
+byId("live-approval-open")?.addEventListener("click", async () => {
   const projectId = state.projectId ?? new URLSearchParams(location.search).get("project");
   const runId = state.runId;
   if (!projectId || !runId) return;
-  location.assign(
-    `/browser?project=${encodeURIComponent(projectId)}&run=${encodeURIComponent(runId)}`,
-  );
+  if (!state.approval?.approvalId) {
+    location.assign(
+      `/browser?project=${encodeURIComponent(projectId)}&run=${encodeURIComponent(runId)}`,
+    );
+    return;
+  }
+  const button = byId("live-approval-open");
+  button.disabled = true;
+  try {
+    const response = await fetch(
+      `/api/connectors/approvals/${encodeURIComponent(runId)}/${encodeURIComponent(state.approval.approvalId)}`,
+      {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", "X-Odin-Request": "1" },
+        body: JSON.stringify({ decision: "approve" }),
+      },
+    );
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message ?? "Approval failed.");
+    const turnResponse = await fetch(`/api/turns/${encodeURIComponent(runId)}`, {
+      credentials: "same-origin",
+    });
+    const turn = await turnResponse.json();
+    if (!turnResponse.ok) throw new Error(turn.message ?? "Run refresh failed.");
+    if (turn.state === "PAUSED") {
+      const resume = await fetch(`/api/turns/${encodeURIComponent(runId)}/control`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", "X-Odin-Request": "1" },
+        body: JSON.stringify({ command: "resume", expectedVersion: turn.version }),
+      });
+      if (!resume.ok) {
+        const failure = await resume.json().catch(() => ({}));
+        throw new Error(failure.message ?? "Run could not resume.");
+      }
+    }
+  } catch (error) {
+    byId("live-approval-detail").textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
 });

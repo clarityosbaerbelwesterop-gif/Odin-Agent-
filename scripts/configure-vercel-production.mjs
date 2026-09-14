@@ -128,6 +128,8 @@ async function configure() {
       "012_product_m2_workspace_os.sql",
       "013_product_m3_memory_brain.sql",
       "014_product_m5_skills_os.sql",
+      "016_product_m9_automation_hardening.sql",
+      "017_connector_platform.sql",
     ]) {
       const productMigration = await readFile(`migrations/${migration}`, "utf8");
       await ownerPool.query(productMigration);

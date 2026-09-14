@@ -15,6 +15,7 @@ export function chatTools(input: {
   research?: ResearchAdapter;
   emit: (type: string, data: Record<string, unknown>) => unknown | Promise<unknown>;
   sources: ChatSource[];
+  registrations?: readonly ToolRegistration[];
 }): {
   registry: ToolRegistry;
   definitions: ToolDefinition[];
@@ -66,6 +67,7 @@ export function chatTools(input: {
       },
     ),
   ];
+  if (input.registrations?.length) registrations.push(...input.registrations);
   if (input.workspace)
     registrations.push(
       ...createRepositoryToolRegistrations({ workspace: input.workspace, quality: input.quality }),

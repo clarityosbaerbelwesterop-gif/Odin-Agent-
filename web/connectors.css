@@ -1,0 +1,103 @@
+.connector-hub {
+  margin: 32px 0 0;
+  border-top: 1px solid var(--line, #e5e7eb);
+  padding-top: 28px;
+}
+.connector-hub > header {
+  max-width: 760px;
+}
+.connector-hub h2 {
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  margin: 0.35rem 0;
+}
+.connector-hub header p {
+  color: var(--muted, #68717d);
+  line-height: 1.55;
+}
+.connector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+.connector-card {
+  border: 1px solid var(--line, #e5e7eb);
+  border-radius: 18px;
+  padding: 18px;
+  background: var(--panel, #fff);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.connector-card h3,
+.connector-card p {
+  margin: 0;
+}
+.connector-card p {
+  line-height: 1.45;
+}
+.connector-eyebrow {
+  font-size: 0.68rem;
+  letter-spacing: 0.11em;
+  font-weight: 700;
+  color: var(--muted, #68717d);
+}
+.connector-note {
+  color: var(--muted, #68717d);
+  line-height: 1.4;
+}
+.connector-card input,
+.connector-card select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--line, #d8dde5);
+  border-radius: 10px;
+  padding: 10px 11px;
+  background: transparent;
+  color: inherit;
+}
+.connector-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+.connector-actions button {
+  border: 1px solid var(--line, #d8dde5);
+  border-radius: 10px;
+  padding: 9px 12px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.connector-actions button:first-of-type {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+.connector-connected {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: #eef8f0;
+  color: #226435;
+  font-size: 0.78rem;
+}
+.connector-status {
+  min-height: 1.4em;
+  margin-top: 14px;
+  color: var(--muted, #68717d);
+}
+.connector-status[data-state="error"] {
+  color: #9b3f34;
+}
+@media (max-width: 680px) {
+  .connector-grid {
+    grid-template-columns: 1fr;
+  }
+  .connector-card {
+    border-radius: 15px;
+  }
+}

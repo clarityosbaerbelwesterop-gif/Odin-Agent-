@@ -5,6 +5,7 @@
 import { browserApiHandler } from "../dist/src/chat/browser-api.js";
 import { buildApiHandler } from "../dist/src/chat/build-api.js";
 import { codingApiHandler } from "../dist/src/chat/coding-api.js";
+import { connectorApiHandler } from "../dist/src/connectors/api.js";
 import { hostedHandler } from "../dist/src/chat/hosted.js";
 import { memoryApiHandler } from "../dist/src/chat/memory-api.js";
 import { productReleaseReadiness } from "../dist/src/chat/release-readiness.js";
@@ -27,6 +28,8 @@ export default async function handler(req, res) {
     return buildApiHandler(req, res);
   if (rewrittenPath === "coding" || rewrittenPath.startsWith("coding/"))
     return codingApiHandler(req, res);
+  if (rewrittenPath === "connectors" || rewrittenPath.startsWith("connectors/"))
+    return connectorApiHandler(req, res);
   if (rewrittenPath === "workspace" || rewrittenPath.startsWith("workspace/"))
     return workspaceApiHandler(req, res);
   if (rewrittenPath === "memory" || rewrittenPath.startsWith("memory/"))

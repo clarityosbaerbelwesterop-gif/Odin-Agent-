@@ -3,6 +3,7 @@ import type { EventStore } from "../events/store.js";
 import type { MissionEventData } from "../mission/runtime.js";
 import { MissionRuntime, type MissionState } from "../mission/runtime.js";
 import type { QualityCommandRunner, RepositoryWorkspace } from "../tools/repository.js";
+import type { ToolRegistration } from "../tools/types.js";
 import { runChatAgent } from "./agent.js";
 import { DEFAULT_CHAT_LIMITS, MODE_POLICIES, parseMode } from "./modes.js";
 import { activityLabel, companionState, productPlan } from "./product-projection.js";
@@ -39,6 +40,7 @@ export interface ChatEngineOptions {
   research?: ResearchAdapter;
   quota?: ChatQuotaController;
   workspace?: (onChange: (change: ChatChange) => Promise<void>) => RepositoryWorkspace;
+  toolRegistrations?: () => Promise<readonly ToolRegistration[]>;
   autoRun?: boolean;
   signal?: AbortSignal;
   /** A short database transaction for state mutations; never wraps a provider or tool call. */
@@ -435,6 +437,7 @@ export class ChatEngine {
           "The task's configured model is unavailable.",
           409,
         );
+      const externalRegistrations = (await this.#options.toolRegistrations?.()) ?? [];
       while (true) {
         const result = await runChatAgent({
           turn,
@@ -447,6 +450,7 @@ export class ChatEngine {
           quality: this.#options.quality ?? NO_QUALITY,
           ...(this.#options.research ? { research: this.#options.research } : {}),
           ...(this.#options.quota ? { quota: this.#options.quota } : {}),
+          ...(externalRegistrations.length ? { registrations: externalRegistrations } : {}),
           publish,
           snapshot: () => this.#mission.load(turn.id),
           reserve: (inputTokens, outputTokens, toolCalls) =>
@@ -523,7 +527,14 @@ export class ChatEngine {
       await this.#atomic(async () => {
         const snapshot = await this.#mission.load(turn.id);
         if (snapshot.state === "PAUSED" || TERMINAL.has(snapshot.state)) return;
-        if (this.#closed || signal.aborted) {
+        if (error instanceof ChatError && error.code === "APPROVAL_REQUIRED") {
+          await this.#transition(turn, "PAUSING");
+          await this.#transition(turn, "PAUSED");
+          await publish("activity", {
+            phase: "approval",
+            message: "High-impact connector action paused for user approval.",
+          });
+        } else if (this.#closed || signal.aborted) {
           await this.#transition(turn, "PAUSING");
           await this.#transition(turn, "PAUSED");
           await publish("activity", {
