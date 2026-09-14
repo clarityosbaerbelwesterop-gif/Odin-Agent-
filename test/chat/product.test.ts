@@ -45,21 +45,30 @@ test("S-U effective paid entitlement requires an approved Stripe status", () => 
     assert.equal(effectivePlan({ plan: "ultra", subscriptionStatus: status }), "free");
 });
 
-test("pre-Stripe test mode exposes the complete product only until billing is configured", () => {
+test("PRODUCT M10 preview entitlement bypass is explicit and impossible in production", () => {
   const freeAccount = { plan: "free" as const, subscriptionStatus: "unknown" };
-  assert.equal(preStripeTestMode({}), true);
-  assert.equal(runtimePlan(freeAccount, {}), "ultra");
 
-  const stripeConfigured = { STRIPE_SECRET_KEY: "sk_test_fixture" } as NodeJS.ProcessEnv;
-  assert.equal(preStripeTestMode(stripeConfigured), false);
-  assert.equal(runtimePlan(freeAccount, stripeConfigured), "free");
+  assert.equal(preStripeTestMode({}), false);
+  assert.equal(runtimePlan(freeAccount, {}), "free");
+  assert.equal(
+    preStripeTestMode({ ODIN_PRESTRIPE_TEST_MODE: "true" } as NodeJS.ProcessEnv),
+    true,
+  );
+  assert.equal(
+    runtimePlan(freeAccount, { ODIN_PRESTRIPE_TEST_MODE: "true" } as NodeJS.ProcessEnv),
+    "ultra",
+  );
 
-  const explicitTestLane = {
-    STRIPE_SECRET_KEY: "sk_test_fixture",
-    ODIN_PRESTRIPE_TEST_MODE: "true",
-  } as NodeJS.ProcessEnv;
-  assert.equal(preStripeTestMode(explicitTestLane), true);
-  assert.equal(runtimePlan(freeAccount, explicitTestLane), "ultra");
+  for (const productionEnv of [
+    { NODE_ENV: "production", ODIN_PRESTRIPE_TEST_MODE: "true" },
+    { VERCEL_ENV: "production", ODIN_PRESTRIPE_TEST_MODE: "true" },
+  ]) {
+    assert.equal(preStripeTestMode(productionEnv as NodeJS.ProcessEnv), false);
+    assert.equal(runtimePlan(freeAccount, productionEnv as NodeJS.ProcessEnv), "free");
+  }
+
+  const activePaid = { plan: "developer" as const, subscriptionStatus: "active" };
+  assert.equal(runtimePlan(activePaid, { NODE_ENV: "production" } as NodeJS.ProcessEnv), "developer");
 });
 
 test("S-U Stripe mapping accepts only exact configured Odin prices", () => {
