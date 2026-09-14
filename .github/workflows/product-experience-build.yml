@@ -39,3 +39,4 @@ jobs:
           git status --short
           git commit -m "feat: make Odin work visible and efficient"
           git push origin HEAD:agent/product-experience-runtime-quality
+# retry after correcting temporary builder syntax
