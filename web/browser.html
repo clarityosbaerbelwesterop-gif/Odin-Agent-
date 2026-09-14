@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="color-scheme" content="light" />
+  <meta name="robots" content="noindex" />
+  <title>Odin — Browser Workspace</title>
+  <link rel="stylesheet" href="/browser.css" />
+</head>
+<body>
+  <header class="browser-topbar">
+    <a class="brand" href="/app" aria-label="Back to Odin Workspace"><span>O</span> odin.</a>
+    <div class="run-chip"><i></i><span id="session-state">No browser session</span></div>
+    <a class="quiet-link" href="/app">Workspace</a>
+  </header>
+  <main class="browser-shell">
+    <section class="browser-stage" aria-labelledby="browser-title">
+      <header class="stage-head">
+        <div><span class="eyebrow">ACT / BROWSER</span><h1 id="browser-title">Work on the web, with boundaries.</h1></div>
+        <button id="session-new" type="button">New session</button>
+      </header>
+      <form id="navigate" class="address-bar">
+        <label class="sr-only" for="browser-url">URL</label>
+        <span aria-hidden="true">⌕</span>
+        <input id="browser-url" type="url" inputmode="url" autocomplete="url" placeholder="https://example.com" required />
+        <button type="submit">Open</button>
+      </form>
+      <div id="browser-notice" class="notice" role="status">Start a scoped session from an existing Project Run. Web content is treated as untrusted data.</div>
+      <article id="browser-page" class="page-card" aria-live="polite">
+        <div class="empty-browser"><span>↗</span><h2>No page open</h2><p>Odin will only navigate inside the exact HTTPS origins you approve for this session.</p></div>
+      </article>
+    </section>
+
+    <aside class="companion-panel" aria-label="Odin Browser Companion">
+      <div class="companion"><span class="pulse"></span><div><strong>Odin</strong><small id="companion-state">Waiting for a safe scope</small></div></div>
+      <section><span class="panel-label">GOAL</span><p id="run-goal">Controlled browser work</p></section>
+      <section><span class="panel-label">CURRENT ACTION</span><p id="current-action">No action in progress.</p></section>
+      <section id="approval-card" class="approval" hidden>
+        <span class="panel-label">APPROVAL REQUIRED</span>
+        <h2 id="approval-action">External action</h2>
+        <dl><div><dt>Destination</dt><dd id="approval-destination"></dd></div><div><dt>Data</dt><dd id="approval-data"></dd></div><div><dt>Risk</dt><dd>High · may change external state</dd></div></dl>
+        <div class="approval-actions"><button id="approval-cancel" type="button">Cancel</button><button id="approval-approve" type="button" class="primary">Approve</button></div>
+      </section>
+      <section><span class="panel-label">SESSION</span><dl class="facts"><div><dt>Scope</dt><dd id="scope">—</dd></div><div><dt>Run</dt><dd id="run">—</dd></div><div><dt>Last safe action</dt><dd id="last-safe">—</dd></div></dl></section>
+      <section><span class="panel-label">ACTIVITY</span><ol id="activity" class="activity"><li>Browser workspace ready.</li></ol></section>
+    </aside>
+  </main>
+
+  <dialog id="session-dialog" aria-labelledby="session-dialog-title">
+    <form id="session-form" method="dialog">
+      <span class="eyebrow">SCOPED SESSION</span><h2 id="session-dialog-title">Where may Odin work?</h2>
+      <label for="project-id">Project ID</label><input id="project-id" required maxlength="100" />
+      <label for="run-id">Run ID</label><input id="run-id" required maxlength="100" />
+      <label for="origins">Allowed HTTPS origins</label><textarea id="origins" rows="3" required placeholder="https://example.com&#10;https://www.example.com"></textarea>
+      <label for="risk-profile">Action policy</label><select id="risk-profile"><option value="READ_ONLY">Observe only</option><option value="ASSISTED" selected>Assisted · no purchases</option><option value="CONTROLLED">Controlled · high risk still requires approval</option></select>
+      <p>Pages cannot change this scope, grant approval, or access Odin credentials.</p>
+      <div class="dialog-actions"><button id="session-cancel" type="button">Cancel</button><button class="primary" type="submit">Start session</button></div>
+    </form>
+  </dialog>
+  <script type="module" src="/browser.js"></script>
+</body>
+</html>
