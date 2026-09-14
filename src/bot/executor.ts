@@ -670,13 +670,14 @@ export class OdinBotWorker {
       await bot.pauseAutomation(wake.targetId, code);
       return;
     }
-    await bot.updateTask(
+    const failed = await bot.updateTask(
       wake.targetId,
       "failed",
       "Blocked after repeated failures",
       "runtime.failed",
       { code, attempts: wake.attempt },
     );
+    if (failed.sourceAutomationId) await bot.pauseAutomation(failed.sourceAutomationId, code);
     await bot.addInbox(
       wake.targetId,
       "important",
