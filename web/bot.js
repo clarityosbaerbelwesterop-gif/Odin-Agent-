@@ -78,20 +78,50 @@ function render() {
   for (const item of snapshot.automations ?? []) {
     const node = document.createElement("div");
     node.className = "schedule-row";
-    const when = item.nextWakeupAt
-      ? new Date(item.nextWakeupAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })
-      : "Event driven";
-    node.innerHTML = `<span><strong></strong><small></small></span><button type="button">Remove</button>`;
-    node.querySelector("strong").textContent = item.name;
-    node.querySelector("small").textContent = when;
-    node.querySelector("button").addEventListener("click", async () => {
+    const when = item.enabled
+      ? item.nextWakeupAt
+        ? `Next ${new Date(item.nextWakeupAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`
+        : "Watching for the condition"
+      : "Paused";
+    const lastTask = (snapshot.tasks ?? []).find((task) => task.sourceAutomationId === item.id);
+    const last = lastTask ? ` · Last ${statusLabel(lastTask.status)}` : " · Not run yet";
+    const minutes = Number(item.budget?.maxMinutes);
+    const budget = Number.isFinite(minutes) ? ` · up to ${minutes} min / Run` : "";
+    const copy = document.createElement("span");
+    const strong = document.createElement("strong");
+    const small = document.createElement("small");
+    strong.textContent = item.name;
+    small.textContent = `${when}${last}${budget}`;
+    copy.append(strong, small);
+    const actions = document.createElement("span");
+    actions.className = "schedule-actions";
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.textContent = item.enabled ? "Pause" : "Resume";
+    toggle.addEventListener("click", async () => {
+      await api(`/api/bot/automations/${item.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ enabled: !item.enabled }),
+      });
+      await load();
+    });
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "Remove";
+    remove.addEventListener("click", async () => {
       await api(`/api/bot/automations/${item.id}`, { method: "DELETE", body: "{}" });
       await load();
     });
+    actions.append(toggle, remove);
+    node.append(copy, actions);
     scheduled.append(node);
   }
-  if (!(snapshot.automations ?? []).length)
-    scheduled.innerHTML = '<p class="empty">No automations yet.</p>';
+  if (!(snapshot.automations ?? []).length) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = "No automations yet. Tell Odin what to do and when.";
+    scheduled.append(empty);
+  }
 
   const inbox = $("inbox");
   inbox.replaceChildren();

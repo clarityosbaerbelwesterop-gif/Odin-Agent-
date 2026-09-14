@@ -762,12 +762,22 @@ export async function hostedHandler(req: IncomingMessage, res: ServerResponse): 
       }
     }
     const botAutomationRoute = /^\/api\/bot\/automations\/([\w-]+)$/u.exec(url.pathname);
-    if (botAutomationRoute && method === "DELETE") {
+    if (botAutomationRoute) {
       await botAccess();
-      await jsonBody(req);
-      await botStore.deleteAutomation(identifier(botAutomationRoute[1]));
-      send(res, 200, { deleted: true });
-      return;
+      const automationId = identifier(botAutomationRoute[1]);
+      if (method === "PATCH") {
+        const body = object(await jsonBody(req), ["enabled"]);
+        if (typeof body.enabled !== "boolean")
+          throw new ChatError("INVALID_AUTOMATION", "Choose whether this Automation is enabled.");
+        send(res, 200, await botStore.setAutomationEnabled(automationId, body.enabled));
+        return;
+      }
+      if (method === "DELETE") {
+        await jsonBody(req);
+        await botStore.deleteAutomation(automationId);
+        send(res, 200, { deleted: true });
+        return;
+      }
     }
     if (url.pathname === "/api/providers" && method === "GET") {
       send(res, 200, { providers: await product.credentials() });

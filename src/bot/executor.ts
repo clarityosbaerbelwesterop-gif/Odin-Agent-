@@ -116,6 +116,16 @@ export class OdinBotWorker {
           completed.push({ kind: wake.kind, targetId: wake.targetId, result: "waiting" });
           continue;
         }
+        if (
+          wake.kind === "automation" &&
+          error instanceof ChatError &&
+          error.code === "BOT_AUTOMATION_DAILY_LIMIT"
+        ) {
+          await this.markPermanentFailure(wake, error);
+          await this.queue.ack(wake);
+          completed.push({ kind: wake.kind, targetId: wake.targetId, result: "paused" });
+          continue;
+        }
         if (wake.attempt >= 5) {
           await this.markPermanentFailure(wake, error);
           await this.queue.ack(wake);
@@ -139,11 +149,7 @@ export class OdinBotWorker {
     const store = new BotStore(db);
     const automation = await store.automation(wake.targetId);
     if (!automation.enabled) return "disabled";
-    await store.fireAutomation(
-      automation.id,
-      automation.nextWakeupAt ?? new Date().toISOString(),
-      limits,
-    );
+    await store.fireAutomation(automation.id, wake.availableAt, limits);
     return "fired";
   }
 
@@ -657,10 +663,13 @@ export class OdinBotWorker {
   }
 
   private async markPermanentFailure(wake: ClaimedWakeup, error: unknown): Promise<void> {
-    if (wake.kind !== "task") return;
     const db = new NeonActorDatabase(this.options.pool, { id: wake.ownerId });
     const bot = new BotStore(db);
     const code = error instanceof ChatError ? error.code : "WORKER_FAILURE";
+    if (wake.kind === "automation") {
+      await bot.pauseAutomation(wake.targetId, code);
+      return;
+    }
     await bot.updateTask(
       wake.targetId,
       "failed",
