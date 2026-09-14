@@ -23,10 +23,9 @@ SECURITY DEFINER
 SET search_path = pg_catalog
 AS $fn$
 DECLARE
-  v_owner text := NULLIF(current_setting('odin.user_id', true), '');
+  v_owner text := odin_api.actor();
   v_id uuid := gen_random_uuid();
 BEGIN
-  IF v_owner IS NULL THEN RAISE EXCEPTION 'Missing Odin actor'; END IF;
   IF p_kind NOT IN ('task','automation') THEN RAISE EXCEPTION 'Invalid wakeup kind'; END IF;
   IF p_kind='task' AND NOT EXISTS (
     SELECT 1 FROM odin_api.bot_tasks WHERE owner_id=v_owner AND id=p_target
@@ -60,10 +59,9 @@ SECURITY DEFINER
 SET search_path = pg_catalog
 AS $fn$
 DECLARE
-  v_owner text := NULLIF(current_setting('odin.user_id', true), '');
+  v_owner text := odin_api.actor();
   v_deleted integer := 0;
 BEGIN
-  IF v_owner IS NULL THEN RAISE EXCEPTION 'Missing Odin actor'; END IF;
   IF NOT EXISTS (
     SELECT 1 FROM odin_api.bot_automations
     WHERE owner_id=v_owner AND id=p_target
