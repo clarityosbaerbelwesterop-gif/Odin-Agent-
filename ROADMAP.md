@@ -1,8 +1,28 @@
 # Odin delivery roadmap
 
-## PRODUCT M6 — Build Mode (current delivery)
+## PRODUCT M7 — Coding Mode (current delivery)
 
-Status: **PRE-PR VERIFIED — final governance exact-head CI and merge pending**.
+Status: **PRE-PR VERIFIED — final exact-head PR CI pending**.
+
+- [x] Bounded real repository tree/search/read and line-oriented source viewer.
+- [x] Diff-first changes from canonical `file.changed`/checkpoint data plus actual Git branch identity.
+- [x] Existing isolated `odin/*` work branches; no ordinary direct-main writes.
+- [x] Exact repository/base/work-branch/head resume with fail-closed incomplete provenance.
+- [x] Real CI/quality evidence kept distinct from no-CI branch-integrity-only proof.
+- [x] Fail-closed PR gate with current post-mutation quality, base-currentness and secret screening.
+- [x] Actual GitHub PR-file review evidence.
+- [x] Acceptance #1 failed login fix -> failed check -> repair -> green verification.
+- [x] Acceptance #2 multi-file feature -> pause -> same Run/branch resume -> final verification.
+- [x] Repository injection/traversal/binary/Git-identity/stale-quality/permission regressions.
+- [x] Full `npm run verify` passed on `feebe53ab81e3eaa0ae81a91c26df910a012b17f`; focused domain gate passed 667/667 at 80.00% line coverage.
+- [ ] Remove temporary milestone workflows, run exact-head normal PR CI and merge.
+
+PRODUCT M8 starts only from merged PRODUCT M7 `main`.
+
+
+## PRODUCT M6 — Build Mode (merged milestone)
+
+Status: **MERGED** — PR #81; exact-head CI #883 passed; merge `57ea16c2e818547689e43e36822934f7cf4042d8` is on `main`.
 
 - [x] Product Spec, Build Blueprint and Design System persist as real editable PRODUCT M2 Workspace documents.
 - [x] Canonical Hosted Runs perform real Workspace/repository writes; no second executor, DAG, Workspace, Memory, Skill or verification authority exists.

@@ -71,6 +71,10 @@ export interface ChatChange {
   readonly before: string | null;
   readonly after: string;
   readonly sha: string;
+  readonly repository?: string;
+  readonly baseSha?: string;
+  readonly branch?: string;
+  readonly headSha?: string;
 }
 export interface AgentCheckpoint {
   readonly messages: readonly ModelMessage[];

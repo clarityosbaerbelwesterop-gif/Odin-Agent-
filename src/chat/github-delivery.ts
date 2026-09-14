@@ -1,5 +1,13 @@
 import { ChatError } from "./types.js";
 
+export interface GitHubPullRequestFile {
+  readonly filename: string;
+  readonly status: string;
+  readonly additions: number;
+  readonly deletions: number;
+  readonly patch: string | null;
+}
+
 export interface GitHubPullRequestDelivery {
   number: number;
   url: string;
@@ -157,6 +165,26 @@ export class GitHubPullRequestClient {
       ...(input.signal ? { signal: input.signal } : {}),
     });
     return normalizePullRequest(created, branch, this.baseBranch);
+  }
+
+  async files(number: number, signal?: AbortSignal): Promise<GitHubPullRequestFile[]> {
+    if (!Number.isSafeInteger(number) || number <= 0)
+      throw new ChatError("GITHUB_PR_INVALID", "Pull request number is invalid.");
+    const rows = await this.#api(`/pulls/${number}/files?per_page=100`, signal ? { signal } : {});
+    if (!Array.isArray(rows))
+      throw new ChatError("GITHUB_UPSTREAM", "GitHub pull request files response is invalid.", 502);
+    return rows.slice(0, 200).map((value) => {
+      const item = object(value);
+      if (typeof item.filename !== "string" || typeof item.status !== "string")
+        throw new ChatError("GITHUB_UPSTREAM", "GitHub pull request file is invalid.", 502);
+      return {
+        filename: item.filename,
+        status: item.status,
+        additions: Number.isSafeInteger(item.additions) ? Number(item.additions) : 0,
+        deletions: Number.isSafeInteger(item.deletions) ? Number(item.deletions) : 0,
+        patch: typeof item.patch === "string" ? item.patch.slice(0, 32_000) : null,
+      };
+    });
   }
 
   async status(number: number, signal?: AbortSignal): Promise<GitHubPullRequestDelivery> {

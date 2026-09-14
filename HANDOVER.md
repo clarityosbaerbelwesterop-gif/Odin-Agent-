@@ -1,5 +1,10 @@
 # Engineering handover
 
+## PRODUCT M7 checkpoint — Coding Mode
+
+PRODUCT M7 continues from merged PRODUCT M6 main `57ea16c2e818547689e43e36822934f7cf4042d8`. Preserve the existing `GitHubWorkspace`, `GitHubPullRequestClient`, canonical Hosted Run, repository tools, M25 permissions, verification and Skills path. Exact repository/base/work-branch/head provenance is checkpointed; missing provenance blocks resume/delivery rather than creating a replacement branch. The original pre-PR verify `34767187345` failed at Biome; later gates exposed incomplete restore callers, stale GitHub fixtures, acceptance assertions, a branch-regex test bug, a real 40-character Git SHA restore bug and a small coverage gap. All were repaired without reducing gates. Focused domain verification passed 667/667 at 80.00% line coverage and full `npm run verify` passed on `feebe53ab81e3eaa0ae81a91c26df910a012b17f`. Temporary milestone workflows must be absent from the PR; normal exact-head PR CI remains merge authority.
+
+
 ## PRODUCT M6 checkpoint — Build Mode
 
 PRODUCT M6 continues directly from merged PRODUCT M5 main `1706fa16a01e61ecfd4a21565860f29e928400f5`. It composes the existing Workspace, Memory Brain, Hosted Mission/Run runtime, Skills OS, repository tools and verification authorities into Build Mode; do not create a second build executor, state machine, task graph, Skill runtime, Workspace, Memory store, Artifact store or verifier. Product Spec/Blueprint/Design System are actual Workspace documents, implementation is actual file mutation through canonical tools, and Preview is content-revision-bound and isolated.

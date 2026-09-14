@@ -1,5 +1,10 @@
 # Odin — Personal Agentic Workspace
 
+## PRODUCT M7 — Coding Mode
+
+PRODUCT M7 turns Odin's existing `GitHubWorkspace`, repository-tool and verification stack into a professional Coding Mode. Repository browsing, line-oriented source viewing, diff-first review, exact isolated `odin/*` work-branch resume, real CI/quality evidence, fail-closed PR delivery and actual PR-file review all reuse existing authorities; no second Git client, coding runtime, Skill engine or verifier is introduced. See the [PRODUCT M7 contract](docs/milestones/PRODUCT_M7_CODING_MODE.md).
+
+
 ## PRODUCT M6 — Build Mode
 
 PRODUCT M6 turns the existing Project/Workspace/Memory/Run/Skills/Tool/Verification stack into an end-to-end Build Mode. Product Spec, Blueprint and Design System are real editable PRODUCT M2 Workspace documents; canonical Hosted Runs perform real internal-Workspace or isolated-repository changes; PRODUCT M5 Skills remain on the M10 → M23 path; meaningful project decisions use PRODUCT M3 Memory; and isolated Preview is bound to the current output revision rather than being mislabeled as deployment. Delta iterations preserve the existing product and verified visual → source mappings are used only when explicit and safe. See the [PRODUCT M6 contract](docs/milestones/PRODUCT_M6_BUILD_MODE.md).

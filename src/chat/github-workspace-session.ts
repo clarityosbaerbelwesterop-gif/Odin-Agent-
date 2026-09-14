@@ -3,7 +3,9 @@ import { GitHubWorkspace, type RestoredGitHubWrite } from "./github-workspace.js
 import type { ChatChange } from "./types.js";
 
 export interface GitHubWorkspaceRestore {
+  readonly repository: string;
   readonly branch: string;
+  readonly baseSha: string;
   readonly writes: readonly RestoredGitHubWrite[];
 }
 
@@ -16,7 +18,10 @@ export class GitHubWorkspaceSession implements QualityCommandRunner {
     readonly defaultBranch: string,
     readonly request: typeof fetch = fetch,
     readonly restore?: GitHubWorkspaceRestore,
-  ) {}
+  ) {
+    if (restore && restore.repository !== repository)
+      throw new Error("Stored Coding workspace repository does not match the selected repository.");
+  }
 
   workspace(onChange: (change: ChatChange) => Promise<void>): RepositoryWorkspace {
     this.#workspace ??= new GitHubWorkspace(
@@ -27,6 +32,7 @@ export class GitHubWorkspaceSession implements QualityCommandRunner {
       this.request,
       this.restore?.branch,
       this.restore?.writes ?? [],
+      this.restore?.baseSha,
     );
     return this.#workspace;
   }
@@ -40,6 +46,7 @@ export class GitHubWorkspaceSession implements QualityCommandRunner {
       this.request,
       this.restore?.branch,
       this.restore?.writes ?? [],
+      this.restore?.baseSha,
     ).commands();
   }
 

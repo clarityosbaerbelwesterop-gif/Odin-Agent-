@@ -3,6 +3,7 @@
 // already typechecked build artifact so the canonical `npm run build` remains the
 // sole TypeScript compilation path.
 import { buildApiHandler } from "../dist/src/chat/build-api.js";
+import { codingApiHandler } from "../dist/src/chat/coding-api.js";
 import { hostedHandler } from "../dist/src/chat/hosted.js";
 import { memoryApiHandler } from "../dist/src/chat/memory-api.js";
 import { skillsApiHandler } from "../dist/src/chat/skills-api.js";
@@ -41,6 +42,8 @@ export default async function handler(req, res) {
   const rewrittenPath = url.searchParams.get("odin_path") ?? "";
   if (rewrittenPath === "build" || rewrittenPath.startsWith("build/"))
     return buildApiHandler(req, res);
+  if (rewrittenPath === "coding" || rewrittenPath.startsWith("coding/"))
+    return codingApiHandler(req, res);
   if (rewrittenPath === "workspace" || rewrittenPath.startsWith("workspace/"))
     return workspaceApiHandler(req, res);
   if (rewrittenPath === "memory" || rewrittenPath.startsWith("memory/"))

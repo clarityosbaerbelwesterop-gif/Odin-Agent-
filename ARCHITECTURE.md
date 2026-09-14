@@ -1,5 +1,10 @@
 # Odin architecture
 
+## PRODUCT M7 — Coding Mode authority boundary
+
+PRODUCT M7 is a developer projection over the existing Hosted Run, `GitHubWorkspace`, repository tools, `GitHubPullRequestClient`, M25 tool policy, M5 verification, PRODUCT M5 Skills and canonical event/checkpoint authorities. Repository tree/search/read is bounded and untrusted. Ordinary mutations remain on isolated `odin/*` branches; checkpointed repository/base/work-branch/head/write provenance restores the same branch and incomplete provenance fails closed. Diff and quality state come from repository/canonical Run evidence, not browser-authored claims. PR delivery requires COMPLETED state, real changes, current passing quality after the latest mutation, exact scope/provenance, unchanged base and secret screening.
+
+
 ## PRODUCT M6 — Build Mode product boundary
 
 PRODUCT M6 is orchestration over existing authorities, not a second build runtime. Build product state is projected from canonical `workspace_files`, `turns` and `events`; Product Spec/Blueprint/Design System live in PRODUCT M2 Workspace; durable decisions use PRODUCT M3 Memory; execution remains the PRODUCT M4 Hosted ChatEngine/Mission Runtime; Skill procedure selection remains PRODUCT M5 M10 → M23; repository/workspace effects remain behind M25/M3 tool policy; and completion remains owned by existing quality/verification evidence. Greenfield uses the existing `NeonWorkspace`; existing-app work uses the existing isolated GitHub Workspace path.

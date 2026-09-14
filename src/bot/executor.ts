@@ -1,7 +1,10 @@
 import type { Pool } from "pg";
 import { ChatEngine } from "../chat/engine.js";
 import { GitHubPullRequestClient } from "../chat/github-delivery.js";
-import { GitHubWorkspaceSession } from "../chat/github-workspace-session.js";
+import {
+  type GitHubWorkspaceRestore,
+  GitHubWorkspaceSession,
+} from "../chat/github-workspace-session.js";
 import { DEFAULT_CHAT_LIMITS } from "../chat/modes.js";
 import { type ActorDatabase, NeonActorDatabase } from "../chat/neon-database.js";
 import { NeonChatStore, NeonMissionStore } from "../chat/neon-store.js";
@@ -236,6 +239,10 @@ export class OdinBotWorker {
     let turnId = task.turnId;
     const checkpointWorkBranch =
       typeof task.checkpoint.workBranch === "string" ? task.checkpoint.workBranch : undefined;
+    const checkpointRepository =
+      typeof task.checkpoint.repository === "string" ? task.checkpoint.repository : undefined;
+    const checkpointBaseSha =
+      typeof task.checkpoint.baseSha === "string" ? task.checkpoint.baseSha : undefined;
     const checkpointWrites = Array.isArray(task.checkpoint.workspaceChanges)
       ? task.checkpoint.workspaceChanges.flatMap((value) => {
           if (!value || typeof value !== "object" || Array.isArray(value)) return [];
@@ -248,10 +255,21 @@ export class OdinBotWorker {
     let primaryGitHubSession: GitHubWorkspaceSession | undefined;
     const makeEngine = (id: string, requestedWorkspaceWrites: boolean) => {
       const allowWorkspaceWrites = requestedWorkspaceWrites && workspaceWritesAllowed;
-      const restore =
-        requestedWorkspaceWrites && checkpointWorkBranch
-          ? { branch: checkpointWorkBranch, writes: checkpointWrites }
-          : undefined;
+      let restore: GitHubWorkspaceRestore | undefined;
+      if (requestedWorkspaceWrites && checkpointWorkBranch) {
+        if (!checkpointRepository || !checkpointBaseSha)
+          throw new ChatError(
+            "BOT_GITHUB_CHECKPOINT_INCOMPLETE",
+            "Stored GitHub work branch is missing repository/base provenance; resume is blocked rather than creating a replacement branch.",
+            409,
+          );
+        restore = {
+          repository: checkpointRepository,
+          baseSha: checkpointBaseSha,
+          branch: checkpointWorkBranch,
+          writes: checkpointWrites,
+        };
+      }
       const githubSession =
         readToolsAllowed && githubReady
           ? new GitHubWorkspaceSession(
@@ -378,9 +396,19 @@ export class OdinBotWorker {
       openBlockers: view.state === "BLOCKED" ? ["Primary mission entered BLOCKED state"] : [],
     });
     const workBranch = primaryGitHubSession?.branchName() ?? checkpointWorkBranch ?? null;
+    const latestGitHubChange = [...(agentCheckpoint?.changes ?? [])]
+      .reverse()
+      .find(
+        (change) =>
+          typeof change.repository === "string" &&
+          typeof change.baseSha === "string" &&
+          typeof change.branch === "string",
+      );
     const workspaceChanges =
       agentCheckpoint?.changes.map(({ path, sha }) => ({ path, sha })) ?? checkpointWrites;
     await bot.saveCheckpoint(task.id, {
+      repository: latestGitHubChange?.repository ?? checkpointRepository ?? null,
+      baseSha: latestGitHubChange?.baseSha ?? checkpointBaseSha ?? null,
       missionState: view.state,
       missionVersion: view.version,
       usage: view.usage,

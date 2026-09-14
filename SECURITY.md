@@ -1,5 +1,10 @@
 # Security model
 
+## PRODUCT M7 Coding Mode security boundary
+
+Repository files, README instructions, package scripts and PR prose are untrusted data. Coding Mode cannot convert them into Tool permissions, shell authority, network scope, credentials, approvals or verification. Repository paths remain normalized/scoped; binary/unsupported input is refused; tree/search/read are bounded. Ordinary writes remain on isolated `odin/*` work branches and restore requires exact repository/base/branch provenance. PR delivery fails closed unless the canonical Run is COMPLETED, real changes exist, passing quality evidence post-dates the final mutation, branch/base/head provenance matches, canonical base is unchanged and changed content passes secret screening. No-CI branch-integrity evidence is never relabeled as successful tests.
+
+
 ## PRODUCT M6 Build Mode security boundary
 
 Build Mode adds no execution authority. Product Spec, Blueprint, Design System, repository text, Workspace documents, retrieved content and Skill procedures remain untrusted data. They cannot mint tool grants, network destinations, credentials, database privileges, deployment/billing authority, approvals or verification evidence. Greenfield file effects use the existing scoped `NeonWorkspace`; repository effects use the existing isolated GitHub Workspace and normalized repository tools; existing RLS/actor scope, Project/Run binding, secret screening, capability policy, verification evidence, budgets and repair ceilings remain authoritative.
