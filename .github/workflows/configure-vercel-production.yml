@@ -3,24 +3,6 @@ name: Sync Odin Vercel production
 on:
   push:
     branches: [main]
-    paths:
-      - .github/workflows/configure-vercel-production.yml
-      - scripts/configure-neon-github-auth.mjs
-      - scripts/sync-vercel-production.mjs
-      - migrations/006_odin_bot_m1_m3.sql
-      - migrations/007_odin_bot_m4_m6.sql
-      - migrations/008_odin_bot_m7_m9.sql
-      - migrations/009_quota_and_provider_pool.sql
-      - src/bot/**
-      - src/providers/nvidia-pool.ts
-      - src/providers/openrouter.ts
-      - src/providers/unorouter.ts
-      - src/chat/quota.ts
-      - src/chat/server-models.ts
-      - src/chat/github-*.ts
-      - src/chat/hosted.ts
-      - web/bot.*
-      - web/login*
   workflow_dispatch:
 
 permissions:

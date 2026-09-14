@@ -127,6 +127,21 @@ test("Vercel function entries use the repository-built JavaScript artifact", asy
   }
 });
 
+test("Vercel Git auto-deploys stay disabled and production follows exact main", async () => {
+  const [config, workflow] = await Promise.all([
+    readFile(new URL("../vercel.json", import.meta.url), "utf8").then(JSON.parse),
+    readFile(
+      new URL("../.github/workflows/configure-vercel-production.yml", import.meta.url),
+      "utf8",
+    ),
+  ]);
+  assert.equal(config.git?.deploymentEnabled, false);
+  assert.match(workflow, /push:\n {4}branches: \[main\]/u);
+  assert.doesNotMatch(workflow, /\n {4}paths:/u);
+  assert.match(workflow, /github\.ref == 'refs\/heads\/main'/u);
+  assert.match(workflow, /node scripts\/sync-vercel-production\.mjs/u);
+});
+
 test("hosted smoke reuses only a short-lived share belonging to the pinned deployment", () => {
   const now = 1800000000000;
   const entries = {
