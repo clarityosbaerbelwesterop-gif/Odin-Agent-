@@ -57,14 +57,8 @@ test("PRODUCT M9 occurrence, budget and circuit-breaker authority remain server 
   assert.match(migration, /scheduled_at timestamptz/u);
   assert.match(migration, /odin_api\.actor\(\)/u);
   assert.match(migration, /clear_bot_automation_wakeups/u);
-  assert.match(
-    migration,
-    /REVOKE ALL ON FUNCTION odin_control\.clear_bot_automation_wakeups/u,
-  );
-  assert.match(
-    migration,
-    /GRANT EXECUTE ON FUNCTION odin_control\.clear_bot_automation_wakeups/u,
-  );
+  assert.match(migration, /REVOKE ALL ON FUNCTION odin_control\.clear_bot_automation_wakeups/u);
+  assert.match(migration, /GRANT EXECUTE ON FUNCTION odin_control\.clear_bot_automation_wakeups/u);
   assert.doesNotMatch(migration, /GRANT\s+(?:SELECT|INSERT|UPDATE|DELETE).*bot_wakeups/iu);
 });
 
