@@ -8,6 +8,7 @@ on:
       - .github/workflows/mcp-platform-build.yml
       - .github/scripts/mcp-platform-build.py
       - .github/scripts/mcp-platform-compat.py
+      - .github/scripts/mcp-platform-post.py
 
 permissions:
   contents: write
@@ -31,6 +32,8 @@ jobs:
         run: python .github/scripts/mcp-platform-compat.py
       - name: Apply connector platform implementation
         run: python .github/scripts/mcp-platform-build.py
+      - name: Repair generated connector integration boundaries
+        run: python .github/scripts/mcp-platform-post.py
       - run: npm ci
       - run: npm run format
       - run: npm run typecheck
