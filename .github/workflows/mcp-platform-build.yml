@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/mcp-platform-build.yml
       - .github/scripts/mcp-platform-build.py
+      - .github/scripts/mcp-platform-compat.py
 
 permissions:
   contents: write
@@ -26,6 +27,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      - name: Align current product runtime with audited connector patch anchors
+        run: python .github/scripts/mcp-platform-compat.py
       - name: Apply connector platform implementation
         run: python .github/scripts/mcp-platform-build.py
       - run: npm ci
