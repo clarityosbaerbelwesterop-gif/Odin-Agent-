@@ -123,6 +123,16 @@ async function configure() {
 
     const developerMigration = await readFile("migrations/005_developer_plan.sql", "utf8");
     await ownerPool.query(developerMigration);
+
+    for (const migration of [
+      "012_product_m2_workspace_os.sql",
+      "013_product_m3_memory_brain.sql",
+      "014_product_m5_skills_os.sql",
+    ]) {
+      const productMigration = await readFile(`migrations/${migration}`, "utf8");
+      await ownerPool.query(productMigration);
+      report.checks.push(`Production schema reconciled: ${migration}`);
+    }
     const planConstraint = await ownerPool.query(
       `SELECT pg_get_constraintdef(c.oid) AS definition
        FROM pg_constraint c JOIN pg_class t ON t.oid=c.conrelid
@@ -139,9 +149,26 @@ async function configure() {
        LEFT JOIN pg_policies p ON p.schemaname=n.nspname AND p.tablename=c.relname
        WHERE n.nspname='odin_api' AND c.relname=ANY($1::text[])
        GROUP BY c.relname,c.relrowsecurity,c.relforcerowsecurity`,
-      [["accounts", "credentials", "github_connections", "oauth_states", "stripe_events"]],
+      [
+        [
+          "accounts",
+          "credentials",
+          "github_connections",
+          "oauth_states",
+          "stripe_events",
+          "workspace_files",
+          "workspace_context_items",
+          "workspace_layouts",
+          "memory_records",
+          "memory_revisions",
+          "memory_idempotency",
+          "memory_product_signals",
+          "skill_installations",
+          "custom_skill_drafts",
+        ],
+      ],
     );
-    assert.equal(schema.rows.length, 5, "PRODUCT_SCHEMA_MISSING");
+    assert.equal(schema.rows.length, 14, "PRODUCT_SCHEMA_MISSING");
     for (const row of schema.rows) {
       assert.equal(row.relrowsecurity, true, `RLS_${row.relname}`);
       assert.equal(row.relforcerowsecurity, true, `FORCE_RLS_${row.relname}`);

@@ -201,6 +201,7 @@ function updateControls() {
 function renderEvent(event) {
   if (event.cursor <= cursor) return;
   cursor = event.cursor;
+  window.dispatchEvent(new CustomEvent("odin:runtime-event", { detail: event }));
   const data = event.data;
   if (event.type === "message.user") message(data.text, "user");
   else if (event.type === "steering") message(data.text, "steering");
@@ -343,6 +344,7 @@ async function loadConversations() {
   return projects;
 }
 function resetConversation() {
+  window.dispatchEvent(new CustomEvent("odin:runtime-reset"));
   stream?.close();
   stream = null;
   cursor = 0;
@@ -378,6 +380,7 @@ async function openConversation(id) {
   clearError();
   resetConversation();
   conversationId = id;
+  window.dispatchEvent(new CustomEvent("odin:project-changed", { detail: { projectId: id } }));
   showChat();
   window.history.replaceState({}, "", `/app?project=${encodeURIComponent(id)}`);
   const data = await api(`/api/projects/${id}`);

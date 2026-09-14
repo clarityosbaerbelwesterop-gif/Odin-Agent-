@@ -22,9 +22,10 @@ test("S-U plans rank all four tiers and modes fail closed at their minimum plan"
     chat: "free",
     thinking: "pro",
     research: "pro",
-    coding: "developer",
+    coding: "free",
     ultra: "ultra",
   });
+  assert.equal(planAllows("free", MODE_MINIMUM_PLAN.coding), true);
   assert.equal(planAllows("pro", "developer"), false);
   assert.equal(planAllows("developer", "ultra"), false);
   assert.equal(planAllows("developer", "developer"), true);

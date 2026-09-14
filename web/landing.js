@@ -1,3 +1,8 @@
+const experienceCss = document.createElement("link");
+experienceCss.rel = "stylesheet";
+experienceCss.href = "/product-experience-landing.css";
+document.head.append(experienceCss);
+
 const modes = {
   chat: {
     label: "CHAT / 01",
@@ -93,4 +98,15 @@ for (const button of document.querySelectorAll("[data-mode]")) {
     open.href = `/app?mode=${id}`;
     open.textContent = `${mode.cta}`;
   });
+}
+
+const hero = document.querySelector(".hero");
+const heroBottom = document.querySelector(".hero-bottom");
+if (hero && heroBottom && !document.getElementById("odin-live-demo")) {
+  const demo = document.createElement("section");
+  demo.id = "odin-live-demo";
+  demo.className = "landing-live-demo";
+  demo.setAttribute("aria-label", "Odin product preview");
+  demo.innerHTML = `<div class="landing-demo-bar"><span><i></i> ODIN IS WORKING</span><span>PRODUCT PREVIEW</span></div><div class="landing-demo-grid"><div class="landing-demo-stream"><div class="demo-step done"><b>✓</b><span><strong>Repository verstanden</strong><small>Struktur und relevante Dateien geprüft</small></span></div><div class="demo-step active"><b></b><span><strong>Tool · repo.patch</strong><small>src/routes/index.tsx · scoped change</small></span></div><div class="demo-step"><b></b><span><strong>Verifikation</strong><small>Tests starten nach der letzten Änderung</small></span></div></div><div class="landing-demo-artifact"><span>LIVE ARTIFACT</span><div class="demo-window"><i></i><i></i><i></i><h3>Your work,<br />already moving.</h3><p>Odin changes the actual workspace while the evidence stays visible.</p></div></div></div>`;
+  heroBottom.after(demo);
 }

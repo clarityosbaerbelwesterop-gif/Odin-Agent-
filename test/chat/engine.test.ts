@@ -360,7 +360,7 @@ test("steering accepted during final quality verification is processed before co
             arguments: { path: "index.html", expectedSha: "absent", content: "<p>Draft</p>" },
           },
         ])
-      : response(call >= 5 ? "The late instruction was incorporated." : "Draft answer."),
+      : response(call >= 3 ? "The late instruction was incorporated." : "Draft answer."),
   );
   const f = await fixture(model, {
     allowWorkspaceWrites: true,
