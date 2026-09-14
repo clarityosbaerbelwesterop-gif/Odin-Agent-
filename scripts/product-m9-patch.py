@@ -21,4 +21,8 @@ replace_once(
     "        availableAt: iso(row.available_at) as string,\n",
     "        scheduledAt: iso(row.scheduled_at) as string,\n",
 )
-replace_once("src/bot/executor.ts", "      wake.availableAt,\n", "      wake.scheduledAt,\n")
+replace_once(
+    "src/bot/executor.ts",
+    "    await store.fireAutomation(automation.id, wake.availableAt, limits);",
+    "    await store.fireAutomation(automation.id, wake.scheduledAt, limits);",
+)
