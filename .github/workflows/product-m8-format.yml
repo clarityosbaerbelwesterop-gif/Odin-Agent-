@@ -20,13 +20,68 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Repair blocking lint and external-action replay
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          js = Path("web/browser.js")
+          text = js.read_text()
+          text = text.replace(
+              'evidence.forms.slice(0, 6).forEach((form, index) => forms.append(buildForm(form, index)));',
+              'for (const [index, form] of evidence.forms.slice(0, 6).entries()) {\n      forms.append(buildForm(form, index));\n    }',
+          )
+          js.write_text(text)
+
+          store = Path("src/chat/browser-store.ts")
+          text = store.read_text()
+          text = text.replace(
+              "let approval = undefined;",
+              "let approval: ReturnType<typeof approvalForBrowserAction> | undefined;",
+          )
+          text = text.replace(
+              "let approval;",
+              "let approval: ReturnType<typeof approvalForBrowserAction> | undefined;",
+          )
+          target = "const prepared = await this.preparedAction(session, identifier(preparedActionId));\n      if (prepared.requestHash !== actionHash(normalized))"
+          replacement = "const prepared = await this.preparedAction(session, identifier(preparedActionId));\n      await this.assertActionUnused(session, prepared.actionId);\n      if (prepared.requestHash !== actionHash(normalized))"
+          if target in text:
+              text = text.replace(target, replacement, 1)
+          marker = "  private async preparedAction(session: BrowserSession, actionId: string): Promise<PreparedAction> {"
+          if "private async assertActionUnused" not in text:
+              method = '''  private async assertActionUnused(session: BrowserSession, actionId: string): Promise<void> {
+            const events = await this.chat.events(session.projectId, 0, 1000);
+            const attempted = events.some(
+              (candidate) =>
+                [
+                  "browser.action.executed",
+                  "browser.action.outcome_unknown",
+                  "browser.action.failed",
+                ].includes(candidate.type) &&
+                candidate.data.sessionId === session.id &&
+                candidate.data.actionId === actionId,
+            );
+            if (attempted)
+              throw new ChatError(
+                "BROWSER_ACTION_ALREADY_ATTEMPTED",
+                "This approved external action was already attempted and cannot be replayed.",
+                409,
+              );
+          }
+
+'''
+              if marker not in text:
+                  raise SystemExit("preparedAction marker missing")
+              text = text.replace(marker, method + marker, 1)
+          store.write_text(text)
+          PY
       - name: Apply canonical Biome formatting and safe fixes
         run: npx biome check --write src/chat/browser-api.ts src/chat/browser-http.ts src/chat/browser-mode.ts src/chat/browser-store.ts test/chat/product-m8-browser-mode.test.ts web/browser.js web/browser.css vercel.json
-      - name: Commit formatting
+      - name: Commit repaired formatting
         run: |
           git config user.name "Odin Product M8"
           git config user.email "odin-m8@users.noreply.github.com"
           git add src/chat/browser-api.ts src/chat/browser-http.ts src/chat/browser-mode.ts src/chat/browser-store.ts test/chat/product-m8-browser-mode.test.ts web/browser.js web/browser.css vercel.json
           git diff --cached --quiet && exit 0
-          git commit -m "style(m8): apply canonical formatting"
+          git commit -m "fix(m8): harden action replay and satisfy quality gate"
           git push origin HEAD:agent/product-m8-act-browser-mode
