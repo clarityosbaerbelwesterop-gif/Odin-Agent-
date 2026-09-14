@@ -1,0 +1,69 @@
+name: PRODUCT M7 temporary TypeScript repair
+
+on:
+  push:
+    branches:
+      - agent/product-m7-coding-mode
+
+permissions:
+  contents: write
+
+concurrency:
+  group: product-m7-ts-repair-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Preserve full repository provenance for Bot resume
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/bot/executor.ts')
+          text = p.read_text()
+          old = '''    const checkpointWorkBranch =\n      typeof task.checkpoint.workBranch === "string" ? task.checkpoint.workBranch : undefined;\n'''
+          new = old + '''    const checkpointRepository =\n      typeof task.checkpoint.repository === "string" ? task.checkpoint.repository : undefined;\n    const checkpointBaseSha =\n      typeof task.checkpoint.baseSha === "string" ? task.checkpoint.baseSha : undefined;\n'''
+          if old not in text:
+            raise SystemExit('checkpoint provenance anchor missing')
+          text = text.replace(old, new, 1)
+          old = '''      const restore =\n        requestedWorkspaceWrites && checkpointWorkBranch\n          ? { branch: checkpointWorkBranch, writes: checkpointWrites }\n          : undefined;\n'''
+          new = '''      let restore;\n      if (requestedWorkspaceWrites && checkpointWorkBranch) {\n        if (!checkpointRepository || !checkpointBaseSha)\n          throw new ChatError(\n            "BOT_GITHUB_CHECKPOINT_INCOMPLETE",\n            "Stored GitHub work branch is missing repository/base provenance; resume is blocked rather than creating a replacement branch.",\n            409,\n          );\n        restore = {\n          repository: checkpointRepository,\n          baseSha: checkpointBaseSha,\n          branch: checkpointWorkBranch,\n          writes: checkpointWrites,\n        };\n      }\n'''
+          if old not in text:
+            raise SystemExit('restore anchor missing')
+          text = text.replace(old, new, 1)
+          old = '''    const workBranch = primaryGitHubSession?.branchName() ?? checkpointWorkBranch ?? null;\n    const workspaceChanges =\n      agentCheckpoint?.changes.map(({ path, sha }) => ({ path, sha })) ?? checkpointWrites;\n    await bot.saveCheckpoint(task.id, {\n'''
+          new = '''    const workBranch = primaryGitHubSession?.branchName() ?? checkpointWorkBranch ?? null;\n    const latestGitHubChange = [...(agentCheckpoint?.changes ?? [])]\n      .reverse()\n      .find(\n        (change) =>\n          typeof change.repository === "string" &&\n          typeof change.baseSha === "string" &&\n          typeof change.branch === "string",\n      );\n    const workspaceChanges =\n      agentCheckpoint?.changes.map(({ path, sha }) => ({ path, sha })) ?? checkpointWrites;\n    await bot.saveCheckpoint(task.id, {\n      repository: latestGitHubChange?.repository ?? checkpointRepository ?? null,\n      baseSha: latestGitHubChange?.baseSha ?? checkpointBaseSha ?? null,\n'''
+          if old not in text:
+            raise SystemExit('save checkpoint anchor missing')
+          text = text.replace(old, new, 1)
+          p.write_text(text)
+
+          p = Path('test/chat/github-delivery.test.ts')
+          text = p.read_text()
+          old = '''  const session = new GitHubWorkspaceSession("token", "acme/odin", "main", request, {\n    branch,\n    writes: [{ path: "src/file.ts", sha: contentHash }],\n  });\n'''
+          new = '''  const session = new GitHubWorkspaceSession("token", "acme/odin", "main", request, {\n    repository: "acme/odin",\n    branch,\n    baseSha: "a".repeat(64),\n    writes: [{ path: "src/file.ts", sha: contentHash }],\n  });\n'''
+          if old not in text:
+            raise SystemExit('delivery restore fixture anchor missing')
+          p.write_text(text.replace(old, new, 1))
+          PY
+      - name: Canonical formatting
+        run: npx biome check --write src/bot/executor.ts test/chat/github-delivery.test.ts
+      - name: Focused typecheck
+        run: npm run typecheck
+      - name: Commit repair
+        run: |
+          git config user.name "Odin Product M7"
+          git config user.email "odin-m7@users.noreply.github.com"
+          git add src/bot/executor.ts test/chat/github-delivery.test.ts
+          git commit -m "fix(m7): preserve full GitHub resume provenance"
+          git push origin HEAD:agent/product-m7-coding-mode
