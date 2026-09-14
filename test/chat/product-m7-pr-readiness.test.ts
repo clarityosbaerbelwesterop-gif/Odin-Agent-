@@ -101,7 +101,10 @@ test("PRODUCT M7 PR readiness fails closed at every delivery boundary and opens 
     /passing repository quality/u,
   );
   const staleQuality = { ...quality, cursor: 1 };
-  const staleEvents = [events[0]!, { ...events[1]!, cursor: 1 }];
+  const staleEvents: ChatEvent[] = events.map((event) => ({
+    ...event,
+    cursor: event.type === "quality" ? 1 : event.cursor,
+  }));
   assert.match(
     (await completed.prReadiness(run, staleEvents, [change], staleQuality, state)).reason ?? "",
     /passing repository quality/u,
