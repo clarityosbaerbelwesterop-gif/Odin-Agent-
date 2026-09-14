@@ -20,136 +20,34 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - name: Synchronize M7 governance
+      - name: Synchronize M7 root governance
         run: |
           python - <<'PY'
           from pathlib import Path
-
-          milestone = '''# PRODUCT M7 — Coding Mode
-
-Status: implementation, deterministic acceptance and full repository verification complete on the PRODUCT M7 branch; final exact-head PR CI and merge evidence pending.
-
-PRODUCT M7 exposes Odin's existing coding depth as a professional developer workspace. It does not introduce another Git client, coding runtime, Mission authority, Skill engine, verifier or unrestricted shell. `GitHubWorkspace`, `GitHubPullRequestClient`, canonical Hosted Runs, repository tools, M25 permissions, M5 verification and PRODUCT M5 Skills remain authoritative.
-
-## Product flow
-
-```text
-Selected GitHub repository
-→ canonical Coding Run
-→ bounded repository tree/search/read
-→ isolated odin/* work branch
-→ real repository patches
-→ real quality / CI evidence
-→ reviewable diff
-→ fail-closed PR readiness gate
-→ GitHubPullRequestClient delivery
-```
-
-## Repository browser and viewer
-
-Coding Mode reads the selected connected repository through the existing `GitHubWorkspace`. Tree results are bounded, paths are normalized, unsupported/binary content is rejected, file reads are byte-limited and text search is bounded. Repository text is untrusted data; a README or source file cannot grant tools, credentials, network access, approval or policy authority.
-
-The product surface exposes repository files/search/changed files and a line-oriented source viewer. It is deliberately not a replacement for VS Code; agent mutations continue through scoped repository tools rather than browser-controlled arbitrary filesystem access.
-
-## Diff authority
-
-Changes are derived from canonical `file.changed` evidence/checkpoint `ChatChange` records plus the actual isolated GitHub branch state. Modified/additional content is reviewable as a bounded unified diff with additions/removals. Base SHA, work branch and head SHA are repository evidence, not assistant prose.
-
-## Branch isolation and resume
-
-Ordinary Coding Runs use the existing `odin/YYYY-MM-DD/<id>` work-branch architecture and never write directly to canonical `main`. Checkpoints persist repository identity, original base SHA, exact isolated work branch, current head SHA and persisted write hashes. Resume reconstructs the same branch. If a stored branch lacks repository/base provenance, Odin fails closed rather than silently creating a replacement branch.
-
-Git commit identities accept the real GitHub SHA forms used by this path. Remote base/work-branch identities are revalidated before delivery.
-
-## Quality and CI evidence
-
-Coding Mode projects actual repository quality evidence. Repository checks distinguish passing/failing CI from the existing no-CI branch-integrity fallback. Branch integrity proves only that intended writes persisted; it never becomes a false `tests passed` claim. Quality evidence must be newer than the latest source mutation before final PR delivery.
-
-## PR delivery gate
-
-PR creation fails closed unless the canonical Run is `COMPLETED`, real repository changes exist, passing current quality evidence exists after the last mutation, repository/branch/base/head provenance is complete, the configured repository matches, the base remains current and changed content passes secret screening. A moved base blocks delivery and requires reconciliation rather than silent overwrite.
-
-`GitHubPullRequestClient` remains the delivery authority. M7 does not create a second PR client or write directly to main.
-
-## Review mode
-
-Review reads actual GitHub PR status and bounded changed-file patches. Findings therefore have concrete file/diff evidence. Unsupported or unavailable patch evidence remains unavailable; Odin does not fabricate line findings.
-
-## Skills, Memory and context
-
-Coding Runs continue through PRODUCT M5 Skill selection and the existing Context Compiler. Repository conventions or architecture decisions may become PRODUCT M3 Memory only through existing eligible memory paths. Temporary compiler errors, old logs and arbitrary source snippets do not become permanent truth merely because Coding Mode saw them.
-
-## Deterministic acceptance
-
-### Acceptance #1 — failing login test
-
-The fixture requires repository inspection, an initial patch, a real failed quality check, diagnosis/repair, a subsequent passing check and final verification. The acceptance intentionally proves failure-and-repair rather than a mocked green-only path, and the resulting source mutation remains reviewable.
-
-### Acceptance #2 — multi-file feature with resume
-
-The fixture applies one scoped change, pauses the canonical Run, resumes the same Run/branch, applies the second scoped change and verifies after the final mutation. The branch and repository provenance remain continuous across the interruption.
-
-## Security boundaries
-
-Repository instructions are untrusted input. Existing Tool Gateway/M25 capability policy, normalized repository paths, sandbox/network rules, secret detection, approval policy and verification remain authoritative. M7 adds explicit regressions for traversal, binary/large-file handling, malicious repository instructions, invalid restored Git identities, failed/missing CI, PR permission failures, incomplete provenance and stale quality evidence.
-
-There is no unrestricted terminal. Model-proposed arbitrary command text cannot become execution; only registered quality command identifiers and existing sandbox/tool policy are accepted.
-
-## Responsive experience
-
-Desktop can present repository + source/diff + Odin together. iPad landscape keeps the main editor/diff primary while repository and Companion remain accessible. iPad portrait switches focused surfaces instead of squeezing a three-column desktop IDE into the screen.
-
-## Verification evidence
-
-The original pre-PR run `34767187345` failed at Biome. The root cause was M7 formatting/CSS cascade violations. After repairing that, strict TypeScript exposed incomplete GitHub resume provenance call sites; those were upgraded to repository/base-aware fail-closed restore. Later domain verification exposed stale fixtures, acceptance assertions that ignored final re-verification, a branch-regex test defect and a real 40-character Git SHA restore bug. Those were repaired and covered by new repository-security and PR-readiness regressions.
-
-Full `npm run verify` passed on `feebe53ab81e3eaa0ae81a91c26df910a012b17f` after the repairs and cleanup. The focused domain gate passed 667/667 tests at the repository's 80.00% line-coverage floor before that final full verify. A fresh exact-head normal PR CI remains mandatory after temporary milestone workflows are removed.
-
-## Known boundaries
-
-- Coding Mode is a professional Odin coding workspace, not a full VS Code clone.
-- When canonical base moves, M7 blocks PR delivery and surfaces reconciliation rather than automatically guessing a rebase/merge strategy.
-- Repositories without CI receive branch-integrity persistence evidence only; test correctness remains unverified until real checks exist.
-- Live third-party GitHub behavior beyond the connected repository's actual API responses is not fabricated from deterministic fixtures.
-'''
-          Path('docs/milestones/PRODUCT_M7_CODING_MODE.md').write_text(milestone)
-
           blocks = {
-            'README.md': '''## PRODUCT M7 — Coding Mode\n\nPRODUCT M7 turns Odin's existing GitHubWorkspace/repository-tool/verification stack into a professional Coding Mode. Repository browsing, line-oriented source viewing, diff-first review, exact isolated `odin/*` work-branch resume, real CI/quality evidence, fail-closed PR delivery and actual PR-file review all reuse existing authorities; no second Git client, coding runtime, Skill engine or verifier is introduced. See the [PRODUCT M7 contract](docs/milestones/PRODUCT_M7_CODING_MODE.md).''',
-            'ARCHITECTURE.md': '''## PRODUCT M7 — Coding Mode authority boundary\n\nPRODUCT M7 is a developer projection over the existing Hosted Run, `GitHubWorkspace`, repository tools, `GitHubPullRequestClient`, M25 tool policy, M5 verification, PRODUCT M5 Skills and canonical event/checkpoint authorities. Repository tree/search/read is bounded and untrusted. Ordinary mutations remain on isolated `odin/*` branches; checkpointed repository/base/work-branch/head/write provenance restores the same branch and incomplete provenance fails closed. Diff and quality state come from repository/canonical Run evidence, not browser-authored claims. PR delivery requires COMPLETED state, real changes, current passing quality after the latest mutation, exact scope/provenance, unchanged base and secret screening.''',
-            'ROADMAP.md': '''## PRODUCT M7 — Coding Mode (current delivery)\n\nStatus: **PRE-PR VERIFIED — governance sync / final exact-head PR CI pending**.\n\n- [x] Real bounded repository tree/search/read and line-oriented source viewer over the selected GitHub repository.\n- [x] Diff-first changes derive from canonical `file.changed`/checkpoint data plus real branch identity.\n- [x] Existing `GitHubWorkspace` isolated `odin/*` branches remain canonical; direct ordinary main writes are not introduced.\n- [x] Resume pins repository, original base SHA, exact work branch, current head and write hashes; incomplete provenance fails closed.\n- [x] Real quality/CI evidence is distinct from no-CI branch-integrity-only persistence proof.\n- [x] PR gate requires COMPLETED Run, changes, post-mutation passing quality, current base, exact repository/branch/head provenance and secret screening.\n- [x] PR Review uses actual GitHub PR file patches.\n- [x] Acceptance #1 proves failed login fix → real failed check → repair → passing verification.\n- [x] Acceptance #2 proves multi-file feature → pause → same Run/branch resume → final verification.\n- [x] Repository prompt injection, traversal, binary files, invalid Git identities, stale quality and PR permission failures have explicit regressions.\n- [x] Full pre-governance `npm run verify` passed on `feebe53ab81e3eaa0ae81a91c26df910a012b17f`; focused domain gate passed 667/667 tests at 80.00% line coverage.\n- [ ] Remove temporary M7 verification workflow.\n- [ ] Exact-head normal PR CI and merge.\n\nPRODUCT M8 starts only from the merged PRODUCT M7 `main` and adds controlled Browser/Act capabilities without weakening the Tool/approval/credential boundaries.''',
-            'HANDOVER.md': '''## PRODUCT M7 checkpoint — Coding Mode\n\nPRODUCT M7 continues from merged PRODUCT M6 main `57ea16c2e818547689e43e36822934f7cf4042d8`. Preserve the existing `GitHubWorkspace`, `GitHubPullRequestClient`, canonical Hosted Run, repository tools, M25 permissions, verification and Skills path. Coding Mode adds product projection and stronger resume/delivery evidence, not replacement Git/runtime authority. Exact repository/base/work-branch/head provenance is checkpointed; missing provenance blocks resume/delivery rather than silently creating a replacement branch.\n\nThe original pre-PR verify `34767187345` failed at Biome; subsequent gates exposed incomplete TypeScript restore callers, stale GitHub fixtures, acceptance assertions, a source-regex test bug, a real 40-character Git SHA restore bug and a small coverage gap. All were repaired without reducing gates. The focused final domain suite passed 667/667 at 80.00% line coverage and full `npm run verify` passed on `feebe53ab81e3eaa0ae81a91c26df910a012b17f`. Temporary milestone workflows must be absent from the PR; exact-head normal PR CI is still the merge authority.''',
-            'SECURITY.md': '''## PRODUCT M7 Coding Mode security boundary\n\nRepository files, README instructions, package scripts and PR prose are untrusted data. Coding Mode cannot convert them into Tool permissions, shell authority, network scope, credentials, approvals or verification. Repository paths remain normalized/scoped; binary/unsupported input is refused; tree/search/read are bounded. Ordinary writes remain on isolated `odin/*` GitHub work branches and checkpoint restore requires exact repository/base/branch provenance.\n\nPR delivery fails closed unless the canonical Run is COMPLETED, real changes exist, passing quality evidence post-dates the final mutation, branch/base/head provenance matches the configured repository, canonical base is unchanged and changed content passes secret screening. No-CI branch-integrity evidence is never relabeled as successful tests. Existing Tool Gateway/M25, sandbox/network, approval, credential and verification boundaries remain authoritative; arbitrary model-proposed shell commands are not exposed through Coding Mode.''',
+              "README.md": "## PRODUCT M7 — Coding Mode\n\nPRODUCT M7 turns Odin's existing `GitHubWorkspace`, repository-tool and verification stack into a professional Coding Mode. Repository browsing, line-oriented source viewing, diff-first review, exact isolated `odin/*` work-branch resume, real CI/quality evidence, fail-closed PR delivery and actual PR-file review all reuse existing authorities; no second Git client, coding runtime, Skill engine or verifier is introduced. See the [PRODUCT M7 contract](docs/milestones/PRODUCT_M7_CODING_MODE.md).",
+              "ARCHITECTURE.md": "## PRODUCT M7 — Coding Mode authority boundary\n\nPRODUCT M7 is a developer projection over the existing Hosted Run, `GitHubWorkspace`, repository tools, `GitHubPullRequestClient`, M25 tool policy, M5 verification, PRODUCT M5 Skills and canonical event/checkpoint authorities. Repository tree/search/read is bounded and untrusted. Ordinary mutations remain on isolated `odin/*` branches; checkpointed repository/base/work-branch/head/write provenance restores the same branch and incomplete provenance fails closed. Diff and quality state come from repository/canonical Run evidence, not browser-authored claims. PR delivery requires COMPLETED state, real changes, current passing quality after the latest mutation, exact scope/provenance, unchanged base and secret screening.",
+              "ROADMAP.md": "## PRODUCT M7 — Coding Mode (current delivery)\n\nStatus: **PRE-PR VERIFIED — final exact-head PR CI pending**.\n\n- [x] Bounded real repository tree/search/read and line-oriented source viewer.\n- [x] Diff-first changes from canonical `file.changed`/checkpoint data plus actual Git branch identity.\n- [x] Existing isolated `odin/*` work branches; no ordinary direct-main writes.\n- [x] Exact repository/base/work-branch/head resume with fail-closed incomplete provenance.\n- [x] Real CI/quality evidence kept distinct from no-CI branch-integrity-only proof.\n- [x] Fail-closed PR gate with current post-mutation quality, base-currentness and secret screening.\n- [x] Actual GitHub PR-file review evidence.\n- [x] Acceptance #1 failed login fix -> failed check -> repair -> green verification.\n- [x] Acceptance #2 multi-file feature -> pause -> same Run/branch resume -> final verification.\n- [x] Repository injection/traversal/binary/Git-identity/stale-quality/permission regressions.\n- [x] Full `npm run verify` passed on `feebe53ab81e3eaa0ae81a91c26df910a012b17f`; focused domain gate passed 667/667 at 80.00% line coverage.\n- [ ] Remove temporary milestone workflows, run exact-head normal PR CI and merge.\n\nPRODUCT M8 starts only from merged PRODUCT M7 `main`.",
+              "HANDOVER.md": "## PRODUCT M7 checkpoint — Coding Mode\n\nPRODUCT M7 continues from merged PRODUCT M6 main `57ea16c2e818547689e43e36822934f7cf4042d8`. Preserve the existing `GitHubWorkspace`, `GitHubPullRequestClient`, canonical Hosted Run, repository tools, M25 permissions, verification and Skills path. Exact repository/base/work-branch/head provenance is checkpointed; missing provenance blocks resume/delivery rather than creating a replacement branch. The original pre-PR verify `34767187345` failed at Biome; later gates exposed incomplete restore callers, stale GitHub fixtures, acceptance assertions, a branch-regex test bug, a real 40-character Git SHA restore bug and a small coverage gap. All were repaired without reducing gates. Focused domain verification passed 667/667 at 80.00% line coverage and full `npm run verify` passed on `feebe53ab81e3eaa0ae81a91c26df910a012b17f`. Temporary milestone workflows must be absent from the PR; normal exact-head PR CI remains merge authority.",
+              "SECURITY.md": "## PRODUCT M7 Coding Mode security boundary\n\nRepository files, README instructions, package scripts and PR prose are untrusted data. Coding Mode cannot convert them into Tool permissions, shell authority, network scope, credentials, approvals or verification. Repository paths remain normalized/scoped; binary/unsupported input is refused; tree/search/read are bounded. Ordinary writes remain on isolated `odin/*` work branches and restore requires exact repository/base/branch provenance. PR delivery fails closed unless the canonical Run is COMPLETED, real changes exist, passing quality evidence post-dates the final mutation, branch/base/head provenance matches, canonical base is unchanged and changed content passes secret screening. No-CI branch-integrity evidence is never relabeled as successful tests."
           }
-
-          def prepend(path, block):
-            p = Path(path)
-            text = p.read_text()
-            marker = block.splitlines()[0]
-            if marker in text:
-              return
-            first, rest = text.split('\n', 1)
-            p.write_text(first + '\n\n' + block + '\n\n' + rest)
-
-          for path, block in blocks.items():
-            prepend(path, block)
-
-          roadmap = Path('ROADMAP.md')
-          text = roadmap.read_text()
-          text = text.replace('## PRODUCT M6 — Build Mode (current delivery)', '## PRODUCT M6 — Build Mode (merged milestone)')
-          text = text.replace('Status: **PRE-PR VERIFIED — final governance exact-head CI and merge pending**.', 'Status: **MERGED** — PR #81; exact-head CI #883 passed; merge `57ea16c2e818547689e43e36822934f7cf4042d8` is on `main`.', 1)
-          text = text.replace('- [ ] Fresh exact-head CI after governance synchronization.\n- [ ] Merge PR only after that exact-head CI is green and the PR remains mergeable.', '- [x] Exact-head PR CI #883 passed on the final verified M6 head.\n- [x] PR #81 merged to `main` as `57ea16c2e818547689e43e36822934f7cf4042d8`.', 1)
+          for name, block in blocks.items():
+              p = Path(name)
+              text = p.read_text()
+              if block.splitlines()[0] in text:
+                  continue
+              first, rest = text.split("\n", 1)
+              p.write_text(first + "\n\n" + block + "\n\n" + rest)
+          roadmap = Path("ROADMAP.md")
+          text = roadmap.read_text().replace("## PRODUCT M6 — Build Mode (current delivery)", "## PRODUCT M6 — Build Mode (merged milestone)", 1)
+          text = text.replace("Status: **PRE-PR VERIFIED — final governance exact-head CI and merge pending**.", "Status: **MERGED** — PR #81; exact-head CI #883 passed; merge `57ea16c2e818547689e43e36822934f7cf4042d8` is on `main`.", 1)
           roadmap.write_text(text)
-
-          handover = Path('HANDOVER.md')
-          text = handover.read_text()
-          text = text.replace('The final M6 PR must still pass fresh exact-head CI after this governance sync. Live Vercel/physical-device evidence remains external and no production deployment is inferred from Preview.', 'PR #81 subsequently passed exact-head CI #883 and merged to `main` as `57ea16c2e818547689e43e36822934f7cf4042d8`. Live Vercel/physical-device evidence remains external and no production deployment is inferred from Preview.')
-          handover.write_text(text)
           PY
       - name: Commit governance
         run: |
           git config user.name "Odin Product M7"
           git config user.email "odin-m7@users.noreply.github.com"
-          git add docs/milestones/PRODUCT_M7_CODING_MODE.md README.md ARCHITECTURE.md ROADMAP.md HANDOVER.md SECURITY.md
+          git add README.md ARCHITECTURE.md ROADMAP.md HANDOVER.md SECURITY.md
+          if git diff --cached --quiet; then exit 0; fi
           git commit -m "docs(m7): synchronize Coding Mode governance"
           git push origin HEAD:agent/product-m7-coding-mode
