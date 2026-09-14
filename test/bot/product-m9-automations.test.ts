@@ -1,15 +1,15 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { BotStore } from "../../src/bot/store.js";
-import type { BotPlanLimits } from "../../src/bot/types.js";
-import type { ActorDatabase, DatabaseAction } from "../../src/chat/neon-database.js";
 import {
   githubEventMatches,
   githubTriggerForInstruction,
   normalizeGitHubEvent,
 } from "../../src/bot/github-event-policy.js";
+import { BotStore } from "../../src/bot/store.js";
+import type { BotPlanLimits } from "../../src/bot/types.js";
 import { nextDailyWake } from "../../src/bot/wakeup.js";
+import type { ActorDatabase, DatabaseAction } from "../../src/chat/neon-database.js";
 
 const M9_NOW = "2026-09-14T10:00:00.000Z";
 const M9_AUTOMATION_ID = "11111111-1111-4111-8111-111111111111";
@@ -244,10 +244,7 @@ test("PRODUCT M9 scheduled occurrences are exactly-once and inherit the server b
   assert.deepEqual(first.budget, { maxMinutes: 15 });
   assert.equal(db.taskInsertCount, 1);
   assert.equal(db.dailyUsed, 1);
-  assert.equal(
-    db.calls.filter((call) => call.sql.includes("pg_advisory_xact_lock")).length,
-    2,
-  );
+  assert.equal(db.calls.filter((call) => call.sql.includes("pg_advisory_xact_lock")).length, 2);
   assert.ok(
     db.calls.some(
       (call) =>
@@ -320,9 +317,7 @@ test("PRODUCT M9 pause, resume and circuit-breaker pause are reversible and dedu
   assert.equal(paused.enabled, false);
   assert.equal(paused.nextWakeupAt, null);
   assert.equal(db.inboxInsertCount, 1);
-  assert.ok(
-    db.calls.some((call) => call.sql.includes("clear_bot_automation_wakeups")),
-  );
+  assert.ok(db.calls.some((call) => call.sql.includes("clear_bot_automation_wakeups")));
   assert.ok(
     db.calls.some(
       (call) =>
