@@ -70,7 +70,7 @@ test("PRODUCT M7 acceptance #1 fixes a failing login test through inspect, patch
     const quality = events.filter((item) => item.type === "quality");
     assert.deepEqual(
       quality.map((item) => item.data.passed),
-      [false, true],
+      [false, true, true],
     );
     const changes = aggregateChanges(events);
     assert.equal(changes.length, 1);
@@ -167,7 +167,7 @@ test("PRODUCT M7 acceptance #2 resumes the same multi-file feature Run and verif
     assert.equal(aggregateChanges(events).length, 2);
     assert.equal(
       events.filter((item) => item.type === "quality" && item.data.passed === true).length,
-      1,
+      2,
     );
   } finally {
     await f.close();

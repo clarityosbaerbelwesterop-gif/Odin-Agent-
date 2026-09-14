@@ -36,6 +36,7 @@ export interface GitHubWorkspaceTreeEntry {
 
 const ODIN_WORK_BRANCH = /^odin\/\d{4}-\d{2}-\d{2}\/[0-9a-f]{8}$/u;
 const CONTENT_HASH = /^[0-9a-f]{64}$/u;
+const GIT_COMMIT_SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u;
 
 export class GitHubWorkspace implements RepositoryWorkspace, QualityCommandRunner {
   #workBranch: string | undefined;
@@ -54,7 +55,7 @@ export class GitHubWorkspace implements RepositoryWorkspace, QualityCommandRunne
     if (initialWorkBranch && !ODIN_WORK_BRANCH.test(initialWorkBranch))
       throw new ChatError("INVALID_BRANCH", "Stored Odin work branch is invalid.", 409);
     this.#workBranch = initialWorkBranch;
-    if (initialBaseSha && !CONTENT_HASH.test(initialBaseSha))
+    if (initialBaseSha && !GIT_COMMIT_SHA.test(initialBaseSha))
       throw new ChatError("INVALID_CHECKPOINT", "Stored repository base hash is invalid.", 409);
     this.#baseSha = initialBaseSha;
     for (const write of initialWrites) {
@@ -92,7 +93,7 @@ export class GitHubWorkspace implements RepositoryWorkspace, QualityCommandRunne
       signal,
     });
     const object = source.object as { sha?: string } | undefined;
-    if (!object?.sha)
+    if (!object?.sha || !GIT_COMMIT_SHA.test(object.sha))
       throw new ChatError("GITHUB_UPSTREAM", "Default branch reference is invalid.", 502);
     const branch = `odin/${new Date().toISOString().slice(0, 10)}/${randomUUID().slice(0, 8)}`;
     this.#baseSha = object.sha;
@@ -244,7 +245,7 @@ export class GitHubWorkspace implements RepositoryWorkspace, QualityCommandRunne
       signal,
     });
     const baseObject = base.object as { sha?: string } | undefined;
-    if (!baseObject?.sha)
+    if (!baseObject?.sha || !GIT_COMMIT_SHA.test(baseObject.sha))
       throw new ChatError("GITHUB_UPSTREAM", "Base branch reference is invalid.", 502);
     let headSha: string | null = null;
     if (this.#workBranch) {
@@ -252,7 +253,7 @@ export class GitHubWorkspace implements RepositoryWorkspace, QualityCommandRunne
         signal,
       });
       const workObject = work.object as { sha?: string } | undefined;
-      if (!workObject?.sha)
+      if (!workObject?.sha || !GIT_COMMIT_SHA.test(workObject.sha))
         throw new ChatError("GITHUB_UPSTREAM", "Odin work branch reference is invalid.", 502);
       headSha = workObject.sha;
     }

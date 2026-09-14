@@ -95,7 +95,8 @@ test("PRODUCT M7 source keeps PR delivery behind completed evidence and reuses e
   assert.match(product, /containsObviousSecret/u);
   assert.match(api, /ProductStore/u);
   assert.match(api, /githubToken/u);
-  assert.match(workspace, /odin\/\\d\{4\}/u);
+  assert.match(workspace, /const ODIN_WORK_BRANCH/u);
+  assert.match(workspace, /const branch = `odin\/\$\{new Date/u);
   assert.match(workspace, /repositoryState/u);
   assert.match(delivery, /ensurePullRequest/u);
   assert.match(delivery, /async files/u);

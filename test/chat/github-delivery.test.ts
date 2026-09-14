@@ -54,7 +54,8 @@ test("M8 GitHub workspace quality checks use the same branch that received edits
     const method = init?.method ?? "GET";
     requests.push(`${method} ${url}`);
     if (url.includes("/contents/src%2Ffile.ts") || url.includes("/contents/src/file.ts")) {
-      if (method === "PUT") return json({ content: { sha: "sha-new" } });
+      if (method === "PUT")
+        return json({ content: { sha: "sha-new" }, commit: { sha: "b".repeat(40) } });
       return json({
         type: "file",
         encoding: "base64",
@@ -62,7 +63,7 @@ test("M8 GitHub workspace quality checks use the same branch that received edits
         sha: "sha-old",
       });
     }
-    if (url.includes("/git/ref/heads/main")) return json({ object: { sha: "base-sha" } });
+    if (url.includes("/git/ref/heads/main")) return json({ object: { sha: "a".repeat(40) } });
     if (url.endsWith("/git/refs") && method === "POST")
       return json({ ref: "refs/heads/odin/work" }, 201);
     if (url.includes("/commits/odin%2F"))
@@ -94,7 +95,7 @@ test("M8 verifies persisted branch writes when the target repository has no CI",
     if (url.includes("/contents/src/file.ts")) {
       if (method === "PUT") {
         written = true;
-        return json({ content: { sha: "sha-new" } });
+        return json({ content: { sha: "sha-new" }, commit: { sha: "b".repeat(40) } });
       }
       return json({
         type: "file",
@@ -103,7 +104,7 @@ test("M8 verifies persisted branch writes when the target repository has no CI",
         sha: written ? "sha-new" : "sha-old",
       });
     }
-    if (url.includes("/git/ref/heads/main")) return json({ object: { sha: "base-sha" } });
+    if (url.includes("/git/ref/heads/main")) return json({ object: { sha: "a".repeat(40) } });
     if (url.endsWith("/git/refs") && method === "POST")
       return json({ ref: "refs/heads/odin/work" }, 201);
     if (url.includes("/check-runs")) return json({ check_runs: [] });
@@ -151,7 +152,7 @@ test("M8 restores a durable Odin branch and its persisted write evidence", async
   const session = new GitHubWorkspaceSession("token", "acme/odin", "main", request, {
     repository: "acme/odin",
     branch,
-    baseSha: "a".repeat(64),
+    baseSha: "a".repeat(40),
     writes: [{ path: "src/file.ts", sha: contentHash }],
   });
   session.workspace(async () => {});
@@ -170,7 +171,8 @@ test("M8 does not bypass configured CI when checks are not available yet", async
     const url = String(input);
     const method = init?.method ?? "GET";
     if (url.includes("/contents/src/file.ts")) {
-      if (method === "PUT") return json({ content: { sha: "sha-new" } });
+      if (method === "PUT")
+        return json({ content: { sha: "sha-new" }, commit: { sha: "b".repeat(40) } });
       return json({
         type: "file",
         encoding: "base64",
@@ -178,7 +180,7 @@ test("M8 does not bypass configured CI when checks are not available yet", async
         sha: "sha-old",
       });
     }
-    if (url.includes("/git/ref/heads/main")) return json({ object: { sha: "base-sha" } });
+    if (url.includes("/git/ref/heads/main")) return json({ object: { sha: "a".repeat(40) } });
     if (url.endsWith("/git/refs") && method === "POST")
       return json({ ref: "refs/heads/odin/work" }, 201);
     if (url.includes("/check-runs")) return json({ check_runs: [] });
