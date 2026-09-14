@@ -1,3 +1,4 @@
+import { resolveNeonAuthUrl } from "./deployment.js";
 import { ODIN_STRIPE_PRICES } from "./product.js";
 
 export type ReleaseCheckStatus = "ready" | "blocked";
@@ -50,6 +51,23 @@ function validPublicOrigin(value: string | undefined): boolean {
   }
 }
 
+function validNeonAuthUrl(value: string | undefined): boolean {
+  if (!present(value)) return false;
+  try {
+    const url = new URL(value as string);
+    return (
+      url.protocol === "https:" &&
+      url.hostname.endsWith(".neon.tech") &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash
+    );
+  } catch {
+    return false;
+  }
+}
+
 function production(env: Environment): boolean {
   return env.VERCEL_ENV !== undefined
     ? env.VERCEL_ENV === "production"
@@ -61,6 +79,8 @@ export function productReleaseReadiness(
   modelCount = 0,
 ): ReleaseReadiness {
   const isProduction = production(env);
+  const connection = env.ODIN_DATABASE_URL ?? env.DATABASE_URL ?? env.POSTGRES_URL;
+  const authUrl = resolveNeonAuthUrl(connection, env);
   const checks: ReleaseCheck[] = [
     {
       id: "public-origin",
@@ -70,14 +90,12 @@ export function productReleaseReadiness(
     {
       id: "database",
       label: "Neon/Postgres database",
-      status: present(env.ODIN_DATABASE_URL ?? env.DATABASE_URL ?? env.POSTGRES_URL)
-        ? "ready"
-        : "blocked",
+      status: present(connection) ? "ready" : "blocked",
     },
     {
       id: "auth",
       label: "Neon Auth",
-      status: present(env.NEON_AUTH_BASE_URL) ? "ready" : "blocked",
+      status: validNeonAuthUrl(authUrl) ? "ready" : "blocked",
     },
     {
       id: "credential-vault",
