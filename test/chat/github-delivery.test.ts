@@ -149,7 +149,9 @@ test("M8 restores a durable Odin branch and its persisted write evidence", async
   };
 
   const session = new GitHubWorkspaceSession("token", "acme/odin", "main", request, {
+    repository: "acme/odin",
     branch,
+    baseSha: "a".repeat(64),
     writes: [{ path: "src/file.ts", sha: contentHash }],
   });
   session.workspace(async () => {});
