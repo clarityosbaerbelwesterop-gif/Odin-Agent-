@@ -228,6 +228,24 @@ export class BrowserProductStore {
           409,
         );
       const prepared = await this.preparedAction(session, identifier(preparedActionId));
+      const priorEvents = await this.chat.events(session.projectId, 0, 1000);
+      if (
+        priorEvents.some(
+          (candidate) =>
+            [
+              "browser.action.executed",
+              "browser.action.outcome_unknown",
+              "browser.action.failed",
+            ].includes(candidate.type) &&
+            candidate.data.sessionId === session.id &&
+            candidate.data.actionId === prepared.actionId,
+        )
+      )
+        throw new ChatError(
+          "BROWSER_ACTION_ALREADY_ATTEMPTED",
+          "This approved external action was already attempted and cannot be replayed.",
+          409,
+        );
       if (prepared.requestHash !== actionHash(normalized))
         throw new ChatError(
           "BROWSER_APPROVAL_MISMATCH",
