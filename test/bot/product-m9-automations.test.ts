@@ -16,6 +16,41 @@ test("PRODUCT M9 daily scheduling follows Europe/Berlin DST instead of fixed UTC
   assert.equal(spring.toISOString(), "2026-03-29T06:00:00.000Z");
 });
 
+test("PRODUCT M9 natural-language condition selectors stay deterministic across common lifecycle phrases", () => {
+  assert.deepEqual(githubTriggerForInstruction("Wenn GitHub CI fehlschlägt, repariere es"), {
+    event: "checks",
+    predicate: "checks_failed",
+  });
+  assert.deepEqual(githubTriggerForInstruction("Wenn CI scheitert, benachrichtige mich"), {
+    event: "checks",
+    predicate: "checks_failed",
+  });
+  assert.deepEqual(githubTriggerForInstruction("Wenn die checks grün sind"), {
+    event: "checks",
+    predicate: "checks_passed",
+  });
+  assert.deepEqual(githubTriggerForInstruction("Wenn der PR gemerged wurde"), {
+    event: "pull_request",
+    predicate: "merged",
+  });
+  assert.deepEqual(githubTriggerForInstruction("Wenn beim PR changes requested werden"), {
+    event: "pull_request_review",
+    predicate: "changes_requested",
+  });
+  assert.deepEqual(githubTriggerForInstruction("Wenn ein PR geöffnet wird"), {
+    event: "pull_request",
+    predicate: "opened",
+  });
+  assert.deepEqual(githubTriggerForInstruction("Wenn ein PR geschlossen wird"), {
+    event: "pull_request",
+    predicate: "closed",
+  });
+  assert.deepEqual(githubTriggerForInstruction("Bei jedem commit weitermachen"), {
+    event: "push",
+    predicate: "pushed",
+  });
+});
+
 test("PRODUCT M9 condition watch stays false until the matching trusted GitHub state transition", () => {
   const expression = "Wenn GitHub CI fehlschlägt, repariere es";
   const selector = githubTriggerForInstruction(expression);
