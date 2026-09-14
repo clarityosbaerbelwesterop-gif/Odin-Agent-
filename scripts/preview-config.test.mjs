@@ -136,8 +136,8 @@ test("Vercel Git auto-deploys stay disabled and production follows exact main", 
     ),
   ]);
   assert.equal(config.git?.deploymentEnabled, false);
-  assert.match(workflow, /push:\n    branches: \[main\]/u);
-  assert.doesNotMatch(workflow, /\n    paths:/u);
+  assert.match(workflow, /push:\n {4}branches: \[main\]/u);
+  assert.doesNotMatch(workflow, /\n {4}paths:/u);
   assert.match(workflow, /github\.ref == 'refs\/heads\/main'/u);
   assert.match(workflow, /node scripts\/sync-vercel-production\.mjs/u);
 });
