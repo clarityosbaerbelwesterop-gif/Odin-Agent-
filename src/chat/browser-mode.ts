@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { ApprovalEvidence, ToolRiskClass } from "../tools/types.js";
 import { InMemoryCapabilityPolicy } from "../tools/policy.js";
+import type { ApprovalEvidence, ToolRiskClass } from "../tools/types.js";
 import { ChatError } from "./types.js";
 
 export const BROWSER_OPERATIONS = [
@@ -183,7 +183,11 @@ export function authorizeBrowserAction(
       409,
     );
   if (session.actionCount >= MAX_ACTIONS)
-    throw new ChatError("BROWSER_ACTION_LIMIT", "This browser session reached its action limit.", 429);
+    throw new ChatError(
+      "BROWSER_ACTION_LIMIT",
+      "This browser session reached its action limit.",
+      429,
+    );
 
   const targetUrl = assertBrowserTarget(session, request.url);
   const riskClass = browserRisk(request.operation);
@@ -195,7 +199,10 @@ export function authorizeBrowserAction(
       "Financial commitment is disabled for this browser session.",
       403,
     );
-  if ((request.operation === "upload" || request.operation === "publish") && !request.workspaceItemId)
+  if (
+    (request.operation === "upload" || request.operation === "publish") &&
+    !request.workspaceItemId
+  )
     throw new ChatError(
       "BROWSER_WORKSPACE_FILE_REQUIRED",
       "Only an explicit Project Workspace item may be uploaded or published.",
@@ -203,16 +210,19 @@ export function authorizeBrowserAction(
     );
 
   const operation = riskClass === "low" ? "read" : riskClass === "medium" ? "write" : "execute";
-  const grants = session.allowedOrigins.map((origin, index) => ({
-    grantId: `${session.id}:${operation}:${index}`,
-    missionId: session.runId,
-    taskId: session.id,
-    tool: riskClass === "low" ? "browser.observe" : "browser.act",
-    operation,
-    resourcePrefix: origin,
-    maxCalls: MAX_ACTIONS,
-    expiresAt: session.expiresAt,
-  }) as const);
+  const grants = session.allowedOrigins.map(
+    (origin, index) =>
+      ({
+        grantId: `${session.id}:${operation}:${index}`,
+        missionId: session.runId,
+        taskId: session.id,
+        tool: riskClass === "low" ? "browser.observe" : "browser.act",
+        operation,
+        resourcePrefix: origin,
+        maxCalls: MAX_ACTIONS,
+        expiresAt: session.expiresAt,
+      }) as const,
+  );
   const policy = new InMemoryCapabilityPolicy(grants);
   const authorization = policy.authorizeAndConsume({
     missionId: session.runId,
@@ -264,7 +274,8 @@ export function applyBrowserEvent(
   if (event.data.sessionId !== session.id) return session;
   const at = iso(event.createdAt);
   if (event.type === "browser.page.opened") {
-    const url = typeof event.data.url === "string" ? assertBrowserTarget(session, event.data.url) : null;
+    const url =
+      typeof event.data.url === "string" ? assertBrowserTarget(session, event.data.url) : null;
     return Object.freeze({ ...session, currentUrl: url, updatedAt: at });
   }
   if (event.type === "browser.form.prepared") {
@@ -305,8 +316,7 @@ export function applyBrowserEvent(
     return Object.freeze({
       ...session,
       state: outcome === "UNKNOWN" ? ("OUTCOME_UNKNOWN" as const) : ("ACTIVE" as const),
-      lastSafeActionId:
-        outcome === "EXECUTED" ? session.pendingActionId : session.lastSafeActionId,
+      lastSafeActionId: outcome === "EXECUTED" ? session.pendingActionId : session.lastSafeActionId,
       pendingActionId: outcome === "UNKNOWN" ? session.pendingActionId : null,
       updatedAt: at,
     });
@@ -370,9 +380,20 @@ export function validateDownload(input: {
   )
     throw new ChatError("BROWSER_DOWNLOAD_NAME", "Downloaded filename is unsafe.");
   if (!Number.isSafeInteger(input.size) || input.size < 0 || input.size > 10 * 1024 * 1024)
-    throw new ChatError("BROWSER_DOWNLOAD_LIMIT", "Download exceeds the 10 MB Workspace limit.", 413);
+    throw new ChatError(
+      "BROWSER_DOWNLOAD_LIMIT",
+      "Download exceeds the 10 MB Workspace limit.",
+      413,
+    );
   const mimeType = required(input.mimeType, "MIME type").toLowerCase();
-  const allowed = ["text/", "application/json", "application/pdf", "image/png", "image/jpeg", "image/webp"];
+  const allowed = [
+    "text/",
+    "application/json",
+    "application/pdf",
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+  ];
   if (!allowed.some((prefix) => mimeType === prefix || mimeType.startsWith(prefix)))
     throw new ChatError("BROWSER_DOWNLOAD_TYPE", "Downloaded file type is not allowed.", 415);
   return Object.freeze({ filename, mimeType, size: input.size });
@@ -389,16 +410,28 @@ export function assertSessionOwnership(
     session.projectId !== projectId ||
     (runId !== undefined && session.runId !== runId)
   )
-    throw new ChatError("BROWSER_SCOPE", "Browser session does not belong to this user/Project/Run.", 403);
+    throw new ChatError(
+      "BROWSER_SCOPE",
+      "Browser session does not belong to this user/Project/Run.",
+      403,
+    );
 }
 
 function assertSessionUsable(session: BrowserSession, now = new Date()): void {
   if (Date.parse(session.expiresAt) <= now.getTime())
-    throw new ChatError("BROWSER_SESSION_EXPIRED", "Browser session expired. Start a new session.", 409);
+    throw new ChatError(
+      "BROWSER_SESSION_EXPIRED",
+      "Browser session expired. Start a new session.",
+      409,
+    );
   if (session.state === "COMPLETED")
     throw new ChatError("BROWSER_SESSION_COMPLETE", "Browser session is already complete.", 409);
   if (session.state === "PAUSED")
-    throw new ChatError("BROWSER_SESSION_PAUSED", "Resume the browser session before continuing.", 409);
+    throw new ChatError(
+      "BROWSER_SESSION_PAUSED",
+      "Resume the browser session before continuing.",
+      409,
+    );
 }
 
 function summarizeSubmission(request: BrowserActionRequest): string {
@@ -413,18 +446,21 @@ function stringOrNull(value: unknown): string | null {
 }
 
 function required(value: string, label: string): string {
-  if (typeof value !== "string" || !value.trim()) throw new ChatError("BROWSER_INPUT", `${label} is required.`);
+  if (typeof value !== "string" || !value.trim())
+    throw new ChatError("BROWSER_INPUT", `${label} is required.`);
   return boundedText(value.trim(), 4_000);
 }
 
 function boundedText(value: string, max: number): string {
   if (typeof value !== "string") throw new ChatError("BROWSER_INPUT", "Browser text must be text.");
-  if (value.length > max) throw new ChatError("BROWSER_INPUT_LIMIT", "Browser data exceeded its bounded limit.", 413);
+  if (value.length > max)
+    throw new ChatError("BROWSER_INPUT_LIMIT", "Browser data exceeded its bounded limit.", 413);
   return value;
 }
 
 function iso(value: string): string {
   const time = Date.parse(value);
-  if (Number.isNaN(time)) throw new ChatError("BROWSER_EVENT", "Browser event time is invalid.", 500);
+  if (Number.isNaN(time))
+    throw new ChatError("BROWSER_EVENT", "Browser event time is invalid.", 500);
   return new Date(time).toISOString();
 }

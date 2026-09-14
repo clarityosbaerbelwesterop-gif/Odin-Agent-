@@ -2,8 +2,8 @@ import { lookup } from "node:dns/promises";
 import { request } from "node:https";
 import { parse } from "parse5";
 import { OutboundNetworkPolicy } from "../sandbox/network.js";
+import { type BrowserOutcome, type BrowserPageEvidence, pageEvidence } from "./browser-mode.js";
 import { ChatError } from "./types.js";
-import { pageEvidence, type BrowserPageEvidence, type BrowserOutcome } from "./browser-mode.js";
 
 export interface BrowserHttpActionResult {
   readonly outcome: BrowserOutcome;
@@ -52,9 +52,17 @@ export class SecureBrowserHttpClient {
         continue;
       }
       if (result.status < 200 || result.status >= 400)
-        throw new ChatError("BROWSER_PAGE_UNAVAILABLE", `Browser page returned HTTP ${result.status}.`, 502);
+        throw new ChatError(
+          "BROWSER_PAGE_UNAVAILABLE",
+          `Browser page returned HTTP ${result.status}.`,
+          502,
+        );
       if (!/^text\/(?:html|plain)(?:;|$)/iu.test(result.contentType))
-        throw new ChatError("BROWSER_CONTENT_TYPE", "Browser navigation supports bounded text/HTML pages only.", 415);
+        throw new ChatError(
+          "BROWSER_CONTENT_TYPE",
+          "Browser navigation supports bounded text/HTML pages only.",
+          415,
+        );
       return parseEvidence(current, result.status, result.body, result.contentType);
     }
     throw new ChatError("BROWSER_REDIRECT_LIMIT", "Browser redirect limit reached.", 502);
@@ -78,10 +86,20 @@ export class SecureBrowserHttpClient {
       const evidence = /^text\/(?:html|plain)(?:;|$)/iu.test(result.contentType)
         ? parseEvidence(finalUrl, result.status, result.body, result.contentType)
         : null;
-      return Object.freeze({ outcome: "EXECUTED" as const, finalUrl, status: result.status, evidence });
+      return Object.freeze({
+        outcome: "EXECUTED" as const,
+        finalUrl,
+        status: result.status,
+        evidence,
+      });
     } catch (error) {
       if (error instanceof ChatError) throw error;
-      return Object.freeze({ outcome: "UNKNOWN" as const, finalUrl: target, status: null, evidence: null });
+      return Object.freeze({
+        outcome: "UNKNOWN" as const,
+        finalUrl: target,
+        status: null,
+        evidence: null,
+      });
     }
   }
 }
@@ -96,7 +114,10 @@ async function requestOnce(
   const target = new URL(scopedUrl(rawUrl, allowedOrigins));
   const policy = new OutboundNetworkPolicy({
     allowedHosts: allowedOrigins.map((origin) => new URL(origin).hostname),
-    resolver: { resolve: async (hostname) => (await lookup(hostname, { all: true })).map((answer) => answer.address) },
+    resolver: {
+      resolve: async (hostname) =>
+        (await lookup(hostname, { all: true })).map((answer) => answer.address),
+    },
   });
   const authorized = await policy.authorize(target.toString());
   const boundedSignal = AbortSignal.any([signal, AbortSignal.timeout(20_000)]);
@@ -130,7 +151,9 @@ async function requestOnce(
         res.on("data", (chunk: Buffer) => {
           bytes += chunk.length;
           if (bytes > MAX_RESPONSE_BYTES) {
-            req.destroy(new ChatError("BROWSER_RESPONSE_LIMIT", "Browser response exceeded 1 MB.", 413));
+            req.destroy(
+              new ChatError("BROWSER_RESPONSE_LIMIT", "Browser response exceeded 1 MB.", 413),
+            );
             return;
           }
           chunks.push(chunk);
@@ -161,7 +184,11 @@ function scopedUrl(rawUrl: string, allowedOrigins: readonly string[]): string {
     url.hash ||
     !allowedOrigins.includes(url.origin.toLowerCase())
   )
-    throw new ChatError("BROWSER_REDIRECT_DENIED", "Browser destination escaped the approved origin scope.", 403);
+    throw new ChatError(
+      "BROWSER_REDIRECT_DENIED",
+      "Browser destination escaped the approved origin scope.",
+      403,
+    );
   return url.toString();
 }
 
@@ -190,19 +217,35 @@ function parseEvidence(
     if (tag === "a") {
       const href = attr(node, "href");
       if (href) {
-        try { links.push({ text: collectText(node).trim().slice(0, 500), url: new URL(href, url).toString() }); } catch { /* inert malformed page data */ }
+        try {
+          links.push({
+            text: collectText(node).trim().slice(0, 500),
+            url: new URL(href, url).toString(),
+          });
+        } catch {
+          /* inert malformed page data */
+        }
       }
     }
     if (tag === "form") {
       const rawAction = attr(node, "action") || url;
       let action = url;
-      try { action = new URL(rawAction, url).toString(); } catch { action = rawAction; }
+      try {
+        action = new URL(rawAction, url).toString();
+      } catch {
+        action = rawAction;
+      }
       const method = attr(node, "method").toUpperCase() === "POST" ? "POST" : "GET";
       const fields: Array<{ name: string; type: string; required: boolean }> = [];
       const inputs = (candidate: HtmlNode): void => {
         if (["input", "textarea", "select"].includes(candidate.tagName?.toLowerCase() ?? "")) {
           const name = attr(candidate, "name");
-          if (name) fields.push({ name, type: attr(candidate, "type") || candidate.tagName || "text", required: hasAttr(candidate, "required") });
+          if (name)
+            fields.push({
+              name,
+              type: attr(candidate, "type") || candidate.tagName || "text",
+              required: hasAttr(candidate, "required"),
+            });
         }
         for (const child of candidate.childNodes ?? []) inputs(child);
       };
