@@ -50,10 +50,7 @@ test("PRODUCT M10 preview entitlement bypass is explicit and impossible in produ
 
   assert.equal(preStripeTestMode({}), false);
   assert.equal(runtimePlan(freeAccount, {}), "free");
-  assert.equal(
-    preStripeTestMode({ ODIN_PRESTRIPE_TEST_MODE: "true" } as NodeJS.ProcessEnv),
-    true,
-  );
+  assert.equal(preStripeTestMode({ ODIN_PRESTRIPE_TEST_MODE: "true" } as NodeJS.ProcessEnv), true);
   assert.equal(
     runtimePlan(freeAccount, { ODIN_PRESTRIPE_TEST_MODE: "true" } as NodeJS.ProcessEnv),
     "ultra",
@@ -68,7 +65,10 @@ test("PRODUCT M10 preview entitlement bypass is explicit and impossible in produ
   }
 
   const activePaid = { plan: "developer" as const, subscriptionStatus: "active" };
-  assert.equal(runtimePlan(activePaid, { NODE_ENV: "production" } as NodeJS.ProcessEnv), "developer");
+  assert.equal(
+    runtimePlan(activePaid, { NODE_ENV: "production" } as NodeJS.ProcessEnv),
+    "developer",
+  );
 });
 
 test("S-U Stripe mapping accepts only exact configured Odin prices", () => {
