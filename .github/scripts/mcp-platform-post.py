@@ -69,3 +69,23 @@ for relative in [
 if 'new URL("../../src/connectors/api.ts", import.meta.url)' in test_text:
     raise SystemExit("connector platform test still resolves source paths relative to dist")
 test_path.write_text(test_text)
+
+# The browser must render the server-owned connector catalog rather than duplicating provider
+# identities client-side. Verify requested providers in the canonical catalog and the UI's
+# dynamic /api/connectors rendering contract separately.
+ui_path = Path("scripts/connectors-ui.test.mjs")
+ui_text = ui_path.read_text()
+if 'const catalog = await readFile(new URL("../src/connectors/catalog.ts", import.meta.url), "utf8");' not in ui_text:
+    ui_text = ui_text.replace(
+        'const live = await readFile(new URL("../web/live-work.js", import.meta.url), "utf8");\n',
+        'const live = await readFile(new URL("../web/live-work.js", import.meta.url), "utf8");\nconst catalog = await readFile(new URL("../src/connectors/catalog.ts", import.meta.url), "utf8");\n',
+        1,
+    )
+ui_text = ui_text.replace(
+    '  for (const id of ["neon", "linkedin"]) assert.match(js, new RegExp(id, "u"));\n  assert.match(js, /google-workspace/u);\n',
+    '  for (const id of ["neon", "vercel", "google-workspace", "linkedin"])\n    assert.match(catalog, new RegExp(`id: "${id}"`, "u"));\n  assert.match(js, /cState\\.catalog = data\\.connectors/u);\n',
+    1,
+)
+if 'assert.match(js, /google-workspace/u)' in ui_text:
+    raise SystemExit("connector UI test still requires browser-side provider duplication")
+ui_path.write_text(ui_text)
