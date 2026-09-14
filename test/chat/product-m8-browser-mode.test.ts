@@ -14,7 +14,7 @@ import {
   validateDownload,
 } from "../../src/chat/browser-mode.js";
 
-const now = new Date("2026-09-14T08:00:00.000Z");
+const now = new Date("2099-09-14T08:00:00.000Z");
 const fresh = (riskProfile: "READ_ONLY" | "ASSISTED" | "CONTROLLED" = "CONTROLLED") =>
   createBrowserSession({
     ownerId: "user-1",
@@ -104,7 +104,7 @@ test("M8 Tool approval authority gates high-risk external action", () => {
   const approval = approvalForBrowserAction({
     approvalId: "approval-1",
     session,
-    expiresAt: "2026-09-14T09:00:00.000Z",
+    expiresAt: "2099-09-14T09:00:00.000Z",
   });
   const decision = authorizeBrowserAction(
     session,
@@ -143,7 +143,7 @@ test("M8 unknown outcome blocks double submit until reconciliation", () => {
   session = applyBrowserEvent(session, {
     type: "browser.action.outcome_unknown",
     data: { sessionId: session.id, actionId: "action-1" },
-    createdAt: "2026-09-14T08:00:01.000Z",
+    createdAt: "2099-09-14T08:00:01.000Z",
   });
   assert.equal(session.state, "OUTCOME_UNKNOWN");
   assert.equal(
@@ -151,7 +151,7 @@ test("M8 unknown outcome blocks double submit until reconciliation", () => {
       authorizeBrowserAction(
         session,
         { operation: "read", url: "https://allowed.example/status" },
-        new Date("2026-09-14T08:00:02.000Z"),
+        new Date("2099-09-14T08:00:02.000Z"),
       ),
     ),
     "BROWSER_OUTCOME_UNKNOWN",
@@ -159,7 +159,7 @@ test("M8 unknown outcome blocks double submit until reconciliation", () => {
   session = applyBrowserEvent(session, {
     type: "browser.action.reconciled",
     data: { sessionId: session.id, outcome: "EXECUTED" },
-    createdAt: "2026-09-14T08:00:03.000Z",
+    createdAt: "2099-09-14T08:00:03.000Z",
   });
   assert.equal(session.state, "ACTIVE");
   assert.equal(session.lastSafeActionId, "action-1");
@@ -171,12 +171,12 @@ test("M8 durable event reducer preserves page/action/session checkpoint", () => 
   session = applyBrowserEvent(session, {
     type: "browser.page.opened",
     data: { sessionId: session.id, url: "https://allowed.example/one" },
-    createdAt: "2026-09-14T08:00:01.000Z",
+    createdAt: "2099-09-14T08:00:01.000Z",
   });
   session = applyBrowserEvent(session, {
     type: "browser.action.executed",
     data: { sessionId: session.id, actionId: "ok" },
-    createdAt: "2026-09-14T08:00:02.000Z",
+    createdAt: "2099-09-14T08:00:02.000Z",
   });
   assert.equal(session.currentUrl, "https://allowed.example/one");
   assert.equal(session.lastSafeActionId, "ok");
@@ -184,14 +184,14 @@ test("M8 durable event reducer preserves page/action/session checkpoint", () => 
   session = applyBrowserEvent(session, {
     type: "browser.session.paused",
     data: { sessionId: session.id },
-    createdAt: "2026-09-14T08:00:03.000Z",
+    createdAt: "2099-09-14T08:00:03.000Z",
   });
   assert.equal(
     code(() =>
       authorizeBrowserAction(
         session,
         { operation: "read", url: "https://allowed.example" },
-        new Date("2026-09-14T08:00:04.000Z"),
+        new Date("2099-09-14T08:00:04.000Z"),
       ),
     ),
     "BROWSER_SESSION_PAUSED",
@@ -199,12 +199,12 @@ test("M8 durable event reducer preserves page/action/session checkpoint", () => 
   session = applyBrowserEvent(session, {
     type: "browser.session.resumed",
     data: { sessionId: session.id },
-    createdAt: "2026-09-14T08:00:05.000Z",
+    createdAt: "2099-09-14T08:00:05.000Z",
   });
   session = applyBrowserEvent(session, {
     type: "browser.session.completed",
     data: { sessionId: session.id },
-    createdAt: "2026-09-14T08:00:06.000Z",
+    createdAt: "2099-09-14T08:00:06.000Z",
   });
   assert.equal(session.state, "COMPLETED");
 });
@@ -275,7 +275,7 @@ test("M8 downloads/uploads and financial actions remain bounded", () => {
   const approval = approvalForBrowserAction({
     approvalId: "approval-1",
     session,
-    expiresAt: "2026-09-14T09:00:00.000Z",
+    expiresAt: "2099-09-14T09:00:00.000Z",
   });
   assert.equal(
     code(() =>
@@ -290,7 +290,7 @@ test("M8 downloads/uploads and financial actions remain bounded", () => {
 });
 
 test("M8 expiry and action ceiling fail closed", () => {
-  const expired = { ...fresh(), expiresAt: "2026-09-14T07:59:59.000Z" } satisfies BrowserSession;
+  const expired = { ...fresh(), expiresAt: "2000-01-01T00:00:00.000Z" } satisfies BrowserSession;
   assert.equal(
     code(() => assertBrowserTarget(expired, "https://allowed.example")),
     "BROWSER_SESSION_EXPIRED",
