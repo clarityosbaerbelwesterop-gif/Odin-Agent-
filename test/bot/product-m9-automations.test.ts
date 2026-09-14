@@ -50,14 +50,21 @@ test("PRODUCT M9 occurrence, budget and circuit-breaker authority remain server 
   assert.match(executor, /wake\.scheduledAt/u);
   assert.match(executor, /wake\.attempt >= 5/u);
   assert.match(executor, /pauseAutomation\(wake\.targetId, code\)/u);
+  assert.match(executor, /failed\.sourceAutomationId/u);
   assert.match(hosted, /method === "PATCH"/u);
   assert.match(hosted, /typeof body\.enabled !== "boolean"/u);
 
   assert.match(migration, /scheduled_at timestamptz/u);
   assert.match(migration, /odin_api\.actor\(\)/u);
   assert.match(migration, /clear_bot_automation_wakeups/u);
-  assert.match(migration, /REVOKE ALL ON FUNCTION odin_control\.clear_bot_automation_wakeups/u);
-  assert.match(migration, /GRANT EXECUTE ON FUNCTION odin_control\.clear_bot_automation_wakeups/u);
+  assert.match(
+    migration,
+    /REVOKE ALL ON FUNCTION odin_control\.clear_bot_automation_wakeups/u,
+  );
+  assert.match(
+    migration,
+    /GRANT EXECUTE ON FUNCTION odin_control\.clear_bot_automation_wakeups/u,
+  );
   assert.doesNotMatch(migration, /GRANT\s+(?:SELECT|INSERT|UPDATE|DELETE).*bot_wakeups/iu);
 });
 
