@@ -109,7 +109,11 @@ export function githubTriggerForInstruction(instruction: string): GitHubAutomati
     return { event: "pull_request", predicate: "closed" };
 
   if (/\bci\b|checks?|workflow|actions?/u.test(lower)) {
-    if (/fail|failed|failure|fehler|fehlgeschlagen|rot|broken/u.test(lower))
+    if (
+      /fail|failed|failure|fehler|fehlgeschlagen|fehlschl(?:ä|ae)gt|scheitert|rot|broken/u.test(
+        lower,
+      )
+    )
       return { event: "checks", predicate: "checks_failed" };
     if (/pass|passed|success|successful|erfolgreich|grün|green/u.test(lower))
       return { event: "checks", predicate: "checks_passed" };

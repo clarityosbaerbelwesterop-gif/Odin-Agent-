@@ -7,7 +7,9 @@ test("Odin Bot home exposes real task, schedule, inbox and repository workspace 
   const js = await readFile("web/bot.js", "utf8");
   assert.match(html, /What should I take care of\?/u);
   assert.match(html, /Active/u);
-  assert.match(html, /Scheduled/u);
+  assert.match(html, /Automations/u);
+  assert.match(js, /method: "PATCH"/u);
+  assert.match(js, /Pause|Resume/u);
   assert.match(html, /Inbox/u);
   assert.match(html, /GitHub & Repos verwalten/u);
   assert.match(html, /href="\/bot\?workspace=1"/u);

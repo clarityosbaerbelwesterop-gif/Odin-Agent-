@@ -114,6 +114,7 @@ export interface ClaimedWakeup {
   id: string;
   kind: "task" | "automation";
   targetId: string;
+  scheduledAt: string;
   token: string;
   attempt: number;
 }
