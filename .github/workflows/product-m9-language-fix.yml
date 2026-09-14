@@ -1,0 +1,44 @@
+name: PRODUCT M9 condition language fix
+
+on:
+  push:
+    branches:
+      - agent/product-m9-automations
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Extend German failure phrasing
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/bot/github-event-policy.ts')
+          text = path.read_text()
+          old = 'if (/fail|failed|failure|fehler|fehlgeschlagen|rot|broken/u.test(lower))'
+          new = 'if (/fail|failed|failure|fehler|fehlgeschlagen|fehlschl(?:ä|ae)gt|scheitert|rot|broken/u.test(lower))'
+          if old not in text:
+              raise SystemExit('GitHub condition parser marker missing')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Format and commit
+        run: |
+          npx biome check --write src/bot/github-event-policy.ts
+          git config user.name "Odin Product M9"
+          git config user.email "odin-m9@users.noreply.github.com"
+          git rm .github/workflows/product-m9-language-fix.yml
+          git add src/bot/github-event-policy.ts
+          git commit -m "fix(m9): recognize German failure conditions"
+          git push origin HEAD:agent/product-m9-automations
