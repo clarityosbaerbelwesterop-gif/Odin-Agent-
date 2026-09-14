@@ -642,7 +642,7 @@ export class BotWakeQueue {
       await client.query("BEGIN");
       const row = (
         await client.query(
-          `SELECT owner_id,id,kind,target_id,available_at,attempts FROM odin_control.bot_wakeups
+          `SELECT owner_id,id,kind,target_id,scheduled_at,attempts FROM odin_control.bot_wakeups
            WHERE available_at<=now() AND (lease_expires_at IS NULL OR lease_expires_at<now())
            AND ($1::text IS NULL OR owner_id=$1)
            ORDER BY priority DESC,available_at,created_at FOR UPDATE SKIP LOCKED LIMIT 1`,
@@ -667,7 +667,7 @@ export class BotWakeQueue {
         id: row.id,
         kind: row.kind,
         targetId: row.target_id,
-        availableAt: iso(row.available_at) as string,
+        scheduledAt: iso(row.scheduled_at) as string,
         token,
         attempt: Number(updated.attempts),
       };

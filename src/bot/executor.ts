@@ -149,7 +149,7 @@ export class OdinBotWorker {
     const store = new BotStore(db);
     const automation = await store.automation(wake.targetId);
     if (!automation.enabled) return "disabled";
-    await store.fireAutomation(automation.id, wake.availableAt, limits);
+    await store.fireAutomation(automation.id, wake.scheduledAt, limits);
     return "fired";
   }
 
